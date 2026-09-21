@@ -1,0 +1,40 @@
+{
+  "name": "Logística FADERMEX",
+  "short_name": "Logística",
+  "description": "Entregas, recolecciones y traspasos para gestores de FADERMEX y BOTICAN",
+  "id": "/logistica/",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#E7EAEF",
+  "theme_color": "#0B3D91",
+  "lang": "es-MX",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "iconos/icono-48.png",  "sizes": "48x48",   "type": "image/png" },
+    { "src": "iconos/icono-72.png",  "sizes": "72x72",   "type": "image/png" },
+    { "src": "iconos/icono-96.png",  "sizes": "96x96",   "type": "image/png" },
+    { "src": "iconos/icono-144.png", "sizes": "144x144", "type": "image/png" },
+    { "src": "iconos/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "iconos/icono-256.png", "sizes": "256x256", "type": "image/png" },
+    { "src": "iconos/icono-384.png", "sizes": "384x384", "type": "image/png" },
+    { "src": "iconos/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "iconos/icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Pedidos pendientes",
+      "short_name": "Pedidos",
+      "url": "./index.html?ir=pedidos",
+      "icons": [{ "src": "iconos/icono-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Traspasos",
+      "short_name": "Traspasos",
+      "url": "./index.html?ir=traspasos",
+      "icons": [{ "src": "iconos/icono-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

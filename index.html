@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<title>Logística FADERMEX</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="description" content="Entregas, recolecciones y traspasos para gestores de FADERMEX y BOTICAN">
+
+<!-- Identidad de la app instalada -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B3D91">
+<link rel="icon" href="iconos/favicon.png" type="image/png">
+
+<!-- iPhone: sin estas tres no se ve como app -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Logística">
+<link rel="apple-touch-icon" href="iconos/apple-touch-icon.png">
+
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+
+  <!-- Aviso fijo cuando el celular se queda sin señal -->
+  <div id="barraRed" class="barra-red oculto">
+    <span id="barraRedTexto">Sin conexión · lo que captures se guarda y sube solo</span>
+  </div>
+
+  <div id="app">
+    <div class="arranque">
+      <div class="arranque-logo">
+        <img src="iconos/icono-192.png" alt="Logística BOTICAN FADERMEX" width="112" height="112">
+      </div>
+      <div class="spinner"></div>
+      <span>Abriendo…</span>
+    </div>
+  </div>
+
+  <!-- Abre directo la cámara trasera del celular -->
+  <input type="file" id="inputCamara" accept="image/*" capture="environment" hidden>
+
+  <!-- Lector de códigos de barras -->
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
