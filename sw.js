@@ -11,13 +11,14 @@
  * Eso obliga a todos los celulares a bajar la versión nueva.
  ***********************************************************************/
 
-const VERSION = 'fdx-logistica-v1';
+const VERSION = 'fdx-logistica-v2';
 
 const ARCHIVOS = [
   './',
   './index.html',
   './estilos.css',
   './app.js',
+  './config.js',
   './manifest.json',
   './iconos/icono-192.png',
   './iconos/icono-512.png',
