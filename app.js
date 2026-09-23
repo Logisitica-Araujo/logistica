@@ -9,7 +9,8 @@
  * Pega abajo la URL de tu aplicación web (la que termina en /exec).
  ***********************************************************************/
 
-var API = 'https://script.google.com/a/macros/fadermex.com/s/AKfycbzCgGMMBhAIYGeuI0mj70n19110-9n9EoxGYvQOEP3h9pHJKcrSqVJW9dMOwdCdzlLwuQ/exec';
+// La URL vive en config.js, que se carga antes que este archivo.
+var API = (typeof window !== 'undefined' && window.FDX_API) ? window.FDX_API : '';
 
 var VERSION_APP = '1.0.0';
 var ESPERA_MS   = 45000;   // cuánto aguanta una subida antes de darse por vencida
@@ -28,7 +29,7 @@ var S = {
   colaScan: [], vistosScan: {}, contadorScan: 0,
   timerPoll: null, ultimoConteo: {pedidos:0, traspasos:0},
   tocaTitulo: 0, adminClave: null,
-  cola: [], subiendo: false, hayRed: navigator.onLine !== false,
+  cola: [], subiendo: false, hayRed: true, sondeo: null,
   cerradosLocal: {}, desdeCache: false, promptInstalar: null
 };
 
@@ -200,8 +201,23 @@ function marcarRed(hay){
   if(S.hayRed === hay) return;
   S.hayRed = hay;
   pintarBarraRed();
-  if(hay) setTimeout(subirCola, 800);
+  if(hay){ pararSondeo(); setTimeout(subirCola, 800); }
+  else { iniciarSondeo(); }
 }
+
+/* Mientras creamos que no hay red, probamos de verdad cada 12 segundos.
+   Así la barra se quita sola en cuanto vuelve la señal, sin que el gestor
+   tenga que hacer nada ni esperar al siguiente pedido. */
+function iniciarSondeo(){
+  if(S.sondeo) return;
+  S.sondeo = setInterval(function(){
+    fetch(API, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+                 body: JSON.stringify({accion:'ping'}) })
+      .then(function(r){ if(r && r.ok) marcarRed(true); })
+      .catch(function(){});
+  }, 12000);
+}
+function pararSondeo(){ if(S.sondeo){ clearInterval(S.sondeo); S.sondeo=null; } }
 
 function pintarBarraRed(estado){
   var b=$('barraRed'), t=$('barraRedTexto');
@@ -218,8 +234,8 @@ function pintarBarraRed(estado){
   } else if(!S.hayRed){
     b.className='barra-red';
     t.textContent = pendientes
-      ? 'Sin conexión · '+pendientes+' por subir cuando haya señal'
-      : 'Sin conexión · lo que captures se guarda y sube solo';
+      ? 'Sin señal · '+pendientes+' por subir en cuanto vuelva'
+      : 'Sin señal · puedes seguir trabajando, se guarda todo';
   } else if(pendientes){
     b.className='barra-red';
     t.textContent=pendientes+' registro(s) esperando subir · toca para reintentar';
@@ -261,7 +277,7 @@ function subirCola(manual){
 
   return refrescarCola().then(function(cola){
     if(!cola.length) { if(manual) toast('No hay nada pendiente','ok'); return; }
-    if(!navigator.onLine && !manual){ return; }
+    if(!S.hayRed && !manual){ return; }
 
     S.subiendo = true;
     pintarBarraRed('subiendo');
@@ -301,8 +317,11 @@ function subirCola(manual){
   });
 }
 
-window.addEventListener('online',  function(){ marcarRed(true); });
-window.addEventListener('offline', function(){ marcarRed(false); });
+/* navigator.onLine miente seguido: dice "sin red" con wifi conectado y
+   "con red" cuando no hay salida a internet. Por eso no lo usamos para
+   decidir nada: solo lo tomamos como pista para ir a comprobarlo. */
+window.addEventListener('online',  function(){ srv('ping').catch(function(){}); });
+window.addEventListener('offline', function(){ srv('ping').catch(function(){}); });
 
 
 /* ===================================================================
@@ -369,10 +388,6 @@ function hacerLogin(){
   var n=$('inNombre').value.trim(), c=$('inCodigo').value.trim();
   if(!n){ avisoLogin('Escribe tu nombre.'); return; }
   if(!c){ avisoLogin('Escanea o teclea tu credencial.'); return; }
-  if(!navigator.onLine){
-    avisoLogin('Para entrar la primera vez necesitas señal. Una vez dentro, ya puedes trabajar sin ella.','warn');
-    return;
-  }
   avisoLogin('');
   $('btnEntrar').disabled=true;
   cargando('Verificando…');
@@ -640,7 +655,7 @@ function iniciarPoll(){
   S.ultimoConteo = S.estado.contadores || {pedidos:0,traspasos:0};
   S.timerPoll = setInterval(function(){
     if(!S.token) return pararPoll();
-    if(!navigator.onLine) return;
+    if(!S.hayRed) return;
     srv('estado').then(function(st){
       var antes=S.ultimoConteo, ahora=st.contadores||{pedidos:0,traspasos:0};
       S.estado=st; S.desdeCache=false;
@@ -872,7 +887,8 @@ function enviarCierrePedido(){
     };
     var etiqueta = p.id + ' · ' + c.resultado;
 
-    if(!navigator.onLine) return guardarEnCola('PEDIDO', datos, etiqueta);
+    // Solo encolamos sin intentar si YA sabemos que no hay red (un fallo real).
+    if(!S.hayRed) return guardarEnCola('PEDIDO', datos, etiqueta);
 
     return srv('cerrarPedido', {p: datos}).catch(function(e){
       if(esErrorDeRed(e)) return guardarEnCola('PEDIDO', datos, etiqueta);
@@ -1126,7 +1142,7 @@ function vaciarColaScan(){
   if(!pendientes.length) return;
   var folios = pendientes.map(function(x){ return x.folio; });
 
-  if(!navigator.onLine){
+  if(!S.hayRed){
     guardarEnCola('RECOLECCION', {folios:folios}, folios.length+' folio(s) recolectados');
     pendientes.forEach(function(x){ x.estado='ok'; x.msg='Guardado sin señal'; });
     pintarListaScan();
@@ -1355,7 +1371,7 @@ function enviarCierreTraspaso(){
       destino:c.destino, lat:pos.lat, lng:pos.lng
     };
     var etiqueta = 'Traspaso '+t.folio+' · '+(c.entregado?'ENTREGADO':'NO ENTREGADO');
-    if(!navigator.onLine) return guardarEnCola('TRASPASO', datos, etiqueta);
+    if(!S.hayRed) return guardarEnCola('TRASPASO', datos, etiqueta);
     return srv('cerrarTraspaso', {p:datos}).catch(function(e){
       if(esErrorDeRed(e)) return guardarEnCola('TRASPASO', datos, etiqueta);
       throw e;
@@ -1798,10 +1814,10 @@ function cerrarIOS(recordar){
  *  ARRANQUE
  * =================================================================== */
 function arrancar(){
-  if(API.indexOf('exec') < 0){
+  if(!API || API.indexOf('exec') < 0){
     $('app').innerHTML='<div class="cuerpo"><div class="aviso err">'+
-      '<b>Falta configurar la app.</b><br>Abre el archivo <b>app.js</b> y pega en la primera línea '+
-      'la URL de tu aplicación web de Apps Script (la que termina en /exec).</div></div>';
+      '<b>Falta configurar la app.</b><br>Abre el archivo <b>config.js</b> y pega entre las comillas '+
+      'la URL de tu aplicación web de Apps Script (la que termina en <b>/exec</b>).</div></div>';
     return;
   }
 
