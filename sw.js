@@ -9,9 +9,18 @@
  *
  * Cada vez que cambies algo de la app, sube el número de VERSION.
  * Eso obliga a todos los celulares a bajar la versión nueva.
+ *
+ * ---------------------------------------------------------------------
+ * CAMBIO DE LA v4 (importante):
+ *   config.js YA NO se sirve desde la copia guardada.
+ *   Siempre se pide fresco a internet, y solo si no hay señal se usa
+ *   la copia. ¿Por qué? Porque config.js lleva la dirección del
+ *   Apps Script. Si se quedaba pegada una copia vieja, la app decía
+ *   "Falta configurar la app" aunque en GitHub ya estuviera correcta,
+ *   y no había forma de que se enterara sola.
  ***********************************************************************/
 
-const VERSION = 'fdx-logistica-v3';
+const VERSION = 'fdx-logistica-v4';
 
 const ARCHIVOS = [
   './',
@@ -27,11 +36,29 @@ const ARCHIVOS = [
   './iconos/favicon.png'
 ];
 
+/* Archivos que SIEMPRE se piden frescos a internet.
+   La copia guardada solo se usa si de plano no hay señal.        */
+const SIEMPRE_FRESCOS = ['config.js'];
+
+function esFresco(url) {
+  for (let i = 0; i < SIEMPRE_FRESCOS.length; i++) {
+    if (url.pathname.endsWith(SIEMPRE_FRESCOS[i])) return true;
+  }
+  return false;
+}
+
 /* ---------- Instalación: guarda la copia ---------- */
 self.addEventListener('install', function (e) {
   e.waitUntil(
     caches.open(VERSION)
-      .then(function (c) { return c.addAll(ARCHIVOS); })
+      .then(function (c) {
+        // cache:'reload' obliga a bajarlos de internet, no del caché del navegador
+        return Promise.all(ARCHIVOS.map(function (a) {
+          return fetch(new Request(a, { cache: 'reload' }))
+            .then(function (res) { if (res && res.ok) return c.put(a, res); })
+            .catch(function () { /* si uno falla, la instalación sigue */ });
+        }));
+      })
       .then(function () { return self.skipWaiting(); })
   );
 });
@@ -57,6 +84,22 @@ self.addEventListener('fetch', function (e) {
   // Todo lo que va a Google (la API, las fotos de Drive) pasa de largo
   if (url.hostname.indexOf('google.com') >= 0 ||
       url.hostname.indexOf('googleusercontent.com') >= 0) return;
+
+  // config.js: internet primero, copia solo como último recurso
+  if (url.origin === self.location.origin && esFresco(url)) {
+    e.respondWith(
+      fetch(new Request(req.url, { cache: 'reload' })).then(function (res) {
+        if (res && res.ok) {
+          const copia = res.clone();
+          caches.open(VERSION).then(function (c) { c.put(req, copia); });
+        }
+        return res;
+      }).catch(function () {
+        return caches.match(req);
+      })
+    );
+    return;
+  }
 
   // Librerías externas: si ya la tengo guardada, la uso
   if (url.origin !== self.location.origin) {
@@ -105,6 +148,16 @@ self.addEventListener('fetch', function (e) {
 /* ---------- Mensajes desde la app ---------- */
 self.addEventListener('message', function (e) {
   if (e.data === 'ACTUALIZAR') self.skipWaiting();
+
+  // Botón de emergencia: borra TODA la copia guardada.
+  if (e.data === 'BORRAR_TODO') {
+    caches.keys().then(function (ns) {
+      return Promise.all(ns.map(function (n) { return caches.delete(n); }));
+    }).then(function () {
+      self.clients.matchAll({ includeUncontrolled: true, type: 'window' })
+        .then(function (cs) { cs.forEach(function (c) { c.postMessage('CACHE_BORRADO'); }); });
+    });
+  }
 });
 
 /* ---------- Reintento en segundo plano ----------
