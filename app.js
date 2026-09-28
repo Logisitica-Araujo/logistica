@@ -12,7 +12,7 @@
 // La URL vive en config.js, que se carga antes que este archivo.
 var API = (typeof window !== 'undefined' && window.FDX_API) ? window.FDX_API : '';
 
-var VERSION_APP = '1.0.0';
+var VERSION_APP = '1.1.0';
 var ESPERA_MS   = 45000;   // cuánto aguanta una subida antes de darse por vencida
 
 
@@ -30,7 +30,9 @@ var S = {
   timerPoll: null, ultimoConteo: {pedidos:0, traspasos:0},
   tocaTitulo: 0, adminClave: null,
   cola: [], subiendo: false, hayRed: true, sondeo: null,
-  cerradosLocal: {}, desdeCache: false, promptInstalar: null
+  cerradosLocal: {}, desdeCache: false, promptInstalar: null,
+  whatsapp: null, compartir: null,
+  catalogosListos: false
 };
 
 
@@ -415,6 +417,59 @@ function escanearCredencial(){
 
 
 /* ===================================================================
+ *  EL CATÁLOGO (vehículos, sucursales, motivos, plantillas de WhatsApp)
+ * -------------------------------------------------------------------
+ *  CORRECCIÓN v1.1.0 — antes esto SOLO se bajaba en la pantalla de
+ *  vehículo. Si el gestor volvía a abrir la app y ya traía vehículo
+ *  asignado, la app se saltaba esa pantalla y se iba directo al menú,
+ *  así que se quedaba sin sucursales, sin motivos y sin las plantillas
+ *  de WhatsApp. Se veía como listas vacías sin ningún aviso.
+ *  Ahora se baja al arrancar, al entrar al menú y al abrir vehículos.
+ * =================================================================== */
+function aplicarCatalogos(cat){
+  if(!cat) return false;
+  S.vehiculos  = cat.vehiculos  || [];
+  S.sucursales = cat.sucursales || [];
+  S.motivos    = cat.motivos    || S.motivos;
+  S.whatsapp   = cat.whatsapp   || null;
+  S.catalogosListos = true;
+  return true;
+}
+
+/**
+ * Baja el catálogo. Si no hay señal, usa la última copia del celular.
+ * Nunca truena: devuelve true/false para que quien la llame decida.
+ * forzar=true lo vuelve a pedir aunque ya lo tenga en memoria.
+ */
+function cargarCatalogos(forzar){
+  if(S.catalogosListos && !forzar) return Promise.resolve(true);
+
+  return srv('catalogos').then(function(cat){
+    sinFallar(DB.set('catalogos', cat), null);
+    return aplicarCatalogos(cat);
+  }).catch(function(e){
+    if(!esErrorDeRed(e)) { console.warn('catalogos:', e.message); }
+    return sinFallar(DB.get('catalogos'), null).then(function(g){
+      if(g){ S.desdeCache = true; return aplicarCatalogos(g); }
+      return false;
+    });
+  });
+}
+
+/** Botón de emergencia: vuelve a pedir el catálogo y redibuja lo que esté abierto. */
+function recargarCatalogo(){
+  cargando('Bajando catálogo…');
+  cargarCatalogos(true).then(function(ok){
+    quitarCargando();
+    if(!ok){ toast('No pude bajar el catálogo. Revisa tu señal.','err'); return; }
+    toast('Catálogo actualizado: '+S.sucursales.length+' sucursal(es)','ok');
+    if(S.cierre && S.cierre.p && S.cierre.p.folio) pintarCierreTraspaso();
+    else if(S.vista==='vehiculo') pintarVehiculo(false);
+  }).catch(function(e){ quitarCargando(); toast(e.message,'err'); });
+}
+
+
+/* ===================================================================
  *  PANTALLA 2 — VEHÍCULO
  * =================================================================== */
 function vistaVehiculo(esInicio){
@@ -422,28 +477,26 @@ function vistaVehiculo(esInicio){
   cargando('Cargando vehículos…');
 
   Promise.all([
-    srv('catalogos').catch(function(e){ if(esErrorDeRed(e)) return null; throw e; }),
+    cargarCatalogos(true),
     srv('estado').catch(function(e){ if(esErrorDeRed(e)) return null; throw e; })
   ]).then(function(r){
     quitarCargando();
-    if(r[0]){
-      S.vehiculos = r[0].vehiculos||[];
-      S.sucursales = r[0].sucursales||[];
-      S.motivos = r[0].motivos||S.motivos;
-      sinFallar(DB.set('catalogos', r[0]), null);
-      if(r[1]){ S.estado=r[1]; S.vehiculo=r[1].vehiculo||''; sinFallar(DB.set('estado', r[1]), null); }
-      pintarVehiculo(esInicio);
-      return;
-    }
-    // Sin señal: usamos lo último que bajamos
-    return Promise.all([sinFallar(DB.get('catalogos'),null), sinFallar(DB.get('estado'),null)])
-      .then(function(g){
-        if(!g[0]){ toast('Sin conexión y sin datos guardados. Conéctate una vez.','err'); return; }
-        S.vehiculos=g[0].vehiculos||[]; S.sucursales=g[0].sucursales||[]; S.motivos=g[0].motivos||S.motivos;
-        if(g[1]){ S.estado=g[1]; S.vehiculo=g[1].vehiculo||''; }
+
+    if(r[1]){
+      S.estado=r[1]; S.vehiculo=r[1].vehiculo||'';
+      sinFallar(DB.set('estado', r[1]), null);
+    } else {
+      // sin señal: recuperamos el último estado guardado
+      return sinFallar(DB.get('estado'), null).then(function(st){
+        if(!r[0] && !st){ toast('Sin conexión y sin datos guardados. Conéctate una vez.','err'); return; }
+        if(st){ S.estado=st; S.vehiculo=st.vehiculo||''; }
         S.desdeCache=true;
         pintarVehiculo(esInicio);
       });
+    }
+
+    if(!r[0]) toast('No pude bajar el catálogo. Revisa tu señal.','err');
+    pintarVehiculo(esInicio);
   }).catch(function(e){ quitarCargando(); toast(e.message,'err'); });
 }
 
@@ -537,6 +590,7 @@ function vistaMenu(){
     S.estado=st; S.vehiculo=st.vehiculo||''; S.desdeCache=false;
     sinFallar(DB.set('estado', st), null);
     if(!S.vehiculo){ vistaVehiculo(true); return; }
+    cargarCatalogos();                 // en segundo plano, por si venía vacío
     pintarMenu(); iniciarPoll(); subirCola();
   }).catch(function(e){
     quitarCargando();
@@ -544,6 +598,7 @@ function vistaMenu(){
     sinFallar(DB.get('estado'), null).then(function(st){
       if(!st){ toast('Sin conexión y sin datos guardados.','err'); return; }
       S.estado=st; S.vehiculo=st.vehiculo||''; S.desdeCache=true;
+      cargarCatalogos();
       pintarMenu();
     });
   });
@@ -904,6 +959,12 @@ function enviarCierrePedido(){
     flash(true, local ? msg+' · se sube al haber señal' : msg);
     S.pedidos = S.pedidos.filter(function(x){ return x.id!==p.id; });
     pintarPedidos();
+    ofrecerWhatsApp({
+      plantilla: c.resultado,
+      foto: c.foto,
+      campos: { id:p.id, cliente:p.cliente, direccion:p.direccion, area:p.area,
+                motivo:c.motivo, comentario:c.comentario }
+    });
   }).catch(function(e){
     quitarCargando(); beep('malo'); toast(e.message,'err');
   });
@@ -1300,11 +1361,19 @@ function pintarCierreTraspaso(){
 
   if(c.entregado){
     html+='<div class="bloque"><h3>🏬 Sucursal destino <span class="req">obligatorio</span></h3>'+
+      (S.sucursales.length
+        ? ''
+        : '<div class="aviso warn">No hay sucursales cargadas en este celular. '+
+          'Toca «Recargar catálogo» y vuelve a intentar.</div>')+
       '<select class="campo" id="selDestino" onchange="S.cierre.destino=this.value">'+
       '<option value="">— Selecciona —</option>'+
       S.sucursales.map(function(s){
         return '<option value="'+esc(s.nombre)+'"'+(norm(s.nombre)===norm(c.destino)?' selected':'')+'>'+esc(s.nombre)+'</option>';
-      }).join('')+'</select></div>';
+      }).join('')+'</select>'+
+      (S.sucursales.length
+        ? ''
+        : '<button class="btn linea chico mt" onclick="recargarCatalogo()">🔄 Recargar catálogo</button>')+
+      '</div>';
   }else{
     var lt = S.motivos.TRASPASO || [];
     html+='<div class="bloque"><h3>¿Qué pasó? <span class="req">obligatorio</span>'+
@@ -1384,6 +1453,13 @@ function enviarCierreTraspaso(){
                 (local?' · se sube al haber señal':''));
     S.traspasos = S.traspasos.filter(function(x){ return x.folio!==t.folio; });
     pintarTraspasos();
+    ofrecerWhatsApp({
+      plantilla: c.entregado ? 'TRASPASO_OK' : 'TRASPASO_NO',
+      foto: c.foto,
+      campos: { folio:t.folio, origen:t.origen, destino:c.destino||t.destino,
+                contenido:t.contenido, area:t.area,
+                motivo:c.motivo, comentario:c.comentario }
+    });
   }).catch(function(e){ quitarCargando(); beep('malo'); toast(e.message,'err'); });
 }
 
@@ -1751,6 +1827,135 @@ function cerrarScannerSimple(){
 
 
 /* ===================================================================
+ *  AVISO POR WHATSAPP AL CERRAR
+ *  WhatsApp no permite que una página escriba en un GRUPO: los links
+ *  wa.me solo abren chats con un número. Lo que sí funciona es el
+ *  botón de compartir del propio celular: el gestor toca Compartir,
+ *  elige WhatsApp y elige el grupo. El texto (y la foto) van listos.
+ * =================================================================== */
+
+function ofrecerWhatsApp(info){
+  var wa = S.whatsapp || {};
+  if(wa.activo === false) return;
+  var plantilla = (wa.plantillas || {})[info.plantilla] || '';
+  if(!plantilla.trim()) return;
+
+  var texto = armarMensajeWA(plantilla, info.campos || {});
+  S.compartir = { texto: texto, foto: (wa.incluirFoto!==false ? (info.foto||null) : null) };
+  pintarCompartirWA();
+}
+
+/** Rellena {id}, {cliente}, {motivo}… y limpia las líneas que quedaron vacías. */
+function armarMensajeWA(plantilla, campos){
+  var ahora = new Date();
+  var p = function(n){ return (n<10?'0':'')+n; };
+  var base = {
+    gestor: S.gestor, vehiculo: S.vehiculo,
+    fecha: p(ahora.getDate())+'/'+p(ahora.getMonth()+1)+'/'+ahora.getFullYear(),
+    hora: p(ahora.getHours())+':'+p(ahora.getMinutes())
+  };
+  for(var k in campos) base[k] = campos[k];
+
+  var t = String(plantilla).replace(/\\n/g, '\n');
+  t = t.replace(/\{(\w+)\}/g, function(_, llave){
+    var v = base[llave];
+    return (v==null || v==='') ? '' : String(v);
+  });
+  // quita líneas que quedaron sin contenido (ej. "Motivo: " cuando no hubo)
+  return t.split('\n')
+    .filter(function(l){ return l.trim() !== '' && !/^[\wÁÉÍÓÚÑáéíóúñ ]+:\s*$/.test(l.trim()); })
+    .join('\n');
+}
+
+function pintarCompartirWA(){
+  var c = S.compartir; if(!c) return;
+  var hayFoto = !!c.foto;
+  var html='<div class="modal" id="modalWA"><div class="hoja"><div class="agarre"></div>'+
+    '<h2>Avisar por WhatsApp</h2>'+
+    '<p class="sub">Toca compartir, elige WhatsApp y luego el grupo.</p>'+
+    '<div class="bloque">'+
+      '<textarea class="campo" id="inWA" rows="8" style="font-size:14px">'+esc(c.texto)+'</textarea>'+
+      '<p class="ayuda">Puedes editarlo antes de mandarlo.</p>'+
+    '</div>'+
+    (hayFoto
+      ? '<div class="bloque"><h3>📷 Se manda con la foto<span class="listo">✓</span></h3>'+
+        '<div class="previa"><img src="'+c.foto+'" alt=""></div>'+
+        '<button class="btn linea chico mt" onclick="quitarFotoWA()">Mandar solo el texto</button></div>'
+      : '')+
+    '<button class="btn verde" onclick="compartirWA()">📲 Compartir a WhatsApp</button>'+
+    '<div class="fila-btn mt">'+
+      '<button class="btn gris" onclick="cerrarCompartirWA()">Ahora no</button>'+
+      '<button class="btn linea" onclick="copiarTextoWA()">Copiar texto</button>'+
+    '</div>'+
+  '</div></div>';
+  var m=$('modalWA'); if(m) m.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function quitarFotoWA(){
+  if($('inWA')) S.compartir.texto = $('inWA').value;
+  S.compartir.foto = null;
+  pintarCompartirWA();
+}
+function cerrarCompartirWA(){
+  var m=$('modalWA'); if(m) m.remove();
+  S.compartir=null;
+}
+
+function compartirWA(){
+  var c = S.compartir; if(!c) return;
+  var texto = $('inWA') ? $('inWA').value : c.texto;
+
+  function conTextoSolo(){
+    if(navigator.share) return navigator.share({ text: texto });
+    // Navegador sin compartir nativo: copiamos y abrimos WhatsApp Web
+    copiarPortapapeles(texto);
+    toast('Texto copiado. Pégalo en el grupo.','ok');
+    window.open('https://web.whatsapp.com/', '_blank');
+    return Promise.resolve();
+  }
+
+  if(c.foto && navigator.canShare){
+    dataUrlAArchivo(c.foto, 'evidencia.jpg').then(function(archivo){
+      if(archivo && navigator.canShare({ files:[archivo] })){
+        return navigator.share({ text: texto, files:[archivo] });
+      }
+      return conTextoSolo();
+    }).then(function(){ beep(); cerrarCompartirWA(); })
+      .catch(function(e){ if(String(e).indexOf('Abort')<0) conTextoSolo().catch(function(){}); });
+  } else {
+    conTextoSolo().then(function(){ beep(); cerrarCompartirWA(); })
+      .catch(function(){});
+  }
+}
+
+function copiarTextoWA(){
+  var texto = $('inWA') ? $('inWA').value : (S.compartir||{}).texto || '';
+  copiarPortapapeles(texto);
+  toast('Texto copiado','ok');
+}
+
+function copiarPortapapeles(texto){
+  try{
+    if(navigator.clipboard) { navigator.clipboard.writeText(texto); return; }
+  }catch(e){}
+  var ta=document.createElement('textarea');
+  ta.value=texto; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); }catch(e){}
+  ta.remove();
+}
+
+function dataUrlAArchivo(dataUrl, nombre){
+  return fetch(dataUrl).then(function(r){ return r.blob(); })
+    .then(function(b){
+      try { return new File([b], nombre, {type: b.type || 'image/jpeg'}); }
+      catch(e){ return null; }
+    }).catch(function(){ return null; });
+}
+
+
+/* ===================================================================
  *  INSTALACIÓN EN EL CELULAR
  * =================================================================== */
 window.addEventListener('beforeinstallprompt', function(e){
@@ -1834,13 +2039,13 @@ function arrancar(){
     S.estado=st; S.gestor=st.gestor; S.vehiculo=st.vehiculo||'';
     sinFallar(DB.set('estado', st), null);
     if(!S.vehiculo) vistaVehiculo(true);
-    else { pintarMenu(); iniciarPoll(); subirCola(); }
+    else { cargarCatalogos(); pintarMenu(); iniciarPoll(); subirCola(); }
     setTimeout(avisarInstalacionIOS, 3000);
   }).catch(function(e){
     quitarCargando();
     if(esErrorDeRed(e)){
       sinFallar(DB.get('estado'), null).then(function(st){
-        if(st){ S.estado=st; S.vehiculo=st.vehiculo||''; S.desdeCache=true; pintarMenu(); }
+        if(st){ S.estado=st; S.vehiculo=st.vehiculo||''; S.desdeCache=true; cargarCatalogos(); pintarMenu(); }
         else { toast('Sin conexión. Conéctate una vez para empezar.','err'); vistaLogin(); }
       });
       return;
