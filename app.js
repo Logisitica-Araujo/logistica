@@ -12,7 +12,7 @@
 // La URL vive en config.js, que se carga antes que este archivo.
 var API = (typeof window !== 'undefined' && window.FDX_API) ? window.FDX_API : '';
 
-var VERSION_APP = '1.1.0';
+var VERSION_APP = '1.2.0';
 var ESPERA_MS   = 45000;   // cuánto aguanta una subida antes de darse por vencida
 
 
@@ -532,7 +532,10 @@ function pintarVehiculo(esInicio){
     html+='<button class="opcion'+(sel?' sel':'')+'" data-v="'+esc(v.nombre)+'" '+
           (bloqueado?'disabled style="opacity:.45"':'')+
           ' onclick="elegirVeh(this)"><span class="radio"></span>'+
-          '<span>🚗 <b>'+esc(v.nombre)+'</b>'+(v.placa?'<br><small style="color:#5F6368">'+esc(v.placa)+'</small>':'')+'</span></button>';
+          '<span>'+(v.esSin?'🚶':(v.tipo==='MOTO'?'🏍️':'🚚'))+' <b>'+esc(v.nombre)+'</b>'+
+          (v.placa?'<br><small style="color:#5F6368">'+esc(v.placa)+'</small>':'')+
+          (v.esSin?'<br><small style="color:#5F6368">Solo para consultar</small>':'')+
+          '</span></button>';
   });
   html+='</div></div>';
 
@@ -550,6 +553,78 @@ function pintarVehiculo(esInicio){
   $('app').innerHTML=html;
 }
 
+/* ===================================================================
+ *  PANTALLA 2-B — REVISIÓN DE EQUIPO ANTES DE SALIR
+ * -------------------------------------------------------------------
+ *  Aparece una sola vez, justo después de elegir vehículo.
+ *  No va en el círculo de carga a propósito: ahora la app abre en menos
+ *  de un segundo y ese aviso se vería un parpadeo. Aquí sí se lee.
+ *
+ *  Las listas se editan en la hoja APP_Config (CHECK_MOTO / CHECK_AUTO),
+ *  separando cada punto con la barra |. No hace falta tocar código.
+ *
+ *  Devuelve true si mostró la pantalla; false si no aplicaba.
+ * =================================================================== */
+function vistaChecklist(vehiculo){
+  var ck = (S.estado && S.estado.checklist) || null;
+  if(!ck || ck.activo===false) return false;
+
+  // Buscamos el vehículo en el catálogo para saber si es moto o auto
+  var info = null;
+  for(var i=0;i<S.vehiculos.length;i++){
+    if(norm(S.vehiculos[i].nombre)===norm(vehiculo)){ info=S.vehiculos[i]; break; }
+  }
+  var tipo = (info && info.tipo) ? info.tipo : 'AUTO';
+
+  // "Sin vehículo" es para entrar a consultar: no hay nada que revisar
+  if(tipo==='NINGUNO' || (info && info.esSin)) return false;
+
+  var puntos = ck[tipo] || [];
+  if(!puntos.length) return false;
+
+  S.vista='checklist';
+  var icono = tipo==='MOTO' ? '🏍️' : '🚚';
+
+  var html=
+  '<div class="barra"><div class="titulo">'+
+    '<h1>Antes de salir</h1><small>'+esc(S.gestor)+'</small>'+
+  '</div></div><div class="cuerpo">'+
+    '<div class="aviso info" style="text-align:center;font-size:17px">'+
+      '<div style="font-size:40px;line-height:1.2">'+icono+'</div>'+
+      '<b>'+esc(vehiculo)+'</b>'+
+      (info&&info.placa?'<br><small>'+esc(info.placa)+'</small>':'')+
+    '</div>'+
+    '<div class="bloque"><h3>Revisa que traigas contigo</h3><div class="opciones">';
+
+  puntos.forEach(function(p){
+    html+='<div class="opcion" style="cursor:default"><span style="font-size:18px">✔️</span>'+
+          '<span><b>'+esc(p)+'</b></span></div>';
+  });
+
+  html+='</div></div>';
+  if(ck.nota) html+='<div class="aviso warn">'+esc(ck.nota)+'</div>';
+
+  html+='<button class="btn verde" onclick="confirmarChecklist()">Ya lo revisé, continuar</button>'+
+        '<p class="centro pequeno mt">Queda registrada la hora en que lo confirmaste.</p>'+
+        '</div>';
+
+  $('app').innerHTML=html;
+  return true;
+}
+
+function confirmarChecklist(){
+  var v = S.vehiculo || '';
+  var tipo = 'AUTO';
+  for(var i=0;i<S.vehiculos.length;i++){
+    if(norm(S.vehiculos[i].nombre)===norm(v)){ tipo=S.vehiculos[i].tipo||'AUTO'; break; }
+  }
+  // No bloqueamos al gestor si esto falla: es un registro, no un permiso
+  srv('checklistOk', {vehiculo:v, tipo:tipo}).catch(function(){});
+  beep();
+  vistaMenu();
+}
+
+
 function elegirVeh(btn){
   Array.prototype.forEach.call(document.querySelectorAll('#listaVeh .opcion'),
     function(b){ b.classList.remove('sel'); });
@@ -566,7 +641,7 @@ function guardarVehiculo(){
     quitarCargando();
     S.vehiculo=d.vehiculo; beep();
     toast('Vehículo: '+d.vehiculo,'ok');
-    vistaMenu();
+    if(!vistaChecklist(d.vehiculo)) vistaMenu();
   }).catch(function(e){
     quitarCargando();
     if(esErrorDeRed(e)){
@@ -825,7 +900,7 @@ function abrirCierrePedido(i, resultado){
   var p=S.pedidos[i];
   S.cierre={ tipo:'PEDIDO', p:p, resultado:resultado,
              entregado:(resultado==='ENTREGADO'),
-             foto:null, firma:null, motivo:'', comentario:'' };
+             foto:null, firma:null, motivo:'', comentario:'', recibio:'' };
   pintarCierrePedido();
 }
 
@@ -876,6 +951,19 @@ function pintarCierrePedido(){
   }
   html+='</div>';
 
+  /* ---- ¿Quién recibió? ----
+     Va ANTES de la firma a propósito: cuando llueve o hay prisa, esto es
+     lo que el gestor sí va a llenar, y la firma se queda sin usar.        */
+  if(c.entregado && r.pedirQuienRecibio!==false){
+    var pideRec = r.exigirQuienRecibio===true;
+    html+='<div class="bloque"><h3>👤 ¿Quién recibió? '+
+          (pideRec?'<span class="req">obligatorio</span>':'<span class="pequeno">opcional</span>')+
+          (c.recibio?'<span class="listo">✓</span>':'')+'</h3>'+
+          '<input class="campo" id="inRecibio" autocomplete="off" '+
+          'placeholder="Nombre de quien recibió" value="'+esc(c.recibio||'')+'">'+
+          '<p class="ayuda">Útil cuando no firman. Déjalo vacío si no aplica.</p></div>';
+  }
+
   if(c.entregado){
     var pideFirma = r.exigirFirmaEntrega!==false;
     html+='<div class="bloque"><h3>✍️ Firma del cliente '+
@@ -912,6 +1000,8 @@ function preservarCierre(){
     var f=leerFirma();
     if(f) S.cierre.firma=f;
   }
+  // sin esto, escribir quién recibió y luego tomar la foto borraba el nombre
+  if($('inRecibio')) S.cierre.recibio=$('inRecibio').value;
   if($('selDestino')) S.cierre.destino=$('selDestino').value;
 }
 function quitarFoto(){ preservarCierre(); S.cierre.foto=null; pintarCierrePedido(); }
@@ -922,8 +1012,10 @@ function enviarCierrePedido(){
   guardarComentario();
   if(c.entregado){
     c.firma = leerFirma() || c.firma || null;
+    if($('inRecibio')) c.recibio = $('inRecibio').value.trim();
     if(r.exigirFotoEntrega!==false && !c.foto){ toast('Falta la foto de la fachada.','err'); beep('malo'); return; }
     if(r.exigirFirmaEntrega!==false && !c.firma){ toast('Falta la firma del cliente.','err'); beep('malo'); return; }
+    if(r.exigirQuienRecibio===true && !c.recibio){ toast('Anota quién recibió el pedido.','err'); beep('malo'); return; }
   }else{
     if(!c.motivo){ toast('Selecciona el motivo.','err'); beep('malo'); return; }
     if(r.exigirFotoNoEntrega!==false && !c.foto){ toast('Falta la foto de evidencia.','err'); beep('malo'); return; }
@@ -938,7 +1030,8 @@ function enviarCierrePedido(){
       foto:c.foto, firma:c.firma,
       lat:pos.lat, lng:pos.lng,
       cliente:p.cliente, direccion:p.direccion, notas:p.notas,
-      area:p.area, subarea:p.subarea
+      area:p.area, subarea:p.subarea,
+      recibio:c.recibio||''
     };
     var etiqueta = p.id + ' · ' + c.resultado;
 
