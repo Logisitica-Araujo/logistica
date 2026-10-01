@@ -12,7 +12,7 @@
 // La URL vive en config.js, que se carga antes que este archivo.
 var API = (typeof window !== 'undefined' && window.FDX_API) ? window.FDX_API : '';
 
-var VERSION_APP = '1.2.0';
+var VERSION_APP = '1.3.0';
 var ESPERA_MS   = 45000;   // cuánto aguanta una subida antes de darse por vencida
 
 
@@ -529,12 +529,16 @@ function pintarVehiculo(esInicio){
   if(!S.vehiculos.length) html+='<p class="pequeno">No hay vehículos dados de alta.</p>';
   S.vehiculos.forEach(function(v){
     var sel = norm(v.nombre)===norm(S.vehiculo);
+    // Lo trae otro gestor en este momento: se ve, pero no se puede elegir
+    var ocupado = v.ocupadoPor && norm(v.ocupadoPor)!==norm(S.gestor) && !sel;
+    var apagado = bloqueado || ocupado;
     html+='<button class="opcion'+(sel?' sel':'')+'" data-v="'+esc(v.nombre)+'" '+
-          (bloqueado?'disabled style="opacity:.45"':'')+
+          (apagado?'disabled style="opacity:.45"':'')+
           ' onclick="elegirVeh(this)"><span class="radio"></span>'+
           '<span>'+(v.esSin?'🚶':(v.tipo==='MOTO'?'🏍️':'🚚'))+' <b>'+esc(v.nombre)+'</b>'+
           (v.placa?'<br><small style="color:#5F6368">'+esc(v.placa)+'</small>':'')+
           (v.esSin?'<br><small style="color:#5F6368">Solo para consultar</small>':'')+
+          (ocupado?'<br><small style="color:#C62828">🔒 Lo trae '+esc(v.ocupadoPor)+'</small>':'')+
           '</span></button>';
   });
   html+='</div></div>';
@@ -646,6 +650,11 @@ function guardarVehiculo(){
     quitarCargando();
     if(esErrorDeRed(e)){
       toast('Sin señal: el vehículo se registra cuando vuelva la conexión.','err');
+    } else if(String(e.message).indexOf('OCUPADO')>=0){
+      // Alguien lo tomó entre que se pintó la lista y le diste Continuar
+      toast(e.message.replace('OCUPADO: ',''),'err');
+      S.vehiculoElegido=null;
+      vistaVehiculo(false);               // refresca para que se vea el candado
     } else { toast(e.message,'err'); }
     beep('malo');
   });
@@ -954,8 +963,12 @@ function pintarCierrePedido(){
   /* ---- ¿Quién recibió? ----
      Va ANTES de la firma a propósito: cuando llueve o hay prisa, esto es
      lo que el gestor sí va a llenar, y la firma se queda sin usar.        */
-  if(c.entregado && r.pedirQuienRecibio!==false){
-    var pideRec = r.exigirQuienRecibio===true;
+  /* Si es OBLIGATORIO, la caja se muestra aunque la configuración diga que
+     no. Antes se podía dejar la app en un estado imposible: el campo oculto
+     y a la vez exigido, con el aviso "Anota quién recibió" y nada dónde
+     escribirlo. Un estado imposible no debe poder existir.                */
+  var pideRec = r.exigirQuienRecibio===true;
+  if(c.entregado && (r.pedirQuienRecibio!==false || pideRec)){
     html+='<div class="bloque"><h3>👤 ¿Quién recibió? '+
           (pideRec?'<span class="req">obligatorio</span>':'<span class="pequeno">opcional</span>')+
           (c.recibio?'<span class="listo">✓</span>':'')+'</h3>'+
