@@ -12,7 +12,7 @@
 // La URL vive en config.js, que se carga antes que este archivo.
 var API = (typeof window !== 'undefined' && window.FDX_API) ? window.FDX_API : '';
 
-var VERSION_APP = '1.3.0';
+var VERSION_APP = '1.4.0';
 var ESPERA_MS   = 45000;   // cuánto aguanta una subida antes de darse por vencida
 
 
@@ -1069,7 +1069,7 @@ function enviarCierrePedido(){
       plantilla: c.resultado,
       foto: c.foto,
       campos: { id:p.id, cliente:p.cliente, direccion:p.direccion, area:p.area,
-                motivo:c.motivo, comentario:c.comentario }
+                motivo:c.motivo, comentario:c.comentario, recibio:c.recibio }
     });
   }).catch(function(e){
     quitarCargando(); beep('malo'); toast(e.message,'err');
