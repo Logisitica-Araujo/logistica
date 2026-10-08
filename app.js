@@ -12,7 +12,7 @@
 // La URL vive en config.js, que se carga antes que este archivo.
 var API = (typeof window !== 'undefined' && window.FDX_API) ? window.FDX_API : '';
 
-var VERSION_APP = '1.4.0';
+var VERSION_APP = '1.6.0';
 var ESPERA_MS   = 45000;   // cuánto aguanta una subida antes de darse por vencida
 
 
@@ -32,7 +32,7 @@ var S = {
   cola: [], subiendo: false, hayRed: true, sondeo: null,
   cerradosLocal: {}, desdeCache: false, promptInstalar: null,
   whatsapp: null, compartir: null,
-  catalogosListos: false
+  catalogosListos: false, documentos: []
 };
 
 
@@ -476,28 +476,26 @@ function vistaVehiculo(esInicio){
   S.vista='vehiculo';
   cargando('Cargando vehículos…');
 
-  Promise.all([
-    cargarCatalogos(true),
-    srv('estado').catch(function(e){ if(esErrorDeRed(e)) return null; throw e; })
-  ]).then(function(r){
+  // UN SOLO VIAJE: estado + catálogos en una llamada. Antes eran dos, y cada
+  // una abría el libro (~5 s). Juntarlas es lo que corta la espera a la mitad.
+  srv('arranque').then(function(d){
     quitarCargando();
-
-    if(r[1]){
-      S.estado=r[1]; S.vehiculo=r[1].vehiculo||'';
-      sinFallar(DB.set('estado', r[1]), null);
-    } else {
-      // sin señal: recuperamos el último estado guardado
-      return sinFallar(DB.get('estado'), null).then(function(st){
-        if(!r[0] && !st){ toast('Sin conexión y sin datos guardados. Conéctate una vez.','err'); return; }
-        if(st){ S.estado=st; S.vehiculo=st.vehiculo||''; }
+    if(d && d.estado){ S.estado=d.estado; S.vehiculo=d.estado.vehiculo||''; sinFallar(DB.set('estado', d.estado), null); }
+    if(d && d.catalogos){ aplicarCatalogos(d.catalogos); sinFallar(DB.set('catalogos', d.catalogos), null); }
+    pintarVehiculo(esInicio);
+  }).catch(function(e){
+    quitarCargando();
+    if(!esErrorDeRed(e)){ toast(e.message,'err'); return; }
+    // sin señal: usamos la última copia guardada
+    Promise.all([sinFallar(DB.get('estado'),null), sinFallar(DB.get('catalogos'),null)])
+      .then(function(g){
+        if(!g[0] && !g[1]){ toast('Sin conexión y sin datos guardados. Conéctate una vez.','err'); return; }
+        if(g[0]){ S.estado=g[0]; S.vehiculo=g[0].vehiculo||''; }
+        if(g[1]){ aplicarCatalogos(g[1]); }
         S.desdeCache=true;
         pintarVehiculo(esInicio);
       });
-    }
-
-    if(!r[0]) toast('No pude bajar el catálogo. Revisa tu señal.','err');
-    pintarVehiculo(esInicio);
-  }).catch(function(e){ quitarCargando(); toast(e.message,'err'); });
+  });
 }
 
 function pintarVehiculo(esInicio){
@@ -713,6 +711,11 @@ function pintarMenu(){
   if(S.desdeCache){
     html+='<div class="aviso warn">Sin señal. Los números son de la última vez que tuviste conexión.</div>';
   }
+  // Aviso si la misma cuenta está abierta en más de un dispositivo
+  if((st.dispositivosActivos||1) > 1){
+    html+='<div class="aviso warn">⚠️ Tu cuenta está abierta en <b>'+st.dispositivosActivos+' dispositivos</b>. '+
+          'Si no fuiste tú, avisa a tu supervisor.</div>';
+  }
 
   html+='<div class="rejilla">';
   (st.modulos||[]).forEach(function(m){
@@ -746,8 +749,101 @@ function abrirModulo(id, activo){
   if(id==='traspasos') return vistaTraspasos();
   if(id==='historial') return vistaHistorial();
   if(id==='vehiculos') return vistaUsoVehiculos();
+  if(id==='docs')      return vistaDocumentos();
   toast('Módulo no disponible.','err');
 }
+
+
+/* ===================================================================
+ *  MÓDULO — DOCUMENTACIÓN
+ * -------------------------------------------------------------------
+ *  Biblioteca que siempre está disponible: protocolo de cómo entregar,
+ *  pólizas de los vehículos, avisos. El contenido vive en la hoja
+ *  APP_Documentos; aquí solo se muestra.
+ * =================================================================== */
+function vistaDocumentos(){
+  S.vista='docs';
+  cargando('Cargando documentación…');
+  srv('documentos').then(function(lista){
+    quitarCargando();
+    S.documentos = lista || [];
+    sinFallar(DB.set('documentos', S.documentos), null);
+    pintarDocumentos();
+  }).catch(function(e){
+    quitarCargando();
+    if(!esErrorDeRed(e)){ toast(e.message,'err'); return; }
+    sinFallar(DB.get('documentos'), null).then(function(g){
+      S.documentos = g || [];
+      S.desdeCache = true;
+      pintarDocumentos();
+    });
+  });
+}
+
+function pintarDocumentos(){
+  var lista = S.documentos || [];
+  var html =
+  '<div class="barra">'+
+    '<button class="volver" onclick="vistaMenu()">←</button>'+
+    '<div class="titulo"><h1>Documentación</h1><small>Información para tu trabajo</small></div>'+
+  '</div><div class="cuerpo">';
+
+  if(!lista.length){
+    html+='<div class="aviso info">Todavía no hay documentos cargados.</div></div>';
+    $('app').innerHTML=html; return;
+  }
+
+  // Agrupar por categoría, respetando el orden en que vienen
+  var cats=[], porCat={};
+  lista.forEach(function(d){
+    if(!porCat[d.categoria]){ porCat[d.categoria]=[]; cats.push(d.categoria); }
+    porCat[d.categoria].push(d);
+  });
+
+  cats.forEach(function(cat){
+    html+='<div class="bloque"><h3>'+esc(cat)+'</h3><div class="opciones">';
+    porCat[cat].forEach(function(d){
+      var idx = lista.indexOf(d);
+      var ic = d.tipo==='enlace' ? '🔗' : '📄';
+      html+='<button class="opcion" onclick="abrirDocumento('+idx+')">'+
+            '<span style="font-size:20px">'+ic+'</span>'+
+            '<span><b>'+esc(d.titulo)+'</b></span></button>';
+    });
+    html+='</div></div>';
+  });
+
+  html+='</div>';
+  $('app').innerHTML=html;
+  pintarBarraRed();
+}
+
+function abrirDocumento(i){
+  var d = (S.documentos||[])[i];
+  if(!d) return;
+
+  // Enlace (PDF de Drive, etc.): se abre en otra pestaña
+  if(d.tipo==='enlace'){
+    var url = String(d.contenido||'').trim();
+    if(!url){ toast('Este documento no tiene enlace.','err'); return; }
+    window.open(url, '_blank');
+    return;
+  }
+
+  // Texto: se muestra en pantalla completa, con saltos de línea respetados
+  var html=
+  '<div class="modal" id="modalDoc"><div class="hoja" style="max-height:88vh">'+
+    '<div class="agarre"></div>'+
+    '<h2>'+esc(d.titulo)+'</h2>'+
+    '<div class="bloque" style="overflow:auto">'+
+      '<div style="white-space:pre-wrap;line-height:1.5;font-size:15px">'+esc(d.contenido||'')+'</div>'+
+    '</div>'+
+    '<button class="btn" onclick="cerrarDoc()">Cerrar</button>'+
+  '</div></div>';
+  var m=$('modalDoc'); if(m) m.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function cerrarDoc(){ var m=$('modalDoc'); if(m) m.remove(); }
 
 function cerrarSesion(){
   if(S.cola.length){
@@ -955,7 +1051,7 @@ function pintarCierrePedido(){
           '<button class="quitar" onclick="quitarFoto()">Cambiar</button></div>';
   }else{
     html+='<button class="zona-foto" style="width:100%" onclick="tomarFoto()">'+
-          '<span class="ic">📸</span><b>Tomar foto</b>'+
+          '<span class="ic">📸</span><b>Tomar o subir foto</b>'+
           '<small>'+(c.entregado?'Fachada donde estás entregando':'Evidencia de lo ocurrido')+'</small></button>';
   }
   html+='</div>';
@@ -1502,7 +1598,7 @@ function pintarCierreTraspaso(){
           '<button class="quitar" onclick="quitarFotoTras()">Cambiar</button></div>';
   }else{
     html+='<button class="zona-foto" style="width:100%" onclick="tomarFoto()">'+
-          '<span class="ic">📸</span><b>Tomar foto</b><small>Dónde y cómo se entregó</small></button>';
+          '<span class="ic">📸</span><b>Tomar o subir foto</b><small>Dónde y cómo se entregó</small></button>';
   }
   html+='</div>';
 
@@ -2140,12 +2236,15 @@ function arrancar(){
   S.token=t; S.gestor=leer('nombre')||'';
   cargando('Recuperando tu sesión…');
 
-  srv('estado').then(function(st){
+  // UN SOLO VIAJE: estado + catálogos juntos (abre el libro una sola vez)
+  srv('arranque').then(function(d){
     quitarCargando();
-    S.estado=st; S.gestor=st.gestor; S.vehiculo=st.vehiculo||'';
+    var st = (d && d.estado) || {};
+    S.estado=st; S.gestor=st.gestor||S.gestor; S.vehiculo=st.vehiculo||'';
     sinFallar(DB.set('estado', st), null);
+    if(d && d.catalogos){ aplicarCatalogos(d.catalogos); sinFallar(DB.set('catalogos', d.catalogos), null); }
     if(!S.vehiculo) vistaVehiculo(true);
-    else { cargarCatalogos(); pintarMenu(); iniciarPoll(); subirCola(); }
+    else { pintarMenu(); iniciarPoll(); subirCola(); }
     setTimeout(avisarInstalacionIOS, 3000);
   }).catch(function(e){
     quitarCargando();
