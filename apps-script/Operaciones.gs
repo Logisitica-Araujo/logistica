@@ -354,6 +354,7 @@ function opsEscribirFormulasFila_(sheet, fila, areaMayus) {
   if (OPS_AREAS_LISTA_MANUAL.includes(areaMayus)) {
     sheet.getRange(fila, OPS_COL_NOMBRE, 1, 2).setFormulas([[nombre, direccion]]);
   } else {
+    sheet.getRange(fila, OPS_COL_SUBAREA).clearDataValidations(); // por si quedó un desplegable de COLIMA/IMSS
     sheet.getRange(fila, OPS_COL_SUBAREA, 1, 3).setFormulas([[opsFormulaSubArea_(fila), nombre, direccion]]);
   }
   sheet.getRange(fila, OPS_COL_NOTA_CAT).setFormula(opsFormulaNotaCat_(fila));
@@ -374,20 +375,32 @@ function OPS_instalarFormulasAutocompletado(silencioso) {
   if (sheet.getMaxRows() < ultimaFila) sheet.insertRowsAfter(sheet.getMaxRows(), ultimaFila - sheet.getMaxRows());
   const numFilas = ultimaFila - OPS_FILA_INICIO_DATOS + 1;
 
-  const areaYSub = sheet.getRange(OPS_FILA_INICIO_DATOS, OPS_COL_AREA, numFilas, 2).getValues(); // B:C
-  const subArea = [], nombreDir = [], nota = [];
+  const areas = sheet.getRange(OPS_FILA_INICIO_DATOS, OPS_COL_AREA, numFilas, 1).getValues(); // B
+  const esManual = areas.map(a => OPS_AREAS_LISTA_MANUAL.includes(String(a[0]).trim().toUpperCase()));
+  const nombreDir = [], nota = [];
   for (let i = 0; i < numFilas; i++) {
     const f = OPS_FILA_INICIO_DATOS + i;
-    const area = String(areaYSub[i][0]).trim().toUpperCase();
-    // En COLIMA/IMSS la SubÁrea es manual: se deja el valor que ya tenía.
-    subArea.push([OPS_AREAS_LISTA_MANUAL.includes(area) ? String(areaYSub[i][1]) : opsFormulaSubArea_(f)]);
     nombreDir.push([opsFormulaNombre_(f), opsFormulaDireccion_(f)]);
     nota.push([opsFormulaNotaCat_(f)]);
   }
 
-  sheet.getRange(OPS_FILA_INICIO_DATOS, OPS_COL_SUBAREA, numFilas, 1).setFormulas(subArea);
-  sheet.getRange(OPS_FILA_INICIO_DATOS, OPS_COL_NOMBRE, numFilas, 2).setFormulas(nombreDir);
-  sheet.getRange(OPS_FILA_INICIO_DATOS, OPS_COL_NOTA_CAT, numFilas, 1).setFormulas(nota);
+  // D, E y Z son siempre fórmula: se les quita cualquier desplegable viejo
+  // (si no, Google rechaza la fórmula por "infringir la validación").
+  sheet.getRange(OPS_FILA_INICIO_DATOS, OPS_COL_NOMBRE, numFilas, 2).clearDataValidations().setFormulas(nombreDir);
+  sheet.getRange(OPS_FILA_INICIO_DATOS, OPS_COL_NOTA_CAT, numFilas, 1).clearDataValidations().setFormulas(nota);
+
+  // C: en COLIMA/IMSS la SubÁrea es manual y NO se toca (ni valor ni
+  // desplegable). En las demás filas se quita el desplegable que hubiera
+  // quedado y se pone la fórmula. Se escribe por tramos seguidos.
+  for (let i = 0; i < numFilas; ) {
+    if (esManual[i]) { i++; continue; }
+    let j = i;
+    while (j < numFilas && !esManual[j]) j++;
+    const formulas = [];
+    for (let k = i; k < j; k++) formulas.push([opsFormulaSubArea_(OPS_FILA_INICIO_DATOS + k)]);
+    sheet.getRange(OPS_FILA_INICIO_DATOS + i, OPS_COL_SUBAREA, j - i, 1).clearDataValidations().setFormulas(formulas);
+    i = j;
+  }
 
   // Y: se vacía toda la columna y se pone UNA fórmula en Y4 que se extiende sola.
   sheet.getRange(OPS_FILA_INICIO_DATOS, OPS_COL_DUPLICADO, sheet.getMaxRows() - OPS_FILA_INICIO_DATOS + 1, 1).clearContent();
