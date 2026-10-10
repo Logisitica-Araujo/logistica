@@ -3,21 +3,20 @@
 | Archivo | Qué es |
 |---|---|
 | `Operaciones.gs` | Script principal (v6.0): onEdit, fórmulas de autocompletado, WhatsApp, TAREA. |
-| `Diseno_Atajos.gs` | Presentación: diseño, menú ⚡ Atajos, filas compactas, auditoría. |
+| `Diseno_Atajos.gs` | Presentación: diseño, menú ⚡ Atajos, filas compactas, auditoría. **Opcional** — no hace falta reemplazar el que ya tienes. |
 
 ## Instalación de v6 (una sola vez)
 
-1. En **Extensiones → Apps Script**, reemplaza el contenido de tus archivos por estos dos
-   (si tenías "Diseno", "Atajos" y "Compactar" por separado, bórralos y deja solo `Diseno_Atajos.gs`).
-2. Corre, en este orden, desde el editor:
-   1. `OPS_quitarTriggerDuplicadoOnEdit` — quita el activador que hacía correr onEdit 2 veces.
-   2. `OPS_instalarFormulasAutocompletado` — crea la hoja oculta `OpsIdx` y reescribe C, D, E, Y, Z.
-   3. `OPS_configurarFormatoCondicionalDuplicados`
-   4. `aplicarDisenoOperaciones` (limpia reglas de formato acumuladas).
-3. Opcional: `OPS_diagnosticoTamanoHojas` para revisar filas/columnas sobrantes, reglas de formato
-   y fórmulas volátiles (`NOW`, `TODAY`, `INDIRECT`, `OFFSET`…).
+1. Abre la hoja → menú **Extensiones** → **Apps Script**.
+2. A la izquierda, abre el archivo que empieza con `OPERACIONES v5.4`. Borra todo su contenido
+   y pega `Operaciones.gs`. Guarda (icono de disquete o Ctrl+S).
+3. **No toques** el archivo de diseño / ⚡ Atajos: tu presentación se queda igual.
+4. Arriba, en la lista de funciones, elige `OPS_INSTALAR_TODO` y da clic en **Ejecutar**.
+   Si Google pide permisos: *Revisar permisos* → tu cuenta → *Configuración avanzada* →
+   *Ir a … (no seguro)* → *Permitir*.
+5. En la hoja aparece "✅ TODO INSTALADO". Listo.
 
-> No escribas a mano en la hoja `OpsIdx` ni debajo de `Y4` (la fórmula de Y se extiende sola).
+> No escribas a mano en la hoja oculta `OpsIdx` ni debajo de `Y4`.
 
 ## Mapa de columnas de Operaciones
 

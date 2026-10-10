@@ -47,12 +47,9 @@
 //     editabas Gestor/Vehículo/Plataforma/Guía, que para ese método no
 //     aplican.
 //
-//  ⚠️ DESPUÉS DE PEGAR ESTA VERSIÓN, CORRE UNA SOLA VEZ (en este orden):
-//    1. OPS_quitarTriggerDuplicadoOnEdit()
-//    2. OPS_instalarFormulasAutocompletado()   ← crea OpsIdx y reescribe C, D, E, Y, Z
-//    3. OPS_configurarFormatoCondicionalDuplicados()
-//  (y si usas el script de diseño, vuelve a correr aplicarDisenoOperaciones()
-//   con su versión nueva — ver Diseno_Atajos.gs).
+//  ⚠️ DESPUÉS DE PEGAR ESTA VERSIÓN: ejecuta UNA SOLA VEZ la función
+//  OPS_INSTALAR_TODO (es la primera del archivo). Hace todo sola.
+//  El archivo de diseño / ⚡ Atajos NO se toca: tu presentación queda igual.
 //
 //  Hojas: Operaciones | Cat | Datos | OpsIdx (oculta, la crea el script)
 //  Los datos en Operaciones empiezan en la fila 4 (filas 1-3 = encabezados)
@@ -68,6 +65,27 @@
 //      autonumerar TAREA, marcar fechas (F, O, R, T, V), desplegables
 //      dependientes, bloqueo según método, y link de WhatsApp.
 // ============================================================
+
+// ============================================================
+//  ▶▶▶ INSTALADOR DE UN SOLO CLIC ◀◀◀
+//  Es la PRIMERA función del archivo a propósito: en el editor de Apps
+//  Script aparece seleccionada sola en la lista de arriba. Solo dale
+//  "Ejecutar". No toca el diseño (colores, fuentes, menú ⚡ Atajos).
+// ============================================================
+function OPS_INSTALAR_TODO() {
+  const eliminados = OPS_quitarTriggerDuplicadoOnEdit(true);
+  if (!OPS_instalarFormulasAutocompletado(true)) return;
+  OPS_configurarFormatoCondicionalDuplicados(true);
+  opsLimpiarCacheListas_();
+  SpreadsheetApp.getUi().alert(
+    "✅ TODO INSTALADO\n\n" +
+    "• Activadores duplicados eliminados: " + eliminados + "\n" +
+    "• Fórmulas rápidas instaladas en C, D, E, Y, Z\n" +
+    "• Aviso rosa de duplicados activado\n" +
+    "• Tu diseño quedó igual\n\n" +
+    "Ya puedes cerrar esta pestaña y usar la hoja normalmente."
+  );
+}
 
 // -----------------------------------------------------------
 // Configuración central — cambia aquí si mueven columnas en Cat.
@@ -342,7 +360,7 @@ function opsEscribirFormulasFila_(sheet, fila, areaMayus) {
 //  v6: respeta las SubÁreas escritas a mano en filas COLIMA/IMSS (v5 las
 //  borraba al reinstalar).
 // ============================================================
-function OPS_instalarFormulasAutocompletado() {
+function OPS_instalarFormulasAutocompletado(silencioso) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Operaciones");
   if (!sheet) { SpreadsheetApp.getUi().alert("❌ Hoja Operaciones no encontrada."); return; }
 
@@ -374,6 +392,7 @@ function OPS_instalarFormulasAutocompletado() {
   sheet.getRange(3, OPS_COL_DUPLICADO).setValue("Duplicado");
   sheet.getRange(3, OPS_COL_NOTA_CAT).setValue("Nota Cat");
 
+  if (silencioso === true) return true;
   SpreadsheetApp.getUi().alert(
     "✅ Listo.\n\n" +
     "• Hoja oculta \"" + OPS_HOJA_INDICE + "\" creada (IDs de Cat ya limpios).\n" +
@@ -384,7 +403,7 @@ function OPS_instalarFormulasAutocompletado() {
 }
 
 // Pinta la fila cuando Y (Duplicado) no está vacía. Correr una vez.
-function OPS_configurarFormatoCondicionalDuplicados() {
+function OPS_configurarFormatoCondicionalDuplicados(silencioso) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Operaciones");
   if (!sheet) { SpreadsheetApp.getUi().alert("❌ Hoja Operaciones no encontrada."); return; }
 
@@ -409,6 +428,7 @@ function OPS_configurarFormatoCondicionalDuplicados() {
 
   // Va primero para que tenga prioridad sobre las demás reglas.
   sheet.setConditionalFormatRules([reglaDuplicado].concat(reglasActuales));
+  if (silencioso === true) return;
   SpreadsheetApp.getUi().alert("✅ Formato condicional de duplicados instalado (filas A:P se pintan de rosa si Y tiene un aviso).");
 }
 
@@ -852,7 +872,7 @@ function OPS_verificarMapeoColumnas() {
 // 🔧 v6 — EJECUTAR UNA VEZ. Borra los activadores instalables que apuntan a
 // "onEdit": Google ya la corre sola como activador simple, así que el
 // instalable solo la duplicaba.
-function OPS_quitarTriggerDuplicadoOnEdit() {
+function OPS_quitarTriggerDuplicadoOnEdit(silencioso) {
   let eliminados = 0;
   ScriptApp.getProjectTriggers().forEach(t => {
     if (t.getHandlerFunction() === 'onEdit') { ScriptApp.deleteTrigger(t); eliminados++; }
@@ -860,6 +880,7 @@ function OPS_quitarTriggerDuplicadoOnEdit() {
   const msg = `✅ Listo. Se eliminaron ${eliminados} activador(es) instalable(s) duplicado(s) de onEdit.\n` +
     `onEdit sigue funcionando (Google la corre sola como activador simple), ahora una sola vez por edición.`;
   Logger.log(msg);
+  if (silencioso === true) return eliminados;
   try { SpreadsheetApp.getUi().alert(msg); } catch (err) {}
 }
 
