@@ -20,7 +20,7 @@
  *   y no había forma de que se enterara sola.
  ***********************************************************************/
 
-const VERSION = 'fdx-logistica-v10';
+const VERSION = 'fdx-logistica-v11';
 
 const ARCHIVOS = [
   './',

@@ -722,8 +722,7 @@ function pintarMenu(){
     var badge = m.id==='pedidos'   && c.pedidos   ? c.pedidos
               : m.id==='traspasos' && c.traspasos ? c.traspasos : 0;
     html +=
-    '<button class="mod'+(m.activo?'':' off')+'" style="background:linear-gradient(140deg,'+
-      m.color+',' + sombrear(m.color) + ')" onclick="abrirModulo(\''+m.id+'\','+(m.activo?'true':'false')+')">'+
+    '<button class="mod'+(m.activo?'':' off')+'" style="--c:'+esc(m.color)+'" onclick="abrirModulo(\''+m.id+'\','+(m.activo?'true':'false')+')">'+
       (badge?'<span class="badge">'+badge+'</span>':'')+
       (m.activo?'':'<span class="prox">PRÓXIMO</span>')+
       '<span class="ic">'+m.icono+'</span>'+
