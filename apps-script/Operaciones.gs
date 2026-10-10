@@ -39,11 +39,11 @@
 //  5) CORRECCIÓN UBER: v5 bloqueaba I:L (Gestor..Plataforma) para UBER y
 //     escribía "NO APLICA" en Plataforma justo después de ponerle su
 //     desplegable — así que Plataforma nunca se podía llenar y el ETA /
-//     WhatsApp de UBER jamás se disparaba. Ahora UBER bloquea I:K y deja
+//     de UBER jamás se marcaba. Ahora UBER bloquea I:K y deja
 //     Plataforma (L) libre con su desplegable.
 //
-//  6) "En ruta por otro método": ahora marca el ETA (y genera el link de
-//     WhatsApp) en cuanto eliges ese método — antes solo pasaba si después
+//  6) "En ruta por otro método": ahora marca el ETA en cuanto eliges ese
+//     método — antes solo pasaba si después
 //     editabas Gestor/Vehículo/Plataforma/Guía, que para ese método no
 //     aplican.
 //
@@ -63,7 +63,11 @@
 //    - Y (Duplicado): una sola fórmula en Y4 que se extiende hacia abajo.
 //    - Apps Script (onEdit) solo hace lo que una fórmula no puede:
 //      autonumerar TAREA, marcar fechas (F, O, R, T, V), desplegables
-//      dependientes, bloqueo según método, y link de WhatsApp.
+//      dependientes y bloqueo según método.
+//
+//  7) WhatsApp ELIMINADO (no se usaba). Ya no se genera el link en AE ni
+//     existe OPS_generarLinksWhatsAppTodaLaHoja. Los links que ya estén en
+//     la columna AE se quedan como están; puedes borrarlos a mano si quieres.
 // ============================================================
 
 // ============================================================
@@ -583,10 +587,10 @@ function opsManejarMetodoEnvio_(sheet, filaIni, nFilas) {
   filasEnRuta.forEach(r => opsIntentarActivarSalida_(sheet, r));
 }
 
-// ---- I..N: bloqueo suave + disparo de salida (ETA + WhatsApp) ----
-// Una sola lectura de la fila completa (A:AE) en vez de ~10 por separado.
+// ---- I..N: bloqueo suave + disparo de salida (ETA) ----
+// Una sola lectura de la fila (A:O) en vez de ~10 por separado.
 function opsManejarCamposEnvio_(sheet, filaIni, nFilas, colIni, colFin) {
-  const bloque = sheet.getRange(filaIni, 1, nFilas, OPS_COL_WHATSAPP_LINK).getValues(); // A:AE
+  const bloque = sheet.getRange(filaIni, 1, nFilas, OPS_COL_ETA).getValues(); // A:O
   const colsSalida = [OPS_COL_GESTOR, OPS_COL_VEHICULO, OPS_COL_PLATAFORMA, OPS_COL_GUIA];
   let huboBloqueo = false;
 
@@ -610,113 +614,8 @@ function opsManejarCamposEnvio_(sheet, filaIni, nFilas, colIni, colFin) {
   }
 }
 
-// ============================================================
-//  WHATSAPP — columna AE (link) y columna AF (¿se envió?)
-// ============================================================
-const OPS_RASTREADOR_URL = "https://script.google.com/a/macros/fadermex.com/s/AKfycbwDJCyz8-SSK1icfydL0XN2GnDHxF77k6zozdbitKr7MNtYCZhoP6ORIrutpdugtj9gzA/exec";
-const OPS_COL_WHATSAPP_LINK    = 31;  // AE
-const OPS_COL_WHATSAPP_ENVIADO = 32;  // AF — checkbox, se marca a mano
-
-function opsExtraerTelefono_(direccion) {
-  const match = String(direccion || "").match(/TEL[.:]?\s*([\d\s+]{8,16})/i);
-  if (!match) return null;
-  let digitos = match[1].replace(/\D/g, "");
-  if (digitos.length >= 10) digitos = digitos.slice(-10);
-  return digitos.length === 10 ? digitos : null;
-}
-
-function opsAcortarUrl_(urlLarga) {
-  try {
-    const respuesta = UrlFetchApp.fetch("https://tinyurl.com/api-create.php?url=" + encodeURIComponent(urlLarga), { muteHttpExceptions: true });
-    const texto = respuesta.getContentText().trim();
-    return texto.indexOf("http") === 0 ? texto : urlLarga;
-  } catch (err) {
-    return urlLarga;
-  }
-}
-
-// Acorta muchas URLs en paralelo (lotes de 50) en vez de una por una.
-function opsAcortarUrls_(urlsLargas) {
-  const cortas = urlsLargas.slice();
-  for (let ini = 0; ini < urlsLargas.length; ini += 50) {
-    const lote = urlsLargas.slice(ini, ini + 50);
-    try {
-      const respuestas = UrlFetchApp.fetchAll(lote.map(u => ({
-        url: "https://tinyurl.com/api-create.php?url=" + encodeURIComponent(u),
-        muteHttpExceptions: true,
-      })));
-      respuestas.forEach((resp, j) => {
-        const texto = resp.getContentText().trim();
-        if (texto.indexOf("http") === 0) cortas[ini + j] = texto;
-      });
-    } catch (err) {
-      // Si falla el lote, se quedan las URLs largas (siguen funcionando).
-    }
-  }
-  return cortas;
-}
-
-function opsConstruirMensajeWhatsApp_(idPedido, area, nombreCliente, metodo, url) {
-  const idLimpio = String(idPedido || "").trim().replace(/^#+/, "");
-  const nombre = nombreCliente && nombreCliente.trim() !== "" ? nombreCliente.trim() : "cliente";
-  const metodoTexto = metodo && metodo.trim() !== "" ? metodo.trim() : "nuestro servicio de envío";
-
-  return (
-    "Hola *" + nombre + "*,\n\n" +
-    "Tu pedido *#" + idLimpio + "* de *" + area + "* ya salió a ruta por *" + metodoTexto + "*.\n\n" +
-    "Te pedimos estar pendiente para su entrega. Da clic aquí para consultar el estatus en tiempo real:\n" +
-    url + "\n\n" +
-    "— Equipo " + area
-  );
-}
-
-function opsConstruirLinkWhatsApp_(telefono10, idPedido, area, nombreCliente, metodo, url) {
-  const mensaje = opsConstruirMensajeWhatsApp_(idPedido, area, nombreCliente, metodo, url);
-  return "https://wa.me/52" + telefono10 + "?text=" + encodeURIComponent(mensaje);
-}
-
-function OPS_generarLinksWhatsAppTodaLaHoja() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Operaciones");
-  if (!sheet) { SpreadsheetApp.getUi().alert("❌ Hoja Operaciones no encontrada."); return; }
-  const lastRow = sheet.getLastRow();
-  if (lastRow < OPS_FILA_INICIO_DATOS) return;
-  const n = lastRow - OPS_FILA_INICIO_DATOS + 1;
-
-  // 3 lecturas en total (antes 5 por fila).
-  const datos = sheet.getRange(OPS_FILA_INICIO_DATOS, 1, n, OPS_COL_METODO_ENVIO).getValues(); // A:H
-  const rangoLinks = sheet.getRange(OPS_FILA_INICIO_DATOS, OPS_COL_WHATSAPP_LINK, n, 1);
-  const formulasActuales = rangoLinks.getFormulas();
-  const valoresActuales = rangoLinks.getValues();
-
-  const salida = formulasActuales.map((f, i) => [f[0] || String(valoresActuales[i][0])]);
-  const pendientes = [];
-  let sinTelefono = 0;
-
-  datos.forEach((v, i) => {
-    const idPedido = String(v[OPS_COL_ID - 1]).trim();
-    if (!idPedido) return; // se deja lo que ya tenía
-    const telefono = opsExtraerTelefono_(v[OPS_COL_DIRECCION - 1]);
-    if (!telefono) { salida[i][0] = "⚠️ Revisar teléfono"; sinTelefono++; return; }
-    pendientes.push({
-      i, telefono, idPedido,
-      area: String(v[OPS_COL_AREA - 1]).trim() || "nuestra empresa",
-      nombre: String(v[OPS_COL_NOMBRE - 1] || "").trim(),
-      metodo: String(v[OPS_COL_METODO_ENVIO - 1] || "").trim(),
-      urlLarga: OPS_RASTREADOR_URL + "?pedido=" + encodeURIComponent(idPedido),
-    });
-  });
-
-  const urlsCortas = opsAcortarUrls_(pendientes.map(p => p.urlLarga));
-  pendientes.forEach((p, j) => {
-    const link = opsConstruirLinkWhatsApp_(p.telefono, p.idPedido, p.area, p.nombre, p.metodo, urlsCortas[j]);
-    salida[p.i][0] = '=HYPERLINK("' + link + '","📲 Enviar WhatsApp")';
-  });
-
-  rangoLinks.setFormulas(salida); // una sola escritura
-  SpreadsheetApp.getUi().alert(`✅ Listo\n\n${pendientes.length} link(s) generados.\n⚠️ ${sinTelefono} fila(s) sin teléfono reconocible.`);
-}
-
-// Recibe la fila ya leída (A:AE) para no volver a leer celda por celda.
+// Marca el ETA cuando el pedido ya salió. Recibe la fila ya leída (A:O)
+// para no volver a leer celda por celda.
 function opsActivarSalidaConValores_(sheet, fila, v) {
   const txt = col => String(v[col - 1] == null ? "" : v[col - 1]).trim();
   const esReal = s => s !== "" && s !== OPS_TEXTO_NO_APLICA;
@@ -732,24 +631,10 @@ function opsActivarSalidaConValores_(sheet, fila, v) {
   if (txt(OPS_COL_ETA) === "") {
     sheet.getRange(fila, OPS_COL_ETA).setNumberFormat(OPS_FORMATO_FECHA_UNIFORME).setValue(new Date());
   }
-
-  // Link de WhatsApp solo si todavía no hay uno.
-  if (txt(OPS_COL_WHATSAPP_LINK) !== "") return;
-  const idPedido = txt(OPS_COL_ID);
-  const direccion = v[OPS_COL_DIRECCION - 1];
-  if (!idPedido || !direccion) return;
-
-  const celda = sheet.getRange(fila, OPS_COL_WHATSAPP_LINK);
-  const telefono = opsExtraerTelefono_(direccion);
-  if (!telefono) { celda.setValue("⚠️ Revisar teléfono"); return; }
-
-  const urlLarga = OPS_RASTREADOR_URL + "?pedido=" + encodeURIComponent(idPedido);
-  const link = opsConstruirLinkWhatsApp_(telefono, idPedido, txt(OPS_COL_AREA).toUpperCase(), txt(OPS_COL_NOMBRE), metodo, urlLarga);
-  celda.setFormula('=HYPERLINK("' + link + '","📲 Enviar WhatsApp")');
 }
 
 function opsIntentarActivarSalida_(sheet, fila) {
-  opsActivarSalidaConValores_(sheet, fila, sheet.getRange(fila, 1, 1, OPS_COL_WHATSAPP_LINK).getValues()[0]);
+  opsActivarSalidaConValores_(sheet, fila, sheet.getRange(fila, 1, 1, OPS_COL_ETA).getValues()[0]);
 }
 
 // ============================================================

@@ -2,7 +2,7 @@
 
 | Archivo | Qué es |
 |---|---|
-| `Operaciones.gs` | Script principal (v6.0): onEdit, fórmulas de autocompletado, WhatsApp, TAREA. |
+| `Operaciones.gs` | Script principal (v6.0): onEdit, fórmulas de autocompletado, fechas, TAREA. |
 | `Diseno_Atajos.gs` | Presentación: diseño, menú ⚡ Atajos, filas compactas, auditoría. **Opcional** — no hace falta reemplazar el que ya tienes. |
 
 ## Instalación de v6 (una sola vez)
@@ -26,7 +26,7 @@
 | B | Área | Desplegable (Datos!I). Al elegirla se marca F y se preparan C/D/E/Z. |
 | C | SubÁrea | Fórmula (busca en OpsIdx). En COLIMA/IMSS: desplegable manual (Datos!J). |
 | D | Nombre | Fórmula (OpsIdx). |
-| E | Dirección | Fórmula (OpsIdx). De aquí se saca el teléfono para WhatsApp. |
+| E | Dirección | Fórmula (OpsIdx). |
 | F | Fecha | Script: fecha/hora al elegir Área. |
 | G | Zona | Desplegable (Datos!X). |
 | H | Método de envío | Desplegable (Datos!P). Activa desplegables y "NO APLICA" en I:N. |
@@ -36,7 +36,7 @@
 | L | Plataforma | Desplegable (Datos!AF) — UBER. |
 | M | Guía | Manual — Paquetería Externa. |
 | N | Costo | Manual. |
-| O | ETA | Script: fecha/hora cuando el pedido sale (y se genera el link de WhatsApp). |
+| O | ETA | Script: fecha/hora cuando el pedido sale. |
 | P | Estatus | Fórmula. |
 | R / S | Retornado (fecha / casilla) | Script marca R al marcar S. |
 | T / U | Cancelado (fecha / casilla) | Script marca T al marcar U. |
@@ -44,10 +44,9 @@
 | X | Días de atraso | Fórmula. |
 | Y | Duplicado | Una sola fórmula en Y4 (ID + Área repetidos). |
 | Z | Nota Cat | Fórmula (OpsIdx; hoy solo BOTICAN, Cat!HZ). |
-| AE | Link WhatsApp | Script. |
-| AF | ¿WhatsApp enviado? | Casilla manual. |
+| AE / AF | (antes WhatsApp) | Ya no las usa el script. |
 
-### Cuándo "sale" un pedido (marca O + link de WhatsApp)
+### Cuándo "sale" un pedido (marca O)
 
 | Método | Bloquea ("NO APLICA") | Sale cuando… |
 |---|---|---|
