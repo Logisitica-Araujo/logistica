@@ -1,5 +1,10 @@
 // ============================================================
-//  OPERACIONES v6.1 — Script principal
+//  OPERACIONES v6.2 — Script principal
+//
+//  🆕 v6.2: la columna V (Fecha de Entrega) tiene una fórmula que trae la
+//  fecha de la hoja APP_Entregas. Antes, al DESMARCAR la casilla W, el
+//  script borraba la celda V y con ella la fórmula. Ahora la vuelve a
+//  poner, así esa fila sigue conectada a APP_Entregas.
 //
 //  🆕 v6.1: cuando un pedido SALE, además de marcar O (si está vacía) se
 //  guarda la fecha y hora de salida en AE "Salida (auto)". Tú escribes en
@@ -205,6 +210,13 @@ const OPS_COL_CANCELADO_FECHA = 20; // T
 const OPS_COL_CANCELADO_CHECK = 21; // U
 const OPS_COL_ENTREGA_FECHA   = 22; // V
 const OPS_COL_ENTREGA_CHECK   = 23; // W
+
+// v6.2: fórmula original de V (trae la fecha desde APP_Entregas). Se
+// restaura al desmarcar W para no perder la conexión con la app.
+function opsFormulaEntrega_(fila) {
+  return '=IF($A' + fila + '="","",LET(f,SUMIFS(APP_Entregas!$A$2:$A$4053,APP_Entregas!$B$2:$B$4053,$A' + fila +
+    ',APP_Entregas!$E$2:$E$4053,"ENTREGADO"),IF(f=0,"",f)))';
+}
 
 const OPS_FORMATO_FECHA_UNIFORME = 'ddd dd mmm yyyy", "hh:mm';
 const OPS_COLUMNAS_FECHA_UNIFORME = [OPS_COL_FECHA, OPS_COL_ETA, OPS_COL_RETORNADO_FECHA, OPS_COL_CANCELADO_FECHA, OPS_COL_ENTREGA_FECHA];
@@ -561,8 +573,12 @@ function opsManejarCheckboxes_(e, sheet, filaIni, nFilas, unaCelda, colCheck, co
   const rangoFecha = sheet.getRange(filaIni, colFecha, nFilas, 1);
   const ahora = new Date();
 
+  const esEntrega = colFecha === OPS_COL_ENTREGA_FECHA;
+  const vacio = fila => (esEntrega ? opsFormulaEntrega_(fila) : "");
+
   if (unaCelda) {
     if (esVerdadero(opsValorEditado_(e))) rangoFecha.setNumberFormat(OPS_FORMATO_FECHA_UNIFORME).setValue(ahora);
+    else if (esEntrega) rangoFecha.setFormula(opsFormulaEntrega_(filaIni));
     else rangoFecha.clearContent();
     return;
   }
@@ -571,7 +587,7 @@ function opsManejarCheckboxes_(e, sheet, filaIni, nFilas, unaCelda, colCheck, co
   const checks = sheet.getRange(filaIni, colCheck, nFilas, 1).getValues();
   const fechas = rangoFecha.getValues();
   rangoFecha.setNumberFormat(OPS_FORMATO_FECHA_UNIFORME).setValues(checks.map((c, i) =>
-    [esVerdadero(c[0]) ? (fechas[i][0] !== "" ? fechas[i][0] : ahora) : ""]
+    [esVerdadero(c[0]) ? (fechas[i][0] !== "" ? fechas[i][0] : ahora) : vacio(filaIni + i)]
   ));
 }
 

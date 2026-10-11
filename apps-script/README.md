@@ -2,7 +2,7 @@
 
 | Archivo | Qué es |
 |---|---|
-| `Operaciones.gs` | Script principal (v6.1): onEdit, fórmulas de autocompletado, fechas, TAREA, hora real de salida en AE. |
+| `Operaciones.gs` | Script principal (v6.2): onEdit, fórmulas de autocompletado, fechas, TAREA, hora real de salida en AE. |
 | `Entregas_Correo.gs` | **Entregas automáticas**: cada 15 min lee los correos "entregado" de Skydropx y Mienvio, busca la guía en M y marca W + fecha en V. Va en el MISMO proyecto que Operaciones.gs (archivo aparte). |
 | `tablero/` | **Tablero de KPIs** (proyecto aparte, Web App). Instalación paso a paso: [`tablero/INSTRUCCIONES.md`](tablero/INSTRUCCIONES.md). |
 | `Diseno_Atajos.gs` | Presentación: diseño, menú ⚡ Atajos, filas compactas, auditoría. **Opcional** — no hace falta reemplazar el que ya tienes. |
@@ -42,7 +42,7 @@
 | P | Estatus | Fórmula. |
 | R / S | Retornado (fecha / casilla) | Script marca R al marcar S. |
 | T / U | Cancelado (fecha / casilla) | Script marca T al marcar U. |
-| V / W | Entregado (fecha / casilla) | Script marca V al marcar W. |
+| V / W | Entregado (fecha / casilla) | V tiene fórmula que trae la fecha de APP_Entregas. Al marcar W el script pone la fecha; al desmarcar W (v6.2) vuelve a poner la fórmula. |
 | X | Días de atraso | Fórmula. |
 | Y | Duplicado | Una sola fórmula en Y4 (ID + Área repetidos). |
 | Z | Nota Cat | Fórmula (OpsIdx; hoy solo BOTICAN, Cat!HZ). |

@@ -10,6 +10,12 @@
 //  No toca pedidos que ya están entregados ni cancelados, así que puede
 //  correr las veces que sea sin duplicar nada.
 //
+//  Columna V con fórmula (APP_Entregas): si la fórmula YA trae fecha, esa
+//  fila cuenta como entregada y no se toca. Si la fórmula está en blanco
+//  (la app no registró nada, como pasa con paquetería), se escribe la fecha
+//  del correo encima, igual que cuando marcas W a mano. Si luego desmarcas
+//  W, Operaciones v6.2 vuelve a poner la fórmula.
+//
 //  Funciones que corres a mano (lista de arriba → Ejecutar):
 //    - ENTREGAS_PROBAR            → revisa los últimos 7 días SIN escribir
 //                                   nada y te dice qué haría.
@@ -90,7 +96,8 @@ function entRevisar_(dias, soloProbar) {
         if (!filas) { sinPedido.push(guia + " (" + f.nombre + ")"); return; }
         filas.forEach(i => {
           const r = v[i];
-          const yaEntregado = r[col(ENT.COL_ENT_CHK)] === true || r[col(ENT.COL_ENT_FECHA)] instanceof Date;
+          const fv = r[col(ENT.COL_ENT_FECHA)]; // V: fecha a mano o resultado de la fórmula de APP_Entregas
+          const yaEntregado = r[col(ENT.COL_ENT_CHK)] === true || fv instanceof Date || (typeof fv === "number" && fv > 0);
           const cancelado = r[col(ENT.COL_CAN_CHK)] === true;
           const fila = ENT.FILA_INICIO + i;
           if (yaEntregado || cancelado) { yaEstaban.push(guia + " → fila " + fila); return; }

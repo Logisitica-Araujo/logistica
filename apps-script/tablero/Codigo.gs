@@ -291,6 +291,11 @@ function tabDiasHabilesPorMes_(festivos, ahora) {
 // ---- utilidades ----
 function tabFecha_(x) {
   if (x instanceof Date && !isNaN(x)) return x;
+  // Fecha que llega como número (p. ej. V con fórmula sin formato de fecha)
+  if (typeof x === "number" && x > 40000 && x < 80000) {
+    const ms = Math.round((x - 25569) * 864e5), d = new Date(ms);
+    return new Date(ms + d.getTimezoneOffset() * 60000);
+  }
   return null; // texto que no es fecha real de Sheets se ignora
 }
 function tabSiTieneHora_(d) { return d && (d.getHours() || d.getMinutes()) ? d : null; }
