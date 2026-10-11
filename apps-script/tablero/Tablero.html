@@ -253,8 +253,9 @@ tfoot td{font-weight:700;border-top:2px solid var(--line)}
     </div>
   </section>
 
+<? if (esDueno) { ?>
   <section class="grid">
-    <article class="panel c12"><div class="ph"><h2>Cómo funciona este reporte</h2><p>Para cuando te pregunten</p></div>
+    <article class="panel c12"><div class="ph"><h2>Cómo funciona este reporte</h2><p>Solo tú ves este recuadro · para cuando te pregunten</p></div>
       <ul class="added">
         <li><b>De dónde salen los números</b>Lee en vivo las hojas Operaciones, Cat y Datos de "Logística FED 2026". No escribe nada en ellas.</li>
         <li><b>Cada cuánto se actualiza</b>Lee la hoja cada 10 minutos por su cuenta. El botón "Actualizar ahora" la lee en ese momento.</li>
@@ -269,6 +270,7 @@ tfoot td{font-weight:700;border-top:2px solid var(--line)}
       </ul>
     </article>
   </section>
+<? } ?>
 </main>
 <div id="tip" hidden></div>
 

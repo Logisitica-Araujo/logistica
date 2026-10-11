@@ -78,7 +78,7 @@ El tablero es un archivo **aparte**, así que no le pone peso a tu hoja de Opera
 
 1. **Primero pruébalo contigo.** En la lista de funciones elige **TABLERO_PROBAR_CORREO** → **▶ Ejecutar**. Te llega a ti el correo del mes pasado, marcado como **[PRUEBA]**.
 2. Si te gusta, elige **TABLERO_ACTIVAR_AUTOMATICOS** → **▶ Ejecutar**. Esto deja programadas 2 cosas:
-   - Cada **10 minutos** el tablero lee tu hoja por su cuenta, así abre **al instante** para quien lo consulte.
+   - Cada **10 minutos** el reporte lee tu hoja por su cuenta, así abre **al instante** para quien lo consulte.
    - Cada **día 1 a las 8 a. m.** le llega a **mcamacho@fadermex.com** el resumen del mes anterior, con un botón para abrir el tablero.
 3. Si algún día lo quieres apagar, ejecuta **TABLERO_DESACTIVAR_CORREO_MENSUAL**.
 
@@ -126,3 +126,5 @@ Los pedidos anteriores a la Parte 1 no tienen la hora de salida en AE. Por eso, 
 - **Guías IMSS Morelia** solo se miden si la columna O conserva la hora que puso el script.
 
 Desde hoy, todo queda medido con precisión.
+
+> El recuadro **"Cómo funciona este reporte"** solo lo ves tú, porque eres quien publicó el reporte. Tus jefes no lo ven.

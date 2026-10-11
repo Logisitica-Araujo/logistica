@@ -59,7 +59,11 @@ const M_INTERNA = "Logística Interna", M_PAQ = "Paquetería Externa", M_UBER = 
 //  PÁGINA WEB
 // ============================================================
 function doGet() {
-  return HtmlService.createTemplateFromFile("Tablero").evaluate()
+  const t = HtmlService.createTemplateFromFile("Tablero");
+  // "Cómo funciona este reporte" solo lo ve el dueño (quien lo publicó).
+  const quien = String(Session.getActiveUser().getEmail() || "").toLowerCase();
+  t.esDueno = quien !== "" && quien === String(Session.getEffectiveUser().getEmail() || "").toLowerCase();
+  return t.evaluate()
     .setTitle("Reporte Logística")
     .addMetaTag("viewport", "width=device-width, initial-scale=1")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL); // permite pegarlo en Google Sites después
