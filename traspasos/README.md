@@ -17,7 +17,7 @@ Sistema para registrar, etiquetar, mover y recibir traspasos entre sucursales, �
 - **Sesión:** se cierra a las 12 h en las computadoras de sucursales y áreas.
 - **Avisos:** cada área recibe aviso de traspasos nuevos para ella y de los que van en camino.
 - **Backend:** Google Apps Script + Google Sheets, en un archivo nuevo e independiente solo para traspasos.
-- **Recolecciones:** la app de gestores sigue guardando en el archivo de Operaciones (hoja APP_Traspasos). El archivo de traspasos las jala con IMPORTRANGE (hoja IMP_Recolecciones), las cruza por folio y actualiza los estatus.
+- **Recolecciones:** la app de gestores sigue guardando en el archivo de Operaciones (hoja APP_Traspasos). El archivo de traspasos las jala con IMPORTRANGE (hoja IMP_Recolecciones), solo toma los folios que existen en el sistema de traspasos (ignora los pedidos a domicilio) y actualiza los estatus.
 
 ## Pendientes
 
