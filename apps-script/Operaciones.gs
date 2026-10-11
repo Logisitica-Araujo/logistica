@@ -1,5 +1,11 @@
 // ============================================================
-//  OPERACIONES v6.0 — Script principal
+//  OPERACIONES v6.1 — Script principal
+//
+//  🆕 v6.1: cuando un pedido SALE, además de marcar O (si está vacía) se
+//  guarda la fecha y hora de salida en AE "Salida (auto)". Tú escribes en
+//  O la ETA que te da la paquetería y eso borraba la hora real de salida;
+//  AE no se toca a mano y la usa el Tablero de KPIs para medir las 48 h /
+//  36 h. Lo demás es idéntico a v6.0.
 //
 //  ⚡ NUEVO EN v6.0 — la versión "rápida de verdad". Cambios:
 //
@@ -80,15 +86,23 @@ function OPS_INSTALAR_TODO() {
   const eliminados = OPS_quitarTriggerDuplicadoOnEdit(true);
   if (!OPS_instalarFormulasAutocompletado(true)) return;
   OPS_configurarFormatoCondicionalDuplicados(true);
+  opsTituloSalidaAuto_();
   opsLimpiarCacheListas_();
   SpreadsheetApp.getUi().alert(
     "✅ TODO INSTALADO\n\n" +
     "• Activadores duplicados eliminados: " + eliminados + "\n" +
     "• Fórmulas rápidas instaladas en C, D, E, Y, Z\n" +
     "• Aviso rosa de duplicados activado\n" +
+    "• Columna AE = \"" + OPS_TITULO_SALIDA_AUTO + "\" (hora real de salida)\n" +
     "• Tu diseño quedó igual\n\n" +
     "Ya puedes cerrar esta pestaña y usar la hoja normalmente."
   );
+}
+
+// v6.1: pone el título de AE en la fila de encabezados (fila 2).
+function opsTituloSalidaAuto_() {
+  const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Operaciones");
+  if (hoja) hoja.getRange(2, OPS_COL_SALIDA_AUTO).setValue(OPS_TITULO_SALIDA_AUTO);
 }
 
 // -----------------------------------------------------------
@@ -142,6 +156,8 @@ const OPS_COL_GUIA         = 13; // M
 const OPS_COL_COSTO        = 14; // N
 const OPS_COL_ETA          = 15; // O — se marca por script
 const OPS_COL_ESTATUS      = 16; // P — fórmula
+const OPS_COL_SALIDA_AUTO  = 31; // AE — v6.1: fecha/hora real de salida (no editar a mano)
+const OPS_TITULO_SALIDA_AUTO = "Salida (auto)";
 
 const OPS_COL_DUPLICADO  = 25; // Y — UNA fórmula en Y4 para toda la columna
 const OPS_COL_NOTA_CAT   = 26; // Z — nota pendiente de Cat (hoy solo BOTICAN)
@@ -641,9 +657,16 @@ function opsActivarSalidaConValores_(sheet, fila, v) {
   else if (metodo === OPS_METODO_OTRO)              listo = true;
   if (!listo) return;
 
+  // v6.1: la hora real de salida se guarda en AE una sola vez (aunque luego
+  // escribas la ETA de la paquetería en O). Se lee ANTES de escribir para
+  // no forzar a Google a esperar las escrituras.
+  const celdaSalida = sheet.getRange(fila, OPS_COL_SALIDA_AUTO);
+  const yaTieneSalida = celdaSalida.getValue() instanceof Date;
+  const ahora = new Date();
   if (txt(OPS_COL_ETA) === "") {
-    sheet.getRange(fila, OPS_COL_ETA).setNumberFormat(OPS_FORMATO_FECHA_UNIFORME).setValue(new Date());
+    sheet.getRange(fila, OPS_COL_ETA).setNumberFormat(OPS_FORMATO_FECHA_UNIFORME).setValue(ahora);
   }
+  if (!yaTieneSalida) celdaSalida.setNumberFormat(OPS_FORMATO_FECHA_UNIFORME).setValue(ahora);
 }
 
 function opsIntentarActivarSalida_(sheet, fila) {

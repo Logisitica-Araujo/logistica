@@ -2,10 +2,11 @@
 
 | Archivo | Qué es |
 |---|---|
-| `Operaciones.gs` | Script principal (v6.0): onEdit, fórmulas de autocompletado, fechas, TAREA. |
+| `Operaciones.gs` | Script principal (v6.1): onEdit, fórmulas de autocompletado, fechas, TAREA, hora real de salida en AE. |
+| `tablero/` | **Tablero de KPIs** (proyecto aparte, Web App). Instalación paso a paso: [`tablero/INSTRUCCIONES.md`](tablero/INSTRUCCIONES.md). |
 | `Diseno_Atajos.gs` | Presentación: diseño, menú ⚡ Atajos, filas compactas, auditoría. **Opcional** — no hace falta reemplazar el que ya tienes. |
 
-## Instalación de v6 (una sola vez)
+## Instalación de v6.1 (una sola vez)
 
 1. Abre la hoja → menú **Extensiones** → **Apps Script**.
 2. A la izquierda, abre el archivo que empieza con `OPERACIONES v5.4`. Borra todo su contenido
@@ -36,7 +37,7 @@
 | L | Plataforma | Desplegable (Datos!AF) — UBER. |
 | M | Guía | Manual — Paquetería Externa. |
 | N | Costo | Manual. |
-| O | ETA | Script: fecha/hora cuando el pedido sale. |
+| O | ETA (Promesa) | Tú escribes la ETA que da la paquetería. Si está vacía, el script pone la hora de salida. |
 | P | Estatus | Fórmula. |
 | R / S | Retornado (fecha / casilla) | Script marca R al marcar S. |
 | T / U | Cancelado (fecha / casilla) | Script marca T al marcar U. |
@@ -44,9 +45,10 @@
 | X | Días de atraso | Fórmula. |
 | Y | Duplicado | Una sola fórmula en Y4 (ID + Área repetidos). |
 | Z | Nota Cat | Fórmula (OpsIdx; hoy solo BOTICAN, Cat!HZ). |
-| AE / AF | (antes WhatsApp) | Ya no las usa el script. |
+| AC | Motivo de Entrega Fallida | Desplegable (Datos!AB). El tablero lo cuenta como incidencia. |
+| AE | Salida (auto) | Script v6.1: fecha/hora real de salida. **No editar.** La usa el tablero. |
 
-### Cuándo "sale" un pedido (marca O)
+### Cuándo "sale" un pedido (marca AE y, si está vacía, O)
 
 | Método | Bloquea ("NO APLICA") | Sale cuando… |
 |---|---|---|

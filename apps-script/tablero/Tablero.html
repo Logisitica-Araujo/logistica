@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tablero Logístico FED</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: encabezado tinta → filtros fijos → pestañas temáticas → por pestaña: franja de indicadores + rejilla de 12 columnas (se apila en teléfono). */
+:root{
+  --bg:#F5F6F8; --surface:#FFFFFF; --surface-2:#F0F2F5; --line:#E3E6EB;
+  --ink:#1B2430; --ink-2:#4A5462; --ink-3:#7C8592;
+  --brand:#1B2430; --brand-ink:#F4F1EA; --brand-sub:#C9CFD8; --gold:#B8975A; --gold-soft:#F3ECDD;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+  --seq1:#cde2fb; --seq2:#86b6ef; --seq3:#3987e5; --seq4:#1c5cab; --seq5:#0d366b;
+  --red1:#FBE3E1; --red2:#F3A9A3; --red3:#E66A62; --red4:#C23B33; --red5:#8A1F19;
+  --good:#0a8f0a; --good-bg:#E3F2E3; --warn:#9a6500; --warn-bg:#FBF0D6; --crit:#c23535; --crit-bg:#F8E2E2;
+  --f-display:"Montserrat",system-ui,sans-serif; --f-body:"Roboto",system-ui,sans-serif; --f-mono:"Roboto Mono",ui-monospace,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F141B; --surface:#171E27; --surface-2:#1E2631; --line:#2A3441;
+  --ink:#EEF1F5; --ink-2:#B9C1CC; --ink-3:#8590A0;
+  --brand:#0B1016; --brand-ink:#F4F1EA; --brand-sub:#9AA3B0; --gold:#C9AA6E; --gold-soft:#2E281C;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+  --seq1:#1d2c40; --seq2:#184f95; --seq3:#2a78d6; --seq4:#6da7ec; --seq5:#b7d3f6;
+  --red1:#3A1A1A; --red2:#6E2622; --red3:#A8352E; --red4:#E0564D; --red5:#F59A93;
+  --good:#3fc43f; --good-bg:#16301A; --warn:#f0b43a; --warn-bg:#33290F; --crit:#ef6b6b; --crit-bg:#3A1A1A;
+  color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0F141B; --surface:#171E27; --surface-2:#1E2631; --line:#2A3441;
+  --ink:#EEF1F5; --ink-2:#B9C1CC; --ink-3:#8590A0;
+  --brand:#0B1016; --brand-ink:#F4F1EA; --brand-sub:#9AA3B0; --gold:#C9AA6E; --gold-soft:#2E281C;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+  --seq1:#1d2c40; --seq2:#184f95; --seq3:#2a78d6; --seq4:#6da7ec; --seq5:#b7d3f6;
+  --red1:#3A1A1A; --red2:#6E2622; --red3:#A8352E; --red4:#E0564D; --red5:#F59A93;
+  --good:#3fc43f; --good-bg:#16301A; --warn:#f0b43a; --warn-bg:#33290F; --crit:#ef6b6b; --crit-bg:#3A1A1A;
+  color-scheme:dark;}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
+.wrap{max-width:1320px;margin:0 auto;padding-inline:20px;padding-block:0 40px}
+.num{font-variant-numeric:tabular-nums}
+
+.top{background:var(--brand);color:var(--brand-ink);border-bottom:2px solid var(--gold)}
+.top .wrap{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;padding-block:18px}
+.brand small{display:block;font-family:var(--f-display);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:700}
+.brand h1{margin:2px 0 0;font-family:var(--f-display);font-size:22px;font-weight:800;text-wrap:balance}
+.live{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--brand-sub)}
+.dot{width:8px;height:8px;border-radius:50%;background:#3fc43f;box-shadow:0 0 0 3px rgba(63,196,63,.25)}
+@media (prefers-reduced-motion:no-preference){.dot{animation:pulse 2s infinite}}
+@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(63,196,63,0)}}
+
+.sample{margin-top:16px;display:flex;gap:10px;align-items:flex-start;background:var(--gold-soft);border:1px solid var(--gold);border-radius:var(--r);padding:10px 14px;font-size:13px}
+.sample b{font-family:var(--f-display);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);white-space:nowrap;padding-top:1px}
+
+.filters{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:16px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.f{display:flex;flex-direction:column;gap:4px;min-width:150px;flex:1 1 150px}
+.f label{font-family:var(--f-display);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.f select{font:inherit;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+select:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.updated{font-size:12px;color:var(--ink-3);margin-left:auto;align-self:center}
+
+.tabs{display:flex;gap:4px;margin-top:16px;overflow-x:auto;border-bottom:1px solid var(--line);scrollbar-width:thin}
+.tab{font:inherit;font-family:var(--f-display);font-weight:700;font-size:12.5px;letter-spacing:.02em;color:var(--ink-2);background:none;border:0;border-bottom:3px solid transparent;padding:10px 14px;cursor:pointer;white-space:nowrap;display:flex;gap:8px;align-items:center}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--gold)}
+.tab .cnt{font-family:var(--f-mono);font-size:11px;font-weight:500;padding:1px 7px;border-radius:999px;background:var(--surface-2);color:var(--ink-2)}
+.tab .cnt.red{background:var(--crit-bg);color:var(--crit)}
+
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px}
+.kpis.k6{grid-template-columns:repeat(6,minmax(0,1fr))}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi .lbl{font-family:var(--f-display);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.kpi .val{font-family:var(--f-display);font-size:28px;font-weight:700;line-height:1.1;letter-spacing:-.01em}
+.kpi .val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kpi .val small{font-size:14px;font-weight:600;color:var(--ink-2);margin-left:2px}
+.kpi .sub{font-size:12px;color:var(--ink-2);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.kpi.hero{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.kpi.hero .lbl{color:var(--gold)} .kpi.hero .sub,.kpi.hero .val small{color:var(--brand-sub)}
+.kpi.alarm{border-color:var(--crit);box-shadow:inset 4px 0 0 var(--crit)}
+.kpi.alarm .val{color:var(--crit)}
+.delta{font-family:var(--f-mono);font-size:11px;padding:1px 6px;border-radius:999px;white-space:nowrap}
+.delta.good{background:var(--good-bg);color:var(--good)} .delta.bad{background:var(--crit-bg);color:var(--crit)} .delta.flat{background:var(--surface-2);color:var(--ink-2)}
+
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px;margin-top:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.panel.red{border-top:3px solid var(--crit)}
+.c12{grid-column:span 12}.c8{grid-column:span 8}.c7{grid-column:span 7}.c6{grid-column:span 6}.c5{grid-column:span 5}.c4{grid-column:span 4}
+.ph{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.ph h2{margin:0;font-family:var(--f-display);font-size:14px;font-weight:700}
+.ph p{margin:0;font-size:12px;color:var(--ink-3)}
+.q{font-size:11.5px;color:var(--ink-3)}
+.need{display:inline-flex;gap:6px;align-items:center;font-size:11.5px;color:var(--warn);background:var(--warn-bg);border-radius:6px;padding:4px 8px;align-self:flex-start}
+svg{width:100%;height:auto;display:block}
+svg text{font-family:var(--f-body)}
+.axis{fill:var(--ink-3);font-size:11px}
+.gridl{stroke:var(--line);stroke-width:1}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--ink-2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-family:var(--f-display);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:700;text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.r,th.r{text-align:right}
+tr:last-child td{border-bottom:0}
+tfoot td{font-weight:700;border-top:2px solid var(--line)}
+.bar-cell{display:flex;align-items:center;gap:8px;min-width:120px}
+.bar-cell span.b{height:8px;border-radius:0 4px 4px 0;background:var(--s1)}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;font-family:var(--f-mono);white-space:nowrap}
+.chip.g{background:var(--good-bg);color:var(--good)}.chip.w{background:var(--warn-bg);color:var(--warn)}.chip.c{background:var(--crit-bg);color:var(--crit)}
+
+.sla{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.slac{border:1px solid var(--line);border-left:4px solid var(--c);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--ink-2)}
+.slac b{font-family:var(--f-display);color:var(--ink);font-size:13px}.slac .big{font-family:var(--f-display);font-size:26px;font-weight:700;color:var(--ink)}.slac em{font-style:normal;font-weight:600;color:var(--ink)}.slac small{color:var(--ink-3);font-size:11px}
+.sp{display:flex;flex-direction:column;gap:8px}.sp .row{display:grid;grid-template-columns:minmax(0,110px) 1fr 64px;gap:10px;align-items:center;font-size:12.5px}
+.sp .bar{display:flex;height:14px;background:var(--surface-2);border-radius:0 4px 4px 0;position:relative}.sp .bar i{display:block;height:14px}.sp .bar i:last-child{border-radius:0 4px 4px 0}
+.sp .mk{position:absolute;top:-3px;bottom:-3px;width:0;border-left:2px dashed var(--gold)}.sp .v{text-align:right;color:var(--ink-2)}
+@media (max-width:980px){.sla{grid-template-columns:1fr}}
+.hb{display:flex;flex-direction:column;gap:7px}
+.hb .row{display:grid;grid-template-columns:minmax(0,180px) 1fr 76px;gap:10px;align-items:center;font-size:12.5px}
+.hb .row>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb .track{background:var(--surface-2);height:13px;border-radius:0 4px 4px 0}
+.hb .fill{display:block;height:13px;border-radius:0 4px 4px 0}
+.hb .v{text-align:right;color:var(--ink-2)}
+
+.heat{display:grid;gap:3px;font-size:11px;color:var(--ink-3)}
+.heat .cell{height:24px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-family:var(--f-mono)}
+.heat .h{text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.heat .rl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;align-self:center}
+
+.added{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin:0;padding:0;list-style:none}
+.added li{border-left:3px solid var(--gold);padding:6px 10px;background:var(--surface-2);border-radius:0 8px 8px 0;font-size:13px}
+.added li b{display:block;font-family:var(--f-display);font-size:12px}
+
+#tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--surface);font-size:12px;padding:6px 9px;border-radius:6px;z-index:10;max-width:260px;line-height:1.35}
+#tip b{font-family:var(--f-display)}
+
+@media (max-width:1100px){.kpis.k6{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:980px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis.k6{grid-template-columns:repeat(2,minmax(0,1fr))}.c8,.c7,.c6,.c5,.c4{grid-column:span 12}}
+@media (max-width:420px){.kpi .val{font-size:23px}.wrap{padding-inline:16px}.hb .row{grid-template-columns:minmax(0,110px) 1fr 60px}}
+.sample.err{background:var(--crit-bg);border-color:var(--crit)}.sample.err b{color:var(--crit)}
+.btn{font:inherit;font-family:var(--f-display);font-weight:700;font-size:12px;color:var(--brand-ink);background:var(--brand);border:1px solid var(--gold);border-radius:8px;padding:8px 14px;cursor:pointer;align-self:flex-end}
+.btn:disabled{opacity:.5;cursor:wait}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><small>Fadermex · Logística</small><h1>Tablero Logístico FED</h1></div>
+    <div class="live"><span class="dot" aria-hidden="true"></span>Conectado a la hoja Operaciones · se actualiza cada 5 min</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="sample" id="estado" role="status" hidden></div>
+
+  <section class="filters" aria-label="Filtros">
+    <div class="f" id="fAnioBox" hidden><label for="fAnio">Año</label><select id="fAnio"></select></div>
+    <div class="f"><label for="fMes">Mes</label><select id="fMes"></select></div>
+    <div class="f"><label for="fArea">Área</label><select id="fArea"></select></div>
+    <div class="f"><label for="fMetodo">Método de envío</label><select id="fMetodo"></select></div>
+    <span class="updated num" id="upd"></span>
+    <button class="btn" id="btnAct" type="button">Actualizar ahora</button>
+  </section>
+
+  <nav class="tabs" role="tablist" aria-label="Secciones" id="tabs"></nav>
+
+  <!-- 1 RESUMEN -->
+  <section data-tab="resumen">
+    <div class="kpis" id="kResumen"></div>
+    <div class="grid">
+      <article class="panel c8"><div class="ph"><h2>Pedidos por mes</h2><p>Mes seleccionado resaltado</p></div><svg id="rMes" viewBox="0 0 760 220"></svg><span class="q">¿Estamos enviando más o menos que antes?</span></article>
+      <article class="panel c4"><div class="ph"><h2>Método de envío</h2><p id="rMetTot"></p></div><div id="rMet"></div></article>
+      <article class="panel c6"><div class="ph"><h2>¿Dónde están los pedidos ahora?</h2><p>Por estatus, en este momento</p></div><div id="rEmb"></div></article>
+      <article class="panel c6"><div class="ph"><h2>Pedidos por área y método</h2><p>Cada celda = pedidos</p></div><div id="rAreaMet" class="tbl"></div><span class="q">¿Qué área usa más paquetería y cuál más reparto propio?</span></article>
+      <article class="panel c12 red"><div class="ph"><h2>Pedidos que requieren atención hoy</h2><p id="rAlertN"></p></div><div class="tbl"><table id="rAlert"></table></div></article>
+    </div>
+  </section>
+
+  <!-- 2 INCIDENCIAS -->
+  <section data-tab="incidencias" hidden>
+    <div class="kpis k6" id="kInc"></div>
+    <div class="grid">
+      <article class="panel c8 red"><div class="ph"><h2>Incidencias por mes</h2><p>Número de problemas reportados</p></div><svg id="iMes" viewBox="0 0 760 220"></svg><span class="q">¿Los problemas van subiendo o bajando?</span></article>
+      <article class="panel c4 red"><div class="ph"><h2>Tasa por cada 100 envíos</h2><p>Meta: menos de 5</p></div><svg id="iTasa" viewBox="0 0 380 220"></svg><span class="q">Normaliza: más pedidos no siempre es peor.</span></article>
+      <article class="panel c6 red"><div class="ph"><h2>Pareto de problemas</h2><p>Tipo · % acumulado</p></div><div id="iPareto"></div><span class="q">Atacando los primeros 3 tipos resuelves la mayoría.</span></article>
+      <article class="panel c6 red"><div class="ph"><h2>Incidencias por área</h2><p>Número y tasa por cada 100 pedidos del área</p></div><div id="iArea"></div><span class="q">¿Qué área sufre más problemas en sus envíos?</span></article>
+      <article class="panel c6 red"><div class="ph"><h2>Lugares con más problemas</h2><p>Incidencias y tasa por destino</p></div><div class="tbl"><table id="iLug"></table></div></article>
+      <article class="panel c6 red"><div class="ph"><h2>Paqueterías con más problemas</h2><p>Tasa sobre sus propios envíos</p></div><div class="tbl"><table id="iPaq"></table></div></article>
+      <article class="panel c12 red"><div class="ph"><h2>Mapa de calor: destino × tipo de problema</h2><p>Más rojo = más incidencias</p></div><div id="iHeat" class="tbl"></div><span class="q">Muestra qué falla y dónde.</span></article>
+      <article class="panel c7 red"><div class="ph"><h2>Problemas abiertos por antigüedad</h2><p>Con motivo en la columna AC y sin entregar · los más viejos primero</p></div><div class="tbl"><table id="iAbiertos"></table></div></article>
+      <article class="panel c5 red"><div class="ph"><h2>Clientes con incidencias repetidas</h2><p>2 o más en los últimos 90 días</p></div><div class="tbl"><table id="iCli"></table></div></article>
+    </div>
+  </section>
+
+  <!-- 3 COSTOS -->
+  <section data-tab="costos" hidden>
+    <div class="kpis k6" id="kCos"></div>
+    <div class="grid">
+      <article class="panel c8"><div class="ph"><h2>Gasto por mes</h2><p>Paquetería y UBER, MXN</p></div><svg id="cMes" viewBox="0 0 760 240"></svg><div class="legend" id="cMesLeg"></div></article>
+      <article class="panel c4"><div class="ph"><h2>Gasto por área</h2><p>Para cargar a cada centro de costo</p></div><div id="cArea"></div></article>
+      <article class="panel c6"><div class="ph"><h2>Costo promedio por paquetería</h2><p>MXN por guía</p></div><div id="cPaq"></div><span class="q">¿Quién es más barato para el mismo tipo de envío?</span></article>
+      <article class="panel c6"><div class="ph"><h2>Costo promedio por destino</h2><p>MXN por pedido</p></div><div id="cDes"></div></article>
+      <article class="panel c12"><div class="ph"><h2>Resumen contable mensual</h2><p>Listo para copiar a contabilidad</p></div><div class="tbl"><table id="cTabla"></table></div></article>
+    </div>
+  </section>
+
+  <!-- 4 TIEMPOS -->
+  <section data-tab="tiempos" hidden>
+    <div class="kpis k6" id="kTie"></div>
+    <div class="grid">
+      <article class="panel c12"><div class="ph"><h2>Cómo medimos cada compromiso</h2><p>Cada tipo de envío tiene su propio reloj: empieza cuando nos toca actuar a nosotros</p></div>
+        <div class="sla">
+          <div class="slac" style="--c:var(--s2)"><b>Logística interna</b><span class="big num">48 h</span><span>Desde <em>Pedido listo para recolección</em> hasta <em>Entregado</em> (V)</span><small>Fuente: bitácoras de Cat + Operaciones</small></div>
+          <div class="slac" style="--c:var(--s3)"><b>Guías IMSS Morelia</b><span class="big num">36 h</span><span>Desde que <em>solicitan la guía</em> hasta que la <em>guía queda generada</em> (M)</span><small>Fuente: bitácora IMSS MORELIA en Cat + Operaciones</small></div>
+          <div class="slac" style="--c:var(--s1)"><b>Paquetería</b><span class="big num">48 h</span><span>Desde <em>listo</em> hasta que <em>sale con guía</em> (O). El viaje después es de la paquetería y se mide aparte.</span><small>Todo se envía express</small></div>
+        </div></article>
+      <article class="panel c7"><div class="ph"><h2>Cumplimiento de compromisos por mes</h2><p>% atendido dentro de su tiempo · punteada = meta</p></div><svg id="tMes" viewBox="0 0 640 230"></svg><div class="legend" id="tMesLeg"></div></article>
+      <article class="panel c5"><div class="ph"><h2>Paquetería: nuestra parte y la suya</h2><p>Horas promedio · gestión nuestra (meta 48 h) + tránsito de la paquetería</p></div><div id="tSplit"></div><div class="legend"><span><i style="background:var(--s1)"></i>Gestión nuestra</span><span><i style="background:var(--seq2)"></i>Tránsito de la paquetería</span></div><span class="q">Si el envío tarda, ¿fue nuestra gestión o la paquetería?</span></article>
+      <article class="panel c6"><div class="ph"><h2>Logística interna: horas desde que está listo</h2><p>Pedidos por rango · rojo = pasó de 48 h</p></div><svg id="tHist" viewBox="0 0 560 220"></svg></article>
+      <article class="panel c6"><div class="ph"><h2>Guías IMSS Morelia: horas para generar la guía</h2><p>Guías por rango · rojo = pasó de 36 h</p></div><svg id="tImss" viewBox="0 0 560 220"></svg></article>
+      <article class="panel c6"><div class="ph"><h2>Demora según el día en que queda listo</h2><p>Horas hasta cumplir (entrega o salida con guía)</p></div><svg id="tEntDia" viewBox="0 0 560 210"></svg><span class="q">Lo que queda listo en viernes, ¿se nos pasa del tiempo?</span></article>
+      <article class="panel c6"><div class="ph"><h2>Demora según la hora en que queda listo</h2><p>Horas hasta cumplir</p></div><svg id="tEntHora" viewBox="0 0 560 210"></svg><span class="q">¿Conviene una hora de corte para salir el mismo día?</span></article>
+      <article class="panel c6"><div class="ph"><h2>Detalle por paquetería</h2><p>Gestión nuestra vs tránsito de cada paquetería</p></div><div class="tbl"><table id="tPaq"></table></div></article>
+      <article class="panel c6"><div class="ph"><h2>¿Cuándo entran los pedidos?</h2><p>Día y hora de captura</p></div><div id="tHeat" class="tbl"></div><span class="q">¿A qué hora necesitamos más gente?</span></article>
+      <article class="panel c12 red"><div class="ph"><h2>Fuera de compromiso este periodo</h2><p id="tFueraN"></p></div><div class="tbl"><table id="tFuera"></table></div></article>
+    </div>
+  </section>
+
+  <!-- 5 LOGÍSTICA INTERNA -->
+  <section data-tab="interna" hidden>
+    <div class="kpis k6" id="kInt"></div>
+    <div class="grid">
+      <article class="panel c8"><div class="ph"><h2>Viajes por vehículo, mes a mes</h2><p>Cada línea = una unidad</p></div><svg id="vMes" viewBox="0 0 760 230"></svg><div class="legend" id="vLeg"></div></article>
+      <article class="panel c4"><div class="ph"><h2>Uso de la flota</h2><p>% de días hábiles en que salió cada unidad</p></div><div id="vUso"></div><span class="q">Un vehículo abajo de 50% está sobrando o descompuesto.</span></article>
+      <article class="panel c6"><div class="ph"><h2>Vehículo × día de la semana</h2><p>Viajes (días con salida)</p></div><div id="vHeat" class="tbl"></div></article>
+      <article class="panel c6"><div class="ph"><h2>Recolecciones internas</h2><p>Lo que piden las áreas de la empresa a logística</p></div><div id="vRec"></div><span class="need" id="vRecNeed">Se llena sola cuando captures pedidos con el método "Recolección"</span></article>
+      <article class="panel c12"><div class="ph"><h2>Gestores</h2><p>Carga de trabajo, rapidez desde que el pedido está listo e incidencias</p></div><div class="tbl"><table id="gTabla"></table></div></article>
+    </div>
+  </section>
+
+  <!-- 6 DESTINOS Y SUCURSALES -->
+  <section data-tab="destinos" hidden>
+    <div class="kpis" id="kDes"></div>
+    <div class="grid">
+      <article class="panel c12"><div class="ph"><h2>Destinos</h2><p>Todo de cada estado o ciudad en una fila</p></div><div class="tbl"><table id="dTabla"></table></div></article>
+      <article class="panel c6"><div class="ph"><h2>Paquetería más usada por destino</h2><p>Envíos</p></div><div id="dHeat" class="tbl"></div></article>
+      <article class="panel c6"><div class="ph"><h2>Sucursales Fadermex</h2><p>Envíos a puntos de venta y oficinas</p></div><div class="tbl"><table id="dSuc"></table></div></article>
+    </div>
+  </section>
+
+  <section class="grid">
+    <article class="panel c12"><div class="ph"><h2>Cómo funciona este tablero</h2><p>Para cuando te pregunten</p></div>
+      <ul class="added">
+        <li><b>De dónde salen los números</b>Lee en vivo las hojas Operaciones, Cat y Datos de "Logística FED 2026". No escribe nada en ellas.</li>
+        <li><b>Cada cuánto se actualiza</b>Cada 5 minutos solo, o al instante con el botón "Actualizar ahora".</li>
+        <li><b>Mes de cada pedido</b>Es el mes de la columna F (fecha en que se registró).</li>
+        <li><b>Horas hábiles</b>No cuentan sábados, domingos ni los festivos de Datos (columna V).</li>
+        <li><b>Logística interna · 48 h</b>Desde "Pedido listo para recolección" (Cat) hasta Entregado (V).</li>
+        <li><b>Guías IMSS Morelia · 36 h</b>Desde que se registra la solicitud (F) hasta que se captura la guía (hora en AE).</li>
+        <li><b>Paquetería · 48 h</b>Desde "listo" (Cat) hasta que sale con guía. El viaje de la paquetería se mide aparte.</li>
+        <li><b>Incidencia</b>Todo pedido con motivo en la columna AC o marcado como Retornado.</li>
+        <li><b>Gasto</b>Suma de la columna N (Costo).</li>
+        <li><b>Correo mensual</b>El día 1 a las 8 a. m. le llega a Miriam el resumen del mes anterior.</li>
+      </ul>
+    </article>
+  </section>
+</main>
+<div id="tip" hidden></div>
+
+<script>
+(function(){
+const MESES=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const MESES_L=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const DIAS7=["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+const M_INT="Logística Interna",M_PAQ="Paquetería Externa",M_UBER="UBER",M_REC="Recolección";
+const MET_COL={"Paquetería Externa":"--s1","Logística Interna":"--s2","UBER":"--s3","Recolección":"--s4","En ruta por otro método":"--s5"};
+const TIPO_L={INT:"Logística interna",IMSS:"Guía IMSS",PAQ:"Paquetería"};
+const $=id=>document.getElementById(id);
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt=n=>Math.round(n).toLocaleString("es-MX");
+const mxn=n=>"$"+Math.round(n).toLocaleString("es-MX");
+const pct=(n,d=1)=>n==null||isNaN(n)?"—":(n*100).toFixed(d)+"%";
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let D=null,META=.95,META_INC=5,R={int:48,imss:36,paq:48};
+
+// ---------- agregados ----------
+const cnt=(rows,p)=>p?rows.filter(p).length:rows.length;
+const sum=(rows,f)=>rows.reduce((s,r)=>s+(f(r)||0),0);
+const avg=(rows,f)=>{const v=rows.map(f).filter(x=>x!=null&&!isNaN(x));return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;};
+function groupBy(rows,key){const o=new Map();rows.forEach(r=>{const k=key(r);if(k==null||k==="")return;if(!o.has(k))o.set(k,[]);o.get(k).push(r);});return o;}
+function countBy(rows,key){return [...groupBy(rows,key)].map(([k,v])=>[k,v.length]).sort((a,b)=>b[1]-a[1]);}
+function cumple(rows,tipo){const x=rows.filter(r=>(!tipo||r.t===tipo)&&r.ok!=null);return x.length?x.filter(r=>r.ok).length/x.length:null;}
+function moda(rows,key){const c=countBy(rows,key);return c.length?c[0][0]:"—";}
+
+// ---------- filtros ----------
+const fAnio=$("fAnio"),fMes=$("fMes"),fArea=$("fArea"),fMet=$("fMetodo");
+const TABS=[["resumen","Resumen"],["incidencias","Incidencias"],["costos","Costos"],["tiempos","Tiempos y puntualidad"],["interna","Logística interna"],["destinos","Destinos y sucursales"]];
+let cur="resumen",prefs={};
+try{prefs=JSON.parse(localStorage.getItem("tlfReal")||"{}");if(prefs.tab)cur=prefs.tab;}catch(e){}
+if(location.hash&&TABS.some(t=>t[0]===location.hash.slice(1)))cur=location.hash.slice(1);
+function save(){try{localStorage.setItem("tlfReal",JSON.stringify({a:fArea.value,t:fMet.value,tab:cur}));}catch(e){}}
+
+function hoyYM(){const p=D.hoy.split("-");return [+p[0],+p[1]-1];}
+function ultMes(y){const [hy,hm]=hoyYM();if(y<hy)return 11;const ms=D.filas.filter(r=>r.y===y).map(r=>r.mo);return Math.max(hm,...ms);}
+function llenarFiltros(){
+  const keep={y:fAnio.value,m:fMes.value,a:fArea.value||prefs.a,t:fMet.value||prefs.t};
+  const [hy,hm]=hoyYM();
+  const anios=[...new Set(D.filas.map(r=>r.y).concat([hy]))].sort((a,b)=>b-a);
+  fAnio.innerHTML=anios.map(y=>`<option value="${y}">${y}</option>`).join("");
+  fAnio.value=keep.y&&anios.includes(+keep.y)?keep.y:hy;
+  $("fAnioBox").hidden=anios.length<2;
+  llenarMeses(keep.m);
+  const areas=countBy(D.filas,r=>r.a).map(x=>x[0]),mets=countBy(D.filas,r=>r.m).map(x=>x[0]);
+  fArea.innerHTML='<option value="all">Todas las áreas</option>'+areas.map(a=>`<option>${esc(a)}</option>`).join("");
+  fMet.innerHTML='<option value="all">Todos los métodos</option>'+mets.map(a=>`<option>${esc(a)}</option>`).join("");
+  if(keep.a&&areas.includes(keep.a))fArea.value=keep.a;
+  if(keep.t&&mets.includes(keep.t))fMet.value=keep.t;
+}
+function llenarMeses(keepM){
+  const y=+fAnio.value,u=ultMes(y),[hy,hm]=hoyYM();
+  fMes.innerHTML=`<option value="all">Todo ${y} (${MESES[0]}–${MESES[u]})</option>`+MESES_L.slice(0,u+1).map((m,i)=>`<option value="${i}">${m} ${y}</option>`).join("");
+  fMes.value=keepM!=null&&keepM!==""&&(keepM==="all"||+keepM<=u)?keepM:(y===hy?String(hm):"all");
+}
+function base(){const a=fArea.value,t=fMet.value;return D.filas.filter(r=>(a==="all"||r.a===a)&&(t==="all"||r.m===t));}
+function periodo(){
+  const y=+fAnio.value,b=base(),all=fMes.value==="all",m=+fMes.value;
+  const rows=b.filter(r=>r.y===y&&(all||r.mo===m));
+  let prev=null;if(!all){const py=m===0?y-1:y,pm=m===0?11:m-1;prev=b.filter(r=>r.y===py&&r.mo===pm);if(!prev.length)prev=null;}
+  const u=ultMes(y),ms=MESES.map((_,i)=>i<=u?b.filter(r=>r.y===y&&r.mo===i):null);
+  const dh=all?ms.reduce((s,_,i)=>s+(D.diasHabiles[y+"-"+i]||0),0):(D.diasHabiles[y+"-"+m]||0);
+  return {rows,prev,ms,b,y,all,m,dh:Math.max(1,dh),hi:all?null:m};
+}
+
+function delta(cur,prev,lowerBetter,pts){
+  if(prev==null||(!pts&&!prev))return '<span class="delta flat">sin comparativo</span>';
+  const d=pts?(cur-prev)*100:(cur-prev)/prev*100;
+  if(Math.abs(d)<.05)return '<span class="delta flat">= igual</span>';
+  const up=d>0,good=lowerBetter?!up:up;
+  return `<span class="delta ${good?"good":"bad"}">${up?"▲":"▼"} ${Math.abs(d).toFixed(1)}${pts?" pts":"%"}</span>`;
+}
+function sem(p,meta=META){if(p==null)return ["",""];return p>=meta?["g","✓ en meta"]:p>=meta-.05?["w","! cerca"]:["c","✕ bajo meta"];}
+const chip=(cls,t)=>t?`<span class="chip ${cls}">${t}</span>`:"";
+const semChip=p=>{const s=sem(p);return p==null?'<span class="delta flat">sin datos</span>':chip(s[0],s[1]);};
+const rateChip=(r,lo,hi)=>chip(r<lo?"g":r<hi?"w":"c",pct(r));
+function kpis(el,arr){$(el).innerHTML=arr.map(([c,l,v,u,sub])=>`<div class="kpi ${c}"><span class="lbl">${l}</span><span class="val num">${v}<small>${u||""}</small></span><span class="sub">${sub||""}</span></div>`).join("");}
+const hTxt=h=>h<72?Math.round(h)+" h":Math.round(h/24)+" días háb.";
+const vacio='<p class="q" style="margin:8px 0">Sin datos en este periodo.</p>';
+function tabla(el,head,rows){$(el).innerHTML=rows.length?`<thead><tr>${head.map(h=>`<th${h[1]?' class="r"':""}>${h[0]}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody>`:`<tbody><tr><td>${vacio}</td></tr></tbody>`;}
+
+// ---------- tooltip ----------
+const tip=$("tip");
+function bindTips(root){root.querySelectorAll("[data-tip]").forEach(el=>{
+  el.addEventListener("mousemove",e=>{tip.innerHTML=el.dataset.tip;tip.hidden=false;tip.style.left=Math.min(e.clientX+14,innerWidth-270)+"px";tip.style.top=(e.clientY+14)+"px";});
+  el.addEventListener("mouseleave",()=>tip.hidden=true);});}
+
+// ---------- gráficas ----------
+function niceTop(max){if(max<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(max))),f=max/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p;}
+function vbars(svg,labels,vals,o){
+  o=Object.assign({color:css("--s1"),hi:null,fmt:fmt,axfmt:null,tips:null,valueLabels:false},o);
+  const W=svg.viewBox.baseVal.width,H=svg.viewBox.baseVal.height,L=46,R=8,T=20,B=24,n=labels.length;
+  let top=o.max||niceTop(Math.max(...vals.filter(v=>v!=null))*1.08);if(!o.max&&top<5&&vals.every(v=>v==null||Number.isInteger(v)))top=5;const y=v=>T+(H-T-B)*(1-v/top),bw=(W-L-R)/n;let g="";
+  for(let i=0;i<=5;i++){const v=top*i/5,yy=y(v);g+=`<line class="gridl" x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}"/><text class="axis num" x="${L-6}" y="${yy+4}" text-anchor="end">${(o.axfmt||o.fmt)(v)}</text>`;}
+  labels.forEach((lb,i)=>{const x=L+i*bw;g+=`<text class="axis" x="${x+bw/2}" y="${H-6}" text-anchor="middle">${lb}</text>`;const v=vals[i];if(v==null)return;
+    const yy=y(v),w=Math.min(bw*.6,46),xx=x+(bw-w)/2,on=o.hi==null||o.hi===i,col=typeof o.color==="function"?o.color(i,v):o.color,t=o.tips?o.tips(i,v):`<b>${lb}</b><br>${o.fmt(v)}`;
+    if(v>0)g+=`<path d="M${xx},${H-B}V${Math.min(yy+4,H-B)}a4,4 0 0 1 4,-4h${w-8}a4,4 0 0 1 4,4V${H-B}Z" fill="${col}" opacity="${on?1:.35}"/>`;
+    if((o.valueLabels||(o.hi===i)))g+=`<text x="${xx+w/2}" y="${yy-6}" text-anchor="middle" font-size="11.5" font-weight="700" fill="${css("--ink")}" class="num">${o.fmt(v)}</text>`;
+    g+=`<rect x="${x}" y="${T}" width="${bw}" height="${H-T-B}" fill="transparent" data-tip="${t}"/>`;});
+  g+=`<line x1="${L}" x2="${W-R}" y1="${H-B}" y2="${H-B}" stroke="${css("--ink-3")}"/>`;svg.innerHTML=g;bindTips(svg);
+}
+function stacked(svg,labels,series,o){
+  o=Object.assign({fmt:fmt,axfmt:null},o);
+  const W=svg.viewBox.baseVal.width,H=svg.viewBox.baseVal.height,L=50,R=8,T=14,B=24,n=labels.length;
+  const tot=labels.map((_,i)=>series.reduce((s,se)=>s+(se[2][i]||0),0)),top=niceTop(Math.max(...tot)*1.05),y=v=>T+(H-T-B)*(1-v/top),bw=(W-L-R)/n;let g="";
+  for(let i=0;i<=5;i++){const v=top*i/5,yy=y(v);g+=`<line class="gridl" x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}"/><text class="axis num" x="${L-6}" y="${yy+4}" text-anchor="end">${(o.axfmt||o.fmt)(v)}</text>`;}
+  labels.forEach((lb,i)=>{const x=L+i*bw,w=Math.min(bw*.6,46),xx=x+(bw-w)/2;g+=`<text class="axis" x="${x+bw/2}" y="${H-6}" text-anchor="middle">${lb}</text>`;if(!tot[i])return;
+    let acc=0;const last=series.map((se,k)=>se[2][i]>0?k:-1).filter(k=>k>=0).pop();
+    series.forEach((se,k)=>{const v=se[2][i]||0;if(!v)return;const y0=y(acc),y1=y(acc+v);acc+=v;const h=y0-y1-(k===last?0:2);
+      g+=k===last?`<path d="M${xx},${y0}V${y1+4}a4,4 0 0 1 4,-4h${w-8}a4,4 0 0 1 4,4V${y0}Z" fill="${se[1]}"/>`:`<rect x="${xx}" y="${y0-h}" width="${w}" height="${Math.max(0,h)}" fill="${se[1]}"/>`;});
+    g+=`<rect x="${x}" y="${T}" width="${bw}" height="${H-T-B}" fill="transparent" data-tip="<b>${MESES_L[i]}</b><br>${series.map(se=>se[0]+": "+o.fmt(se[2][i]||0)).join("<br>")}<br><b>Total: ${o.fmt(tot[i])}</b>"/>`;});
+  g+=`<line x1="${L}" x2="${W-R}" y1="${H-B}" y2="${H-B}" stroke="${css("--ink-3")}"/>`;svg.innerHTML=g;bindTips(svg);
+}
+function lines(svg,labels,series,o){
+  o=Object.assign({fmt:fmt,min:0,max:null,meta:null,axfmt:null},o);
+  const W=svg.viewBox.baseVal.width,H=svg.viewBox.baseVal.height,L=46,R=12,T=14,B=24,n=labels.length;
+  const all=series.flatMap(s=>s[2].filter(v=>v!=null)),top=o.max!=null?o.max:niceTop(Math.max(...all)*1.1),bot=o.min;
+  const y=v=>T+(H-T-B)*(1-(v-bot)/(top-bot)),x=i=>L+(W-L-R)*(i+.5)/n;let g="";
+  for(let i=0;i<=5;i++){const v=bot+(top-bot)*i/5,yy=y(v);g+=`<line class="gridl" x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}"/><text class="axis num" x="${L-6}" y="${yy+4}" text-anchor="end">${(o.axfmt||o.fmt)(v)}</text>`;}
+  labels.forEach((lb,i)=>g+=`<text class="axis" x="${x(i)}" y="${H-6}" text-anchor="middle">${lb}</text>`);
+  if(o.meta!=null)g+=`<line x1="${L}" x2="${W-R}" y1="${y(o.meta)}" y2="${y(o.meta)}" stroke="${css("--gold")}" stroke-width="1.5" stroke-dasharray="5 4"/><text x="${W-R}" y="${y(o.meta)-5}" text-anchor="end" font-size="11" fill="${css("--gold")}">Meta ${o.fmt(o.meta)}</text>`;
+  series.forEach(se=>{const pts=se[2].map((v,i)=>v==null?null:[x(i),y(v)]).filter(Boolean);
+    g+=`<path d="${pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+","+p[1].toFixed(1)).join("")}" fill="none" stroke="${se[1]}" stroke-width="2" stroke-linejoin="round"/>`;
+    const lp=pts[pts.length-1];if(lp)g+=`<circle cx="${lp[0]}" cy="${lp[1]}" r="4" fill="${se[1]}" stroke="${css("--surface")}" stroke-width="2"/>`;});
+  labels.forEach((lb,i)=>{const vs=series.map(se=>se[2][i]);if(vs.every(v=>v==null))return;g+=`<rect x="${x(i)-(W-L-R)/n/2}" y="${T}" width="${(W-L-R)/n}" height="${H-T-B}" fill="transparent" data-tip="<b>${MESES_L[i]||lb}</b><br>${series.map((se,k)=>se[0]+": "+(vs[k]==null?"—":o.fmt(vs[k]))).join("<br>")}"/>`;});
+  svg.innerHTML=g;bindTips(svg);
+}
+function hbars(el,rows,o){
+  o=Object.assign({fmt:fmt,color:css("--s1"),tip:null},o);if(!rows.length){el.innerHTML=vacio;return;}const max=Math.max(0,...rows.map(r=>r[1]))||1;
+  el.innerHTML=`<div class="hb">${rows.map(r=>`<div class="row" data-tip="${o.tip?o.tip(r):`<b>${r[0]}</b><br>${o.fmt(r[1])}`}"><span>${r[0]}</span><span class="track"><span class="fill" style="width:${(r[1]/max*100).toFixed(1)}%;background:${r[2]||o.color}"></span></span><span class="v num">${r[3]||o.fmt(r[1])}</span></div>`).join("")}</div>`;bindTips(el);
+}
+function heat(el,rowL,colL,M,ramp,o){
+  o=Object.assign({fmt:fmt,colW:"minmax(44px,1fr)",rowW:"170px",show:true,unit:""},o);
+  const max=Math.max(0,...M.flat())||1,cols=ramp.map(css);
+  let h=`<div class="heat" style="grid-template-columns:${o.rowW} repeat(${colL.length},${o.colW});min-width:${o.minW!=null?o.minW:colL.length*48+170}px"><span></span>${colL.map(c=>`<span class="h" title="${c}">${c}</span>`).join("")}`;
+  rowL.forEach((r,ri)=>{h+=`<span class="rl" title="${r}">${r}</span>`;colL.forEach((c,ci)=>{const v=M[ri][ci],lv=v<=0?-1:Math.min(cols.length-1,Math.floor(v/max*cols.length*.999));const dark=lv>=Math.ceil(cols.length/2);
+    h+=`<span class="cell num" style="background:${lv<0?css("--surface-2"):cols[lv]};color:${dark?"#fff":css("--ink-2")}" data-tip="<b>${r}</b> · ${c}<br>${o.fmt(v)}${o.unit}">${o.show&&v>0?o.fmt(v):""}</span>`;});});
+  h+=`</div><div class="legend" style="margin-top:8px">Menos ${cols.map(c=>`<i style="background:${c};margin:0"></i>`).join("")} Más</div>`;el.innerHTML=h;bindTips(el);
+}
+
+function renderTabs(s){
+  const ninc=cnt(s.rows,r=>r.inc);
+  $("tabs").innerHTML=TABS.map(([id,lb])=>`<button class="tab" role="tab" id="t-${id}" aria-selected="${id===cur}" data-id="${id}">${lb}${id==="incidencias"?` <span class="cnt red num">${fmt(ninc)}</span>`:""}</button>`).join("");
+  $("tabs").querySelectorAll(".tab").forEach(b=>b.onclick=()=>{cur=b.dataset.id;save();render();});
+  document.querySelectorAll("[data-tab]").forEach(sec=>sec.hidden=sec.dataset.tab!==cur);
+}
+
+// ---------- 1 RESUMEN ----------
+function resumen(s){
+  const R0=s.rows,P=s.prev,n=R0.length,g=sum(R0,r=>r.cos),inc=cnt(R0,r=>r.inc),cu=cumple(R0);
+  const conCosto=cnt(R0,r=>r.cos>0),he=avg(R0,r=>r.he==null?null:r.he/24),heP=P&&avg(P,r=>r.he==null?null:r.he/24);
+  const can=n?cnt(R0,r=>r.can)/n:0,ret=n?cnt(R0,r=>r.ret)/n:0;
+  kpis("kResumen",[
+    ["hero","Pedidos",fmt(n),"",`${delta(n,P&&P.length)} vs mes anterior`],
+    ["","Gasto en envíos",mxn(g),"",delta(g,P&&sum(P,r=>r.cos),true)],
+    ["","Compromisos cumplidos",pct(cu),"",`${semChip(cu)} meta ${pct(META,0)}`],
+    ["alarm","Incidencias",fmt(inc),"",`${n?(inc/n*100).toFixed(1):"0"} por cada 100 · ${delta(inc,P&&cnt(P,r=>r.inc),true)}`],
+    ["","Costo por pedido",conCosto?mxn(g/conCosto):"—","","solo pedidos con costo"],
+    ["","Registro → entrega",he==null?"—":he.toFixed(1)," días háb.",delta(he,heP,true)],
+    ["","Cancelados",pct(can),"",`${fmt(n*can)} pedidos ${delta(can,P&&cnt(P,r=>r.can)/P.length,true,true)}`],
+    ["","Retornados",pct(ret),"",`${fmt(n*ret)} pedidos ${delta(ret,P&&cnt(P,r=>r.ret)/P.length,true,true)}`],
+  ]);
+  vbars($("rMes"),MESES,s.ms.map(x=>x?x.length:null),{hi:s.hi});
+  const mr=countBy(R0,r=>r.m).map(([k,v],i)=>[k,v,MET_COL[k]||["--s1","--s2","--s3","--s4","--s5"][i%5]]);
+  $("rMetTot").textContent=fmt(n)+" pedidos";
+  $("rMet").innerHTML=!n?vacio:`<div style="display:flex;height:22px;gap:2px;border-radius:4px;overflow:hidden">${mr.map(r=>`<span data-tip="<b>${esc(r[0])}</b><br>${fmt(r[1])} · ${pct(r[1]/n,0)}" style="flex:${r[1]};background:var(${r[2]})"></span>`).join("")}</div><div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">${mr.map(r=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px"><span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(${r[2]});margin-right:8px"></i>${esc(r[0])}</span><span class="num" style="color:var(--ink-2)">${fmt(r[1])} · <b style="color:var(--ink)">${pct(r[1]/n,0)}</b></span></div>`).join("")}</div>`;bindTips($("rMet"));
+  const colEst=e=>/ENTREGADO/i.test(e)?"--good":/PROBLEMA|RETORN|CANCEL/i.test(e)?"--crit":/ATRASO/i.test(e)?"--warn":/RUTA|ENVIADO|UBER|SUCURSAL/i.test(e)?"--seq4":"--seq2";
+  hbars($("rEmb"),countBy(R0,r=>r.est||"Sin estatus").map(([k,v])=>[k,v,css(colEst(k))]),{fmt:v=>fmt(v)});
+  const areas=countBy(R0,r=>r.a).map(x=>x[0]),mets=mr.map(x=>x[0]);
+  if(areas.length)heat($("rAreaMet"),areas,mets.map(m=>m.replace("Paquetería Externa","Paquetería").replace("Logística Interna","Interna").replace("En ruta por otro método","Otro")),areas.map(a=>mets.map(m=>cnt(R0,r=>r.a===a&&r.m===m))),["--seq1","--seq2","--seq3","--seq4","--seq5"],{rowW:"110px"});else $("rAreaMet").innerHTML=vacio;
+  const al=[];
+  s.b.forEach(r=>{
+    if(r.can)return;
+    if(r.pe&&r.ok===0)al.push([3+(r.hs-r.lim)/100,r,`⏰ Lleva ${hTxt(r.hs)} (límite ${r.lim} h)`,"c"]);
+    else if(r.inc&&!r.ent)al.push([2+r.edad/1000,r,`⚠️ Problema: ${esc(r.mot)}`,"c"]);
+    else if(r.dup&&!r.ent)al.push([1,r,"Duplicado (ID + Área)","w"]);
+  });
+  al.sort((a,b)=>b[0]-a[0]);
+  $("rAlertN").textContent=al.length?`${al.length} pedidos · los más urgentes primero`:"Nada pendiente 🎉";
+  tabla("rAlert",[["Pedido"],["Área"],["Envío"],["Motivo",1]],al.slice(0,15).map(([_,r,t,c])=>`<tr><td class="num"><b>${esc(r.id)}</b></td><td>${esc(r.a)}</td><td>${esc(r.paq||r.pla||r.m)}</td><td class="r">${chip(c,t)}</td></tr>`));
+}
+
+// ---------- 2 INCIDENCIAS ----------
+function incidencias(s){
+  const R0=s.rows,P=s.prev,n=R0.length,I=R0.filter(r=>r.inc),tasa=n?I.length/n*100:0;
+  const abiertas=s.b.filter(r=>r.inc&&!r.ent&&!r.can);
+  const tipos=countBy(I,r=>r.mot);
+  const pq=[...groupBy(R0.filter(r=>r.paq),r=>r.paq)].map(([k,v])=>[k,v.length,cnt(v,r=>r.inc),cnt(v,r=>r.inc)/v.length]).sort((a,b)=>b[3]-a[3]||b[2]-a[2]);
+  const pqTop=pq.filter(x=>x[1]>=5)[0]||pq[0];
+  kpis("kInc",[
+    ["alarm","Incidencias",fmt(I.length),"",`${delta(I.length,P&&cnt(P,r=>r.inc),true)} vs mes anterior`],
+    [tasa>META_INC?"alarm":"","Por cada 100 envíos",tasa.toFixed(1),"",chip(tasa<=META_INC?"g":"c",tasa<=META_INC?"✓ bajo la meta":"✕ arriba de "+META_INC)],
+    ["alarm","Abiertas ahora",fmt(abiertas.length),"","con problema y sin entregar"],
+    ["","Problema más frecuente",tipos.length?esc(tipos[0][0]):"—","",tipos.length?`${fmt(tipos[0][1])} · ${pct(tipos[0][1]/I.length,0)} del total`:""],
+    ["","Paquetería con más problemas",pqTop&&pqTop[2]?esc(pqTop[0]):"—","",pqTop&&pqTop[2]?chip("c",pct(pqTop[3],0)+" de sus envíos"):""],
+    ["alarm","Retornos",fmt(cnt(R0,r=>r.ret)),"",`${pct(n?cnt(R0,r=>r.ret)/n:0)} de los pedidos`],
+  ]);
+  vbars($("iMes"),MESES,s.ms.map(x=>x?cnt(x,r=>r.inc):null),{color:css("--red4"),hi:s.hi});
+  const tm=s.ms.map(x=>x&&x.length?cnt(x,r=>r.inc)/x.length*100:null);
+  lines($("iTasa"),MESES,[["Por cada 100",css("--red4"),tm]],{fmt:v=>v.toFixed(1),max:Math.max(10,Math.ceil(Math.max(0,...tm.filter(v=>v!=null))/2)*2+2),meta:META_INC});
+  let acc=0;
+  if(tipos.length)hbars($("iPareto"),tipos.slice(0,10).map(([k,v])=>{acc+=v;return [k,v,css(acc/I.length<=.8?"--red4":"--red2"),`${fmt(v)} · ${pct(acc/I.length,0)}`];}),{tip:r=>`<b>${esc(r[0])}</b><br>${r[3].replace(" · "," incidencias · acumulado ")}`});else $("iPareto").innerHTML=vacio;
+  const ia=[...groupBy(R0,r=>r.a)].map(([k,v])=>{const i=cnt(v,r=>r.inc);return [k,i,null,`${fmt(i)} · ${(i/v.length*100).toFixed(1)}/100`];}).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
+  if(ia.length)hbars($("iArea"),ia,{color:css("--red4")});else $("iArea").innerHTML=vacio;
+  const lug=[...groupBy(R0,r=>r.z)].map(([k,v])=>[k,cnt(v,r=>r.inc),cnt(v,r=>r.inc)/v.length]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const lmax=Math.max(1,...lug.map(l=>l[1]));
+  tabla("iLug",[["Destino"],["Incidencias"],["Tasa",1]],lug.map(l=>`<tr><td>${esc(l[0])}</td><td><div class="bar-cell"><span class="b" style="background:var(--red4);width:${(l[1]/lmax*90).toFixed(0)}px"></span><span class="num">${fmt(l[1])}</span></div></td><td class="r">${rateChip(l[2],.05,.09)}</td></tr>`));
+  tabla("iPaq",[["Paquetería"],["Envíos",1],["Incidencias",1],["Tasa",1]],pq.map(q=>`<tr><td>${esc(q[0])}</td><td class="r num">${fmt(q[1])}</td><td class="r num">${fmt(q[2])}</td><td class="r">${rateChip(q[3],.05,.09)}</td></tr>`));
+  const zs=countBy(I,r=>r.z).slice(0,8).map(x=>x[0]),ts=tipos.slice(0,7).map(x=>x[0]);
+  if(zs.length)heat($("iHeat"),zs,ts.map(t=>t.length>22?t.slice(0,20)+"…":t),zs.map(z=>ts.map(t=>cnt(I,r=>r.z===z&&r.mot===t))),["--red1","--red2","--red3","--red4","--red5"],{colW:"minmax(72px,1fr)"});else $("iHeat").innerHTML=vacio;
+  tabla("iAbiertos",[["Pedido"],["Área"],["Envío"],["Problema"],["Desde registro",1]],abiertas.sort((a,b)=>b.edad-a.edad).slice(0,12).map(r=>`<tr><td class="num"><b>${esc(r.id)}</b></td><td>${esc(r.a)}</td><td>${esc(r.paq||r.m)}</td><td>${esc(r.mot)}</td><td class="r">${chip(r.edad>5?"c":r.edad>2?"w":"g",r.edad+" días")}</td></tr>`));
+  const cl=[...groupBy(s.b.filter(r=>r.inc&&r.edad<=90&&r.nom),r=>r.nom+" · "+r.a)].filter(([k,v])=>v.length>=2).sort((a,b)=>b[1].length-a[1].length).slice(0,10);
+  tabla("iCli",[["Cliente"],["Destino"],["Veces",1]],cl.map(([k,v])=>`<tr data-tip="<b>${esc(k)}</b><br>Problema más común: ${esc(moda(v,r=>r.mot))}"><td>${esc(k)}</td><td>${esc(moda(v,r=>r.z))}</td><td class="r">${chip(v.length>=3?"c":"w",v.length+"×")}</td></tr>`));bindTips($("iCli"));
+}
+
+// ---------- 3 COSTOS ----------
+function costos(s){
+  const R0=s.rows,P=s.prev,g=sum(R0,r=>r.cos),gP=sum(R0.filter(r=>r.m===M_PAQ),r=>r.cos),gU=sum(R0.filter(r=>r.m===M_UBER),r=>r.cos);
+  const guias=R0.filter(r=>r.m===M_PAQ&&r.cos>0);
+  const porPaq=[...groupBy(guias.filter(r=>r.paq),r=>r.paq)].map(([k,v])=>[k,avg(v,r=>r.cos),v.length]).sort((a,b)=>b[1]-a[1]);
+  kpis("kCos",[
+    ["hero","Gasto total",mxn(g),"",`${delta(g,P&&sum(P,r=>r.cos),true)} vs mes anterior`],
+    ["","Paquetería",mxn(gP),"",g?pct(gP/g,0)+" del gasto":""],
+    ["","UBER",mxn(gU),"",g?pct(gU/g,0)+" del gasto":""],
+    ["","Costo promedio por guía",guias.length?mxn(gP/guias.length):"—","",fmt(guias.length)+" guías con costo"],
+    ["","Guía más cara",porPaq.length?esc(porPaq[0][0]):"—","",porPaq.length?mxn(porPaq[0][1])+" promedio":""],
+    ["","Gasto por día hábil",mxn(g/s.dh),"",`${s.dh} días hábiles`],
+  ]);
+  const otros=x=>x?sum(x.filter(r=>r.m!==M_PAQ&&r.m!==M_UBER),r=>r.cos):0;
+  const ser=[["Paquetería",css("--s1"),s.ms.map(x=>x?sum(x.filter(r=>r.m===M_PAQ),r=>r.cos):0)],["UBER",css("--s3"),s.ms.map(x=>x?sum(x.filter(r=>r.m===M_UBER),r=>r.cos):0)]];
+  if(s.ms.some(x=>otros(x)>0))ser.push(["Otros",css("--s5"),s.ms.map(otros)]);
+  stacked($("cMes"),MESES,ser,{fmt:mxn,axfmt:v=>v>=1000?"$"+(v/1000).toFixed(0)+"k":"$"+v});
+  $("cMesLeg").innerHTML=ser.map(l=>`<span><i style="background:${l[1]}"></i>${l[0]}</span>`).join("");
+  const ga=[...groupBy(R0,r=>r.a)].map(([k,v])=>[k,sum(v,r=>r.cos)]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
+  ga.length?hbars($("cArea"),ga,{fmt:mxn}):$("cArea").innerHTML=vacio;
+  porPaq.length?hbars($("cPaq"),porPaq.map(x=>[x[0],x[1]]),{fmt:mxn,color:css("--seq4"),tip:r=>`<b>${esc(r[0])}</b><br>${mxn(r[1])} por guía`}):$("cPaq").innerHTML=vacio;
+  const cd=[...groupBy(R0.filter(r=>r.cos>0),r=>r.z)].map(([k,v])=>[k,avg(v,r=>r.cos)]).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  cd.length?hbars($("cDes"),cd,{fmt:mxn,color:css("--seq4")}):$("cDes").innerHTML=vacio;
+  const rows=s.ms.map((x,i)=>x&&x.length?[i,x]:null).filter(Boolean);let tt=[0,0,0,0,0];
+  $("cTabla").innerHTML=`<thead><tr><th>Mes</th><th class="r">Pedidos</th><th class="r">Paquetería</th><th class="r">UBER</th><th class="r">Gasto total</th><th class="r">Costo / pedido</th><th class="r">Incidencias</th><th class="r">vs mes ant.</th></tr></thead><tbody>${rows.map(([i,x],k)=>{const gg=sum(x,r=>r.cos),gp=sum(x.filter(r=>r.m===M_PAQ),r=>r.cos),gu=sum(x.filter(r=>r.m===M_UBER),r=>r.cos),ic=cnt(x,r=>r.inc);tt[0]+=x.length;tt[1]+=gg;tt[2]+=ic;tt[3]+=gp;tt[4]+=gu;const pv=k?sum(rows[k-1][1],r=>r.cos):null;return `<tr${s.hi===i?' style="background:var(--gold-soft)"':""}><td>${MESES_L[i]}</td><td class="r num">${fmt(x.length)}</td><td class="r num">${mxn(gp)}</td><td class="r num">${mxn(gu)}</td><td class="r num"><b>${mxn(gg)}</b></td><td class="r num">${mxn(gg/x.length)}</td><td class="r num">${fmt(ic)}</td><td class="r">${delta(gg,pv,true)}</td></tr>`;}).join("")}</tbody><tfoot><tr><td>Total ${s.y}</td><td class="r num">${fmt(tt[0])}</td><td class="r num">${mxn(tt[3])}</td><td class="r num">${mxn(tt[4])}</td><td class="r num">${mxn(tt[1])}</td><td class="r num">${tt[0]?mxn(tt[1]/tt[0]):"—"}</td><td class="r num">${fmt(tt[2])}</td><td></td></tr></tfoot>`;
+}
+
+// ---------- 4 TIEMPOS ----------
+function tiempos(s){
+  const R0=s.rows,gen=cumple(R0),ci=cumple(R0,"INT"),cm=cumple(R0,"IMSS"),cp=cumple(R0,"PAQ");
+  const tr=avg(R0,r=>r.tr),fuera=R0.filter(r=>r.ok===0);
+  const nMed=t=>cnt(R0,r=>r.t===t&&r.ok!=null);
+  kpis("kTie",[
+    ["hero","Cumplimos nuestros compromisos",gen==null?"—":(gen*100).toFixed(1),gen==null?"":"%",`${semChip(gen)} los 3 tipos juntos`],
+    ["",`Logística interna ≤ ${R.int} h`,ci==null?"—":(ci*100).toFixed(1),ci==null?"":"%",`${semChip(ci)} ${fmt(nMed("INT"))} pedidos`],
+    ["",`Guías IMSS Morelia ≤ ${R.imss} h`,cm==null?"—":(cm*100).toFixed(1),cm==null?"":"%",`${semChip(cm)} ${fmt(nMed("IMSS"))} guías`],
+    ["",`Paquetería: gestión ≤ ${R.paq} h`,cp==null?"—":(cp*100).toFixed(1),cp==null?"":"%",`${semChip(cp)} ${fmt(nMed("PAQ"))} envíos`],
+    ["","Tránsito de paquetería",tr==null?"—":tr.toFixed(1),tr==null?"":" días","salida → entrega · lo controla la paquetería"],
+    [fuera.length?"alarm":"","Fuera de compromiso",fmt(fuera.length)," pedidos","ver lista abajo"],
+  ]);
+  const ser=[[`Logística interna ≤${R.int} h`,css("--s2"),"INT"],[`Guías IMSS ≤${R.imss} h`,css("--s3"),"IMSS"],[`Paquetería gestión ≤${R.paq} h`,css("--s1"),"PAQ"]].map(([l,c,t])=>[l,c,s.ms.map(x=>x?cumple(x,t):null)]);
+  const mn=Math.min(.8,...ser.flatMap(x=>x[2]).filter(v=>v!=null).map(v=>Math.floor((v-.05)*10)/10));
+  lines($("tMes"),MESES,ser,{fmt:v=>pct(v,0),min:Math.max(0,mn),max:1,meta:META});
+  $("tMesLeg").innerHTML=ser.map(x=>`<span><i style="background:${x[1]}"></i>${x[0]}</span>`).join("");
+  const sp=[...groupBy(R0.filter(r=>r.t==="PAQ"||r.t==="IMSS"),r=>r.paq||"Sin paquetería")].map(([k,v])=>[k,avg(v.filter(r=>!r.pe),r=>r.hs)||0,(avg(v,r=>r.tr)||0)*24,v.length]).filter(x=>x[1]||x[2]).sort((a,b)=>b[3]-a[3]).slice(0,10);
+  const mx=Math.max(R.paq*1.2,...sp.map(x=>x[1]+x[2]))*1.05;
+  $("tSplit").innerHTML=!sp.length?vacio:`<div class="sp">${sp.map(x=>`<div class="row" data-tip="<b>${esc(x[0])}</b> · ${x[3]} envíos<br>Gestión nuestra: ${x[1].toFixed(0)} h${x[1]>R.paq?" (pasó de "+R.paq+" h)":""}<br>Tránsito: ${x[2].toFixed(0)} h (${(x[2]/24).toFixed(1)} días)<br>Total: ${(x[1]+x[2]).toFixed(0)} h"><span>${esc(x[0])}</span><span class="bar"><i style="width:${x[1]/mx*100}%;background:var(${x[1]>R.paq?"--red4":"--s1"})"></i><i style="width:${x[2]/mx*100}%;background:var(--seq2)"></i><span class="mk" style="left:${R.paq/mx*100}%"></span></span><span class="v num">${(x[1]+x[2]).toFixed(0)} h</span></div>`).join("")}</div>`;bindTips($("tSplit"));
+  const buckets=(rows,cuts)=>cuts.map((c,i)=>cnt(rows,r=>r.hs!=null&&!r.pe&&r.hs>=(i?cuts[i-1]:0)&&(c==null||r.hs<c)));
+  const ci_=[12,24,36,48,72,null],cm_=[6,12,24,36,48,null];
+  vbars($("tHist"),["< 12 h","12–24","24–36","36–48","48–72","> 72 h"],buckets(R0.filter(r=>r.t==="INT"),ci_),{color:i=>css(i<4?"--s1":"--red4"),valueLabels:true});
+  vbars($("tImss"),["< 6 h","6–12","12–24","24–36","36–48","> 48 h"],buckets(R0.filter(r=>r.t==="IMSS"),cm_),{color:i=>css(i<4?"--s1":"--red4"),valueLabels:true});
+  const med=R0.filter(r=>r.hs!=null&&!r.pe),cl=v=>css(v<=36?"--s1":v<=48?"--warn":"--red4");
+  const dias=DIAS7.slice(0,med.some(r=>r.lsD===6)?7:6);
+  vbars($("tEntDia"),dias,dias.map((_,d)=>avg(med.filter(r=>r.lsD===d),r=>r.hs)),{fmt:v=>v.toFixed(0)+" h",axfmt:v=>v.toFixed(0),color:(i,v)=>cl(v),valueLabels:true});
+  const hb=[["Antes de 10",0,10],["10–12",10,12],["12–14",12,14],["14–16",14,16],["Después de 16",16,24]];
+  vbars($("tEntHora"),hb.map(h=>h[0]),hb.map(h=>avg(med.filter(r=>r.lsH>=h[1]&&r.lsH<h[2]),r=>r.hs)),{fmt:v=>v.toFixed(0)+" h",axfmt:v=>v.toFixed(0),color:(i,v)=>cl(v),valueLabels:true});
+  const tp=[...groupBy(R0.filter(r=>r.paq&&(r.t==="PAQ"||r.t==="IMSS")),r=>r.paq)].sort((a,b)=>b[1].length-a[1].length);
+  tabla("tPaq",[["Paquetería"],["Envíos",1],["Gestión nuestra",1],[`≤ ${R.paq} h`,1],["Tránsito",1],["Llegó en la ETA",1]],tp.map(([k,v])=>{const g=avg(v.filter(r=>!r.pe),r=>r.hs),c=cumple(v),t=avg(v,r=>r.tr),e=v.filter(r=>r.eta!=null),ep=e.length?cnt(e,r=>r.eta)/e.length:null;return `<tr><td>${esc(k)}</td><td class="r num">${fmt(v.length)}</td><td class="r num">${g==null?"—":g.toFixed(0)+" h"}</td><td class="r">${c==null?"—":chip(sem(c)[0],pct(c))}</td><td class="r num">${t==null?"—":t.toFixed(1)+" días"}</td><td class="r">${ep==null?"—":chip(sem(ep,.9)[0],pct(ep,0))}</td></tr>`;}));
+  const hrs=[8,9,10,11,12,13,14,15,16,17,18,19],hk=h=>Math.min(19,Math.max(8,h));
+  heat($("tHeat"),DIAS7.slice(0,6),hrs.map(String),DIAS7.slice(0,6).map((d,di)=>hrs.map(h=>cnt(R0,r=>r.dw===di&&hk(r.hr)===h))),["--seq1","--seq2","--seq3","--seq4","--seq5"],{rowW:"40px",colW:"minmax(18px,1fr)",show:false,unit:" pedidos",minW:0});
+  tabla("tFuera",[["ID"],["Área"],["Tipo"],["Empezó a contar"],["Tardó",1],["Compromiso",1],["Motivo (col. AC)"]],fuera.sort((a,b)=>(b.hs-b.lim)-(a.hs-a.lim)).slice(0,20).map(r=>`<tr><td class="num">${esc(r.id)}</td><td>${esc(r.a)}</td><td>${TIPO_L[r.t]}${r.paq?" · "+esc(r.paq):""}</td><td class="num">${esc(r.lsTxt)}</td><td class="r">${chip("c",(r.pe?"lleva ":"")+hTxt(r.hs))}</td><td class="r num">${r.lim} h</td><td>${esc(r.mot)||"—"}</td></tr>`));
+  $("tFueraN").textContent=fuera.length>20?`Los 20 más tardados de ${fmt(fuera.length)}`:"Pedidos que pasaron su tiempo · para revisar con el equipo";
+}
+
+// ---------- 5 LOGÍSTICA INTERNA ----------
+function interna(s){
+  const R0=s.rows,I=R0.filter(r=>r.m===M_INT),viajeK=r=>r.veh&&r.dV?r.veh+"|"+r.dV:null;
+  const viajes=new Set(I.map(viajeK).filter(Boolean)).size;
+  const flota=(D.listas.vehiculos.length?D.listas.vehiculos:[...new Set(I.map(r=>r.veh).filter(Boolean))]).filter(v=>!/sin veh/i.test(v));
+  const usoV=v=>new Set(I.filter(r=>r.veh===v&&r.dV).map(r=>r.dV)).size/s.dh;
+  const activos=flota.filter(v=>I.some(r=>r.veh===v)).length,uso=flota.length?avg(flota,usoV):null;
+  const rec=R0.filter(r=>r.m===M_REC),ci=cumple(I,"INT");
+  kpis("kInt",[
+    ["hero","Entregas propias",fmt(I.length),"",`${pct(R0.length?I.length/R0.length:0,0)} de todos los pedidos`],
+    ["","Viajes",fmt(viajes),"",viajes?`${(I.filter(viajeK).length/viajes).toFixed(1)} entregas por viaje`:"vehículo + día"],
+    ["","Vehículos activos",fmt(activos),"/ "+flota.length,"con al menos una salida"],
+    ["","Uso de flota",pct(uso,0),"","días hábiles con salida"],
+    ["","Recolecciones",fmt(rec.length),"","materia prima, compras, etc."],
+    ["",`A tiempo ≤ ${R.int} h`,pct(ci),"",semChip(ci)],
+  ]);
+  const vs=[...new Set(flota.concat(I.map(r=>r.veh).filter(Boolean)))],cols=["--s1","--s2","--s3","--s4","--s5"];
+  lines($("vMes"),MESES,vs.map((v,i)=>[v,css(cols[i%5]),s.ms.map(x=>x?new Set(x.filter(r=>r.m===M_INT&&r.veh===v&&r.dV).map(r=>r.dV)).size:null)]));
+  $("vLeg").innerHTML=vs.map((v,i)=>`<span><i style="background:var(${cols[i%5]})"></i>${esc(v)}</span>`).join("");
+  flota.length?hbars($("vUso"),flota.map(v=>{const u=usoV(v);return [v,u,css(u>=.7?"--s1":u>=.5?"--warn":"--red4"),pct(u,0)];}),{tip:r=>`<b>${esc(r[0])}</b><br>Salió ${Math.round(r[1]*s.dh)} de ${s.dh} días hábiles`}):$("vUso").innerHTML=vacio;
+  const wd=k=>{const p=k.split("-");return (new Date(+p[0],+p[1]-1,+p[2]).getDay()+6)%7;};
+  vs.length?heat($("vHeat"),vs,DIAS7.slice(0,6),vs.map(v=>DIAS7.slice(0,6).map((_,d)=>new Set(I.filter(r=>r.veh===v&&r.dV&&wd(r.dV)===d).map(r=>r.dV)).size)),["--seq1","--seq2","--seq3","--seq4","--seq5"],{rowW:"140px",unit:" viajes"}):$("vHeat").innerHTML=vacio;
+  if(rec.length){hbars($("vRec"),countBy(rec,r=>r.sub||r.a),{color:css("--s4"),fmt:v=>fmt(v)+" rec."});$("vRecNeed").hidden=true;}else{$("vRec").innerHTML="";$("vRecNeed").hidden=false;}
+  const gs=[...groupBy(I.filter(r=>r.ges),r=>r.ges)].sort((a,b)=>b[1].length-a[1].length),gmax=Math.max(1,...gs.map(g=>g[1].length));
+  tabla("gTabla",[["Gestor"],["Entregas"],["Días con salida",1],["Listo → entrega",1],["Incidencias",1],[`≤ ${R.int} h`,1]],gs.map(([k,v])=>{const h=avg(v.filter(r=>!r.pe),r=>r.hs),ic=cnt(v,r=>r.inc),c=cumple(v);return `<tr><td>${esc(k)}</td><td><div class="bar-cell"><span class="b" style="background:var(--s2);width:${(v.length/gmax*100).toFixed(0)}px"></span><span class="num">${fmt(v.length)}</span></div></td><td class="r num">${fmt(new Set(v.map(r=>r.dV).filter(Boolean)).size)}</td><td class="r num">${h==null?"—":h.toFixed(0)+" h"}</td><td class="r">${chip(ic>3?"c":ic>1?"w":"g",fmt(ic))}</td><td class="r">${c==null?"—":chip(sem(c)[0],pct(c))}</td></tr>`;}));
+}
+
+// ---------- 6 DESTINOS ----------
+function destinos(s){
+  const R0=s.rows,zs=[...groupBy(R0,r=>r.z)].sort((a,b)=>b[1].length-a[1].length);
+  const sucL=D.listas.sucursales.map(x=>x.toUpperCase()),esSuc=r=>sucL.includes((r.sub||"").toUpperCase())||/^sucursal$/i.test(r.z);
+  const fueraR=v=>{const m=v.filter(r=>r.ok!=null);return m.length?cnt(m,r=>!r.ok)/m.length:null;};
+  const peor=zs.filter(([k,v])=>v.length>=5&&fueraR(v)!=null).map(([k,v])=>[k,fueraR(v)]).sort((a,b)=>b[1]-a[1])[0];
+  const suc=R0.filter(esSuc);
+  kpis("kDes",[
+    ["hero","Destinos atendidos",fmt(zs.length),"","estados, ciudades y sucursales"],
+    ["","Destino principal",zs.length?esc(zs[0][0].replace(" (CDMX)","")):"—","",zs.length?pct(zs[0][1].length/R0.length,0)+" de los pedidos":""],
+    [peor&&peor[1]>0?"alarm":"","Destino con más atraso",peor&&peor[1]>0?esc(peor[0]):"—","",peor&&peor[1]>0?chip("c",pct(peor[1],0)+" fuera de tiempo"):"con 5 pedidos o más"],
+    ["","Envíos a sucursales",fmt(suc.length),"",R0.length?pct(suc.length/R0.length,0)+" del total":""],
+  ]);
+  const zmax=Math.max(1,...zs.map(z=>z[1].length));
+  tabla("dTabla",[["Destino"],["Pedidos"],["Gasto",1],["Costo prom.",1],["Días entrega",1],["Incidencias",1],["Fuera de tiempo",1],["Envío principal"]],zs.map(([k,v])=>{const g=sum(v,r=>r.cos),cc=avg(v.filter(r=>r.cos>0),r=>r.cos),de=avg(v,r=>r.he==null?null:r.he/24),fr=fueraR(v);return `<tr><td>${esc(k)}</td><td><div class="bar-cell"><span class="b" style="width:${(v.length/zmax*100).toFixed(0)}px"></span><span class="num">${fmt(v.length)}</span></div></td><td class="r num">${mxn(g)}</td><td class="r num">${cc==null?"—":mxn(cc)}</td><td class="r num">${de==null?"—":de.toFixed(1)}</td><td class="r num">${fmt(cnt(v,r=>r.inc))}</td><td class="r">${fr==null?"—":rateChip(fr,.05,.1)}</td><td>${esc(moda(v,r=>r.paq||r.m))}</td></tr>`;}));
+  const pz=countBy(R0.filter(r=>r.paq),r=>r.paq).slice(0,6).map(x=>x[0]),zz=zs.filter(([k,v])=>v.some(r=>r.paq)).slice(0,10).map(x=>x[0]);
+  pz.length&&zz.length?heat($("dHeat"),zz,pz,zz.map(z=>pz.map(q=>cnt(R0,r=>r.z===z&&r.paq===q))),["--seq1","--seq2","--seq3","--seq4","--seq5"],{colW:"minmax(64px,1fr)"}):$("dHeat").innerHTML=vacio;
+  tabla("dSuc",[["Sucursal"],["Pedidos",1],["Días entrega",1],["A tiempo",1]],[...groupBy(suc,r=>r.sub||r.z)].sort((a,b)=>b[1].length-a[1].length).map(([k,v])=>{const de=avg(v,r=>r.he==null?null:r.he/24),c=cumple(v);return `<tr><td>${esc(k)}</td><td class="r num">${fmt(v.length)}</td><td class="r num">${de==null?"—":de.toFixed(1)}</td><td class="r">${c==null?"—":chip(sem(c)[0],pct(c,0))}</td></tr>`;}));
+}
+
+function render(){
+  if(!D)return;save();const s=periodo();renderTabs(s);
+  try{({resumen,incidencias,costos,tiempos,interna,destinos})[cur](s);}catch(e){console.error(e);}
+  const g=D.generado.split("T"),hh=g[1].slice(0,5);
+  $("upd").textContent=`Datos leídos ${g[0]===D.hoy?"hoy":g[0]} a las ${hh} · ${fmt(D.filas.length)} pedidos`;
+}
+[fMes,fArea,fMet].forEach(x=>x.addEventListener("change",render));
+fAnio.addEventListener("change",()=>{llenarMeses("all");render();});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",render);
+
+function estado(t,err){const e=$("estado");e.hidden=!t;e.className="sample"+(err?" err":"");e.innerHTML=t||"";}
+function cargar(forzar){
+  $("btnAct").disabled=true;if(!D)estado("<b>Cargando</b><span>Leyendo tu hoja Operaciones…</span>");
+  google.script.run.withSuccessHandler(txt=>{
+    D=JSON.parse(txt);META=D.reglas.meta;META_INC=D.reglas.metaInc;R=D.reglas;
+    llenarFiltros();estado("");$("btnAct").disabled=false;render();
+  }).withFailureHandler(err=>{
+    $("btnAct").disabled=false;estado(`<b>No pude leer</b><span>${esc(err&&err.message||err)}. Avísale a Logística.</span>`,true);
+  }).tableroDatos(!!forzar);
+}
+$("btnAct").onclick=()=>cargar(true);
+cargar(false);
+setInterval(()=>{if(!document.hidden)cargar(false);},5*60*1000); // se refresca solo cada 5 minutos
+})();
+
+</script>
+</body>
+</html>
