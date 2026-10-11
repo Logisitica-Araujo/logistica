@@ -1,5 +1,5 @@
 // ============================================================
-//  TABLERO LOGÍSTICO FED 2026 — Web App (proyecto SEPARADO)
+//  REPORTE LOGÍSTICA — Web App (proyecto SEPARADO)
 //
 //  Qué hace:
 //    1) Publica una página web (el tablero) que lee en vivo las hojas
@@ -60,7 +60,7 @@ const M_INTERNA = "Logística Interna", M_PAQ = "Paquetería Externa", M_UBER = 
 // ============================================================
 function doGet() {
   return HtmlService.createTemplateFromFile("Tablero").evaluate()
-    .setTitle("Tablero Logístico FED 2026")
+    .setTitle("Reporte Logística")
     .addMetaTag("viewport", "width=device-width, initial-scale=1")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL); // permite pegarlo en Google Sites después
 }
@@ -367,8 +367,8 @@ function tabEnviarCorreo_(para, prueba) {
 
   const html = '<div style="font-family:Arial,sans-serif;color:#1B2430;max-width:680px">' +
     (prueba ? '<p style="background:#F3ECDD;padding:8px 12px;border-radius:6px;font-size:12px">PRUEBA — así le llegará a ' + TAB.NOMBRE_JEFA + " el día 1.</p>" : "") +
-    '<div style="background:#1B2430;color:#F4F1EA;padding:18px 20px;border-bottom:3px solid #B8975A"><div style="font-size:10px;letter-spacing:.18em;color:#B8975A;font-weight:700">FADERMEX · LOGÍSTICA</div><div style="font-size:20px;font-weight:700">Resumen de ' + mesTxt + "</div></div>" +
-    '<p style="font-size:14px">Hola ' + TAB.NOMBRE_JEFA.split(" ")[0] + ", este es el resumen logístico de " + mesTxt + ".</p>" +
+    '<div style="background:#1B2430;color:#F4F1EA;padding:18px 20px;border-bottom:3px solid #B8975A"><div style="font-size:10px;letter-spacing:.18em;color:#B8975A;font-weight:700">FADERMEX · TODAS LAS ÁREAS</div><div style="font-size:20px;font-weight:700">Reporte Logística · ' + mesTxt + "</div></div>" +
+    '<p style="font-size:14px">Hola ' + TAB.NOMBRE_JEFA.split(" ")[0] + ", este es el Reporte Logística de " + mesTxt + ".</p>" +
     '<table style="width:100%;border-spacing:6px"><tr>' +
     kpi("Pedidos", n.toLocaleString("es-MX"), delta(n, ant.length)) +
     kpi("Gasto en envíos", mx(gasto), delta(gasto, ant.reduce((s, f) => s + f.cos, 0))) +
@@ -384,10 +384,10 @@ function tabEnviarCorreo_(para, prueba) {
     '<h3 style="font-size:14px;margin:18px 0 6px">Fuera de compromiso (' + fuera.length + ")</h3>" +
     (fuera.length ? '<table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="color:#7C8592;text-align:left"><th>ID</th><th>Área</th><th>Tipo</th><th>Tardó</th><th>Motivo</th></tr>' +
       fuera.slice(0, 10).map(f => '<tr style="border-top:1px solid #E3E6EB"><td style="padding:4px 0">' + f.id + "</td><td>" + f.a + "</td><td>" + tabNombreTipo_(f.t) + '</td><td style="color:#c23535">' + Math.round(f.hs) + " h / " + f.lim + " h</td><td>" + (f.mot || "—") + "</td></tr>").join("") + "</table>" : '<p style="font-size:13px">Todo dentro de tiempo ✅</p>') +
-    (url ? '<p style="margin-top:22px"><a href="' + url + '" style="background:#1B2430;color:#F4F1EA;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:700">Abrir el tablero completo</a></p>' : "") +
-    '<p style="font-size:11px;color:#7C8592;margin-top:20px">Horas hábiles: no cuentan sábados, domingos ni días festivos. Correo automático del Tablero Logístico FED.</p></div>';
+    (url ? '<p style="margin-top:22px"><a href="' + url + '" style="background:#1B2430;color:#F4F1EA;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:700">Abrir el Reporte Logística completo</a></p>' : "") +
+    '<p style="font-size:11px;color:#7C8592;margin-top:20px">Horas hábiles: no cuentan sábados, domingos ni días festivos. Correo automático de Reporte Logística.</p></div>';
 
-  MailApp.sendEmail({ to: para, subject: (prueba ? "[PRUEBA] " : "") + "Resumen logístico de " + mesTxt + " · Fadermex", htmlBody: html, name: "Tablero Logístico FED" });
+  MailApp.sendEmail({ to: para, subject: (prueba ? "[PRUEBA] " : "") + "Reporte Logística · " + mesTxt, htmlBody: html, name: "Reporte Logística" });
   Logger.log("✅ Correo enviado a " + para);
 }
 

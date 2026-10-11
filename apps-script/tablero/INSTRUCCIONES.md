@@ -1,4 +1,4 @@
-# Tablero Logístico FED: cómo instalarlo
+# Reporte Logística: cómo instalarlo
 
 Tiempo total: unos 15 minutos. Solo se hace una vez.
 
@@ -32,7 +32,7 @@ El tablero es un archivo **aparte**, así que no le pone peso a tu hoja de Opera
 ### 2.1 Crear el proyecto
 1. Abre https://script.google.com con tu cuenta de **@fadermex.com**.
 2. Da clic en **"+ Nuevo proyecto"**, arriba a la izquierda.
-3. Arriba, donde dice **"Proyecto sin título"**, da clic y escribe **Tablero Logístico FED**.
+3. Arriba, donde dice **"Proyecto sin título"**, da clic y escribe **Reporte Logística**.
 
 ### 2.2 Pegar el código (archivo 1 de 2)
 1. Ya está abierto un archivo llamado **Código.gs**. Borra todo lo que tiene (**Ctrl + A**, luego **Suprimir**).
@@ -54,7 +54,7 @@ El tablero es un archivo **aparte**, así que no le pone peso a tu hoja de Opera
 
 ### 2.5 Probar que lee tu hoja
 1. Arriba, en la lista de funciones, elige **TABLERO_PROBAR** y da clic en **▶ Ejecutar**.
-2. Google te pedirá permisos. Da clic en **Revisar permisos** → elige tu cuenta → **Configuración avanzada** → **Ir a Tablero Logístico FED (no seguro)** → **Permitir**.
+2. Google te pedirá permisos. Da clic en **Revisar permisos** → elige tu cuenta → **Configuración avanzada** → **Ir a Reporte Logística (no seguro)** → **Permitir**.
    - El aviso de "no seguro" es normal: aparece porque el script lo hiciste tú y no Google.
 3. Abajo, en el **Registro de ejecución**, debe aparecer algo como:
    `✅ Leí 1,234 pedidos de Operaciones en 3.1 s.`
