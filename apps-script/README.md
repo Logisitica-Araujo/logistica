@@ -3,6 +3,7 @@
 | Archivo | Qué es |
 |---|---|
 | `Operaciones.gs` | Script principal (v6.1): onEdit, fórmulas de autocompletado, fechas, TAREA, hora real de salida en AE. |
+| `Entregas_Correo.gs` | **Entregas automáticas**: cada 15 min lee los correos "entregado" de Skydropx y Mienvio, busca la guía en M y marca W + fecha en V. Va en el MISMO proyecto que Operaciones.gs (archivo aparte). |
 | `tablero/` | **Tablero de KPIs** (proyecto aparte, Web App). Instalación paso a paso: [`tablero/INSTRUCCIONES.md`](tablero/INSTRUCCIONES.md). |
 | `Diseno_Atajos.gs` | Presentación: diseño, menú ⚡ Atajos, filas compactas, auditoría. **Opcional** — no hace falta reemplazar el que ya tienes. |
 
