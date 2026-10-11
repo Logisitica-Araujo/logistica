@@ -98,7 +98,9 @@ function entRevisar_(dias, soloProbar) {
           const r = v[i];
           const fv = r[col(ENT.COL_ENT_FECHA)]; // V: fecha a mano o resultado de la fórmula de APP_Entregas
           const yaEntregado = r[col(ENT.COL_ENT_CHK)] === true || fv instanceof Date || (typeof fv === "number" && fv > 0);
-          const cancelado = r[col(ENT.COL_CAN_CHK)] === true;
+          // Cancelado o retornado: no se marca (el aviso de "entregado" de un
+          // retorno es la entrega de vuelta al remitente, no al cliente).
+          const cancelado = r[col(ENT.COL_CAN_CHK)] === true || r[col(ENT.COL_RET_CHK)] === true;
           const fila = ENT.FILA_INICIO + i;
           if (yaEntregado || cancelado) { yaEstaban.push(guia + " → fila " + fila); return; }
           hechos.push({ fila: fila, guia: guia, fecha: fecha, fuente: f.nombre });
@@ -117,7 +119,7 @@ function entRevisar_(dias, soloProbar) {
 
     Logger.log((soloProbar ? "🔎 PRUEBA (no se escribió nada). " : "✅ ") + "Entregas " + (soloProbar ? "que se marcarían" : "marcadas") + ": " + hechos.length);
     hechos.forEach(h => Logger.log("   • Fila " + h.fila + " · guía " + h.guia + " · " + h.fuente + " · " + Utilities.formatDate(h.fecha, tz, "EEE dd/MM HH:mm")));
-    Logger.log("Ya estaban entregadas o canceladas: " + yaEstaban.length);
+    Logger.log("Ya estaban entregadas, canceladas o retornadas: " + yaEstaban.length);
     if (sinPedido.length) Logger.log("⚠️ Guías entregadas que NO encontré en la columna M (" + sinPedido.length + "): " + sinPedido.join(", "));
   } finally {
     lock.releaseLock();

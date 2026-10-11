@@ -192,7 +192,7 @@ tfoot td{font-weight:700;border-top:2px solid var(--line)}
       <article class="panel c6 red"><div class="ph"><h2>Lugares con más problemas</h2><p>Incidencias y tasa por destino</p></div><div class="tbl"><table id="iLug"></table></div></article>
       <article class="panel c6 red"><div class="ph"><h2>Paqueterías con más problemas</h2><p>Tasa sobre sus propios envíos</p></div><div class="tbl"><table id="iPaq"></table></div></article>
       <article class="panel c12 red"><div class="ph"><h2>Mapa de calor: destino × tipo de problema</h2><p>Más rojo = más incidencias</p></div><div id="iHeat" class="tbl"></div><span class="q">Muestra qué falla y dónde.</span></article>
-      <article class="panel c7 red"><div class="ph"><h2>Problemas abiertos por antigüedad</h2><p>Con motivo en la columna AC y sin entregar · los más viejos primero</p></div><div class="tbl"><table id="iAbiertos"></table></div></article>
+      <article class="panel c7 red"><div class="ph"><h2>Problemas abiertos por antigüedad</h2><p>Con motivo en AC, sin entregar, cancelar ni retornar · los más viejos primero</p></div><div class="tbl"><table id="iAbiertos"></table></div></article>
       <article class="panel c5 red"><div class="ph"><h2>Clientes con incidencias repetidas</h2><p>2 o más en los últimos 90 días</p></div><div class="tbl"><table id="iCli"></table></div></article>
     </div>
   </section>
@@ -445,9 +445,9 @@ function resumen(s){
   if(areas.length)heat($("rAreaMet"),areas,mets.map(m=>m.replace("Paquetería Externa","Paquetería").replace("Logística Interna","Interna").replace("En ruta por otro método","Otro")),areas.map(a=>mets.map(m=>cnt(R0,r=>r.a===a&&r.m===m))),["--seq1","--seq2","--seq3","--seq4","--seq5"],{rowW:"110px"});else $("rAreaMet").innerHTML=vacio;
   const al=[];
   s.b.forEach(r=>{
-    if(r.can)return;
+    if(r.can||r.ret||r.ent)return; // cerrados: no requieren atención
     if(r.pe&&r.ok===0)al.push([3+(r.hs-r.lim)/100,r,`⏰ Lleva ${hTxt(r.hs)} (límite ${r.lim} h)`,"c"]);
-    else if(r.inc&&!r.ent)al.push([2+r.edad/1000,r,`⚠️ Problema: ${esc(r.mot)}`,"c"]);
+    else if(r.inc)al.push([2+r.edad/1000,r,`⚠️ Problema: ${esc(r.mot)}`,"c"]);
     else if(r.dup&&!r.ent)al.push([1,r,"Duplicado (ID + Área)","w"]);
   });
   al.sort((a,b)=>b[0]-a[0]);
@@ -458,14 +458,14 @@ function resumen(s){
 // ---------- 2 INCIDENCIAS ----------
 function incidencias(s){
   const R0=s.rows,P=s.prev,n=R0.length,I=R0.filter(r=>r.inc),tasa=n?I.length/n*100:0;
-  const abiertas=s.b.filter(r=>r.inc&&!r.ent&&!r.can);
+  const abiertas=s.b.filter(r=>r.inc&&!r.ent&&!r.can&&!r.ret); // un retorno ya es caso cerrado
   const tipos=countBy(I,r=>r.mot);
   const pq=[...groupBy(R0.filter(r=>r.paq),r=>r.paq)].map(([k,v])=>[k,v.length,cnt(v,r=>r.inc),cnt(v,r=>r.inc)/v.length]).sort((a,b)=>b[3]-a[3]||b[2]-a[2]);
   const pqTop=pq.filter(x=>x[1]>=5)[0]||pq[0];
   kpis("kInc",[
     ["alarm","Incidencias",fmt(I.length),"",`${delta(I.length,P&&cnt(P,r=>r.inc),true)} vs mes anterior`],
     [tasa>META_INC?"alarm":"","Por cada 100 envíos",tasa.toFixed(1),"",chip(tasa<=META_INC?"g":"c",tasa<=META_INC?"✓ bajo la meta":"✕ arriba de "+META_INC)],
-    ["alarm","Abiertas ahora",fmt(abiertas.length),"","con problema y sin entregar"],
+    ["alarm","Abiertas ahora",fmt(abiertas.length),"","con problema, sin entregar, cancelar ni retornar"],
     ["","Problema más frecuente",tipos.length?esc(tipos[0][0]):"—","",tipos.length?`${fmt(tipos[0][1])} · ${pct(tipos[0][1]/I.length,0)} del total`:""],
     ["","Paquetería con más problemas",pqTop&&pqTop[2]?esc(pqTop[0]):"—","",pqTop&&pqTop[2]?chip("c",pct(pqTop[3],0)+" de sus envíos"):""],
     ["alarm","Retornos",fmt(cnt(R0,r=>r.ret)),"",`${pct(n?cnt(R0,r=>r.ret)/n:0)} de los pedidos`],

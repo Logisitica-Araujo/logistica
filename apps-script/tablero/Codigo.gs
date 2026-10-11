@@ -150,9 +150,12 @@ function tabFila_(r, colMotivo, catIdx, festivos, ahora) {
 
   const metodo = t(TAB_OPS.METODO);
   const entFecha = tabFecha_(c(TAB_OPS.ENT_FECHA));
-  const ent = c(TAB_OPS.ENT_CHK) === true || !!entFecha;
-  const can = c(TAB_OPS.CAN_CHK) === true;
-  const ret = c(TAB_OPS.RET_CHK) === true;
+  // Cerrado = entregado, cancelado o retornado. Se toma la casilla, la fecha
+  // o el ESTATUS (P): cualquiera de los tres basta.
+  const est = t(TAB_OPS.ESTATUS);
+  const ent = c(TAB_OPS.ENT_CHK) === true || !!entFecha || (/ENTREGAD/i.test(est) && !/NO ENTREGAD/i.test(est));
+  const can = c(TAB_OPS.CAN_CHK) === true || !!tabFecha_(c(TAB_OPS.CAN_FECHA)) || /CANCELAD/i.test(est);
+  const ret = c(TAB_OPS.RET_CHK) === true || !!tabFecha_(c(TAB_OPS.RET_FECHA)) || /RETORNAD/i.test(est);
   const motivo = t(colMotivo);
   const costo = Number(c(TAB_OPS.COSTO));
   const salidaAuto = tabFecha_(c(TAB_OPS.SALIDA_AUTO));
@@ -177,7 +180,9 @@ function tabFila_(r, colMotivo, catIdx, festivos, ahora) {
   let hs = null, ok = null, pe = 0;
   if (tipo && !can && ini) {
     if (fin && fin >= ini) { hs = tabHorasHabiles_(ini, fin, festivos); ok = hs <= lim ? 1 : 0; }
-    else if (!fin && !ent) { pe = 1; hs = tabHorasHabiles_(ini, ahora, festivos); ok = hs > lim ? 0 : null; }
+    // Paquetería con guía ya capturada (M) = ya salió aunque no sepamos la hora
+    // (pedidos de antes de v6.1): no se cuenta como pendiente.
+    else if (!fin && !ent && !ret && !(tipo !== "INT" && real(t(TAB_OPS.GUIA)))) { pe = 1; hs = tabHorasHabiles_(ini, ahora, festivos); ok = hs > lim ? 0 : null; }
     else if (!fin && ent && entFecha >= ini) { // salió y se entregó sin hora de salida: se juzga con la entrega
       hs = tabHorasHabiles_(ini, entFecha, festivos); ok = hs <= lim ? 1 : null;
     }
@@ -202,7 +207,7 @@ function tabFila_(r, colMotivo, catIdx, festivos, ahora) {
     m: metodo || "Sin método", ges: real(t(TAB_OPS.GESTOR)) ? t(TAB_OPS.GESTOR) : "", veh: real(t(TAB_OPS.VEHICULO)) ? t(TAB_OPS.VEHICULO) : "",
     paq: real(t(TAB_OPS.PAQUETERIA)) ? t(TAB_OPS.PAQUETERIA) : "", pla: real(t(TAB_OPS.PLATAFORMA)) ? t(TAB_OPS.PLATAFORMA) : "",
     cos: isFinite(costo) && costo > 0 ? Math.round(costo * 100) / 100 : 0,
-    est: t(TAB_OPS.ESTATUS), guia: real(t(TAB_OPS.GUIA)) ? 1 : 0,
+    est: est, guia: real(t(TAB_OPS.GUIA)) ? 1 : 0,
     y: f.getFullYear(), mo: f.getMonth(), dw: (f.getDay() + 6) % 7, hr: f.getHours(),
     ent: ent ? 1 : 0, can: can ? 1 : 0, ret: ret ? 1 : 0, mot: motivo || (ret ? "Retorno" : ""), inc: inc, dup: dup,
     at: Number(c(TAB_OPS.ATRASO)) > 0 ? 1 : 0,
