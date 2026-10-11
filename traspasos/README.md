@@ -8,7 +8,7 @@ Sistema para registrar, etiquetar, mover y recibir traspasos entre sucursales, �
 ## Decisiones tomadas
 
 - **Lugares:** Oficinas (Dirección, Logística, Compras, Medicina Magistral, Encargada de PV, Gerente General, Contabilidad, Facturación, Recursos Humanos y más), Nueva Roma, Vertiz, Doctores, Coapa, Ecatepec y Morelia (cada sucursal con PV y Rebotica), y Botican como área propia.
-- **Cuentas y equipos:** PV y Rebotica comparten la cuenta de su sucursal, pero cada computadora queda fija a su área. PV no da entrada ni salida a lo de Rebotica, ni al revés.
+- **Cuentas y equipos:** PV y Rebotica comparten la cuenta de su sucursal. Las salidas (crear un traspaso y entregarlo a gestor) son por área. Las entradas las puede recibir cualquier computadora de la sucursal, y la app marca en grande PARA PV o PARA REBOTICA.
 - **Folio por área:** `NR-0001`, `NR-RB-0001`, `CONT-0001`, etc. Hay una etiqueta por bulto con código Code 128, y la reimpresión queda registrada.
 - **Al recibir o entregar:** basta escanear o teclear solo el folio.
 - **Estatus:** Nuevo, Recolectado por gestoría, En Logística, Enviado por paquetería, Entregado, Recibido con incidencia, El traspaso está en…, Extraviado, Eliminación solicitada.
@@ -16,7 +16,8 @@ Sistema para registrar, etiquetar, mover y recibir traspasos entre sucursales, �
 - **Administradores:** jaraujo@fadermex.com (dueño), Oramirez@fadermex.com y sistemasfed@fadermex.com, con control total. Los demás usuarios solo pueden solicitar la eliminación de un traspaso.
 - **Sesión:** se cierra a las 12 h en las computadoras de sucursales y áreas.
 - **Avisos:** cada área recibe aviso de traspasos nuevos para ella y de los que van en camino.
-- **Backend:** Google Apps Script + Google Sheets, el mismo que usa la app de gestores.
+- **Backend:** Google Apps Script + Google Sheets, en un archivo nuevo e independiente solo para traspasos.
+- **Recolecciones:** la app de gestores sigue guardando en el archivo de Operaciones (hoja APP_Traspasos). El archivo de traspasos las jala con IMPORTRANGE (hoja IMP_Recolecciones), las cruza por folio y actualiza los estatus.
 
 ## Pendientes
 

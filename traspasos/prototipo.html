@@ -27,6 +27,7 @@
   --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
   --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --pv:#0E6E5C; --pv-bg:#D3F1E8; --rb:#A3195B; --rb-bg:#FBDDEB;
   --r:10px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
@@ -43,6 +44,7 @@
   --s-paqueteria:#5CCFE6; --s-paqueteria-bg:#0D2E36;
   --s-en_logistica:#9DB4F0; --s-en_logistica-bg:#1A2645;
   --s-solicitud:#B3BFCA; --s-solicitud-bg:#26313B;
+  --pv:#5FD3B6; --pv-bg:#0F3229; --rb:#F47FB4; --rb-bg:#3D1328;
   color-scheme:dark;
 }}
 :root[data-theme="dark"]{
@@ -59,6 +61,7 @@
   --s-paqueteria:#5CCFE6; --s-paqueteria-bg:#0D2E36;
   --s-en_logistica:#9DB4F0; --s-en_logistica-bg:#1A2645;
   --s-solicitud:#B3BFCA; --s-solicitud-bg:#26313B;
+  --pv:#5FD3B6; --pv-bg:#0F3229; --rb:#F47FB4; --rb-bg:#3D1328;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -101,6 +104,9 @@ nav.tabs button[aria-current="page"]{background:var(--accent-soft);color:var(--a
 .bellitem{display:grid;gap:2px;text-align:left;border:none;background:var(--surface-2);border-radius:8px;padding:8px 10px;cursor:pointer;border-left:4px solid transparent}
 .bellitem.unseen{border-left-color:var(--s-nuevo);background:var(--s-nuevo-bg)}
 .logo{width:auto;min-width:54px;height:32px;padding:0 8px;border:2px dashed var(--muted);border-radius:7px;display:grid;place-items:center;font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.08em}
+.atag{display:inline-block;font-size:12px;font-weight:800;letter-spacing:.06em;padding:3px 9px;border-radius:6px;white-space:nowrap}
+.atag.pv{background:var(--pv-bg);color:var(--pv)}
+.atag.rb{background:var(--rb-bg);color:var(--rb)}
 .count{background:var(--err);color:#fff;border-radius:999px;font-size:11px;padding:1px 7px;font-weight:700}
 
 main{padding-block:22px 60px}
@@ -293,6 +299,9 @@ const P=Object.fromEntries(PUNTOS.map(p=>[p.id,p]));
 const SUCS=[...new Set(PUNTOS.map(p=>p.s))];
 const nom=id=>P[id].s===P[id].n?P[id].n:P[id].s==='Oficinas'?`Oficinas · ${P[id].n}`:`${P[id].s} · ${P[id].n}`;
 const isOf=id=>P[id].s==='Oficinas', isMor=id=>P[id].s==='Morelia';
+// En sucursales cualquiera puede recibir lo de PV o de Rebotica; en Oficinas cada área recibe lo suyo.
+const miSuc=(dest,me)=>dest===me||(!isOf(me)&&!isOf(dest)&&P[dest].s===P[me].s&&P[me].s!==P[me].n);
+const areaTag=id=>/-RB$/.test(id)?'<span class="atag rb">PARA REBOTICA</span>':(!isOf(id)&&P[id].n==='PV')?'<span class="atag pv">PARA PV</span>':'';
 
 const ESTATUS={
  nuevo:'Nuevo traspaso', recolectado:'Recolectado por gestoría', entregado:'Entregado', ubicado:'Está en otro lugar',
@@ -438,14 +447,14 @@ function renderHeader(){
 }
 
 /* ---------- Bandeja ---------- */
-function entrantes(me){return vivos().filter(t=>t.destino===me||(me==='LOG'&&t.via==='LOG'&&(!t.pasoLog||t.estatus==='en_logistica')))}
+function entrantes(me){return vivos().filter(t=>miSuc(t.destino,me)||(me==='LOG'&&t.via==='LOG'&&(!t.pasoLog||t.estatus==='en_logistica')))}
 function salientes(me){return vivos().filter(t=>t.origen===me)}
 function tcard(t,me){
   const otro=me&&t.origen===me?`<span class="arrow">→</span>${esc(nom(t.destino))}`:`${esc(nom(t.origen))}<span class="arrow">→</span>${esc(nom(t.destino))}`;
   const last=t.ev[t.ev.length-1];
   return `<button type="button" class="tcard" data-a="open" data-v="${t.folio}" style="color:var(--s-${t.estatus})">
    <span class="stripe"></span>
-   <span class="body"><span class="top"><span class="folio" style="color:var(--ink)">${t.folio}</span>${badge(t)}</span>
+   <span class="body"><span class="top"><span class="folio" style="color:var(--ink)">${t.folio}</span>${badge(t)}${areaTag(t.destino)}</span>
     <span class="route" style="color:var(--ink)">${otro}</span>
     <span class="desc">${esc(t.desc)}</span></span>
    <span class="side"><span class="bultos">${t.bultos} ${t.bultos>1?'bultos':'bulto'}</span><span>${esc(last.t)}</span><span>${esc(last.txt)}</span></span></button>`;
@@ -455,7 +464,7 @@ function viewBandeja(){
   const src=S.bandejaDir==='in'?entrantes(me):salientes(me);
   const counts={};src.forEach(t=>counts[t.estatus]=(counts[t.estatus]||0)+1);
   const list=src.filter(t=>!S.filtro||t.estatus===S.filtro).sort((a,b)=>order(a)-order(b));
-  return `<h1>Mi bandeja</h1><p class="sub">Solo ves los traspasos que van dirigidos a <b>${esc(nom(me))}</b> o que salieron de aquí. Esta pantalla es solo para consultar: para recibir o entregar usa el <b>Escáner</b>.</p>
+  return `<h1>Mi bandeja</h1><p class="sub">${isOf(me)?`Solo ves los traspasos que van dirigidos a <b>${esc(nom(me))}</b> o que salieron de aquí.`:`<b>Entrantes</b>: todo lo que llega a ${esc(P[me].s)} (PV y Rebotica); cualquiera lo puede recibir y cada traspaso dice para quién es. <b>Salientes</b>: solo lo que sale de ${esc(nom(me))}.`} Esta pantalla es solo para consultar: para recibir o entregar usa el <b>Escáner</b>.</p>
    <div class="seg" role="group"><button type="button" data-a="dir" data-v="in" aria-pressed="${S.bandejaDir==='in'}">Entrantes (${entrantes(me).length})</button><button type="button" data-a="dir" data-v="out" aria-pressed="${S.bandejaDir==='out'}">Salientes (${salientes(me).length})</button></div>
    <div class="summary">${Object.keys(ESTATUS).filter(k=>counts[k]).map(k=>`<button type="button" class="chip" data-a="filtro" data-v="${k}" aria-pressed="${S.filtro===k}"><span class="badge b-${k}">${ESTATUS[k]}</span><span class="n">${counts[k]}</span></button>`).join('')}</div>
    <div class="list">${list.length?list.map(t=>tcard(t,S.bandejaDir==='out'?me:null)).join(''):'<div class="empty">No hay traspasos aquí.</div>'}</div>`;
@@ -546,7 +555,7 @@ function validar(code,mode,me,lote){
   if(t.solicitud)return {k:'err',m:`${t.folio} tiene una solicitud de eliminación pendiente. No se debe mover hasta que responda un administrador.`};
   if(mode==='recibir'){
     const esLog=me==='LOG'&&t.via==='LOG'&&!t.pasoLog;
-    if(t.destino!==me&&!esLog)return {k:'err',m:`Este traspaso NO es para ${nom(me)}. Va para: ${nom(t.destino)}.`,t};
+    if(!miSuc(t.destino,me)&&!esLog)return {k:'err',m:`Este traspaso NO es para ${P[me].s===P[me].n||isOf(me)?nom(me):P[me].s}. Va para: ${nom(t.destino)}.`,t};
     if(t.estatus==='entregado')return {k:'warn',m:`${t.folio} ya fue recibido anteriormente.`};
     const ok=esLog?(isOf(t.origen)?['nuevo','recolectado']:['recolectado','paqueteria']):['recolectado','paqueteria','en_logistica','ubicado','extraviado'];
     if(!ok.includes(t.estatus))return {k:'err',m:t.estatus==='nuevo'?`${t.folio} todavía no ha sido recolectado por gestoría.`:`${t.folio} está como "${ESTATUS[t.estatus]}". No se puede recibir.`};
@@ -561,14 +570,14 @@ function validar(code,mode,me,lote){
   if(nuevos.every(b=>set.includes(b)))return {k:'warn',m:p.b?`El bulto ${p.b}/${t.bultos} de ${t.folio} ya fue escaneado.`:`${t.folio} ya está en la lista.`};
   lote[t.folio]=[...new Set([...set,...nuevos])].sort();
   const n=lote[t.folio].length;
-  return {k:'ok',m:p.b?`${t.folio} · bulto ${p.b}/${t.bultos} · ${n===t.bultos?'completo':`faltan ${t.bultos-n}`}`:`${t.folio} · ${t.bultos} ${t.bultos>1?'bultos':'bulto'} · ${nom(t.origen)} → ${nom(t.destino)}`};
+  return {k:'ok',m:p.b?`${t.folio} · bulto ${p.b}/${t.bultos} · ${n===t.bultos?'completo':`faltan ${t.bultos-n}`}`:`${t.folio} · ${t.bultos} ${t.bultos>1?'bultos':'bulto'} · ${nom(t.origen)} → ${nom(t.destino)}${/-RB$/.test(t.destino)?' · PARA REBOTICA':(!isOf(t.destino)&&P[t.destino].n==='PV')?' · PARA PV':''}`};
 }
 function queueHTML(lote){
   const fs=Object.keys(lote);
   if(!fs.length)return '<div class="empty">Aún no hay traspasos en la lista. Escanea el primero.</div>';
   return fs.slice().reverse().map(f=>{const t=byFolio(f);const n=lote[f].length;
     return `<div class="qrow"><span style="color:${n===t.bultos?'var(--ok)':'var(--warn)'}">${n===t.bultos?'✓':'◐'}</span>
-     <div style="min-width:0"><div><span class="mono" style="font-weight:700">${f}</span> · ${esc(nom(t.origen))}<span class="arrow">→</span>${esc(nom(t.destino))}</div>
+     <div style="min-width:0"><div class="row" style="gap:6px 10px">${areaTag(t.destino)}<span><span class="mono" style="font-weight:700">${f}</span> · ${esc(nom(t.origen))}<span class="arrow">→</span>${esc(nom(t.destino))}</span></div>
      <div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.desc)} · creó ${esc(String(t.por).split(' · ')[0])} · ${esc(t.creado)}</div>
      <div class="dots">${Array.from({length:t.bultos},(_,i)=>`<i class="${lote[f].includes(i+1)?'on':''}" title="Bulto ${i+1}"></i>`).join('')}</div></div>
      <span class="pg ${n===t.bultos?'full':'part'}">${n}/${t.bultos}</span></div>`}).join('');
@@ -579,9 +588,9 @@ function fbHTML(fb){
   return `<div class="feedback ${fb.k} flash" role="alert"><span style="font-size:20px;line-height:1">${ic}</span><span>${esc(fb.m)}</span></div>`;
 }
 const SAMPLES={
- NR:{recibir:[['CONT-0006','correcto'],['V-0018','correcto'],['V-0018','repetido'],['C-RB-0011','es de Rebotica'],['BOT-0012','otra área'],['NR-0451','mal tecleado'],['RH-0004','sin recolectar']],
+ NR:{recibir:[['CONT-0006','correcto'],['V-0018','correcto'],['V-0018','repetido'],['C-RB-0011','para Rebotica'],['BOT-0012','otra área'],['NR-0451','mal tecleado'],['RH-0004','sin recolectar']],
      entregar:[['NR-0040',''],['NR-RB-0015','es de Rebotica'],['NR-0037','con solicitud'],['NR-0039','ya salió']]},
- 'NR-RB':{recibir:[['C-RB-0011','correcto'],['CONT-0006','es de PV']],entregar:[['NR-RB-0015',''],['NR-0040','es de PV']]},
+ 'NR-RB':{recibir:[['C-RB-0011','correcto'],['CONT-0006','para PV'],['BOT-0012','otra sucursal']],entregar:[['NR-RB-0015',''],['NR-0040','es de PV']]},
  CONT:{recibir:[['BOT-0012','estaba en otro lugar'],['NR-0039','otra área'],['CONT-0099','no existe']],entregar:[['CONT-0006','ya salió']]},
  LOG:{recibir:[['M-RB-0009','de Morelia'],['NR-0040','sin recolectar']],entregar:[['M-RB-0009','después de recibirlo']]},
 };
@@ -625,7 +634,7 @@ function confirmarLote(lote,mode,me,gestor,medio){
   Object.entries(lote).forEach(([f,bs])=>{const t=byFolio(f);const full=bs.length===t.bultos;
     if(mode==='recibir'){
       if(me==='LOG'&&t.via==='LOG'&&!t.pasoLog){t.pasoLog=true;t.estatus='en_logistica';addEv(t,'Recibido en Logística',`Ana Ruiz · ${bs.length}/${t.bultos} bultos · ${isMor(t.destino)?'por enviar a paquetería':'por distribuir'}`,'en_logistica');}
-      else if(full){t.estatus='entregado';addEv(t,'Entregado',`${nom(me)} · ${bs.length}/${t.bultos} bultos`,'entregado');}
+      else if(full){t.estatus='entregado';addEv(t,'Entregado',`Recibido en la computadora de ${nom(me)} · ${bs.length}/${t.bultos} bultos`,'entregado');}
       else{inc++;t.estatus='incidencia';addEv(t,'Recibido con incidencia',`${nom(me)} · llegó ${bs.length}/${t.bultos} · faltan bultos`,'incidencia');}
     } else {
       t.estatus='recolectado';t.gestor=gestor.n;notify(t.destino,t.folio,`Va en camino para ti · lo lleva ${gestor.n}`);
