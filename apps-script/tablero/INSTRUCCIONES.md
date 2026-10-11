@@ -74,10 +74,12 @@ El tablero es un archivo **aparte**, así que no le pone peso a tu hoja de Opera
 
 ---
 
-## PARTE 3: correo automático para Miriam (día 1 de cada mes)
+## PARTE 3: activar lo automático (lectura cada 10 min + correo del día 1)
 
 1. **Primero pruébalo contigo.** En la lista de funciones elige **TABLERO_PROBAR_CORREO** → **▶ Ejecutar**. Te llega a ti el correo del mes pasado, marcado como **[PRUEBA]**.
-2. Si te gusta, elige **TABLERO_ACTIVAR_CORREO_MENSUAL** → **▶ Ejecutar**. Desde ese momento, cada día 1 a las 8 a. m. le llega a **mcamacho@fadermex.com** el resumen del mes anterior, con un botón para abrir el tablero.
+2. Si te gusta, elige **TABLERO_ACTIVAR_AUTOMATICOS** → **▶ Ejecutar**. Esto deja programadas 2 cosas:
+   - Cada **10 minutos** el tablero lee tu hoja por su cuenta, así abre **al instante** para quien lo consulte.
+   - Cada **día 1 a las 8 a. m.** le llega a **mcamacho@fadermex.com** el resumen del mes anterior, con un botón para abrir el tablero.
 3. Si algún día lo quieres apagar, ejecuta **TABLERO_DESACTIVAR_CORREO_MENSUAL**.
 
 ---
@@ -94,7 +96,7 @@ El tablero es un archivo **aparte**, así que no le pone peso a tu hoja de Opera
 | Pregunta | Respuesta |
 |---|---|
 | ¿De dónde salen los números? | De las hojas **Operaciones**, **Cat** y **Datos** de "Logística FED 2026". El tablero solo las lee; nunca escribe en ellas. |
-| ¿Está en tiempo real? | Lee la hoja cada vez que alguien lo abre y se refresca solo cada 5 minutos. El botón **"Actualizar ahora"** lo lee al instante. |
+| ¿Está en tiempo real? | Lee tu hoja cada 10 minutos por su cuenta y la página se refresca sola cada 5. Si acabas de capturar algo y quieres verlo ya, el botón **"Actualizar ahora"** lee la hoja en ese momento (tarda unos segundos). |
 | ¿Aparecen solos noviembre y diciembre? | Sí. El mes de cada pedido es el de la **columna F**. Los meses, áreas, paqueterías, destinos y vehículos nuevos aparecen solos. En 2027 aparece el filtro **Año**. |
 | ¿Cómo cuentan las horas? | Son **horas hábiles**: no cuentan sábados, domingos ni los festivos de **Datos, columna V**. Un pedido listo el viernes a las 4 p. m. y entregado el lunes a las 4 p. m. lleva 24 h. |
 | Logística interna, 48 h | Desde **"Pedido listo para recolección"** (bitácoras de Cat; si no está, la fecha de la columna F) hasta **Entregado** (columna V). |
@@ -104,7 +106,7 @@ El tablero es un archivo **aparte**, así que no le pone peso a tu hoja de Opera
 | ¿Qué es una incidencia? | Todo pedido con motivo en la **columna AC** o marcado como **Retornado**. |
 | ¿Cuánto se gastó? | Es la suma de la **columna N (Costo)**. |
 | ¿Qué es un viaje? | Un vehículo que salió en un día. Dos entregas del mismo vehículo el mismo día cuentan como 1 viaje. |
-| ¿Hace lenta mi hoja? | No. Es un archivo aparte que solo lee la hoja, y guarda la lectura 5 minutos para no leerla de más. |
+| ¿Hace lenta mi hoja? | No. Es un archivo aparte que solo lee la hoja; no escribe ni agrega fórmulas. |
 
 ### Columnas de Cat que usa
 - Pedidos Logística-Fadermex 2026:

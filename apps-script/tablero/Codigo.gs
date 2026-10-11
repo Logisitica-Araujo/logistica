@@ -5,15 +5,16 @@
 //    1) Publica una página web (el tablero) que lee en vivo las hojas
 //       Operaciones, Cat y Datos del archivo "Logística FED 2026".
 //       No escribe NADA en ese archivo y no lo hace más lento.
-//    2) Guarda la lectura 5 minutos en memoria (caché) para que abrir el
-//       tablero sea rápido aunque lo abran varias personas a la vez.
+//    2) Cada 10 minutos lee la hoja por su cuenta y la guarda en memoria
+//       (caché), así el tablero abre al instante para quien lo consulte.
 //    3) El día 1 de cada mes envía el resumen del mes anterior por correo.
 //
 //  Funciones que corres a mano (lista de arriba → Ejecutar):
 //    - TABLERO_PROBAR            → revisa que lee bien tu archivo.
 //    - TABLERO_PROBAR_CORREO     → te manda el correo del mes SOLO a ti.
-//    - TABLERO_ACTIVAR_CORREO_MENSUAL → deja programado el correo del día 1.
-//    - TABLERO_DESACTIVAR_CORREO_MENSUAL → lo apaga.
+//    - TABLERO_ACTIVAR_AUTOMATICOS → deja programados: la lectura cada
+//      10 min (tablero instantáneo) y el correo del día 1 a Miriam.
+//    - TABLERO_DESACTIVAR_CORREO_MENSUAL → apaga solo el correo.
 // ============================================================
 
 const TAB = {
@@ -34,7 +35,7 @@ const TAB = {
 
   CORREO_JEFA: "mcamacho@fadermex.com",
   NOMBRE_JEFA: "Miriam Camacho Martinez",
-  CACHE_SEG: 300,
+  CACHE_SEG: 1500,      // 25 min; el activador la renueva cada 10 min
 };
 
 // Columnas de Operaciones (1 = A). Las que dicen "busca" se localizan por su
@@ -319,11 +320,20 @@ function TABLERO_PROBAR() {
 // ============================================================
 //  CORREO MENSUAL (día 1, 8 a. m.) — resumen del mes anterior
 // ============================================================
-function TABLERO_ACTIVAR_CORREO_MENSUAL() {
-  TABLERO_DESACTIVAR_CORREO_MENSUAL();
+function TABLERO_ACTIVAR_AUTOMATICOS() {
+  ScriptApp.getProjectTriggers()
+    .filter(t => ["tabEnviarCorreoMensual", "tabRefrescarCache"].indexOf(t.getHandlerFunction()) >= 0)
+    .forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger("tabRefrescarCache").timeBased().everyMinutes(10).create();
   ScriptApp.newTrigger("tabEnviarCorreoMensual").timeBased().onMonthDay(1).atHour(8).inTimezone(TAB.ZONA_HORARIA).create();
+  tabRefrescarCache();
+  Logger.log("✅ Listo: el tablero se precarga cada 10 minutos (abre al instante).");
   Logger.log("✅ Listo: el día 1 de cada mes a las 8 a. m. se enviará el resumen a " + TAB.CORREO_JEFA);
 }
+function TABLERO_ACTIVAR_CORREO_MENSUAL() { TABLERO_ACTIVAR_AUTOMATICOS(); } // nombre anterior
+
+// Lo corre el activador cada 10 min: lee la hoja y la deja lista en caché.
+function tabRefrescarCache() { tableroDatos(true); }
 function TABLERO_DESACTIVAR_CORREO_MENSUAL() {
   ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === "tabEnviarCorreoMensual").forEach(t => ScriptApp.deleteTrigger(t));
 }

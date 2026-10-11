@@ -151,7 +151,7 @@ tfoot td{font-weight:700;border-top:2px solid var(--line)}
 <header class="top">
   <div class="wrap">
     <div class="brand"><small>Fadermex · Logística</small><h1>Tablero Logístico FED</h1></div>
-    <div class="live"><span class="dot" aria-hidden="true"></span>Conectado a la hoja Operaciones · se actualiza cada 5 min</div>
+    <div class="live"><span class="dot" aria-hidden="true"></span>Conectado a la hoja Operaciones · se actualiza cada 10 min</div>
   </div>
 </header>
 
@@ -257,7 +257,7 @@ tfoot td{font-weight:700;border-top:2px solid var(--line)}
     <article class="panel c12"><div class="ph"><h2>Cómo funciona este tablero</h2><p>Para cuando te pregunten</p></div>
       <ul class="added">
         <li><b>De dónde salen los números</b>Lee en vivo las hojas Operaciones, Cat y Datos de "Logística FED 2026". No escribe nada en ellas.</li>
-        <li><b>Cada cuánto se actualiza</b>Cada 5 minutos solo, o al instante con el botón "Actualizar ahora".</li>
+        <li><b>Cada cuánto se actualiza</b>Lee la hoja cada 10 minutos por su cuenta. El botón "Actualizar ahora" la lee en ese momento.</li>
         <li><b>Mes de cada pedido</b>Es el mes de la columna F (fecha en que se registró).</li>
         <li><b>Horas hábiles</b>No cuentan sábados, domingos ni los festivos de Datos (columna V).</li>
         <li><b>Logística interna · 48 h</b>Desde "Pedido listo para recolección" (Cat) hasta Entregado (V).</li>
@@ -609,7 +609,7 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change",render);
 
 function estado(t,err){const e=$("estado");e.hidden=!t;e.className="sample"+(err?" err":"");e.innerHTML=t||"";}
 function cargar(forzar){
-  $("btnAct").disabled=true;if(!D)estado("<b>Cargando</b><span>Leyendo tu hoja Operaciones…</span>");
+  $("btnAct").disabled=true;if(!D||forzar)estado("<b>Cargando</b><span>Leyendo tu hoja Operaciones… puede tardar unos segundos.</span>");
   google.script.run.withSuccessHandler(txt=>{
     D=JSON.parse(txt);META=D.reglas.meta;META_INC=D.reglas.metaInc;R=D.reglas;
     llenarFiltros();estado("");$("btnAct").disabled=false;render();
