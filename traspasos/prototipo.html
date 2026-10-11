@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Traspasos Fadermex</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+<style>
+/* Layout: barra de prototipo arriba, shell de app con encabezado + pestañas; vistas tipo herramienta. */
+:root{
+  --bg:#EEF2F5; --surface:#FFFFFF; --surface-2:#F6F8FA; --ink:#14202B; --muted:#5A6977; --line:#D6DEE5;
+  --accent:#0E7C66; --accent-ink:#FFFFFF; --accent-soft:#DDF1EB;
+  --admin-bg:#101418; --admin-ink:#F3E3B5; --admin-gold:#E2AE3A;
+  --proto-bg:#1D2833; --proto-ink:#C9D4DE;
+  --ok:#1E8E3E; --ok-bg:#E2F4E7; --err:#C8232D; --err-bg:#FDE6E7; --warn:#A86A00; --warn-bg:#FFF2D2;
+  --s-nuevo:#1F63D6; --s-nuevo-bg:#E2ECFF;
+  --s-recolectado:#9A6400; --s-recolectado-bg:#FFF0CC;
+  --s-entregado:#1B7F38; --s-entregado-bg:#DFF3E5;
+  --s-ubicado:#7036B8; --s-ubicado-bg:#EFE5FB;
+  --s-extraviado:#C8232D; --s-extraviado-bg:#FDE6E7;
+  --s-incidencia:#C4440B; --s-incidencia-bg:#FFE8DA;
+  --s-paqueteria:#0B6C80; --s-paqueteria-bg:#DAF2F7;
+  --s-en_logistica:#38559E; --s-en_logistica-bg:#E5EBF7;
+  --s-solicitud:#4E5B67; --s-solicitud-bg:#E8ECF0;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1318; --surface:#161D24; --surface-2:#1B242C; --ink:#E4EBF1; --muted:#93A2AF; --line:#2A3540;
+  --accent:#34B496; --accent-ink:#06231C; --accent-soft:#12352D;
+  --proto-bg:#060A0D; --proto-ink:#A9B6C2;
+  --ok:#5BCB7D; --ok-bg:#12301C; --err:#FF6B72; --err-bg:#3A1518; --warn:#F2B84B; --warn-bg:#352708;
+  --s-nuevo:#7FAEFF; --s-nuevo-bg:#14284A;
+  --s-recolectado:#F2BE4F; --s-recolectado-bg:#33270A;
+  --s-entregado:#64D08A; --s-entregado-bg:#123020;
+  --s-ubicado:#C19BF5; --s-ubicado-bg:#2A1A45;
+  --s-extraviado:#FF7A80; --s-extraviado-bg:#3D1519;
+  --s-incidencia:#FF9A5E; --s-incidencia-bg:#3A1E0C;
+  --s-paqueteria:#5CCFE6; --s-paqueteria-bg:#0D2E36;
+  --s-en_logistica:#9DB4F0; --s-en_logistica-bg:#1A2645;
+  --s-solicitud:#B3BFCA; --s-solicitud-bg:#26313B;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0E1318; --surface:#161D24; --surface-2:#1B242C; --ink:#E4EBF1; --muted:#93A2AF; --line:#2A3540;
+  --accent:#34B496; --accent-ink:#06231C; --accent-soft:#12352D;
+  --proto-bg:#060A0D; --proto-ink:#A9B6C2;
+  --ok:#5BCB7D; --ok-bg:#12301C; --err:#FF6B72; --err-bg:#3A1518; --warn:#F2B84B; --warn-bg:#352708;
+  --s-nuevo:#7FAEFF; --s-nuevo-bg:#14284A;
+  --s-recolectado:#F2BE4F; --s-recolectado-bg:#33270A;
+  --s-entregado:#64D08A; --s-entregado-bg:#123020;
+  --s-ubicado:#C19BF5; --s-ubicado-bg:#2A1A45;
+  --s-extraviado:#FF7A80; --s-extraviado-bg:#3D1519;
+  --s-incidencia:#FF9A5E; --s-incidencia-bg:#3A1E0C;
+  --s-paqueteria:#5CCFE6; --s-paqueteria-bg:#0D2E36;
+  --s-en_logistica:#9DB4F0; --s-en_logistica-bg:#1A2645;
+  --s-solicitud:#B3BFCA; --s-solicitud-bg:#26313B;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px}
+
+/* Prototype bar */
+.proto{background:var(--proto-bg);color:var(--proto-ink);font-size:13px}
+.proto .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding-block:10px}
+.proto b{color:#fff;font-weight:600;letter-spacing:.04em;text-transform:uppercase;font-size:11px}
+.roles{display:flex;flex-wrap:wrap;gap:6px}
+.roles button{background:transparent;border:1px solid #3A4856;color:var(--proto-ink);padding:5px 10px;border-radius:999px;cursor:pointer}
+.roles button[aria-pressed="true"]{background:#fff;color:#14202B;border-color:#fff;font-weight:600}
+.proto .reset{margin-left:auto;background:none;border:none;color:var(--proto-ink);text-decoration:underline;cursor:pointer}
+
+/* Admin bar */
+.adminbar{background:var(--admin-bg);color:var(--admin-ink);border-bottom:3px solid var(--admin-gold)}
+.adminbar .wrap{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding-block:8px;font-size:13px}
+.adminbar strong{font-family:var(--f-display);letter-spacing:.12em;font-size:15px;color:var(--admin-gold)}
+
+/* Header */
+header.app{background:var(--surface);border-bottom:1px solid var(--line)}
+header.app .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;padding-block:12px}
+.brand{font-family:var(--f-display);font-size:24px;letter-spacing:.02em;display:flex;align-items:center;gap:10px}
+.brand .mark{width:30px;height:30px;border-radius:7px;background:var(--accent);display:grid;place-items:center;color:var(--accent-ink)}
+.who{display:flex;flex-direction:column;line-height:1.2}
+.who .p{font-weight:700}
+.who .u{font-size:13px;color:var(--muted)}
+nav.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+nav.tabs button{border:none;background:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;color:var(--muted);display:flex;gap:6px;align-items:center}
+nav.tabs button[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
+.bellwrap{position:relative}
+.bell{position:relative;border:1px solid var(--line);background:var(--surface);border-radius:10px;width:42px;height:42px;display:grid;place-items:center;cursor:pointer;color:var(--ink)}
+.bell .count{position:absolute;top:-6px;right:-6px}
+.bellpanel{position:absolute;top:calc(100% + 8px);left:0;width:min(360px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.18);padding:12px;z-index:40;display:grid;gap:6px}
+.bellitem{display:grid;gap:2px;text-align:left;border:none;background:var(--surface-2);border-radius:8px;padding:8px 10px;cursor:pointer;border-left:4px solid transparent}
+.bellitem.unseen{border-left-color:var(--s-nuevo);background:var(--s-nuevo-bg)}
+.logo{width:auto;min-width:54px;height:32px;padding:0 8px;border:2px dashed var(--muted);border-radius:7px;display:grid;place-items:center;font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.08em}
+.count{background:var(--err);color:#fff;border-radius:999px;font-size:11px;padding:1px 7px;font-weight:700}
+
+main{padding-block:22px 60px}
+h1{font-family:var(--f-display);font-size:30px;margin:0 0 4px;letter-spacing:.01em;text-wrap:balance}
+h2{font-family:var(--f-display);font-size:21px;margin:0 0 10px;letter-spacing:.02em}
+.sub{color:var(--muted);margin:0 0 18px;max-width:70ch}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.badge::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.b-nuevo{color:var(--s-nuevo);background:var(--s-nuevo-bg)}
+.b-recolectado{color:var(--s-recolectado);background:var(--s-recolectado-bg)}
+.b-entregado{color:var(--s-entregado);background:var(--s-entregado-bg)}
+.b-ubicado{color:var(--s-ubicado);background:var(--s-ubicado-bg)}
+.b-extraviado{color:var(--s-extraviado);background:var(--s-extraviado-bg)}
+.b-incidencia{color:var(--s-incidencia);background:var(--s-incidencia-bg)}
+.b-paqueteria{color:var(--s-paqueteria);background:var(--s-paqueteria-bg)}
+.b-en_logistica{color:var(--s-en_logistica);background:var(--s-en_logistica-bg)}
+.b-solicitud{color:var(--s-solicitud);background:var(--s-solicitud-bg)}
+
+/* Summary chips */
+.summary{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.chip{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 6px;cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.chip .n{font-family:var(--f-mono);font-weight:700}
+
+.seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px;margin-bottom:14px}
+.seg button{border:none;background:none;padding:7px 14px;border-radius:7px;cursor:pointer;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+
+/* Cards list */
+.list{display:grid;gap:10px}
+.tcard{display:grid;grid-template-columns:6px 1fr auto;gap:0 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;cursor:pointer;text-align:left;padding:0;width:100%}
+.tcard:hover{border-color:var(--muted)}
+.tcard .stripe{background:currentColor}
+.tcard .body{padding:12px 0;min-width:0;display:grid;gap:4px}
+.tcard .top{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.tcard .folio{font-family:var(--f-mono);font-weight:700;font-size:16px}
+.tcard .route{font-weight:600}
+.tcard .desc{color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tcard .side{padding:12px 14px 12px 0;text-align:right;font-size:13px;color:var(--muted);display:grid;align-content:center;gap:2px}
+.tcard .side .bultos{font-family:var(--f-mono);color:var(--ink);font-weight:700}
+.empty{padding:28px;text-align:center;color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:var(--r)}
+.arrow{color:var(--muted);margin:0 4px}
+
+/* Panels & forms */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}}
+label.f{display:grid;gap:6px;font-weight:600;font-size:14px}
+input.t,select.t,textarea.t{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:10px 12px;width:100%}
+textarea.t{min-height:84px;resize:vertical}
+.btn{border:1px solid var(--line);background:var(--surface);padding:9px 16px;border-radius:8px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;justify-content:center}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{background:var(--err);border-color:var(--err);color:#fff}
+.btn.gold{background:var(--admin-gold);border-color:var(--admin-gold);color:#1a1405}
+.btn.ghost{border-color:transparent;background:none;color:var(--muted)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.stack{display:grid;gap:14px}
+
+/* Stepper */
+.steps{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+.steps div{flex:1 1 120px;border-top:4px solid var(--line);padding-top:6px;font-size:13px;color:var(--muted);font-weight:600}
+.steps div.on{border-color:var(--accent);color:var(--ink)}
+.steps div.done{border-color:var(--accent);color:var(--muted)}
+.scanbox{border:2px dashed var(--accent);border-radius:12px;padding:22px;text-align:center;background:var(--accent-soft);display:grid;gap:10px;justify-items:center}
+.scanbox svg{color:var(--accent)}
+.note{font-size:13px;padding:10px 12px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line)}
+.note.route{background:var(--s-paqueteria-bg);border-color:transparent;color:var(--ink)}
+.qty{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:max-content}
+.qty button{border:none;background:var(--surface-2);width:42px;height:42px;font-size:20px;cursor:pointer}
+.qty span{min-width:56px;text-align:center;font-family:var(--f-mono);font-weight:700;font-size:18px}
+
+/* Labels (always white — real paper) */
+.labels{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.label{background:#fff;color:#000;border-radius:6px;padding:12px 14px;box-shadow:0 1px 0 rgba(0,0,0,.08),0 4px 14px rgba(0,0,0,.12);font-family:var(--f-body);aspect-ratio:100/62;max-width:100%;display:grid;grid-template-rows:auto auto 1fr auto;gap:4px;position:relative}
+.label .lrow{display:flex;justify-content:space-between;gap:8px;font-size:11px;line-height:1.25}
+.label .lrow b{font-size:9px;letter-spacing:.08em;color:#444;display:block}
+.label .lfolio{font-family:var(--f-mono);font-weight:700;font-size:20px;letter-spacing:.02em}
+.label svg.bc{width:100%;height:46px;display:block}
+.label .lfoot{display:flex;justify-content:space-between;align-items:end;font-size:10px}
+.label .lb{font-family:var(--f-display);font-size:22px;line-height:1}
+.label .rp{position:absolute;top:8px;right:10px;font-family:var(--f-mono);font-size:10px;border:1px solid #000;padding:0 4px}
+.label .code{font-family:var(--f-mono);font-size:10px;text-align:center}
+
+/* Scanner */
+.scanner{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:20px}
+@media (max-width:860px){.scanner{grid-template-columns:1fr}}
+.scaninput{font-family:var(--f-mono);font-size:22px;padding:14px;border:2px solid var(--accent);border-radius:10px;width:100%;background:var(--surface)}
+.feedback{border-radius:10px;padding:14px;font-weight:600;display:flex;gap:10px;align-items:flex-start;min-height:54px}
+.feedback.ok{background:var(--ok-bg);color:var(--ok)}
+.feedback.err{background:var(--err-bg);color:var(--err)}
+.feedback.warn{background:var(--warn-bg);color:var(--warn)}
+.feedback.idle{background:var(--surface-2);color:var(--muted);font-weight:500}
+.flash{animation:flash .45s ease}
+@keyframes flash{from{transform:scale(1.02)}to{transform:none}}
+@media (prefers-reduced-motion:reduce){.flash{animation:none}}
+.samples{display:flex;flex-wrap:wrap;gap:6px}
+.samples button{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line);background:var(--surface-2);border-radius:6px;padding:4px 8px;cursor:pointer}
+.samples button small{font-family:var(--f-body);color:var(--muted);margin-left:4px}
+.queue{display:grid;gap:8px}
+.qrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.qrow .pg{font-family:var(--f-mono);font-weight:700}
+.qrow .pg.full{color:var(--ok)}
+.qrow .pg.part{color:var(--warn)}
+.dots{display:flex;gap:3px;margin-top:4px}
+.dots i{width:16px;height:6px;border-radius:2px;background:var(--line)}
+.dots i.on{background:var(--ok)}
+.gestorpill{display:flex;align-items:center;gap:10px;background:var(--s-recolectado-bg);color:var(--ink);border-radius:10px;padding:10px 12px}
+
+/* Modal */
+.modal{position:fixed;inset:0;background:rgba(8,12,16,.55);display:grid;place-items:center;padding:16px;z-index:50}
+.modal .box{background:var(--surface);border-radius:14px;width:min(760px,100%);max-height:calc(100% - 20px);overflow:auto;padding:22px}
+.dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+.dl div{background:var(--surface-2);border-radius:8px;padding:8px 10px}
+.dl dt{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.dl dd{margin:2px 0 0;font-weight:600}
+.timeline{list-style:none;margin:0;padding:0;border-left:2px solid var(--line);margin-left:7px}
+.timeline li{position:relative;padding:0 0 14px 20px}
+.timeline li::before{content:"";position:absolute;left:-8px;top:4px;width:14px;height:14px;border-radius:50%;background:var(--surface);border:3px solid var(--tl,var(--muted))}
+.timeline .when{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.timeline .what{font-weight:600}
+.timeline .detail{font-size:13px;color:var(--muted)}
+.timeline li.admin .what{color:var(--warn)}
+.actions{border-top:1px solid var(--line);padding-top:14px;margin-top:6px;display:grid;gap:12px}
+.inline-form{display:grid;gap:8px;background:var(--surface-2);border-radius:10px;padding:12px}
+
+/* Table */
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);background:var(--surface-2)}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--surface-2)}
+
+/* Search */
+.searchbar{display:flex;gap:10px;align-items:center;background:var(--surface);border:2px solid var(--admin-gold);border-radius:12px;padding:6px 6px 6px 14px;margin-bottom:18px}
+.searchbar input{border:none;background:none;flex:1;min-width:0;font-family:var(--f-mono);font-size:18px;padding:8px 0}
+.searchbar input:focus{outline:none}
+
+/* Phone */
+.phone{width:min(390px,100%);margin:0 auto;border:10px solid #0b0f13;border-radius:38px;background:var(--bg);overflow:hidden;min-height:700px;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.phone .ph-head{background:var(--s-recolectado-bg);padding:18px 16px 12px}
+.phone .ph-body{padding:14px;display:grid;gap:10px;align-content:start;flex:1}
+.phone .ph-nav{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);background:var(--surface)}
+.phone .ph-nav button{border:none;background:none;padding:12px 4px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
+.phone .ph-nav button[aria-current="page"]{color:var(--accent)}
+.camera{aspect-ratio:4/3;background:#0b0f13;border-radius:12px;position:relative;display:grid;place-items:center;color:#9fb0bf;font-size:13px;max-width:100%}
+.camera::after{content:"";position:absolute;left:12%;right:12%;top:50%;height:2px;background:#ff4d4d;box-shadow:0 0 12px #ff4d4d}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:860px){.two{grid-template-columns:1fr}}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;z-index:60;max-width:calc(100% - 32px)}
+.catalog{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.catalog .panel{padding:14px}
+.catalog ul{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px}
+.catalog li{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--warn);background:var(--warn-bg);border-radius:4px;padding:1px 6px}
+</style>
+</head>
+<body>
+
+
+<div class="proto"><div class="wrap">
+  <b>Prototipo · ver como</b>
+  <div class="roles" id="roles"></div>
+  <span>Pendiente: imagen/logo de la empresa</span>
+  <button class="reset" id="reset" type="button">Reiniciar datos de ejemplo</button>
+</div></div>
+<div id="adminbar"></div>
+<header class="app"><div class="wrap" id="header"></div></header>
+<main><div class="wrap" id="view"></div></main>
+<div id="modal"></div>
+<div id="toast"></div>
+
+<script>
+/* ---------- Catálogo ---------- */
+const PUNTOS=[
+ ['DIR','Dirección','Oficinas'],['LOG','Logística','Oficinas'],['COM','Compras','Oficinas'],['MM','Medicina Magistral','Oficinas'],
+ ['EPV','Encargada de PV','Oficinas'],['GG','Gerente General','Oficinas'],['CONT','Contabilidad','Oficinas'],['FAC','Facturación','Oficinas'],['RH','Recursos Humanos','Oficinas'],
+ ['NR','PV','Nueva Roma'],['NR-RB','Rebotica','Nueva Roma'],
+ ['D','PV','Doctores'],['D-RB','Rebotica','Doctores'],
+ ['V','PV','Vertiz'],['V-RB','Rebotica','Vertiz'],
+ ['C','PV','Coapa'],['C-RB','Rebotica','Coapa'],
+ ['E','PV','Ecatepec'],['E-RB','Rebotica','Ecatepec'],
+ ['M','PV','Morelia'],['M-RB','Rebotica','Morelia'],
+ ['BOT','Botican','Botican'],
+].map(([id,n,s])=>({id,n,s}));
+const P=Object.fromEntries(PUNTOS.map(p=>[p.id,p]));
+const SUCS=[...new Set(PUNTOS.map(p=>p.s))];
+const nom=id=>P[id].s===P[id].n?P[id].n:P[id].s==='Oficinas'?`Oficinas · ${P[id].n}`:`${P[id].s} · ${P[id].n}`;
+const isOf=id=>P[id].s==='Oficinas', isMor=id=>P[id].s==='Morelia';
+
+const ESTATUS={
+ nuevo:'Nuevo traspaso', recolectado:'Recolectado por gestoría', entregado:'Entregado', ubicado:'Está en otro lugar',
+ extraviado:'Extraviado', incidencia:'Recibido con incidencia', paqueteria:'Enviado por paquetería', en_logistica:'En Logística'
+};
+const ROLES=[
+ {id:'NR',label:'Nueva Roma · PV',kind:'punto',user:'nuevaroma@fadermex.com',equipo:'PV'},
+ {id:'NR-RB',label:'Nueva Roma · Rebotica',kind:'punto',user:'nuevaroma@fadermex.com',equipo:'Rebotica'},
+ {id:'CONT',label:'Contabilidad',kind:'punto',user:'contabilidad@fadermex.com'},
+ {id:'LOG',label:'Logística',kind:'punto',user:'logistica@fadermex.com'},
+ {id:'GES',label:'Gestor (celular)',kind:'gestor',user:'Luis Gómez · GES-01'},
+ {id:'ADM',label:'Administrador',kind:'admin',user:'jaraujo@fadermex.com'},
+];
+
+/* ---------- Datos de ejemplo ---------- */
+function seed(){
+ const personas=[
+  {cred:'EMP-0153',n:'Juan Pérez',punto:'NR'},{cred:'EMP-0160',n:'Karla Torres',punto:'NR'},
+  {cred:'EMP-0201',n:'Ana Ruiz',punto:'LOG'},{cred:'EMP-0310',n:'Laura Méndez',punto:'CONT'},
+  {cred:'EMP-0122',n:'Carlos Ortiz',punto:'V'},{cred:'EMP-0455',n:'María Díaz',punto:'M-RB'},
+  {cred:'EMP-0388',n:'Rosa Jiménez',punto:'BOT'},{cred:'EMP-0402',n:'Hugo Salas',punto:'D'},
+  {cred:null,num:'1187',n:'Sofía Hernández',punto:'NR'},
+ ];
+ const gestores=[{cred:'GES-01',n:'Luis Gómez'},{cred:'GES-02',n:'Pedro Sánchez'}];
+ const ev=(t,txt,d,tl)=>({t,txt,d:d||'',tl:tl||''});
+ const T=[
+  {folio:'NR-0038',origen:'NR',destino:'CONT',bultos:2,desc:'Cortes de caja y facturas de septiembre',creado:'09/10 10:15',por:'Juan Pérez · EMP-0153',estatus:'entregado',gestor:'Luis Gómez',
+   ev:[ev('09/10 10:15','Creado','Juan Pérez · credencial EMP-0153','nuevo'),ev('09/10 10:15','Etiquetas impresas','1/2, 2/2'),ev('09/10 12:40','Recolectado por gestoría','Luis Gómez · celular · 2/2 bultos','recolectado'),ev('09/10 14:05','Entregado','Laura Méndez · Contabilidad · 2/2 bultos','entregado')]},
+  {folio:'NR-0039',origen:'NR',destino:'V-RB',bultos:1,desc:'Material de curación (gasas, vendas)',creado:'11/10 08:50',por:'Karla Torres · EMP-0160',estatus:'recolectado',gestor:'Luis Gómez',
+   ev:[ev('11/10 08:50','Creado','Karla Torres · credencial EMP-0160','nuevo'),ev('11/10 08:50','Etiquetas impresas','1/1'),ev('11/10 10:20','Recolectado por gestoría','Luis Gómez · celular · 1/1 bultos','recolectado')]},
+  {folio:'NR-0040',origen:'NR',destino:'LOG',bultos:3,desc:'Devolución de cajas de cartón y hieleras',creado:'11/10 09:12',por:'Juan Pérez · EMP-0153',estatus:'nuevo',
+   ev:[ev('11/10 09:12','Creado','Juan Pérez · credencial EMP-0153','nuevo'),ev('11/10 09:12','Etiquetas impresas','1/3, 2/3, 3/3'),ev('11/10 09:40','Reimpresión bulto 2/3','Juan Pérez · motivo: etiqueta dañada')],rp:{2:1}},
+  {folio:'NR-0041',origen:'NR',destino:'M-RB',bultos:3,desc:'Frascos y envases para Rebotica Morelia',creado:'10/10 11:02',por:'Juan Pérez · EMP-0153',estatus:'en_logistica',gestor:'Pedro Sánchez',via:'LOG',pasoLog:true,
+   ev:[ev('10/10 11:02','Creado','Juan Pérez · ruta: gestoría → Logística → paquetería','nuevo'),ev('10/10 11:02','Etiquetas impresas','1/3, 2/3, 3/3'),ev('10/10 13:10','Recolectado por gestoría','Pedro Sánchez · credencial escaneada en sucursal','recolectado'),ev('10/10 15:30','Recibido en Logística','Ana Ruiz · 3/3 bultos · por enviar a paquetería','en_logistica')]},
+  {folio:'NR-0037',origen:'NR',destino:'E',bultos:1,desc:'Papelería varia',creado:'11/10 08:05',por:'Sofía Hernández · sin credencial (#1187)',estatus:'nuevo',
+   solicitud:{motivo:'Se duplicó, ya se había creado el NR-0036',por:'Juan Pérez',f:'11/10 08:30'},
+   ev:[ev('11/10 08:05','Creado','Sofía Hernández · SIN CREDENCIAL · No. empleado 1187','nuevo'),ev('11/10 08:05','Etiquetas impresas','1/1'),ev('11/10 08:30','Solicitud de eliminación','Juan Pérez · "Se duplicó, ya se había creado el NR-0036"','solicitud')]},
+  {folio:'CONT-0006',origen:'CONT',destino:'NR',bultos:1,desc:'Facturas firmadas y recibos',creado:'11/10 09:30',por:'Laura Méndez · EMP-0310',estatus:'recolectado',gestor:'Pedro Sánchez',
+   ev:[ev('11/10 09:30','Creado','Laura Méndez · credencial EMP-0310','nuevo'),ev('11/10 09:30','Etiquetas impresas','1/1'),ev('11/10 11:15','Recolectado por gestoría','Pedro Sánchez · celular · 1/1 bultos','recolectado')]},
+  {folio:'V-0018',origen:'V',destino:'NR',bultos:2,desc:'Mercancía de traspaso por faltante',creado:'11/10 09:05',por:'Carlos Ortiz · EMP-0122',estatus:'recolectado',gestor:'Luis Gómez',
+   ev:[ev('11/10 09:05','Creado','Carlos Ortiz · credencial EMP-0122','nuevo'),ev('11/10 09:05','Etiquetas impresas','1/2, 2/2'),ev('11/10 10:45','Recolectado por gestoría','Luis Gómez · celular · 2/2 bultos','recolectado')]},
+  {folio:'BOT-0012',origen:'BOT',destino:'CONT',bultos:1,desc:'Reporte de producción y vales',creado:'10/10 16:20',por:'Rosa Jiménez · EMP-0388',estatus:'ubicado',ubic:'D',gestor:'Luis Gómez',
+   ev:[ev('10/10 16:20','Creado','Rosa Jiménez · credencial EMP-0388','nuevo'),ev('10/10 17:00','Recolectado por gestoría','Luis Gómez · celular','recolectado'),ev('11/10 09:55','El traspaso está en: Doctores · PV','Escaneado por Hugo Salas en Doctores · no era su destino','ubicado')]},
+  {folio:'D-0027',origen:'D',destino:'C',bultos:4,desc:'Exhibidores y material POP',creado:'07/10 12:00',por:'Hugo Salas · EMP-0402',estatus:'extraviado',gestor:'Pedro Sánchez',
+   ev:[ev('07/10 12:00','Creado','Hugo Salas · credencial EMP-0402','nuevo'),ev('07/10 13:30','Recolectado por gestoría','Pedro Sánchez · 4/4 bultos','recolectado'),ev('09/10 13:30','Alerta: 48 h en tránsito','Aviso automático a administradores'),ev('10/10 10:00','Marcado como extraviado','Oramirez@fadermex.com · motivo: no aparece en ruta','extraviado')]},
+  {folio:'M-RB-0009',origen:'M-RB',destino:'NR',bultos:2,desc:'Fórmulas magistrales devueltas',creado:'08/10 10:00',por:'María Díaz · EMP-0455',estatus:'paqueteria',via:'LOG',guia:'Estafeta · 8072 3341 9921',
+   ev:[ev('08/10 10:00','Creado','María Díaz · ruta: paquetería → Logística → gestoría','nuevo'),ev('08/10 10:00','Etiquetas impresas','1/2, 2/2'),ev('08/10 17:20','Enviado por paquetería','Estafeta · guía 8072 3341 9921','paqueteria')]},
+  {folio:'E-0030',origen:'E',destino:'CONT',bultos:2,desc:'Documentación de nómina',creado:'09/10 09:00',por:'Ecatepec PV',estatus:'incidencia',gestor:'Pedro Sánchez',
+   ev:[ev('09/10 09:00','Creado','Ecatepec PV','nuevo'),ev('09/10 11:30','Recolectado por gestoría','Pedro Sánchez · 2/2 bultos','recolectado'),ev('09/10 15:10','Recibido con incidencia','Laura Méndez · llegó 1/2 · falta bulto 2/2','incidencia')]},
+  {folio:'C-RB-0011',origen:'C-RB',destino:'NR-RB',bultos:2,desc:'Bases y excipientes para Rebotica',creado:'11/10 08:30',por:'Coapa Rebotica',estatus:'recolectado',gestor:'Luis Gómez',
+   ev:[ev('11/10 08:30','Creado','Coapa · Rebotica','nuevo'),ev('11/10 08:30','Etiquetas impresas','1/2, 2/2'),ev('11/10 10:05','Recolectado por gestoría','Luis Gómez · celular · 2/2 bultos','recolectado')]},
+  {folio:'NR-RB-0015',origen:'NR-RB',destino:'MM',bultos:1,desc:'Recetario y formatos de Rebotica',creado:'11/10 09:45',por:'Rebotica Nueva Roma',estatus:'nuevo',
+   ev:[ev('11/10 09:45','Creado','Nueva Roma · Rebotica','nuevo'),ev('11/10 09:45','Etiquetas impresas','1/1')]},
+  {folio:'RH-0004',origen:'RH',destino:'NR',bultos:1,desc:'Uniformes para personal nuevo',creado:'11/10 10:40',por:'Recursos Humanos',estatus:'nuevo',
+   ev:[ev('11/10 10:40','Creado','Recursos Humanos','nuevo'),ev('11/10 10:40','Etiquetas impresas','1/1')]},
+ ];
+ const counters={};
+ T.forEach(t=>{const m=t.folio.match(/^(.+)-(\d{4})$/);counters[m[1]]=Math.max(counters[m[1]]||0,+m[2]);});
+ return {personas,gestores,T,counters,bitacora:[],role:'NR',tab:'bandeja',bandejaDir:'in',filtro:null,
+  wizard:{step:1},scan:{mode:'recibir',lote:{},fb:null,gestor:null},gtab:'poder',gscan:{lote:{},fb:null},
+  adminTab:'todos',adminFiltro:null,search:'',modal:null,bell:false,sesion:Date.now(),
+  notifs:[
+   {para:'NR-RB',folio:'C-RB-0011',txt:'Va en camino para ti · lo lleva Luis Gómez',t:'11/10 10:05'},
+   {para:'NR',folio:'RH-0004',txt:'Nuevo traspaso para ti desde Oficinas · Recursos Humanos',t:'11/10 10:40'},
+   {para:'NR',folio:'CONT-0006',txt:'Va en camino para ti · lo lleva Pedro Sánchez',t:'11/10 11:15'},
+   {para:'NR',folio:'V-0018',txt:'Va en camino para ti · lo lleva Luis Gómez',t:'11/10 10:45'},
+   {para:'CONT',folio:'BOT-0012',txt:'Atención: tu traspaso está en Doctores · PV, no en su destino',t:'11/10 09:55'},
+   {para:'LOG',folio:'M-RB-0009',txt:'Viene de Morelia por paquetería · Estafeta',t:'08/10 17:20'},
+   {para:'LOG',folio:'NR-0040',txt:'Nuevo traspaso para ti desde Nueva Roma · PV',t:'11/10 09:12'},
+  ]};
+}
+let S=seed();
+
+/* ---------- Utilidades ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const now=()=>{const d=new Date();const p=n=>String(n).padStart(2,'0');return `${p(d.getDate())}/${p(d.getMonth()+1)} ${p(d.getHours())}:${p(d.getMinutes())}`};
+const role=()=>ROLES.find(r=>r.id===S.role);
+const isAdmin=()=>S.role==='ADM';
+const vivos=()=>S.T.filter(t=>!t.eliminado);
+const byFolio=f=>S.T.find(t=>t.folio===f&&!t.eliminado);
+function badge(t){
+  let h=`<span class="badge b-${t.estatus}">${ESTATUS[t.estatus]}${t.estatus==='ubicado'?': '+esc(nom(t.ubic)):''}</span>`;
+  if(t.solicitud) h+=` <span class="badge b-solicitud">Eliminación solicitada</span>`;
+  return h;
+}
+function toast(msg){$('#toast').innerHTML=`<div class="toast" role="status">${esc(msg)}</div>`;clearTimeout(toast.t);toast.t=setTimeout(()=>$('#toast').innerHTML='',2600)}
+let AC=null;
+function beep(kind){
+  try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();
+   o.type=kind==='ok'?'sine':'square';o.frequency.value=kind==='ok'?1320:kind==='warn'?620:220;
+   g.gain.value=.06;o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+(kind==='ok'?.09:.28));}catch(e){}
+}
+function notify(para,folio,txt){S.notifs.push({para,folio,txt,t:now(),nuevo:true});}
+function addEv(t,txt,d,tl,admin){t.ev.push({t:now(),txt,d:d||'',tl:tl||'',admin:!!admin})}
+const ICON={
+ bell:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
+ scan:'<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 8v8M10 8v8M13 8v8M17 8v8"/></svg>',
+ box:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>',
+};
+
+/* ---------- Render principal ---------- */
+function render(){
+  $('#roles').innerHTML=ROLES.map(r=>`<button type="button" data-a="role" data-v="${r.id}" aria-pressed="${S.role===r.id}">${r.label}</button>`).join('');
+  $('#adminbar').innerHTML=isAdmin()?`<div class="adminbar"><div class="wrap"><strong>MODO ADMINISTRADOR</strong><span>jaraujo@fadermex.com · control total: editar, mover, cambiar estatus y eliminar</span><span style="margin-left:auto">Administradores: jaraujo · Oramirez · sistemasfed</span></div></div>`:'';
+  renderHeader();
+  const r=role();
+  let html='';
+  if(r.kind==='punto'){
+    if(S.tab==='bandeja')html=viewBandeja();
+    else if(S.tab==='nuevo')html=viewNuevo();
+    else if(S.tab==='escaner')html=viewEscaner();
+    else if(S.tab==='paq')html=viewPaqueteria();
+  } else if(r.kind==='gestor') html=viewGestor();
+  else html=viewAdmin();
+  $('#view').innerHTML=html;
+  renderModal();
+  drawBarcodes();
+  const si=$('#scanin')||$('#gscanin');if(si&&!S.modal)si.focus({preventScroll:true});
+}
+function renderHeader(){
+  const r=role();
+  let tabs=[];
+  if(r.kind==='punto'){
+    tabs=[['bandeja','Mi bandeja'],['nuevo','Nuevo traspaso'],['escaner','Escáner']];
+    if(r.id==='LOG'){const n=vivos().filter(t=>t.estatus==='en_logistica'&&isMor(t.destino)).length;tabs.push(['paq','Paquetería',n]);}
+  } else if(r.kind==='admin'){
+    const n=vivos().filter(t=>t.solicitud).length;
+    tabs=[['todos','Todos los traspasos'],['buscar','Buscador'],['sol','Solicitudes',n],['personas','Personas'],['puntos','Sucursales y áreas']];
+  }
+  const cur=r.kind==='admin'?S.adminTab:S.tab;
+  const mins=Math.max(0,720-Math.floor((Date.now()-S.sesion)/60000));
+  const who=r.kind==='punto'?`<div class="who"><span class="p">${esc(nom(r.id))}</span><span class="u">${esc(r.user)}${r.equipo?` · esta computadora: <b>${r.equipo}</b>`:''} · sesión: cierra en ${Math.floor(mins/60)} h ${String(mins%60).padStart(2,'0')} min</span></div>`
+    :r.kind==='gestor'?`<div class="who"><span class="p">App del gestor</span><span class="u">${esc(r.user)}</span></div>`
+    :`<div class="who"><span class="p">Administración</span><span class="u">${esc(r.user)}</span></div>`;
+  const mine=S.notifs.filter(n=>n.para===r.id);const unseen=mine.filter(n=>!n.visto).length;
+  const bell=r.kind==='punto'?`<div class="bellwrap"><button type="button" class="bell" data-a="bell" aria-label="Avisos" aria-expanded="${S.bell}">${ICON.bell}${unseen?`<span class="count">${unseen}</span>`:''}</button>
+    ${S.bell?`<div class="bellpanel"><div class="row" style="justify-content:space-between;margin-bottom:6px"><b>Avisos</b>${unseen?`<button class="btn ghost" type="button" data-a="bellread" style="padding:4px 8px">Marcar como vistos</button>`:''}</div>
+     ${mine.length?mine.slice().reverse().map(n=>`<button type="button" class="bellitem ${n.visto?'':'unseen'}" data-a="bellopen" data-v="${n.folio}"><span class="mono" style="font-weight:700">${n.folio}</span><span>${esc(n.txt)}</span><span class="muted mono" style="font-size:12px">${esc(n.t)}</span></button>`).join(''):'<div class="muted">Sin avisos.</div>'}
+     <div class="muted" style="font-size:12px;margin-top:8px">En la computadora también sale un aviso del sistema con sonido, aunque la página esté minimizada.</div></div>`:''}</div>`:'';
+  $('#header').innerHTML=`<div class="brand"><span class="logo" title="Aquí va la imagen o logo de la empresa">LOGO</span>Traspasos</div>${who}
+   ${bell}<nav class="tabs">${tabs.map(([id,l,n])=>`<button type="button" data-a="tab" data-v="${id}" ${cur===id?'aria-current="page"':''}>${l}${n?` <span class="count">${n}</span>`:''}</button>`).join('')}</nav>`;
+}
+
+/* ---------- Bandeja ---------- */
+function entrantes(me){return vivos().filter(t=>t.destino===me||(me==='LOG'&&t.via==='LOG'&&(!t.pasoLog||t.estatus==='en_logistica')))}
+function salientes(me){return vivos().filter(t=>t.origen===me)}
+function tcard(t,me){
+  const otro=me&&t.origen===me?`<span class="arrow">→</span>${esc(nom(t.destino))}`:`${esc(nom(t.origen))}<span class="arrow">→</span>${esc(nom(t.destino))}`;
+  const last=t.ev[t.ev.length-1];
+  return `<button type="button" class="tcard" data-a="open" data-v="${t.folio}" style="color:var(--s-${t.estatus})">
+   <span class="stripe"></span>
+   <span class="body"><span class="top"><span class="folio" style="color:var(--ink)">${t.folio}</span>${badge(t)}</span>
+    <span class="route" style="color:var(--ink)">${otro}</span>
+    <span class="desc">${esc(t.desc)}</span></span>
+   <span class="side"><span class="bultos">${t.bultos} ${t.bultos>1?'bultos':'bulto'}</span><span>${esc(last.t)}</span><span>${esc(last.txt)}</span></span></button>`;
+}
+function viewBandeja(){
+  const me=S.role;
+  const src=S.bandejaDir==='in'?entrantes(me):salientes(me);
+  const counts={};src.forEach(t=>counts[t.estatus]=(counts[t.estatus]||0)+1);
+  const list=src.filter(t=>!S.filtro||t.estatus===S.filtro).sort((a,b)=>order(a)-order(b));
+  return `<h1>Mi bandeja</h1><p class="sub">Solo ves los traspasos que van dirigidos a <b>${esc(nom(me))}</b> o que salieron de aquí. Esta pantalla es solo para consultar: para recibir o entregar usa el <b>Escáner</b>.</p>
+   <div class="seg" role="group"><button type="button" data-a="dir" data-v="in" aria-pressed="${S.bandejaDir==='in'}">Entrantes (${entrantes(me).length})</button><button type="button" data-a="dir" data-v="out" aria-pressed="${S.bandejaDir==='out'}">Salientes (${salientes(me).length})</button></div>
+   <div class="summary">${Object.keys(ESTATUS).filter(k=>counts[k]).map(k=>`<button type="button" class="chip" data-a="filtro" data-v="${k}" aria-pressed="${S.filtro===k}"><span class="badge b-${k}">${ESTATUS[k]}</span><span class="n">${counts[k]}</span></button>`).join('')}</div>
+   <div class="list">${list.length?list.map(t=>tcard(t,S.bandejaDir==='out'?me:null)).join(''):'<div class="empty">No hay traspasos aquí.</div>'}</div>`;
+}
+const ORD={ubicado:0,extraviado:1,incidencia:2,recolectado:3,paqueteria:4,en_logistica:5,nuevo:6,entregado:9};
+const order=t=>(t.solicitud?-1:ORD[t.estatus]??5);
+
+/* ---------- Nuevo traspaso ---------- */
+function viewNuevo(){
+  const w=S.wizard, me=S.role;
+  const steps=['Credencial','Destino','Contenido y bultos','Etiquetas'];
+  const head=`<h1>Nuevo traspaso</h1><p class="sub">Sale de <b>${esc(nom(me))}</b>. El folio y las etiquetas se generan solos al final.</p>
+   <div class="steps">${steps.map((s,i)=>`<div class="${w.step===i+1?'on':w.step>i+1?'done':''}">${i+1}. ${s}</div>`).join('')}</div>`;
+  if(w.step===1){
+    const ej=S.personas.find(p=>p.punto===me&&p.cred)||S.personas.find(p=>p.cred);
+    return head+`<div class="grid2"><div class="panel stack">
+      <div class="scanbox">${ICON.scan}<b>Escanea tu credencial</b><span class="muted" style="font-size:14px">Es obligatorio. Queda registrado quién creó el traspaso.</span></div>
+      <label class="f">Código de credencial<input class="t mono" id="credin" placeholder="EMP-0000" autocomplete="off"></label>
+      <div class="row"><button class="btn primary" type="button" data-a="cred">Continuar</button><button class="btn" type="button" data-a="credej" data-v="${ej.cred}">Simular escaneo (${ej.cred})</button></div>
+      ${w.err?`<div class="feedback err">${esc(w.err)}</div>`:''}
+    </div><div class="panel stack">
+      <h2>¿No tienes credencial todavía?</h2>
+      <p class="muted" style="margin:0">Regístrate como <b>usuario sin credencial</b>. El traspaso quedará marcado y los administradores verán que te falta credencial.</p>
+      ${w.sinCred?`<label class="f">Nombre completo<input class="t" id="scn" autocomplete="off"></label><label class="f">Número de empleado<input class="t mono" id="scnum" autocomplete="off" inputmode="numeric"></label><button class="btn" type="button" data-a="sincredok">Continuar sin credencial</button>`
+      :`<button class="btn" type="button" data-a="sincred">No tengo credencial</button>`}
+    </div></div>`;
+  }
+  if(w.step===2){
+    const opts=SUCS.map(s=>`<optgroup label="${s}">${PUNTOS.filter(p=>p.s===s&&p.id!==me).map(p=>`<option value="${p.id}" ${w.destino===p.id?'selected':''}>${esc(s==='Oficinas'?p.n:`${s} · ${p.n}`)}</option>`).join('')}</optgroup>`).join('');
+    return head+`<div class="grid2"><div class="panel stack">
+      <div class="note">Creado por: <b>${esc(w.persona.n)}</b> ${w.persona.cred?`· <span class="mono">${w.persona.cred}</span>`:'· <span class="tag">sin credencial</span>'}</div>
+      <label class="f">¿Para dónde va?<select class="t" id="destin"><option value="">Elige el destino…</option>${opts}</select></label>
+      <div id="rutanote">${rutaNote(me,w.destino)}</div>
+      <div class="row"><button class="btn ghost" type="button" data-a="back">Atrás</button><button class="btn primary" type="button" data-a="dest">Continuar</button></div>
+    </div><div class="panel"><h2>Rutas precargadas</h2><p class="muted" style="margin:0">Todos los destinos activos aparecen solos. Cuando el administrador agrega un área nueva, aparece aquí sin programar nada. Si el destino es Morelia, el sistema arma la ruta por Logística y paquetería.</p></div></div>`;
+  }
+  if(w.step===3){
+    return head+`<div class="grid2"><div class="panel stack">
+      <div class="note"><b>${esc(nom(me))}</b><span class="arrow">→</span><b>${esc(nom(w.destino))}</b></div>
+      <label class="f">¿Qué envías?<textarea class="t" id="descin" placeholder="Ej. Material de curación, 3 cajas">${esc(w.desc||'')}</textarea></label>
+      <div class="f" style="display:grid;gap:6px"><span style="font-weight:600;font-size:14px">Número de bultos</span>
+        <div class="qty"><button type="button" data-a="qty" data-v="-1" aria-label="Menos">−</button><span id="qtyv">${w.bultos||1}</span><button type="button" data-a="qty" data-v="1" aria-label="Más">+</button></div>
+        <span class="muted" style="font-size:13px">Se imprime una etiqueta por bulto.</span></div>
+      <div class="row"><button class="btn ghost" type="button" data-a="back">Atrás</button><button class="btn primary" type="button" data-a="gen">Generar traspaso e imprimir</button></div>
+      ${w.err?`<div class="feedback err">${esc(w.err)}</div>`:''}
+    </div><div class="panel stack"><h2>Vista previa de etiqueta</h2>${labelHTML({folio:P[me].id+'-????',origen:me,destino:w.destino,bultos:w.bultos||1,creado:now(),por:w.persona.n},1,0,true)}</div></div>`;
+  }
+  const t=byFolio(w.folio);
+  return head+`<div class="panel stack">
+    <div class="feedback ok">✓ Traspaso <span class="mono">${t.folio}</span> creado. Se enviaron ${t.bultos} ${t.bultos>1?'etiquetas':'etiqueta'} a la etiquetadora. Pégalas en los bultos; queda en espera de que pase gestoría.</div>
+    <div class="labels">${Array.from({length:t.bultos},(_,i)=>labelHTML(t,i+1,(t.rp||{})[i+1]||0)).join('')}</div>
+    <div class="row"><button class="btn" type="button" data-a="open" data-v="${t.folio}">Ver detalle / reimprimir</button><button class="btn primary" type="button" data-a="otro">Crear otro traspaso</button></div>
+  </div>`;
+}
+function rutaNote(me,dest){
+  if(!dest)return '';
+  if(isMor(dest)||isMor(me)){
+    const r=isMor(me)?'Paquetería → Logística (Oficinas) → '+(isOf(dest)?'entrega interna':'gestoría')+' → destino':isOf(me)?'Entrega a Logística → paquetería → Morelia':'Gestoría → Logística (Oficinas) → paquetería → Morelia';
+    return `<div class="note route"><b>Ruta con paquetería:</b> ${r}. Logística captura paquetería y número de guía. Es el mismo folio de principio a fin.</div>`;
+  }
+  if(isOf(me)&&isOf(dest))return `<div class="note">Entrega interna en Oficinas.</div>`;
+  return `<div class="note">Lo recoge gestoría y lo entrega en el destino.</div>`;
+}
+function labelHTML(t,b,rp,preview){
+  const code=`${t.folio}-${b}/${t.bultos}`;
+  return `<div class="label">${rp?`<span class="rp">R${rp}</span>`:''}
+    <div class="lrow"><div><b>ORIGEN</b>${esc(nom(t.origen))}</div><div style="text-align:right"><b>DESTINO</b><strong>${t.destino?esc(nom(t.destino)):'—'}</strong></div></div>
+    <div class="lfolio">${esc(t.folio)}</div>
+    <div>${preview?`<svg class="bc" data-code="NR-0000-1/1"></svg>`:`<svg class="bc" data-code="${esc(code)}"></svg>`}<div class="code">${esc(preview?t.folio+'-'+b+'/'+t.bultos:code)}</div></div>
+    <div class="lfoot"><div>${esc(t.creado)}<br>Creó: ${esc(String(t.por).split(' · ')[0])}</div><div class="lb">BULTO ${b} DE ${t.bultos}</div></div></div>`;
+}
+function drawBarcodes(){
+  if(!window.JsBarcode)return;
+  document.querySelectorAll('svg.bc').forEach(s=>{try{JsBarcode(s,s.dataset.code,{format:'CODE128',displayValue:false,height:46,margin:0,width:1.6,background:'#ffffff',lineColor:'#000000'});s.removeAttribute('width');s.setAttribute('preserveAspectRatio','none');}catch(e){}});
+}
+
+/* ---------- Escaneo: validación ---------- */
+function parse(code){
+  const m=String(code).trim().toUpperCase().match(/^(.+?-\d{4})(?:-(\d+)\/(\d+))?$/);
+  return m?{folio:m[1],b:m[2]?+m[2]:null,tot:m[3]?+m[3]:null}:null;
+}
+function validar(code,mode,me,lote){
+  const p=parse(code);
+  if(!p)return {k:'err',m:`"${code}" no es un folio válido. Revisa que esté bien tecleado (ej. NR-0040-1/3).`};
+  const t=byFolio(p.folio);
+  if(!t)return {k:'err',m:`El folio ${p.folio} no existe. Probablemente se tecleó mal.`};
+  if(p.b&&(p.tot!==t.bultos||p.b<1||p.b>t.bultos))return {k:'err',m:`Etiqueta no válida: ${p.folio} tiene ${t.bultos} bultos.`};
+  if(t.solicitud)return {k:'err',m:`${t.folio} tiene una solicitud de eliminación pendiente. No se debe mover hasta que responda un administrador.`};
+  if(mode==='recibir'){
+    const esLog=me==='LOG'&&t.via==='LOG'&&!t.pasoLog;
+    if(t.destino!==me&&!esLog)return {k:'err',m:`Este traspaso NO es para ${nom(me)}. Va para: ${nom(t.destino)}.`,t};
+    if(t.estatus==='entregado')return {k:'warn',m:`${t.folio} ya fue recibido anteriormente.`};
+    const ok=esLog?(isOf(t.origen)?['nuevo','recolectado']:['recolectado','paqueteria']):['recolectado','paqueteria','en_logistica','ubicado','extraviado'];
+    if(!ok.includes(t.estatus))return {k:'err',m:t.estatus==='nuevo'?`${t.folio} todavía no ha sido recolectado por gestoría.`:`${t.folio} está como "${ESTATUS[t.estatus]}". No se puede recibir.`};
+  } else {
+    if(t.estatus==='recolectado')return {k:'warn',m:`${t.folio} ya fue recolectado por ${t.gestor}.`};
+    if(mode==='entregar'&&t.origen!==me&&!(me==='LOG'&&t.estatus==='en_logistica'))return {k:'err',m:`${t.folio} no sale de aquí. Sale de: ${nom(t.origen)}.`};
+    const ok=(t.estatus==='nuevo'&&!(t.via==='LOG'&&isOf(t.origen)))||(t.estatus==='en_logistica'&&!isMor(t.destino)&&!isOf(t.destino));
+    if(!ok)return {k:'err',m:`${t.folio} está como "${ESTATUS[t.estatus]}". No se puede recolectar.`};
+  }
+  const set=lote[t.folio]||[];
+  const nuevos=p.b?[p.b]:Array.from({length:t.bultos},(_,i)=>i+1);
+  if(nuevos.every(b=>set.includes(b)))return {k:'warn',m:p.b?`El bulto ${p.b}/${t.bultos} de ${t.folio} ya fue escaneado.`:`${t.folio} ya está en la lista.`};
+  lote[t.folio]=[...new Set([...set,...nuevos])].sort();
+  const n=lote[t.folio].length;
+  return {k:'ok',m:p.b?`${t.folio} · bulto ${p.b}/${t.bultos} · ${n===t.bultos?'completo':`faltan ${t.bultos-n}`}`:`${t.folio} · ${t.bultos} ${t.bultos>1?'bultos':'bulto'} · ${nom(t.origen)} → ${nom(t.destino)}`};
+}
+function queueHTML(lote){
+  const fs=Object.keys(lote);
+  if(!fs.length)return '<div class="empty">Aún no hay traspasos en la lista. Escanea el primero.</div>';
+  return fs.slice().reverse().map(f=>{const t=byFolio(f);const n=lote[f].length;
+    return `<div class="qrow"><span style="color:${n===t.bultos?'var(--ok)':'var(--warn)'}">${n===t.bultos?'✓':'◐'}</span>
+     <div style="min-width:0"><div><span class="mono" style="font-weight:700">${f}</span> · ${esc(nom(t.origen))}<span class="arrow">→</span>${esc(nom(t.destino))}</div>
+     <div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.desc)} · creó ${esc(String(t.por).split(' · ')[0])} · ${esc(t.creado)}</div>
+     <div class="dots">${Array.from({length:t.bultos},(_,i)=>`<i class="${lote[f].includes(i+1)?'on':''}" title="Bulto ${i+1}"></i>`).join('')}</div></div>
+     <span class="pg ${n===t.bultos?'full':'part'}">${n}/${t.bultos}</span></div>`}).join('');
+}
+function fbHTML(fb){
+  if(!fb)return `<div class="feedback idle">Listo. Escanea con la pistola o teclea solo el folio (ej. NR-0040) y presiona Enter. Trae toda la información del traspaso.</div>`;
+  const ic={ok:'✓',err:'✕',warn:'!'}[fb.k];
+  return `<div class="feedback ${fb.k} flash" role="alert"><span style="font-size:20px;line-height:1">${ic}</span><span>${esc(fb.m)}</span></div>`;
+}
+const SAMPLES={
+ NR:{recibir:[['CONT-0006','correcto'],['V-0018','correcto'],['V-0018','repetido'],['C-RB-0011','es de Rebotica'],['BOT-0012','otra área'],['NR-0451','mal tecleado'],['RH-0004','sin recolectar']],
+     entregar:[['NR-0040',''],['NR-RB-0015','es de Rebotica'],['NR-0037','con solicitud'],['NR-0039','ya salió']]},
+ 'NR-RB':{recibir:[['C-RB-0011','correcto'],['CONT-0006','es de PV']],entregar:[['NR-RB-0015',''],['NR-0040','es de PV']]},
+ CONT:{recibir:[['BOT-0012','estaba en otro lugar'],['NR-0039','otra área'],['CONT-0099','no existe']],entregar:[['CONT-0006','ya salió']]},
+ LOG:{recibir:[['M-RB-0009','de Morelia'],['NR-0040','sin recolectar']],entregar:[['M-RB-0009','después de recibirlo']]},
+};
+
+/* ---------- Escáner (punto) ---------- */
+function viewEscaner(){
+  const sc=S.scan, me=S.role;
+  const modeBtns=`<div class="seg" role="group"><button type="button" data-a="smode" data-v="recibir" aria-pressed="${sc.mode==='recibir'}">Recibir traspasos</button><button type="button" data-a="smode" data-v="entregar" aria-pressed="${sc.mode==='entregar'}">Entregar a gestor</button></div>`;
+  const needG=sc.mode==='entregar'&&!sc.gestor;
+  const samples=(SAMPLES[me]||{})[sc.mode]||[];
+  const n=Object.keys(sc.lote).length;
+  return `<h1>Escáner en ráfaga</h1><p class="sub">Una sola pantalla para recibir y para entregar a gestoría. Escanea uno tras otro: cada folio se valida al instante y se va formando la fila. Al final confirma el lote.</p>
+   ${modeBtns}
+   <div class="scanner"><div class="stack">
+     ${sc.mode==='entregar'?(sc.gestor?`<div class="gestorpill">${ICON.box}<div><b>${esc(sc.gestor.n)}</b><div class="muted" style="font-size:13px">Gestor · credencial ${sc.gestor.cred}</div></div><button class="btn ghost" type="button" data-a="gclear" style="margin-left:auto">Cambiar</button></div>`
+       :`<div class="scanbox">${ICON.scan}<b>Primero escanea la credencial del gestor</b><span class="muted" style="font-size:14px">Para cuando el gestor no trae su celular.</span></div>`):''}
+     <label class="f">${needG?'Credencial del gestor':'Folio o código de barras'}<input class="scaninput" id="scanin" autocomplete="off" placeholder="${needG?'GES-01':'NR-0040'}"></label>
+     ${fbHTML(sc.fb)}
+     <div><div class="muted" style="font-size:12px;margin-bottom:6px;font-weight:600">SIMULAR ESCANEO (para probar)</div>
+      <div class="samples">${needG?`<button type="button" data-a="sim" data-v="GES-01">GES-01<small>Luis Gómez</small></button><button type="button" data-a="sim" data-v="GES-02">GES-02<small>Pedro Sánchez</small></button>`
+       :samples.map(([c,l])=>`<button type="button" data-a="sim" data-v="${c}">${c}${l?`<small>${l}</small>`:''}</button>`).join('')}</div></div>
+   </div><div class="stack">
+     <div class="row" style="justify-content:space-between"><h2 style="margin:0">${sc.mode==='recibir'?'Recibiendo':'Entregando a gestor'} · ${n} ${n===1?'traspaso':'traspasos'}</h2>
+      <div class="row"><button class="btn ghost" type="button" data-a="sclear" ${n?'':'disabled'}>Vaciar</button><button class="btn primary" type="button" data-a="sconfirm" ${n?'':'disabled'}>Confirmar ${sc.mode==='recibir'?'recepción':'salida'}</button></div></div>
+     <div class="queue">${queueHTML(sc.lote)}</div>
+   </div></div>`;
+}
+function onScan(code){
+  code=String(code).trim(); if(!code)return;
+  const sc=S.scan;
+  if(sc.mode==='entregar'&&!sc.gestor){
+    const g=S.gestores.find(g=>g.cred===code.toUpperCase());
+    if(g){sc.gestor=g;sc.fb={k:'ok',m:`Gestor identificado: ${g.n}. Ahora escanea los bultos.`};beep('ok');}
+    else{sc.fb={k:'err',m:`La credencial "${code}" no es de un gestor.`};beep('err');}
+    return render();
+  }
+  sc.fb=validar(code,sc.mode,S.role,sc.lote);beep(sc.fb.k);render();
+}
+function confirmarLote(lote,mode,me,gestor,medio){
+  let inc=0;
+  Object.entries(lote).forEach(([f,bs])=>{const t=byFolio(f);const full=bs.length===t.bultos;
+    if(mode==='recibir'){
+      if(me==='LOG'&&t.via==='LOG'&&!t.pasoLog){t.pasoLog=true;t.estatus='en_logistica';addEv(t,'Recibido en Logística',`Ana Ruiz · ${bs.length}/${t.bultos} bultos · ${isMor(t.destino)?'por enviar a paquetería':'por distribuir'}`,'en_logistica');}
+      else if(full){t.estatus='entregado';addEv(t,'Entregado',`${nom(me)} · ${bs.length}/${t.bultos} bultos`,'entregado');}
+      else{inc++;t.estatus='incidencia';addEv(t,'Recibido con incidencia',`${nom(me)} · llegó ${bs.length}/${t.bultos} · faltan bultos`,'incidencia');}
+    } else {
+      t.estatus='recolectado';t.gestor=gestor.n;notify(t.destino,t.folio,`Va en camino para ti · lo lleva ${gestor.n}`);
+      addEv(t,'Recolectado por gestoría',`${gestor.n} · ${medio} · ${bs.length}/${t.bultos} bultos${full?'':' · ¡INCOMPLETO!'}`,'recolectado');
+    }});
+  return inc;
+}
+
+/* ---------- Paquetería (Logística) ---------- */
+function viewPaqueteria(){
+  const por=vivos().filter(t=>t.estatus==='en_logistica'&&isMor(t.destino));
+  const camino=vivos().filter(t=>t.estatus==='paqueteria');
+  const dist=vivos().filter(t=>t.estatus==='en_logistica'&&!isMor(t.destino));
+  return `<h1>Paquetería</h1><p class="sub">Todo lo que va o viene de Morelia pasa por Logística. Captura la paquetería y la guía para enviarlo.</p>
+   <h2>Por enviar a Morelia (${por.length})</h2>
+   <div class="list" style="margin-bottom:22px">${por.length?por.map(t=>`<div class="panel stack" style="padding:14px">
+     <div class="row" style="justify-content:space-between"><div><span class="mono" style="font-weight:700;font-size:16px">${t.folio}</span> · ${esc(nom(t.origen))}<span class="arrow">→</span><b>${esc(nom(t.destino))}</b> · ${t.bultos} bultos</div>${badge(t)}</div>
+     <div class="row"><select class="t" id="pq-${t.folio}" style="width:auto"><option>Estafeta</option><option>DHL</option><option>FedEx</option><option>Paquetexpress</option></select>
+      <input class="t mono" id="gu-${t.folio}" placeholder="Número de guía" style="flex:1;min-width:180px"><button class="btn primary" type="button" data-a="enviarpq" data-v="${t.folio}">Marcar enviado</button></div></div>`).join(''):'<div class="empty">Nada por enviar.</div>'}</div>
+   <h2>En camino por paquetería (${camino.length})</h2>
+   <div class="list" style="margin-bottom:22px">${camino.length?camino.map(t=>tcard(t)).join(''):'<div class="empty">Nada en camino.</div>'}</div>
+   <h2>Recibido de Morelia, por distribuir (${dist.length})</h2>
+   <div class="list">${dist.length?dist.map(t=>tcard(t)).join(''):'<div class="empty">Nada por distribuir. Recíbelo en el Escáner cuando llegue la paquetería.</div>'}</div>`;
+}
+
+/* ---------- Gestor ---------- */
+function viewGestor(){
+  const me='Luis Gómez';
+  const poder=vivos().filter(t=>t.estatus==='recolectado'&&t.gestor===me);
+  const por=vivos().filter(t=>!t.solicitud&&((t.estatus==='nuevo'&&!(t.via==='LOG'&&isOf(t.origen)))||(t.estatus==='en_logistica'&&!isMor(t.destino)&&!isOf(t.destino))));
+  const g=S.gscan;
+  let body='';
+  if(S.gtab==='poder'){
+    body=`<div style="font-weight:700">En mi poder (${poder.length})</div><div class="muted" style="font-size:13px">Se borran solos cuando el destino los escanea como recibidos.</div>`+
+      (poder.length?poder.map(t=>`<button type="button" class="tcard" data-a="open" data-v="${t.folio}" style="color:var(--s-${t.estatus});grid-template-columns:6px 1fr"><span class="stripe"></span><span class="body" style="padding-right:12px"><span class="folio" style="color:var(--ink)">${t.folio}</span><span class="route" style="color:var(--ink)">→ ${esc(nom(t.destino))}</span><span class="desc">${t.bultos} bultos · ${esc(t.desc)}</span></span></button>`).join(''):'<div class="empty">No llevas traspasos.</div>');
+  } else if(S.gtab==='por'){
+    const grp={};por.forEach(t=>{const k=nom(t.estatus==='en_logistica'?'LOG':t.origen);(grp[k]=grp[k]||[]).push(t)});
+    body=`<div style="font-weight:700">Por recolectar (${por.length})</div>`+Object.entries(grp).map(([k,ts])=>`<div class="muted" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:6px">${esc(k)}</div>`+ts.map(t=>`<div class="qrow" style="grid-template-columns:minmax(0,1fr) auto"><div style="min-width:0"><span class="mono" style="font-weight:700">${t.folio}</span><div class="muted" style="font-size:13px">→ ${esc(nom(t.destino))}</div></div><span class="pg">${t.bultos} b</span></div>`).join('')).join('');
+  } else {
+    const n=Object.keys(g.lote).length;
+    body=`<div class="camera">Cámara · apunta al código</div>
+      <input class="scaninput" id="gscanin" autocomplete="off" placeholder="o teclea el folio (NR-0040)" style="font-size:17px">
+      ${fbHTML(g.fb)}
+      <div class="samples">${[['NR-0040',''],['RH-0004',''],['NR-0038','ya entregado'],['NR-0037','con solicitud']].map(([c,l])=>`<button type="button" data-a="gsim" data-v="${c}">${c}${l?`<small>${l}</small>`:''}</button>`).join('')}</div>
+      <div class="queue">${queueHTML(g.lote)}</div>
+      <button class="btn primary" type="button" data-a="gconfirm" ${n?'':'disabled'}>Confirmar recolección (${n})</button>`;
+  }
+  return `<div class="two"><div><h1>App del gestor</h1><p class="sub">Así se vería en el celular del gestor. No imprime nada: solo escanea en ráfaga lo que recoge. La entrega la confirma el destino al escanear, y en ese momento el traspaso desaparece de la lista del gestor.</p>
+     <div class="note">Si el gestor no trae su celular, la sucursal escanea su credencial desde <b>Escáner → Entregar a gestor</b>, y el resultado es el mismo.</div></div>
+    <div class="phone"><div class="ph-head"><div style="font-family:var(--f-display);font-size:22px">Hola, Luis</div><div class="muted" style="font-size:13px">Gestor · GES-01 · ${poder.length} en mi poder · ${por.length} por recolectar</div></div>
+     <div class="ph-body">${body}</div>
+     <div class="ph-nav">${[['poder','En mi poder'],['por','Por recolectar'],['scan','Escanear']].map(([k,l])=>`<button type="button" data-a="gtab" data-v="${k}" ${S.gtab===k?'aria-current="page"':''}>${l}</button>`).join('')}</div></div></div>`;
+}
+
+/* ---------- Admin ---------- */
+function viewAdmin(){
+  const tab=S.adminTab;
+  if(tab==='todos'){
+    const all=vivos();const counts={};all.forEach(t=>counts[t.estatus]=(counts[t.estatus]||0)+1);
+    const list=all.filter(t=>!S.adminFiltro||t.estatus===S.adminFiltro).sort((a,b)=>order(a)-order(b));
+    return `<h1>Todos los traspasos</h1><p class="sub">Vista completa de todas las sucursales y áreas. Haz clic en un traspaso para editarlo, moverlo, cambiar su estatus o eliminarlo.</p>
+     <div class="summary">${Object.keys(ESTATUS).filter(k=>counts[k]).map(k=>`<button type="button" class="chip" data-a="afiltro" data-v="${k}" aria-pressed="${S.adminFiltro===k}"><span class="badge b-${k}">${ESTATUS[k]}</span><span class="n">${counts[k]}</span></button>`).join('')}</div>
+     <div class="tablewrap"><table><thead><tr><th>Folio</th><th>Estatus</th><th>Origen</th><th>Destino</th><th>Bultos</th><th>Creado</th><th>Último movimiento</th></tr></thead><tbody>
+     ${list.map(t=>{const l=t.ev[t.ev.length-1];return `<tr class="click" data-a="open" data-v="${t.folio}"><td class="mono"><b>${t.folio}</b></td><td>${badge(t)}</td><td>${esc(nom(t.origen))}</td><td>${esc(nom(t.destino))}</td><td class="mono">${t.bultos}</td><td class="mono">${esc(t.creado)}</td><td>${esc(l.t)} · ${esc(l.txt)}</td></tr>`}).join('')}
+     </tbody></table></div>
+     ${S.bitacora.length?`<h2 style="margin-top:24px">Bitácora de administradores</h2><div class="tablewrap"><table><tbody>${S.bitacora.slice().reverse().map(b=>`<tr><td class="mono">${esc(b.t)}</td><td>${esc(b.txt)}</td></tr>`).join('')}</tbody></table></div>`:''}`;
+  }
+  if(tab==='buscar'){
+    const q=S.search.trim().toUpperCase();
+    const p=parse(q);
+    const t=q?(byFolio(p?p.folio:q)||vivos().find(x=>(x.guia||'').replace(/\s/g,'').includes(q.replace(/\s/g,''))&&q.length>3)):null;
+    const sug=q&&!t?vivos().filter(x=>x.folio.includes(q)||x.desc.toUpperCase().includes(q)||String(x.por).toUpperCase().includes(q)).slice(0,8):[];
+    return `<h1>Buscador</h1><p class="sub">Escribe o escanea un folio (también funciona con el número de guía, una persona o una palabra de la descripción) y ves su historia completa al instante.</p>
+     <form class="searchbar" data-form="search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="searchin" value="${esc(S.search)}" placeholder="NR-0041" autocomplete="off"><button class="btn gold" type="submit">Buscar</button></form>
+     <div class="samples" style="margin:-8px 0 18px">${['NR-0041','BOT-0012','D-0027','E-0030','8072 3341'].map(c=>`<button type="button" data-a="qs" data-v="${c}">${c}</button>`).join('')}</div>
+     ${t?`<div class="panel">${detailHTML(t,true)}</div>`:q?(sug.length?`<div class="list">${sug.map(x=>tcard(x)).join('')}</div>`:`<div class="empty">No se encontró "${esc(S.search)}".</div>`):''}`;
+  }
+  if(tab==='sol'){
+    const sols=vivos().filter(t=>t.solicitud);
+    return `<h1>Solicitudes de eliminación</h1><p class="sub">Los usuarios no pueden borrar traspasos: lo solicitan con un motivo. Mientras esperan respuesta, el traspaso queda congelado y gestoría no puede recolectarlo.</p>
+     <div class="list">${sols.length?sols.map(t=>`<div class="panel stack"><div class="row" style="justify-content:space-between"><div><span class="mono" style="font-weight:700;font-size:17px">${t.folio}</span> · ${esc(nom(t.origen))}<span class="arrow">→</span>${esc(nom(t.destino))}</div>${badge(t)}</div>
+       <div class="note"><b>${esc(t.solicitud.por)}</b> · ${esc(t.solicitud.f)}<br>"${esc(t.solicitud.motivo)}"</div>
+       <label class="f">Comentario (opcional)<input class="t" id="cm-${t.folio}" autocomplete="off"></label>
+       <div class="row"><button class="btn" type="button" data-a="open" data-v="${t.folio}">Ver historial</button><button class="btn" type="button" data-a="solno" data-v="${t.folio}">Rechazar</button><button class="btn danger" type="button" data-a="solsi" data-v="${t.folio}">Aprobar y eliminar</button></div></div>`).join(''):'<div class="empty">No hay solicitudes pendientes.</div>'}</div>`;
+  }
+  if(tab==='personas'){
+    return `<h1>Personas y credenciales</h1><p class="sub">Aproximadamente 60 credenciales. Quien todavía no tiene credencial aparece marcado; al entregársela, se vincula y conserva su historial.</p>
+     <div class="tablewrap"><table><thead><tr><th>Nombre</th><th>Credencial</th><th>Punto</th><th>Tipo</th><th></th></tr></thead><tbody>
+     ${S.personas.map(p=>`<tr><td><b>${esc(p.n)}</b></td><td class="mono">${p.cred||`<span class="tag">sin credencial</span> #${esc(p.num||'—')}`}</td><td>${esc(nom(p.punto))}</td><td>Empleado</td><td>${p.cred?`<button class="btn ghost" type="button" data-a="nop">Desactivar</button>`:`<button class="btn" type="button" data-a="asigcred" data-v="${esc(p.n)}">Asignar credencial</button>`}</td></tr>`).join('')}
+     ${S.gestores.map(g=>`<tr><td><b>${esc(g.n)}</b></td><td class="mono">${g.cred}</td><td>Gestoría</td><td>Gestor</td><td><button class="btn ghost" type="button" data-a="nop">Desactivar</button></td></tr>`).join('')}
+     </tbody></table></div>`;
+  }
+  return `<h1>Sucursales y áreas</h1><p class="sub">Catálogo editable. Reglas: cada prefijo es único (2 a 5 letras) y no se puede cambiar una vez usado; un área nueva aparece sola en las rutas de todos. PV y Rebotica comparten la cuenta de la sucursal, pero cada computadora queda fija a su área: PV no puede dar entrada ni salida a lo de Rebotica, ni al revés.</p>
+   <div class="catalog">${SUCS.map(s=>`<div class="panel"><h2 style="margin:0">${s}</h2><ul>${PUNTOS.filter(p=>p.s===s).map(p=>`<li><span>${esc(p.n)}</span><span class="mono muted">${p.id}-0001</span></li>`).join('')}</ul></div>`).join('')}
+   <div class="panel stack" style="border-style:dashed"><h2 style="margin:0">Agregar área o subárea</h2><label class="f">Nombre<input class="t" id="na" placeholder="Ej. Calidad"></label><label class="f">Sucursal<select class="t" id="ns">${SUCS.map(s=>`<option>${s}</option>`).join('')}</select></label><label class="f">Prefijo<input class="t mono" id="np" placeholder="CAL" maxlength="5"></label><button class="btn gold" type="button" data-a="addpunto">Agregar</button></div></div>`;
+}
+
+/* ---------- Detalle ---------- */
+function detailHTML(t,inline){
+  const me=S.role, adm=isAdmin(), esOrigen=t.origen===me;
+  const m=S.modal||{};
+  const dl=[['Origen',nom(t.origen)],['Destino',nom(t.destino)],['Bultos',t.bultos],['Creado',t.creado],['Creó',t.por]];
+  if(t.gestor)dl.push(['Gestor',t.gestor]);
+  if(t.guia)dl.push(['Paquetería / guía',t.guia]);
+  if(t.via)dl.push(['Ruta','Vía Logística + paquetería']);
+  let actions='';
+  if(adm){
+    actions=`<div class="actions"><div class="muted" style="font-size:12px;font-weight:700;letter-spacing:.06em">ACCIONES DE ADMINISTRADOR</div>
+     <div class="inline-form"><div class="row"><label class="f" style="flex:1;min-width:180px">Cambiar estatus<select class="t" id="aest">${Object.entries(ESTATUS).map(([k,v])=>`<option value="${k}" ${t.estatus===k?'selected':''}>${v}</option>`).join('')}</select></label>
+       <label class="f" style="flex:1;min-width:180px">Ubicación (si está en otro lugar)<select class="t" id="aubic">${PUNTOS.map(p=>`<option value="${p.id}" ${t.ubic===p.id?'selected':''}>${esc(nom(p.id))}</option>`).join('')}</select></label></div>
+       <div class="row"><label class="f" style="flex:1;min-width:180px">Mover a otro destino<select class="t" id="adest">${PUNTOS.map(p=>`<option value="${p.id}" ${t.destino===p.id?'selected':''}>${esc(nom(p.id))}</option>`).join('')}</select></label>
+       <label class="f" style="flex:1;min-width:180px">Motivo<input class="t" id="amot" placeholder="Opcional" autocomplete="off"></label></div>
+       <div class="row"><button class="btn gold" type="button" data-a="asave" data-v="${t.folio}">Guardar cambios</button><button class="btn" type="button" data-a="rpall" data-v="${t.folio}">Reimprimir etiquetas</button>
+       ${m.confirmDel===t.folio?`<span style="font-weight:600;color:var(--err)">¿Eliminar ${t.folio} definitivamente?</span><button class="btn danger" type="button" data-a="adel" data-v="${t.folio}">Sí, eliminar</button><button class="btn ghost" type="button" data-a="adelno">No</button>`
+        :`<button class="btn danger" type="button" data-a="adelask" data-v="${t.folio}">Eliminar</button>`}</div></div></div>`;
+  } else if(esOrigen){
+    actions=`<div class="actions"><div class="row">
+      ${m.form==='rp'?'':`<button class="btn" type="button" data-a="frm" data-v="rp">Reimprimir etiqueta</button>`}
+      ${!t.solicitud&&m.form!=='del'&&['nuevo'].includes(t.estatus)?`<button class="btn" type="button" data-a="frm" data-v="del">Solicitar eliminación</button>`:''}</div>
+      ${m.form==='rp'?`<div class="inline-form"><div class="row"><label class="f" style="flex:1;min-width:140px">¿Qué etiqueta?<select class="t" id="rpb"><option value="0">Todas (${t.bultos})</option>${Array.from({length:t.bultos},(_,i)=>`<option value="${i+1}">Bulto ${i+1} de ${t.bultos}</option>`).join('')}</select></label>
+        <label class="f" style="flex:1;min-width:160px">Motivo<select class="t" id="rpm"><option>Etiqueta dañada</option><option>No imprimió</option><option>Se cayó o despegó</option><option>Otro</option></select></label></div>
+        <div class="row"><button class="btn primary" type="button" data-a="rpgo" data-v="${t.folio}">Escanear credencial y reimprimir</button><button class="btn ghost" type="button" data-a="frm" data-v="">Cancelar</button></div></div>`:''}
+      ${m.form==='del'?`<div class="inline-form"><label class="f">¿Por qué se debe eliminar? (obligatorio)<textarea class="t" id="delm"></textarea></label><div class="muted" style="font-size:13px">No se borra al momento: un administrador revisa tu solicitud. Mientras tanto el traspaso queda congelado.</div>
+        <div class="row"><button class="btn danger" type="button" data-a="delgo" data-v="${t.folio}">Enviar solicitud</button><button class="btn ghost" type="button" data-a="frm" data-v="">Cancelar</button></div>${m.err?`<div class="feedback err">${esc(m.err)}</div>`:''}</div>`:''}
+    </div>`;
+  }
+  return `<div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="mono" style="font-size:26px;font-weight:700">${t.folio}</div><div class="muted">${esc(t.desc)}</div></div>
+    <div class="row">${badge(t)}${inline?'':`<button class="btn ghost" type="button" data-a="close" aria-label="Cerrar">✕</button>`}</div></div>
+   ${t.solicitud?`<div class="note" style="margin-top:12px"><b>Eliminación solicitada</b> por ${esc(t.solicitud.por)} · ${esc(t.solicitud.f)} · "${esc(t.solicitud.motivo)}"</div>`:''}
+   <dl class="dl">${dl.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
+   <h2>Línea de tiempo</h2>
+   <ol class="timeline">${t.ev.map(e=>`<li class="${e.admin?'admin':''}" style="--tl:var(--s-${e.tl||'solicitud'})"><div class="when">${esc(e.t)}</div><div class="what">${esc(e.txt)}</div>${e.d?`<div class="detail">${esc(e.d)}</div>`:''}</li>`).join('')}</ol>
+   <details style="margin:8px 0 4px"><summary style="cursor:pointer;font-weight:600">Ver etiquetas (${t.bultos})</summary><div class="labels" style="margin-top:12px">${Array.from({length:t.bultos},(_,i)=>labelHTML(t,i+1,(t.rp||{})[i+1]||0)).join('')}</div></details>
+   ${actions}`;
+}
+function renderModal(){
+  const m=S.modal;
+  if(!m){$('#modal').innerHTML='';return;}
+  const t=byFolio(m.folio);if(!t){S.modal=null;$('#modal').innerHTML='';return;}
+  $('#modal').innerHTML=`<div class="modal" data-a="bg"><div class="box" role="dialog" aria-modal="true" aria-label="Traspaso ${t.folio}">${detailHTML(t,false)}</div></div>`;
+}
+
+/* ---------- Eventos ---------- */
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-a]');if(!el)return;
+  const a=el.dataset.a,v=el.dataset.v;
+  if(a==='bg'&&e.target!==el)return;
+  const w=S.wizard;
+  switch(a){
+   case 'role':S.bell=false;S.role=v;S.tab='bandeja';S.filtro=null;S.modal=null;S.scan={mode:'recibir',lote:{},fb:null,gestor:null};S.wizard={step:1};break;
+   case 'tab':if(isAdmin())S.adminTab=v;else S.tab=v;S.filtro=null;break;
+   case 'dir':S.bandejaDir=v;S.filtro=null;break;
+   case 'filtro':S.filtro=S.filtro===v?null:v;break;
+   case 'afiltro':S.adminFiltro=S.adminFiltro===v?null:v;break;
+   case 'open':S.modal={folio:v};break;
+   case 'bell':S.bell=!S.bell;break;
+   case 'bellread':S.notifs.forEach(n=>{if(n.para===S.role)n.visto=true});break;
+   case 'bellopen':S.notifs.forEach(n=>{if(n.para===S.role&&n.folio===v)n.visto=true});S.bell=false;S.modal={folio:v};break;
+   case 'close':case 'bg':S.modal=null;break;
+   case 'frm':S.modal.form=v;S.modal.err=null;break;
+   case 'credej':$('#credin').value=v;return credOk(v);
+   case 'cred':return credOk($('#credin').value);
+   case 'sincred':w.sinCred=true;break;
+   case 'sincredok':{const n=$('#scn').value.trim(),num=$('#scnum').value.trim();if(!n||!num){w.err='Escribe tu nombre y número de empleado.';w.step=1;break;}
+     let p=S.personas.find(x=>!x.cred&&x.num===num);if(!p){p={cred:null,num,n,punto:S.role};S.personas.push(p);}w.persona=p;w.err=null;w.step=2;break;}
+   case 'back':w.step--;w.err=null;break;
+   case 'dest':{const d=$('#destin').value;if(!d){toast('Elige un destino');return;}w.destino=d;w.bultos=w.bultos||1;w.step=3;break;}
+   case 'qty':w.desc=$('#descin').value;w.bultos=Math.min(30,Math.max(1,(w.bultos||1)+(+v)));break;
+   case 'gen':{const d=$('#descin').value.trim();if(!d){w.desc='';w.err='Describe qué envías.';break;}
+     const me=S.role;S.counters[me]=(S.counters[me]||0)+1;const folio=`${me}-${String(S.counters[me]).padStart(4,'0')}`;
+     const pp=w.persona;const por=pp.cred?`${pp.n} · ${pp.cred}`:`${pp.n} · sin credencial (#${pp.num})`;
+     const via=(isMor(me)||isMor(w.destino))?'LOG':undefined;
+     const t={folio,origen:me,destino:w.destino,bultos:w.bultos,desc:d,creado:now(),por,estatus:'nuevo',via,ev:[]};
+     addEv(t,'Creado',pp.cred?`${pp.n} · credencial ${pp.cred}`:`${pp.n} · SIN CREDENCIAL · No. empleado ${pp.num}`,'nuevo');
+     addEv(t,'Etiquetas impresas',Array.from({length:t.bultos},(_,i)=>`${i+1}/${t.bultos}`).join(', '));
+     S.T.push(t);notify(t.destino,folio,`Nuevo traspaso para ti desde ${nom(me)}`);S.wizard={step:4,folio};toast(`Folio ${folio} generado · imprimiendo ${t.bultos} etiqueta(s)`);break;}
+   case 'otro':S.wizard={step:1};break;
+   case 'smode':S.scan={mode:v,lote:{},fb:null,gestor:null};break;
+   case 'gclear':S.scan.gestor=null;S.scan.lote={};S.scan.fb=null;break;
+   case 'sim':return onScan(v);
+   case 'sclear':S.scan.lote={};S.scan.fb=null;break;
+   case 'sconfirm':{const sc=S.scan;const n=Object.keys(sc.lote).length;const inc=confirmarLote(sc.lote,sc.mode,S.role,sc.gestor,'credencial escaneada en '+nom(S.role));
+     toast(sc.mode==='recibir'?`${n} traspaso(s) recibidos${inc?` · ${inc} con incidencia`:''}`:`${n} traspaso(s) entregados a ${sc.gestor.n}`);sc.lote={};sc.fb=null;break;}
+   case 'gtab':S.gtab=v;break;
+   case 'gsim':S.gscan.fb=validar(v,'gestor',null,S.gscan.lote);beep(S.gscan.fb.k);break;
+   case 'gconfirm':{const n=Object.keys(S.gscan.lote).length;confirmarLote(S.gscan.lote,'gestor',null,{n:'Luis Gómez'},'celular');S.gscan={lote:{},fb:null};S.gtab='poder';toast(`${n} traspaso(s) recolectados`);break;}
+   case 'enviarpq':{const t=byFolio(v);const g=$('#gu-'+v).value.trim();if(!g){toast('Captura el número de guía');return;}
+     t.estatus='paqueteria';t.guia=`${$('#pq-'+v).value} · ${g}`;notify(t.destino,t.folio,`Va en camino por paquetería · ${t.guia}`);addEv(t,'Enviado por paquetería',t.guia+' · Logística','paqueteria');toast(`${v} enviado`);break;}
+   case 'rpgo':{const t=byFolio(v);const b=+$('#rpb').value,mot=$('#rpm').value;t.rp=t.rp||{};
+     const bs=b?[b]:Array.from({length:t.bultos},(_,i)=>i+1);bs.forEach(x=>t.rp[x]=(t.rp[x]||0)+1);
+     addEv(t,b?`Reimpresión bulto ${b}/${t.bultos}`:'Reimpresión de todas las etiquetas',`${(S.personas.find(p=>p.punto===S.role&&p.cred)||{n:'Usuario'}).n} · motivo: ${mot.toLowerCase()}`);S.modal.form=null;toast('Etiqueta reenviada a la etiquetadora');break;}
+   case 'rpall':{const t=byFolio(v);t.rp=t.rp||{};for(let i=1;i<=t.bultos;i++)t.rp[i]=(t.rp[i]||0)+1;addEv(t,'Reimpresión de todas las etiquetas','jaraujo@fadermex.com (administrador)','',true);toast('Etiquetas reenviadas');break;}
+   case 'delgo':{const t=byFolio(v);const mt=$('#delm').value.trim();if(!mt){S.modal.err='Escribe el motivo.';break;}
+     t.solicitud={motivo:mt,por:nom(S.role),f:now()};addEv(t,'Solicitud de eliminación',`${nom(S.role)} · "${mt}"`,'solicitud');S.modal.form=null;toast('Solicitud enviada a los administradores');break;}
+   case 'solsi':{const t=byFolio(v);const c=$('#cm-'+v).value.trim();t.eliminado=true;S.bitacora.push({t:now(),txt:`jaraujo eliminó ${v} (solicitud aprobada)${c?' · '+c:''}`});toast(`${v} eliminado`);break;}
+   case 'solno':{const t=byFolio(v);const c=$('#cm-'+v).value.trim();addEv(t,'Solicitud rechazada',`jaraujo@fadermex.com${c?' · "'+c+'"':''}`,'',true);delete t.solicitud;toast('Solicitud rechazada; el traspaso sigue activo');break;}
+   case 'asave':{const t=byFolio(v);const est=$('#aest').value,dest=$('#adest').value,ub=$('#aubic').value,mot=$('#amot').value.trim();const ch=[];
+     if(est!==t.estatus){ch.push(`estatus: ${ESTATUS[t.estatus]} → ${ESTATUS[est]}`);t.estatus=est;}
+     if(est==='ubicado'&&ub!==t.ubic){t.ubic=ub;ch.push(`ubicación: ${nom(ub)}`);}
+     if(dest!==t.destino){ch.push(`destino: ${nom(t.destino)} → ${nom(dest)}`);t.destino=dest;}
+     if(!ch.length){toast('Sin cambios');return;}
+     addEv(t,'Editado por administrador',`jaraujo@fadermex.com · ${ch.join(' · ')}${mot?' · motivo: '+mot:''}`,est,true);S.bitacora.push({t:now(),txt:`jaraujo editó ${v}: ${ch.join(', ')}`});toast('Cambios guardados');break;}
+   case 'adelask':S.modal=S.modal||{folio:v};S.modal.confirmDel=v;break;
+   case 'adelno':S.modal.confirmDel=null;break;
+   case 'adel':{const t=byFolio(v);t.eliminado=true;S.bitacora.push({t:now(),txt:`jaraujo eliminó ${v}`});S.modal=null;S.search='';toast(`${v} eliminado`);break;}
+   case 'qs':S.search=v;break;
+   case 'asigcred':{const p=S.personas.find(x=>x.n===v);const n=S.personas.filter(x=>x.cred).length+1;p.cred=`EMP-0${500+n}`;toast(`Credencial ${p.cred} asignada a ${p.n}; su historial queda vinculado`);break;}
+   case 'addpunto':{const n=$('#na').value.trim(),s=$('#ns').value,pf=$('#np').value.trim().toUpperCase();
+     if(!n||!/^[A-Z]{2,5}$/.test(pf)){toast('Nombre y prefijo de 2 a 5 letras');return;}if(P[pf]){toast(`El prefijo ${pf} ya existe`);return;}
+     const p={id:pf,n,s};PUNTOS.push(p);P[pf]=p;toast(`${n} agregado; ya aparece en todas las rutas`);break;}
+   case 'nop':toast('En el sistema real: desactiva la credencial al momento');return;
+   default:return;
+  }
+  render();
+});
+function credOk(code){
+  const w=S.wizard;const p=S.personas.find(x=>x.cred&&x.cred===String(code).trim().toUpperCase());
+  if(!p){w.err=`La credencial "${code}" no está registrada.`;beep('err');}else{w.persona=p;w.err=null;w.step=2;beep('ok');}
+  render();
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&S.modal){S.modal=null;render();return;}
+  if(e.key!=='Enter')return;
+  const id=e.target.id;
+  if(id==='scanin'){e.preventDefault();onScan(e.target.value);}
+  else if(id==='gscanin'){e.preventDefault();S.gscan.fb=validar(e.target.value,'gestor',null,S.gscan.lote);beep(S.gscan.fb.k);render();}
+  else if(id==='credin'){e.preventDefault();credOk(e.target.value);}
+});
+document.addEventListener('change',e=>{if(e.target.id==='destin'){$('#rutanote').innerHTML=rutaNote(S.role,e.target.value);}});
+document.addEventListener('input',e=>{if(e.target.id==='descin')S.wizard.desc=e.target.value;});
+document.addEventListener('submit',e=>{if(e.target.dataset.form==='search'){e.preventDefault();S.search=$('#searchin').value;render();}});
+$('#reset').addEventListener('click',()=>{const r=S.role;S=seed();S.role=r;render();toast('Datos de ejemplo reiniciados');});
+render();
+</script>
+
+</body>
+</html>
