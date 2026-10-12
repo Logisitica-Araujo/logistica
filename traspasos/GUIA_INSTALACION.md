@@ -9,6 +9,17 @@ Haz primero la parte **A** y después la **B**.
 
 ---
 
+## Cómo se entra (sin contraseñas nuevas)
+
+- **La llave es la cuenta de Google de la empresa (@fadermex.com).** No hay usuario ni contraseña aparte. Cada computadora tiene Chrome abierto con la cuenta de su área (la de la sucursal, la de Botican, la de cada área de Oficinas). Google ya protege esa cuenta con su contraseña y, si lo activan, con verificación en dos pasos.
+- **La primera vez** que se abre la página en una computadora, se elige el área (PV, Rebotica, Contabilidad…).
+- **Cada 12 horas** la página pide volver a elegir el área: es un solo clic, sin contraseña. Sirve para que una computadora no quede trabajando días enteros con una sesión vieja. Las horas se cambian en `CFG_Ajustes` (`sesion_horas_sucursal`, `sesion_horas_admin`).
+- **Quién hizo cada cosa** se sabe por la credencial que se escanea al crear o reimprimir, no por la sesión.
+- **Administradores** (jaraujo, Oramirez, sistemasfed): entran como **usuarios de su área** para el trabajo diario. Cuando hay que arreglar algo, usan el botón dorado **"Modo administrador"** y, al terminar, **"← Volver a mi área"**. Como usuarios no tienen poderes de administrador, así no se edita nada por accidente.
+- **Recomendación:** activen la **verificación en dos pasos** de Google en las 3 cuentas de administrador y en las cuentas de sucursal.
+
+---
+
 ## A. Sistema de traspasos
 
 ### A1. Crear el proyecto de Apps Script

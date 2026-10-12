@@ -72,7 +72,7 @@ function pantallaEntrada(msg) {
       (msg ? '<div class="feedback warn">' + esc(msg) + '</div>' : '') +
       '<div><h1>Traspasos</h1><p class="sub">Hola <b>' + esc(d.email) + '</b>. Elige el área de <b>esta computadora</b>. ' +
       'La app la recordará hasta que se cierre la sesión.</p></div>';
-    if (d.admin) html += '<div class="grupo"><h2>Administración</h2><div class="areas"><button class="adm" data-a="entrar" data-v="ADMIN">Entrar como administrador</button></div></div>';
+    if (d.admin) html += '<div class="grupo"><h2>Administración</h2><div class="areas"><button class="adm" data-a="entrar" data-v="ADMIN">Entrar como administrador</button></div><p class="muted" style="margin:0;font-size:13.5px">Para el día a día entra como tu área. Cuando necesites arreglar algo, usa el botón dorado "Modo administrador" de arriba.</p></div>';
     Object.keys(porSuc).forEach(function (s) {
       html += '<div class="grupo"><h2>' + esc(s) + '</h2><div class="areas">' +
         porSuc[s].map(function (a) { return '<button data-a="entrar" data-v="' + esc(a.id) + '">' + esc(a.nombre) + '<div class="muted" style="font-size:12.5px;font-weight:700">Folios ' + esc(a.id) + '-0001</div></button>'; }).join('') +
@@ -85,6 +85,7 @@ function pantallaEntrada(msg) {
 }
 
 function entrar(area) {
+  if (area !== 'ADMIN') guardar('ultimaArea', area);
   $('#view').innerHTML = '<div class="cargando">Entrando…</div>';
   srv('apiEntrar', area, navigator.userAgent).then(function (d) {
     guardar('token', d.token); S.token = d.token; aplicarSesion(d.ctx, d.cat);
@@ -190,10 +191,20 @@ function renderHeader() {
       return '<button type="button" class="bellitem ' + (a.visto ? '' : 'unseen') + '" data-a="open" data-v="' + esc(a.folio) + '"><span class="num">' + esc(a.folio) + '</span><span>' + esc(a.msg) + '</span><span class="muted" style="font-size:12px">' + esc(a.fecha + ' ' + a.hora) + '</span></button>';
     }).join('') : '<div class="muted">Sin avisos.</div>') + '</div>' : '') + '</div>';
   $('#header').innerHTML = '<div class="brand">' + logo + 'Traspasos</div>' +
-    '<div class="who"><span class="p">' + esc(S.ctx.areaNombre) + '</span><span class="u">' + esc(S.ctx.email) + ' · sesión: cierra en ' + Math.floor(min / 60) + ' h ' + ('0' + (min % 60)).slice(-2) + ' min · <a href="#" data-a="salir">Salir</a></span></div>' +
+    cambioModo() + '<div class="who"><span class="p">' + esc(S.ctx.areaNombre) + '</span><span class="u">' + esc(S.ctx.email) + ' · sesión: cierra en ' + Math.floor(min / 60) + ' h ' + ('0' + (min % 60)).slice(-2) + ' min · <a href="#" data-a="salir">Salir</a></span></div>' +
     bell + '<nav class="tabs">' + tabs.map(function (x) {
       return '<button type="button" data-a="tab" data-v="' + x[0] + '"' + (S.tab === x[0] ? ' aria-current="page"' : '') + '>' + x[1] + (x[2] ? ' <span class="count">' + x[2] + '</span>' : '') + '</button>';
     }).join('') + '</nav>';
+}
+
+/** Solo los administradores ven este botón: pasan de su área al modo administrador y de regreso. */
+function cambioModo() {
+  if (!S.ctx.puedeAdmin) return '';
+  if (esVistaAdmin()) {
+    var ult = leer('ultimaArea');
+    return '<button class="btn" type="button" data-a="' + (ult ? 'entrar' : 'cambiarArea') + '" data-v="' + esc(ult || '') + '" title="Volver a trabajar como usuario">← ' + (ult && S.A[ult] ? 'Volver a ' + esc(nom(ult)) : 'Elegir mi área') + '</button>';
+  }
+  return '<button class="btn gold" type="button" data-a="entrar" data-v="ADMIN" title="Entrar al modo administrador">Modo administrador</button>';
 }
 
 function tcard(t, desdeOrigen) {
@@ -502,6 +513,7 @@ document.addEventListener('click', function (e) {
   switch (a) {
     case 'entrar': return entrar(v);
     case 'salir': e.preventDefault(); return salir();
+    case 'cambiarArea': return pantallaEntrada();
     case 'tab': S.tab = v; S.filtro = null; S.bell = false; break;
     case 'dir': S.dir = v; S.filtro = null; break;
     case 'filtro': S.filtro = S.filtro === v ? null : v; break;

@@ -57,14 +57,15 @@ function apiEntrar(area, dispositivo) {
       if (!A[area] || !A[area].activa) throw new Error('Esa área no existe o está desactivada.');
       if (!admin && A[area].correos.indexOf(yo) < 0) throw new Error('Tu correo no tiene permiso para esa área.');
     }
-    const tk = _crearToken(yo, area, admin);
+    const modoAdmin = admin && area === TR.AREA_ADMIN;
+    const tk = _crearToken(yo, area, modoAdmin);
     _tb(TR.H.SESIONES).agregar({
       'Fecha': _hoy(), 'Hora': _hora(), 'Cuenta': yo, 'Equipo': area,
       'Evento': 'ENTRADA', 'Dispositivo': String(dispositivo || '').substring(0, 150)
     });
     return {
       token: tk.token,
-      ctx: { email: yo, area: area, admin: admin, exp: tk.exp,
+      ctx: { email: yo, area: area, admin: modoAdmin, puedeAdmin: admin, exp: tk.exp,
              areaNombre: area === TR.AREA_ADMIN ? 'Administración' : R.nom(A, area) },
       cat: _catalogos()
     };

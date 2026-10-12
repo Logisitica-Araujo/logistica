@@ -148,8 +148,10 @@ function _ctx(token) {
   if (Date.now() > Number(d[3])) throw new Error('SESION_EXPIRADA');
   const yo = _email();
   if (yo && yo !== d[0]) throw new Error('SESION_EXPIRADA');
-  const admin = d[2] === '1' && _esAdmin(d[0]);
-  return { email: d[0], area: d[1], admin: admin, exp: Number(d[3]) };
+  // Los poderes de administrador solo existen en el modo Administración.
+  // Si un administrador entra como su área, trabaja como cualquier usuario.
+  const admin = d[1] === TR.AREA_ADMIN && d[2] === '1' && _esAdmin(d[0]);
+  return { email: d[0], area: d[1], admin: admin, exp: Number(d[3]), puedeAdmin: _esAdmin(d[0]) };
 }
 
 function _exigirAdmin(c) {
