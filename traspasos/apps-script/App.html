@@ -8,7 +8,8 @@ var S = {
   tab: 'bandeja', dir: 'in', filtro: null,
   wiz: { step: 1 },
   scan: { modo: 'RECIBIR', lote: [], fb: null, gestor: null, log: [], enviando: false },
-  modal: null, bell: false, q: '', timer: null, ocupado: false, noVistos: 0
+  modal: null, bell: false, q: '', timer: null, ocupado: false, noVistos: 0,
+  caja: { lista: [], fb: null, enviando: false }
 };
 
 /* ---------- utilidades ---------- */
@@ -112,14 +113,15 @@ function cerrarSesion(msg) { borrar('token'); pantallaEntrada(msg); }
 function salir() { var tk = S.token; borrar('token'); if (tk) srv('apiSalir', tk).catch(function () { }); pantallaEntrada(); }
 
 /* ---------- datos ---------- */
-var MAPA = {};
+var MAPA = {}, CAJAS = {};
 function refrescar(inicial) {
   if (!S.token || S.ocupado) return Promise.resolve();
   return srv('apiDatos', S.token).then(function (d) {
     var antes = S.noVistos;
     S.data = d;
-    MAPA = {};
+    MAPA = {}; CAJAS = {};
     d.activos.forEach(function (t) { MAPA[R.limpio(t.folio)] = t; });
+    (d.cajas || []).forEach(function (c) { CAJAS[R.limpio(c.folio)] = c; });
     S.noVistos = d.avisos.filter(function (a) { return !a.visto; }).length;
     if (!inicial && S.noVistos > antes) {
       beep('ok'); toast('🔔 ' + (d.avisos[0] ? d.avisos[0].folio + ' · ' + d.avisos[0].msg : 'Tienes avisos nuevos'));
@@ -167,7 +169,7 @@ function render() {
   $('#view').innerHTML = v;
   pintarCodigos($('#view'));
   renderModal();
-  var si = $('#scanin') || $('#credin') || $('#gestin');
+  var si = $('#scanin') || $('#credin') || $('#gestin') || $('#cajain');
   if (si && !S.modal && !S.bell) si.focus({ preventScroll: true });
 }
 
@@ -178,7 +180,11 @@ function renderHeader() {
   } else {
     tabs = [['bandeja', 'Mi bandeja'], ['nuevo', 'Nuevo traspaso'], ['escaner', 'Escáner']];
     if (me() === 'LOG' || R.esMor(S.A, me())) {
-      var n = S.data.traspasos.filter(function (t) { return R.paqueteria(t, me(), S.A); }).length;
+      var enCaja = {};
+      (S.data.cajas || []).forEach(function (c) { if (c.estatus === 'ARMADA' || c.estatus === 'ENVIADA') c.traspasos.forEach(function (f) { enCaja[f] = true; }); });
+      var n = me() === 'LOG'
+        ? S.data.traspasos.filter(function (t) { return R.empacable(t, S.A) && !enCaja[R.limpio(t.folio)]; }).length
+        : S.data.traspasos.filter(function (t) { return R.paqueteria(t, me(), S.A); }).length;
       tabs.push(['paq', 'Paquetería', n]);
     }
   }
@@ -360,6 +366,7 @@ function alEscanear(texto) {
   if (!texto) return;
   var sc = S.scan, m = me();
   var folio = R.folioDe(texto);
+  if (CAJAS[folio] && sc.modo === 'RECIBIR') return escanearCaja(texto, CAJAS[folio]);
   var t = MAPA[folio];
   var v;
   if (!R.valido(texto) && !t) v = { k: 'err', m: '"' + texto + '" no parece un folio de traspaso. Revisa que esté bien tecleado.' };
@@ -375,13 +382,33 @@ function alEscanear(texto) {
   beep(v.k);
   render();
 }
+/** La etiqueta de una caja: se agregan todos los traspasos que trae. */
+function escanearCaja(texto, cj) {
+  var sc = S.scan, m = me(), agregados = 0, malos = [];
+  cj.traspasos.forEach(function (f) {
+    var t = MAPA[f];
+    var v = R.recibir(t, m, S.A, S.E);
+    if (v.k !== 'ok') { malos.push(f + ': ' + v.m); return; }
+    if (sc.lote.some(function (it) { return R.limpio(it.t.folio) === f; })) return;
+    sc.lote.push({ t: t, faltan: false, caja: cj.folio });
+    agregados++;
+  });
+  var v2 = agregados
+    ? { k: malos.length ? 'warn' : 'ok', m: 'Caja ' + cj.folio + ': ' + agregados + ' de ' + cj.traspasos.length + ' traspasos agregados.' + (malos.length ? ' No se agregaron: ' + malos.join(' · ') : '') }
+    : { k: 'err', m: 'Caja ' + cj.folio + ': no se pudo agregar ningún traspaso. ' + malos.join(' · ') };
+  sc.fb = v2;
+  sc.log.push({ texto: texto, resultado: v2.k === 'ok' ? 'OK' : v2.k === 'warn' ? 'AVISO' : 'ERROR', mensaje: v2.m, hora: horaAhora() });
+  beep(v2.k);
+  render();
+}
+
 function confirmarLote() {
   var sc = S.scan;
   if (!sc.lote.length || sc.enviando) return;
   sc.enviando = true; S.ocupado = true; render();
   srv('apiConfirmarLote', S.token, {
     modo: sc.modo, gestorCodigo: sc.gestor ? sc.gestor.codigo : '',
-    items: sc.lote.map(function (it) { return { folio: it.t.folio, faltan: !!it.faltan }; }),
+    items: sc.lote.map(function (it) { return { folio: it.t.folio, faltan: !!it.faltan, caja: it.caja || '' }; }),
     escaneos: sc.log
   }).then(function (d) {
     var ok = d.resultados.filter(function (r) { return r.ok; }).length;
@@ -395,6 +422,7 @@ function confirmarLote() {
 
 /* ---------- Paquetería ---------- */
 function vPaqueteria() {
+  if (me() === 'LOG') return vPaqLogistica();
   var m = me();
   var por = S.data.traspasos.filter(function (t) { return R.paqueteria(t, m, S.A); });
   var camino = S.data.traspasos.filter(function (t) { return t.estatus === 'PAQUETERIA'; });
@@ -407,6 +435,73 @@ function vPaqueteria() {
     }).join('') : '<div class="empty">Nada por enviar.</div>') + '</div>' +
     '<h2>En camino por paquetería (' + camino.length + ')</h2><div class="list" style="margin-bottom:22px">' + (camino.length ? camino.map(function (t) { return tcard(t); }).join('') : '<div class="empty">Nada en camino.</div>') + '</div>' +
     (m === 'LOG' ? '<h2>En Logística, por distribuir (' + dist.length + ')</h2><div class="list">' + (dist.length ? dist.map(function (t) { return tcard(t); }).join('') : '<div class="empty">Nada por distribuir.</div>') + '</div>' : '');
+}
+
+/** Logística: armar cajas para Morelia. Las guías se jalan solas de "Operaciones". */
+function vPaqLogistica() {
+  var A = S.A, cj = S.caja;
+  var enCaja = {};
+  (S.data.cajas || []).forEach(function (c) { if (c.estatus === 'ARMADA' || c.estatus === 'ENVIADA') c.traspasos.forEach(function (f) { enCaja[f] = c.folio; }); });
+  var sueltos = S.data.traspasos.filter(function (t) { return R.empacable(t, A) && !enCaja[R.limpio(t.folio)]; });
+  var armadas = (S.data.cajas || []).filter(function (c) { return c.estatus === 'ARMADA'; });
+  var enviadas = (S.data.cajas || []).filter(function (c) { return c.estatus === 'ENVIADA'; });
+  var camino = S.data.traspasos.filter(function (t) { return t.estatus === 'PAQUETERIA'; });
+  var dist = S.data.traspasos.filter(function (t) { return t.estatus === 'EN_LOGISTICA' && !R.esMor(A, t.destino); });
+  var fb = cj.fb ? '<div class="feedback ' + cj.fb.k + '">' + esc(cj.fb.m) + '</div>' : '';
+  var cajaCard = function (c, botones) {
+    return '<div class="panel stack" style="padding:14px"><div class="row" style="justify-content:space-between"><div><span class="num" style="font-size:18px">' + esc(c.folio) + '</span> · para <b>' + esc(c.destino) + '</b> · ' + c.traspasos.length + ' traspaso(s), ' + c.bultos + ' bulto(s)</div>' +
+      '<span class="muted">' + esc(c.fecha + ' ' + c.hora) + '</span></div><div class="muted" style="font-size:14px">' + esc(c.traspasos.join(', ')) + '</div>' +
+      (c.guia ? '<div class="note">' + esc(c.paqueteria) + ' · guía <b>' + esc(c.guia) + '</b>' + (c.eta ? ' · llega ' + esc(c.eta) : '') + '</div>' : '') +
+      '<div class="row">' + botones + '</div></div>';
+  };
+  return '<h1>Paquetería</h1><p class="sub">Arma aquí las cajas para Morelia. Después registra el envío en tu hoja <b>Operaciones</b> como siempre, con el folio de la caja (o del traspaso suelto) en <b>"ID Pedido / Tarea"</b>. Cuando le pongas el Nº de Guía, los traspasos pasan solos a "Enviado por paquetería" (se revisa cada 10 minutos).</p>' +
+    '<div class="row" style="margin-bottom:18px"><button class="btn" type="button" data-a="sync">Revisar Operaciones ahora</button></div>' +
+    '<div class="grid2" style="margin-bottom:24px;align-items:start"><div class="panel stack"><h2 style="margin:0">Armar caja</h2>' +
+      '<label class="f">Escanea los traspasos que van en la caja<input class="scaninput" id="cajain" autocomplete="off" placeholder="NR-0003"></label>' + fb +
+      '<div class="queue">' + (cj.lista.length ? cj.lista.map(function (t) {
+        return '<div class="qrow"><span style="color:var(--ok);font-weight:900">✓</span><div style="min-width:0"><span class="num">' + esc(t.folio) + '</span> · ' + esc(nom(t.origen)) + '<span class="arrow">→</span>' + esc(nom(t.destino)) + '<div class="muted" style="font-size:13px">' + t.bultos + ' bulto(s) · ' + esc(t.desc) + '</div></div><button class="btn ghost" type="button" data-a="cajaquitar" data-v="' + esc(t.folio) + '">Quitar</button></div>';
+      }).join('') : '<div class="empty">Escanea el primer traspaso.</div>') + '</div>' +
+      '<div class="row"><button class="btn ghost" type="button" data-a="cajavaciar"' + (cj.lista.length ? '' : ' disabled') + '>Vaciar</button><button class="btn primary" type="button" data-a="cajacrear"' + (cj.lista.length && !cj.enviando ? '' : ' disabled') + '>' + (cj.enviando ? 'Creando…' : 'Crear caja e imprimir etiqueta') + '</button></div>' +
+    '</div><div class="panel stack" style="align-content:start"><h2 style="margin:0">Listos para Morelia (' + sueltos.length + ')</h2><p class="muted" style="margin:0;font-size:14px">En Logística, todavía sin caja ni guía. Puedes meterlos a una caja o mandarlos sueltos (con su propio folio en Operaciones).</p>' +
+      (sueltos.length ? sueltos.map(function (t) { return '<button type="button" class="btn" style="justify-content:space-between" data-a="cajaagregar" data-v="' + esc(t.folio) + '"><span class="num">' + esc(t.folio) + '</span><span class="muted">' + esc(nom(t.destino)) + ' · ' + t.bultos + ' b.</span><span>＋ caja</span></button>'; }).join('') : '<div class="empty">Nada pendiente.</div>') +
+    '</div></div>' +
+    '<h2>Cajas armadas, esperando guía en Operaciones (' + armadas.length + ')</h2><div class="list" style="margin-bottom:22px">' + (armadas.length ? armadas.map(function (c) {
+      return cajaCard(c, '<button class="btn" type="button" data-a="cajaprint" data-v="' + esc(c.folio) + '">Reimprimir etiqueta</button><button class="btn ghost" type="button" data-a="cajadeshacer" data-v="' + esc(c.folio) + '">Deshacer caja</button>');
+    }).join('') : '<div class="empty">No hay cajas esperando guía.</div>') + '</div>' +
+    '<h2>Cajas en camino (' + enviadas.length + ')</h2><div class="list" style="margin-bottom:22px">' + (enviadas.length ? enviadas.map(function (c) { return cajaCard(c, '<button class="btn" type="button" data-a="cajaprint" data-v="' + esc(c.folio) + '">Reimprimir etiqueta</button>'); }).join('') : '<div class="empty">Ninguna en camino.</div>') + '</div>' +
+    '<h2>Traspasos en camino por paquetería (' + camino.length + ')</h2><div class="list" style="margin-bottom:22px">' + (camino.length ? camino.map(function (t) { return tcard(t); }).join('') : '<div class="empty">Nada en camino.</div>') + '</div>' +
+    '<h2>En Logística, por distribuir (' + dist.length + ')</h2><div class="list">' + (dist.length ? dist.map(function (t) { return tcard(t); }).join('') : '<div class="empty">Nada por distribuir.</div>') + '</div>';
+}
+function agregarACaja(texto) {
+  var cj = S.caja, f = R.folioDe(texto), t = MAPA[f];
+  var enCaja = null;
+  (S.data.cajas || []).forEach(function (c) { if (c.estatus === 'ARMADA' && c.traspasos.indexOf(f) >= 0) enCaja = c.folio; });
+  if (!t) cj.fb = { k: 'err', m: 'El folio ' + f + ' no existe.' };
+  else if (!R.empacable(t, S.A)) cj.fb = { k: 'err', m: t.folio + ' no se puede meter: debe estar "En Logística" y con destino Morelia (está como "' + (S.E[t.estatus] || t.estatus) + '", va a ' + nom(t.destino) + ').' };
+  else if (enCaja) cj.fb = { k: 'err', m: t.folio + ' ya está en la caja ' + enCaja + '.' };
+  else if (cj.lista.some(function (x) { return x.folio === t.folio; })) cj.fb = { k: 'warn', m: t.folio + ' ya está en esta caja.' };
+  else { cj.lista.push(t); cj.fb = { k: 'ok', m: t.folio + ' agregado · ' + t.bultos + ' bulto(s) → ' + nom(t.destino) }; }
+  beep(cj.fb.k);
+  render();
+}
+/** Etiqueta de la caja (mismo tamaño que las de traspaso de esta computadora). */
+function cajaHTML(c, pantalla) {
+  var tm = tamEtiqueta(), w = tm.w, h = tm.h;
+  var tam = pantalla ? 'width:100%;aspect-ratio:' + w + '/' + h + ';' : 'width:' + w + 'mm;height:' + h + 'mm;';
+  var det = (c.detalle || c.traspasos.map(function (f) { var t = MAPA[f]; return { folio: f, destino: t ? t.destino : '', bultos: t ? t.bultos : '' }; }));
+  var chica = h < 50;
+  return '<div class="' + (pantalla ? 'label ' : '') + 'lbl' + (chica ? ' chica' : '') + '" style="' + tam + '">' +
+    '<div><div class="k">CAJA PARA</div><div class="dest">' + esc(String(c.destino).toUpperCase()) + '</div></div>' +
+    '<div class="fol">' + esc(c.folio) + '</div><svg class="bc" data-code="' + esc(c.folio) + '"></svg>' +
+    '<div class="bul">' + c.traspasos.length + ' TRASPASOS · ' + c.bultos + ' BULTOS</div>' +
+    (chica ? '' : '<div class="pie">' + det.map(function (x) { return esc(x.folio) + (x.destino ? ' → ' + esc(S.A[x.destino] ? S.A[x.destino].corto : x.destino) : '') + (x.bultos ? ' (' + x.bultos + ')' : ''); }).join('<br>') + '</div>') +
+    '</div>';
+}
+function imprimirCaja(c) {
+  var tm = tamEtiqueta(), p = $('#print');
+  p.innerHTML = '<style>@page{size:' + tm.w + 'mm ' + tm.h + 'mm;margin:0}</style>' + cajaHTML(c, false);
+  pintarCodigos(p);
+  setTimeout(function () { window.print(); }, 200);
 }
 
 /* ---------- Administración ---------- */
@@ -555,6 +650,24 @@ document.addEventListener('click', function (e) {
         .catch(function (er) { toast(er.message); });
       return;
 
+    case 'cajaagregar': return agregarACaja(v);
+    case 'cajaquitar': S.caja.lista = S.caja.lista.filter(function (t) { return t.folio !== v; }); S.caja.fb = null; break;
+    case 'cajavaciar': S.caja = { lista: [], fb: null, enviando: false }; break;
+    case 'cajacrear':
+      S.caja.enviando = true; S.ocupado = true; render();
+      srv('apiArmarCaja', S.token, S.caja.lista.map(function (t) { return t.folio; })).then(function (c) {
+        S.caja = { lista: [], fb: { k: 'ok', m: 'Caja ' + c.folio + ' creada. Pégale su etiqueta y registra ' + c.folio + ' en Operaciones con su guía.' }, enviando: false };
+        imprimirCaja(c); S.ocupado = false; refrescar(false);
+      }).catch(function (er) { S.caja.enviando = false; S.ocupado = false; S.caja.fb = { k: 'err', m: er.message }; render(); });
+      return;
+    case 'cajaprint': { var c = CAJAS[R.limpio(v)]; if (c) imprimirCaja(c); return; }
+    case 'cajadeshacer':
+      srv('apiDeshacerCaja', S.token, v).then(function () { toast('Caja ' + v + ' deshecha; sus traspasos quedan sueltos'); refrescar(false); }).catch(function (er) { toast(er.message); });
+      return;
+    case 'sync':
+      toast('Revisando Operaciones…');
+      srv('apiSincronizar', S.token).then(function (d) { toast(d.actualizados ? d.actualizados + ' traspaso(s) pasaron a "Enviado por paquetería"' : 'Sin guías nuevas en Operaciones'); refrescar(false); }).catch(function (er) { toast(er.message); });
+      return;
     case 'enviarpq': {
       var g = $('#gu-' + v).value.trim(); if (!g) { toast('Captura el número de guía'); return; }
       srv('apiPaqueteria', S.token, v, $('#pq-' + v).value, g).then(function () { toast(v + ' enviado por paquetería'); refrescar(false); }).catch(function (er) { toast(er.message); });
@@ -604,6 +717,7 @@ document.addEventListener('keydown', function (e) {
   if (e.key !== 'Enter') return;
   var id = e.target.id;
   if (id === 'scanin') { e.preventDefault(); alEscanear(e.target.value); }
+  else if (id === 'cajain') { e.preventDefault(); agregarACaja(e.target.value); }
   else if (id === 'gestin') { e.preventDefault(); validarGestor(e.target.value); }
   else if (id === 'credin') { e.preventDefault(); validarCred(e.target.value); }
 });

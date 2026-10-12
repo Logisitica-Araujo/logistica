@@ -147,7 +147,7 @@ function apiDatos(token) {
         });
     }
 
-    return { traspasos: mios, activos: activos, avisos: avisos, solicitudes: solicitudes, ahora: _ahoraTxt() };
+    return { traspasos: mios, activos: activos, avisos: avisos, solicitudes: solicitudes, cajas: _cajasVisibles(), ahora: _ahoraTxt() };
   });
 }
 
@@ -288,7 +288,16 @@ function apiConfirmarLote(token, d) {
       _traspasos().forEach(function (t) { mapa[R.limpio(t.folio)] = t; });
       const movs = [], avisos = [], resultados = [], vistos = {};
 
-      (d.items || []).slice(0, 200).forEach(function (it) {
+      // Si escanearon la etiqueta de una CAJA, se reciben todos los traspasos que trae.
+      const cajas = _mapaCajas();
+      const items = [], cajasTocadas = {};
+      (d.items || []).forEach(function (it) {
+        const k = R.folioDe(it.folio);
+        if (cajas[k]) { cajasTocadas[k] = true; cajas[k].traspasos.forEach(function (f) { items.push({ folio: f, faltan: false }); }); }
+        else { items.push(it); if (it.caja && cajas[R.folioDe(it.caja)]) cajasTocadas[R.folioDe(it.caja)] = true; }
+      });
+
+      items.slice(0, 300).forEach(function (it) {
         const k = R.folioDe(it.folio);
         if (vistos[k]) return;
         vistos[k] = true;
@@ -330,6 +339,7 @@ function apiConfirmarLote(token, d) {
 
       _tb(TR.H.MOV).agregarVarias(movs);
       _tb(TR.H.AVISOS).agregarVarias(avisos);
+      if (modo === 'RECIBIR') _cerrarCajasRecibidas(Object.keys(cajasTocadas));
       return resultados;
     });
 

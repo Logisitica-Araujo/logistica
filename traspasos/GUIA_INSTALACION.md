@@ -38,6 +38,7 @@ Están en GitHub, en la carpeta `traspasos/apps-script/`. Para cada uno, crea un
 | Secuencia de comandos | `03_Datos` | `03_Datos.gs` |
 | Secuencia de comandos | `04_Api` | `04_Api.gs` |
 | Secuencia de comandos | `05_Instalar` | `05_Instalar.gs` |
+| Secuencia de comandos | `06_Cajas` | `06_Cajas.gs` |
 | HTML | `Index` | `Index.html` |
 | HTML | `Estilos` | `Estilos.html` |
 | HTML | `App` | `App.html` |
@@ -138,3 +139,16 @@ En `09_TRASPASOS_NUEVOS.gs` cambia `ACTIVO: true` por `ACTIVO: false` y vuelve a
 3. El gestor lo marca entregado en su app y queda *"Entregado por gestor, falta confirmar"*.
 4. En el destino: **Escáner → Recibir** → escanea el folio → **Confirmar recepción** → 🟢 **Entregado**.
 5. Como administrador: **Buscador** → escribe el folio → ves toda su línea de tiempo.
+
+---
+
+## Paquetería a Morelia: cajas y guías automáticas
+
+1. **Armar caja** (solo Logística): **Paquetería → Armar caja** → escanea los traspasos que van dentro → **Crear caja e imprimir etiqueta**. Sale un folio `CJ-0001` con su etiqueta, que lleva la lista de traspasos. Las etiquetas de cada traspaso se quedan en sus bultos, dentro de la caja.
+2. **Registrar el envío** en tu hoja **Operaciones**, como siempre, poniendo `CJ-0001` en **"ID Pedido / Tarea"**. Si mandas un traspaso suelto, pon su folio (por ejemplo `NR-0003`).
+3. **Automático:** cada 10 minutos el sistema revisa Operaciones. Cuando esa fila ya tiene **Nº de Guía**, los traspasos pasan solos a **Enviado por paquetería**, con proveedor (columna "Proveedor"), guía y fecha prometida (ETA). Morelia recibe su aviso. Para no esperar, usa el botón **"Revisar Operaciones ahora"**.
+4. **Morelia** escanea la etiqueta de la caja **una sola vez** y se reciben todos los traspasos que trae.
+
+¿Armaste mal una caja? Usa **"Deshacer caja"**, siempre que todavía no tenga guía.
+
+Lo que va de Morelia hacia acá lo sigue capturando Morelia en su pestaña Paquetería (paquetería y guía).

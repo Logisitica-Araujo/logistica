@@ -102,6 +102,11 @@ function TR_REGLAS() {
     return R.esMor(A, me) && t.origen === me && t.estatus === 'NUEVO';
   };
 
+  /** ¿Se puede meter en una caja para Morelia? (solo Logística) */
+  R.empacable = function (t, A) {
+    return !!t && !t.solicitud && t.estatus === 'EN_LOGISTICA' && R.esMor(A, t.destino);
+  };
+
   /** ¿Se puede solicitar eliminarlo? Solo el origen, y solo antes de que se mueva. */
   R.eliminable = function (t, me) {
     return t.origen === me && t.estatus === 'NUEVO' && !t.solicitud;

@@ -38,7 +38,18 @@ const TR = {
     SESIONES:    'RES_Sesiones',
     AVISOS:      'RES_Avisos',
     FOLIOS:      'SYS_Folios',
-    IMPRESORAS:  'CAT_Impresoras'
+    IMPRESORAS:  'CAT_Impresoras',
+    CAJAS:       'RES_Cajas'
+  },
+
+  // Archivo de la app de gestores, donde está la hoja "Operaciones".
+  // De ahí se jalan solas las guías de paquetería (columna "ID Pedido / Tarea" = folio de la caja o del traspaso).
+  OPS: {
+    ID_ARCHIVO: '1cPHTH2JwM92iD2wSxf4JauYLk9VBLv6T2fHhtxP-kmc',
+    HOJA: 'Operaciones',
+    FILA_ENC: 2,
+    MAX_FILAS: 2500,          // solo revisa las últimas N filas (las más recientes)
+    CADA_MIN: 10              // cada cuántos minutos se revisa
   },
 
   // Área especial para entrar como administrador (vista de todo).

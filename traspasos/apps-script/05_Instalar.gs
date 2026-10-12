@@ -53,7 +53,13 @@ function instalar() {
   // 4) Hoja de impresoras: una fila por área, para poner el tamaño de etiqueta de cada una
   if (_crearHojaImpresoras()) hechos.push('Se creó la hoja CAT_Impresoras: llena el tamaño de etiqueta de cada área.');
 
-  // 5) Logo (esto también pide el permiso de Drive la primera vez)
+  // 5) Cajas para Morelia y revisión automática de guías en "Operaciones"
+  if (_crearHojaCajas()) hechos.push('Se creó la hoja RES_Cajas (cajas para Morelia).');
+  if (_crearActivador()) hechos.push('Activado: cada ' + TR.OPS.CADA_MIN + ' min se revisan las guías en "Operaciones".');
+  try { _guiasOperaciones(); hechos.push('Conexión con la hoja "Operaciones": OK.'); }
+  catch (e) { hechos.push('⚠ No pude leer "Operaciones": ' + e.message); }
+
+  // 6) Logo (esto también pide el permiso de Drive la primera vez)
   try { if (_logo()) hechos.push('Logo leído correctamente.'); } catch (e) { hechos.push('No pude leer el logo: ' + e.message); }
 
   const msg = 'Listo.\n\n• ' + hechos.join('\n• ') + '\n\n' + _textoRevision();
@@ -103,5 +109,33 @@ function _crearHojaImpresoras() {
     [16, 30, 30, 20, 20, 40].forEach(function (w, i) { sh.setColumnWidth(i + 1, w * 7); });
   } catch (e) { }
   __TB = {};
+  return true;
+}
+
+function _crearHojaCajas() {
+  const ss = _libro();
+  if (ss.getSheetByName(TR.H.CAJAS)) return false;
+  const sh = ss.insertSheet(TR.H.CAJAS);
+  const enc = ['Folio caja', 'Fecha', 'Hora', 'Destino', 'Traspasos', 'Bultos', 'Creó', 'Paquetería', 'Guía', 'ETA', 'Estatus', 'Última actualización'];
+  sh.getRange(1, 1).setValue('RES_Cajas  —  RESULTADOS · La app ESCRIBE aquí sola · NO editar a mano.  ' +
+    'Cajas que arma Logística para Morelia. Estatus: ARMADA (esperando guía en Operaciones) → ENVIADA → RECIBIDA.');
+  sh.getRange(2, 1, 1, enc.length).setValues([enc]);
+  try {
+    sh.setTabColor('#1B7F38');
+    sh.getRange(1, 1, 1, enc.length).merge().setBackground('#DFF3E5').setFontColor('#1B7F38').setFontWeight('bold').setWrap(true);
+    sh.setRowHeight(1, 36);
+    sh.getRange(2, 1, 1, enc.length).setBackground('#1B7F38').setFontColor('#FFFFFF').setFontWeight('bold');
+    sh.setFrozenRows(2);
+    [12, 12, 8, 14, 40, 8, 26, 14, 22, 16, 12, 18].forEach(function (w, i) { sh.setColumnWidth(i + 1, w * 7); });
+  } catch (e) { }
+  __TB = {};
+  return true;
+}
+
+/** Activador de tiempo para sincronizarOperaciones (solo uno). */
+function _crearActivador() {
+  const ya = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'sincronizarOperaciones'; });
+  if (ya) return false;
+  ScriptApp.newTrigger('sincronizarOperaciones').timeBased().everyMinutes(TR.OPS.CADA_MIN).create();
   return true;
 }
