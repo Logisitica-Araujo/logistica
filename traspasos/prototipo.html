@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Traspasos Fadermex</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
 <style>
 /* Layout: barra de prototipo arriba, shell de app con encabezado + pestañas; vistas tipo herramienta. */
@@ -24,9 +24,9 @@
   --s-paqueteria:#0B6C80; --s-paqueteria-bg:#DAF2F7;
   --s-en_logistica:#38559E; --s-en_logistica-bg:#E5EBF7;
   --s-solicitud:#4E5B67; --s-solicitud-bg:#E8ECF0;
-  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
-  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --f-display:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-body:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"Nunito",system-ui,sans-serif;
   --pv:#0E6E5C; --pv-bg:#D3F1E8; --rb:#A3195B; --rb-bg:#FBDDEB;
   --r:10px;
 }
@@ -68,7 +68,7 @@
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-weight:800}
 .muted{color:var(--muted)}
 .wrap{max-width:1180px;margin:0 auto;padding-inline:16px}
 
@@ -110,8 +110,8 @@ nav.tabs button[aria-current="page"]{background:var(--accent-soft);color:var(--a
 .count{background:var(--err);color:#fff;border-radius:999px;font-size:11px;padding:1px 7px;font-weight:700}
 
 main{padding-block:22px 60px}
-h1{font-family:var(--f-display);font-size:30px;margin:0 0 4px;letter-spacing:.01em;text-wrap:balance}
-h2{font-family:var(--f-display);font-size:21px;margin:0 0 10px;letter-spacing:.02em}
+h1{font-family:var(--f-display);font-weight:900;font-size:30px;margin:0 0 4px;letter-spacing:.01em;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:800;font-size:21px;margin:0 0 10px;letter-spacing:.02em}
 .sub{color:var(--muted);margin:0 0 18px;max-width:70ch}
 
 /* Badges */
@@ -529,11 +529,11 @@ function rutaNote(me,dest){
   return `<div class="note">Lo recoge gestoría y lo entrega en el destino.</div>`;
 }
 function labelHTML(t,b,rp,preview){
-  const code=`${t.folio}-${b}/${t.bultos}`;
+  const code=`${t.folio}`;
   return `<div class="label">${rp?`<span class="rp">R${rp}</span>`:''}
     <div class="lrow"><div><b>ORIGEN</b>${esc(nom(t.origen))}</div><div style="text-align:right"><b>DESTINO</b><strong>${t.destino?esc(nom(t.destino)):'—'}</strong></div></div>
     <div class="lfolio">${esc(t.folio)}</div>
-    <div>${preview?`<svg class="bc" data-code="NR-0000-1/1"></svg>`:`<svg class="bc" data-code="${esc(code)}"></svg>`}<div class="code">${esc(preview?t.folio+'-'+b+'/'+t.bultos:code)}</div></div>
+    <div>${preview?`<svg class="bc" data-code="NR-0000-1/1"></svg>`:`<svg class="bc" data-code="${esc(code)}"></svg>`}<div class="code">${esc(t.folio)}</div></div>
     <div class="lfoot"><div>${esc(t.creado)}<br>Creó: ${esc(String(t.por).split(' · ')[0])}</div><div class="lb">BULTO ${b} DE ${t.bultos}</div></div></div>`;
 }
 function drawBarcodes(){

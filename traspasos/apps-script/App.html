@@ -1,0 +1,626 @@
+<script>
+/***********************************************************************
+ * TRASPASOS FADERMEX — App.html (lo que corre en la computadora)
+ ***********************************************************************/
+var S = {
+  token: null, ctx: null, cat: null, A: {}, E: {}, EC: {},
+  data: { traspasos: [], activos: [], avisos: [], solicitudes: [] },
+  tab: 'bandeja', dir: 'in', filtro: null,
+  wiz: { step: 1 },
+  scan: { modo: 'RECIBIR', lote: [], fb: null, gestor: null, log: [], enviando: false },
+  modal: null, bell: false, q: '', timer: null, ocupado: false, noVistos: 0
+};
+
+/* ---------- utilidades ---------- */
+function $(s) { return document.querySelector(s); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function guardar(k, v) { try { localStorage.setItem('trasp_' + k, v); } catch (e) { } }
+function leer(k) { try { return localStorage.getItem('trasp_' + k); } catch (e) { return null; } }
+function borrar(k) { try { localStorage.removeItem('trasp_' + k); } catch (e) { } }
+function horaAhora() { var d = new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+function nom(id) { return R.nom(S.A, id); }
+function me() { return S.ctx ? S.ctx.area : ''; }
+function esVistaAdmin() { return me() === 'ADMIN'; }
+
+function toast(msg) {
+  $('#toast').innerHTML = '<div class="toast" role="status">' + esc(msg) + '</div>';
+  clearTimeout(toast.t); toast.t = setTimeout(function () { $('#toast').innerHTML = ''; }, 3200);
+}
+var AC = null;
+function beep(k) {
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = k === 'ok' ? 'sine' : 'square';
+    o.frequency.value = k === 'ok' ? 1320 : k === 'warn' ? 620 : 220;
+    g.gain.value = .06; o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime + (k === 'ok' ? .09 : .28));
+  } catch (e) { }
+}
+
+/** Llama al servidor (Apps Script). */
+function srv(fn) {
+  var args = [].slice.call(arguments, 1);
+  return new Promise(function (res, rej) {
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (r && r.ok === false) {
+          if (r.error === 'SESION_EXPIRADA') { cerrarSesion('Tu sesión terminó. Vuelve a entrar.'); }
+          rej(new Error(r.error));
+        } else res(r ? r.datos : null);
+      })
+      .withFailureHandler(function (e) { rej(e instanceof Error ? e : new Error(String(e))); })[fn].apply(null, args);
+  });
+}
+
+/* ---------- entrada y sesión ---------- */
+function arrancar() {
+  var tk = leer('token');
+  if (!tk) return pantallaEntrada();
+  srv('apiReanudar', tk).then(function (d) { S.token = tk; aplicarSesion(d.ctx, d.cat); })
+    .catch(function () { borrar('token'); pantallaEntrada(); });
+}
+
+function pantallaEntrada(msg) {
+  pararPoll();
+  S.token = null; S.ctx = null;
+  $('#hdr').hidden = true; $('#adminbar').innerHTML = ''; $('#modal').innerHTML = '';
+  $('#view').innerHTML = '<div class="cargando">Revisando tu cuenta…</div>';
+  srv('apiInicio').then(function (d) {
+    var porSuc = {};
+    d.areas.forEach(function (a) { (porSuc[a.suc] = porSuc[a.suc] || []).push(a); });
+    var html = '<div class="entrada">' +
+      (msg ? '<div class="feedback warn">' + esc(msg) + '</div>' : '') +
+      '<div><h1>Traspasos</h1><p class="sub">Hola <b>' + esc(d.email) + '</b>. Elige el área de <b>esta computadora</b>. ' +
+      'La app la recordará hasta que se cierre la sesión.</p></div>';
+    if (d.admin) html += '<div class="grupo"><h2>Administración</h2><div class="areas"><button class="adm" data-a="entrar" data-v="ADMIN">Entrar como administrador</button></div></div>';
+    Object.keys(porSuc).forEach(function (s) {
+      html += '<div class="grupo"><h2>' + esc(s) + '</h2><div class="areas">' +
+        porSuc[s].map(function (a) { return '<button data-a="entrar" data-v="' + esc(a.id) + '">' + esc(a.nombre) + '<div class="muted" style="font-size:12.5px;font-weight:700">Folios ' + esc(a.id) + '-0001</div></button>'; }).join('') +
+        '</div></div>';
+    });
+    $('#view').innerHTML = html + '</div>';
+  }).catch(function (e) {
+    $('#view').innerHTML = '<div class="entrada"><h1>Traspasos</h1><div class="feedback err">' + esc(e.message) + '</div></div>';
+  });
+}
+
+function entrar(area) {
+  $('#view').innerHTML = '<div class="cargando">Entrando…</div>';
+  srv('apiEntrar', area, navigator.userAgent).then(function (d) {
+    guardar('token', d.token); S.token = d.token; aplicarSesion(d.ctx, d.cat);
+  }).catch(function (e) { pantallaEntrada(e.message); });
+}
+
+function aplicarSesion(ctx, cat) {
+  S.ctx = ctx; S.cat = cat; S.A = {}; S.E = {}; S.EC = {};
+  cat.areas.forEach(function (a) { S.A[a.id] = a; });
+  cat.estatus.forEach(function (e) { S.E[e.clave] = e.nombre; S.EC[e.clave] = e; });
+  var css = cat.estatus.map(function (e) { return '.b-' + e.clave + '{color:' + e.color + ';background:' + e.fondo + '}'; }).join('');
+  var st = document.getElementById('est-css') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'est-css' }));
+  st.textContent = css;
+  S.tab = esVistaAdmin() ? 'todos' : 'bandeja';
+  S.scan = { modo: 'RECIBIR', lote: [], fb: null, gestor: null, log: [], enviando: false };
+  S.wiz = { step: 1 };
+  $('#hdr').hidden = false;
+  render();
+  refrescar(true);
+  iniciarPoll();
+}
+
+function cerrarSesion(msg) { borrar('token'); pantallaEntrada(msg); }
+function salir() { var tk = S.token; borrar('token'); if (tk) srv('apiSalir', tk).catch(function () { }); pantallaEntrada(); }
+
+/* ---------- datos ---------- */
+var MAPA = {};
+function refrescar(inicial) {
+  if (!S.token || S.ocupado) return Promise.resolve();
+  return srv('apiDatos', S.token).then(function (d) {
+    var antes = S.noVistos;
+    S.data = d;
+    MAPA = {};
+    d.activos.forEach(function (t) { MAPA[R.limpio(t.folio)] = t; });
+    S.noVistos = d.avisos.filter(function (a) { return !a.visto; }).length;
+    if (!inicial && S.noVistos > antes) {
+      beep('ok'); toast('🔔 ' + (d.avisos[0] ? d.avisos[0].folio + ' · ' + d.avisos[0].msg : 'Tienes avisos nuevos'));
+      document.title = '(' + S.noVistos + ') Traspasos';
+    }
+    if (!S.noVistos) document.title = 'Traspasos';
+    render();
+  }).catch(function (e) { if (inicial) toast(e.message); });
+}
+function iniciarPoll() {
+  pararPoll();
+  var seg = (S.cat && S.cat.ajustes.revisarSeg) || 45;
+  S.timer = setInterval(function () {
+    if (S.ctx && Date.now() > S.ctx.exp) return cerrarSesion('Tu sesión de 12 horas terminó. Vuelve a entrar.');
+    refrescar(false);
+  }, seg * 1000);
+}
+function pararPoll() { if (S.timer) { clearInterval(S.timer); S.timer = null; } }
+
+/* ---------- pintado ---------- */
+function badge(t) {
+  var h = '<span class="badge b-' + esc(t.estatus) + '">' + esc(S.E[t.estatus] || t.estatus) + (t.estatus === 'UBICADO' && t.ubic ? ': ' + esc(nom(t.ubic)) : '') + '</span>';
+  if (t.solicitud) h += ' <span class="badge b-ELIMINACION_SOLICITADA">Eliminación solicitada</span>';
+  return h;
+}
+function areaTag(id) {
+  var a = S.A[id];
+  if (!a || (a.tipo !== 'SUCURSAL' && a.tipo !== 'FORANEA')) return '';
+  var rb = /rebot/i.test(a.corto);
+  return '<span class="atag ' + (rb ? 'rb' : 'pv') + '">PARA ' + esc(String(a.corto).toUpperCase()) + '</span>';
+}
+function colorDe(t) { return (S.EC[t.estatus] && S.EC[t.estatus].color) || '#5D6C7A'; }
+
+function render() {
+  if (!S.ctx) return;
+  var adm = S.ctx.admin;
+  $('#adminbar').innerHTML = adm ? '<div class="adminbar"><div class="wrap"><strong>MODO ADMINISTRADOR</strong><span>' + esc(S.ctx.email) + ' · control total: editar, mover, cambiar estatus y eliminar</span></div></div>' : '';
+  renderHeader();
+  var v = '';
+  if (esVistaAdmin()) {
+    v = S.tab === 'buscar' ? vBuscar() : S.tab === 'sol' ? vSolicitudes() : S.tab === 'hoja' ? vHoja() : vTodos();
+  } else {
+    v = S.tab === 'nuevo' ? vNuevo() : S.tab === 'escaner' ? vEscaner() : S.tab === 'paq' ? vPaqueteria() : vBandeja();
+  }
+  $('#view').innerHTML = v;
+  pintarCodigos($('#view'));
+  renderModal();
+  var si = $('#scanin') || $('#credin') || $('#gestin');
+  if (si && !S.modal && !S.bell) si.focus({ preventScroll: true });
+}
+
+function renderHeader() {
+  var tabs = [];
+  if (esVistaAdmin()) {
+    tabs = [['todos', 'Todos los traspasos'], ['buscar', 'Buscador'], ['sol', 'Solicitudes', S.data.solicitudes.length], ['hoja', 'Catálogos']];
+  } else {
+    tabs = [['bandeja', 'Mi bandeja'], ['nuevo', 'Nuevo traspaso'], ['escaner', 'Escáner']];
+    if (me() === 'LOG' || R.esMor(S.A, me())) {
+      var n = S.data.traspasos.filter(function (t) { return R.paqueteria(t, me(), S.A); }).length;
+      tabs.push(['paq', 'Paquetería', n]);
+    }
+  }
+  var min = Math.max(0, Math.floor((S.ctx.exp - Date.now()) / 60000));
+  var logo = S.cat.ajustes.logo && /^https?:/i.test(S.cat.ajustes.logo)
+    ? '<img class="logo-img" src="' + esc(S.cat.ajustes.logo) + '" alt="Logo">' : '<span class="logo" title="Aquí va el logo (CFG_Ajustes → logo_empresa)">LOGO</span>';
+  var avisos = S.data.avisos || [];
+  var bell = '<div class="bellwrap"><button type="button" class="bell" data-a="bell" aria-label="Avisos">🔔' + (S.noVistos ? '<span class="count">' + S.noVistos + '</span>' : '') + '</button>' +
+    (S.bell ? '<div class="bellpanel"><b>Avisos</b>' + (avisos.length ? avisos.map(function (a) {
+      return '<button type="button" class="bellitem ' + (a.visto ? '' : 'unseen') + '" data-a="open" data-v="' + esc(a.folio) + '"><span class="num">' + esc(a.folio) + '</span><span>' + esc(a.msg) + '</span><span class="muted" style="font-size:12px">' + esc(a.fecha + ' ' + a.hora) + '</span></button>';
+    }).join('') : '<div class="muted">Sin avisos.</div>') + '</div>' : '') + '</div>';
+  $('#header').innerHTML = '<div class="brand">' + logo + 'Traspasos</div>' +
+    '<div class="who"><span class="p">' + esc(S.ctx.areaNombre) + '</span><span class="u">' + esc(S.ctx.email) + ' · sesión: cierra en ' + Math.floor(min / 60) + ' h ' + ('0' + (min % 60)).slice(-2) + ' min · <a href="#" data-a="salir">Salir</a></span></div>' +
+    bell + '<nav class="tabs">' + tabs.map(function (x) {
+      return '<button type="button" data-a="tab" data-v="' + x[0] + '"' + (S.tab === x[0] ? ' aria-current="page"' : '') + '>' + x[1] + (x[2] ? ' <span class="count">' + x[2] + '</span>' : '') + '</button>';
+    }).join('') + '</nav>';
+}
+
+function tcard(t, desdeOrigen) {
+  var ruta = desdeOrigen ? '<span class="arrow">→</span>' + esc(nom(t.destino)) : esc(nom(t.origen)) + '<span class="arrow">→</span>' + esc(nom(t.destino));
+  return '<button type="button" class="tcard" data-a="open" data-v="' + esc(t.folio) + '" style="color:' + colorDe(t) + '"><span class="stripe"></span>' +
+    '<span class="body"><span class="top"><span class="folio">' + esc(t.folio) + '</span>' + badge(t) + areaTag(t.destino) + '</span>' +
+    '<span class="route">' + ruta + '</span><span class="desc">' + esc(t.desc) + '</span></span>' +
+    '<span class="side"><b>' + t.bultos + ' ' + (t.bultos > 1 ? 'bultos' : 'bulto') + '</b><span>' + esc(t.fecha + ' ' + t.hora) + '</span><span>' + esc(t.act ? 'Act. ' + t.act : '') + '</span></span></button>';
+}
+var ORD = { UBICADO: 0, EXTRAVIADO: 1, INCIDENCIA: 2, ENTREGADO_GESTOR: 3, RECOLECTADO: 4, PAQUETERIA: 5, EN_LOGISTICA: 6, NUEVO: 7, ENTREGADO: 9 };
+function orden(a, b) { var x = (a.solicitud ? -1 : (ORD[a.estatus] != null ? ORD[a.estatus] : 5)), y = (b.solicitud ? -1 : (ORD[b.estatus] != null ? ORD[b.estatus] : 5)); return x - y || String(b.act).localeCompare(String(a.act)); }
+
+function chips(lista, accion, sel) {
+  var c = {};
+  lista.forEach(function (t) { c[t.estatus] = (c[t.estatus] || 0) + 1; });
+  return '<div class="summary">' + S.cat.estatus.filter(function (e) { return c[e.clave]; }).map(function (e) {
+    return '<button type="button" class="chip" data-a="' + accion + '" data-v="' + e.clave + '" aria-pressed="' + (sel === e.clave) + '"><span class="badge b-' + e.clave + '">' + esc(e.nombre) + '</span><span class="num">' + c[e.clave] + '</span></button>';
+  }).join('') + '</div>';
+}
+
+/* ---------- Mi bandeja ---------- */
+function vBandeja() {
+  var m = me(), A = S.A;
+  var ent = S.data.traspasos.filter(function (t) { return R.esEntrante(t, m, A) || (t.ubic === m && t.estatus === 'UBICADO'); });
+  var sal = S.data.traspasos.filter(function (t) { return t.origen === m; });
+  var src = S.dir === 'in' ? ent : sal;
+  var lista = src.filter(function (t) { return !S.filtro || t.estatus === S.filtro; }).sort(orden);
+  var a = A[m] || {};
+  var nota = (a.tipo === 'SUCURSAL' || a.tipo === 'FORANEA')
+    ? '<b>Entrantes</b>: todo lo que llega a ' + esc(a.sucNombre) + ' (PV y Rebotica). Cualquiera lo puede recibir; cada traspaso dice para quién es. <b>Salientes</b>: lo que sale de ' + esc(nom(m)) + '.'
+    : 'Solo ves los traspasos que van para <b>' + esc(nom(m)) + '</b> o que salieron de aquí.';
+  return '<h1>Mi bandeja</h1><p class="sub">' + nota + ' Para recibir o entregar usa el <b>Escáner</b>.</p>' +
+    '<div class="seg"><button type="button" data-a="dir" data-v="in" aria-pressed="' + (S.dir === 'in') + '">Entrantes (' + ent.length + ')</button><button type="button" data-a="dir" data-v="out" aria-pressed="' + (S.dir === 'out') + '">Salientes (' + sal.length + ')</button></div>' +
+    chips(src, 'filtro', S.filtro) +
+    '<div class="list">' + (lista.length ? lista.map(function (t) { return tcard(t, S.dir === 'out'); }).join('') : '<div class="empty">No hay traspasos aquí.</div>') + '</div>';
+}
+
+/* ---------- Nuevo traspaso ---------- */
+function vNuevo() {
+  var w = S.wiz, m = me();
+  var pasos = ['Credencial', 'Destino', 'Contenido y bultos', 'Etiquetas'];
+  var head = '<h1>Nuevo traspaso</h1><p class="sub">Sale de <b>' + esc(nom(m)) + '</b>. El folio y las etiquetas se generan solos al final.</p>' +
+    '<div class="steps">' + pasos.map(function (p, i) { return '<div class="' + (w.step === i + 1 ? 'on' : w.step > i + 1 ? 'done' : '') + '">' + (i + 1) + '. ' + p + '</div>'; }).join('') + '</div>';
+  var err = w.err ? '<div class="feedback err">' + esc(w.err) + '</div>' : '';
+  if (w.step === 1) {
+    return head + '<div class="grid2"><div class="panel stack">' +
+      '<div class="scanbox"><b style="font-size:18px">Escanea tu credencial</b><span class="muted">Es obligatorio: queda registrado quién creó el traspaso.</span></div>' +
+      '<label class="f">Código de credencial<input class="t num" id="credin" autocomplete="off" placeholder="Escanea o escribe"></label>' +
+      '<div class="row"><button class="btn primary" type="button" data-a="cred">Continuar</button></div>' + err +
+      '</div><div class="panel stack"><h2>¿Aún no tienes credencial?</h2><p class="muted" style="margin:0">Regístrate como <b>usuario sin credencial</b>. El traspaso quedará marcado y administración verá que te falta.</p>' +
+      (w.sinCred ? '<label class="f">Nombre completo<input class="t" id="scn" autocomplete="off"></label><label class="f">Número de empleado<input class="t" id="scnum" autocomplete="off" inputmode="numeric"></label><button class="btn" type="button" data-a="sincredok">Continuar sin credencial</button>'
+        : '<button class="btn" type="button" data-a="sincred">No tengo credencial</button>') + '</div></div>';
+  }
+  if (w.step === 2) {
+    var grupos = {};
+    S.cat.areas.filter(function (a) { return a.activa && a.id !== m; }).forEach(function (a) { var g = a.tipo === 'OFICINAS' ? 'Oficinas' : (a.sucNombre || a.corto); (grupos[g] = grupos[g] || []).push(a); });
+    var opts = Object.keys(grupos).map(function (g) { return '<optgroup label="' + esc(g) + '">' + grupos[g].map(function (a) { return '<option value="' + esc(a.id) + '"' + (w.destino === a.id ? ' selected' : '') + '>' + esc(a.nombre) + '</option>'; }).join('') + '</optgroup>'; }).join('');
+    return head + '<div class="grid2"><div class="panel stack">' +
+      '<div class="note">Creado por: <b>' + esc(w.persona.nombre) + '</b>' + (w.persona.codigo ? ' · ' + esc(w.persona.codigo) : ' · <b>sin credencial</b>') + '</div>' +
+      '<label class="f">¿Para dónde va?<select class="t" id="destin"><option value="">Elige el destino…</option>' + opts + '</select></label>' +
+      '<div id="rutanote">' + rutaNota(m, w.destino) + '</div>' +
+      '<div class="row"><button class="btn ghost" type="button" data-a="atras">Atrás</button><button class="btn primary" type="button" data-a="dest">Continuar</button></div>' + err +
+      '</div><div class="panel"><h2>Rutas precargadas</h2><p class="muted" style="margin:0">Aquí aparecen todas las áreas activas de CAT_Areas. Si el destino es Morelia, la ruta va sola por Logística y paquetería.</p></div></div>';
+  }
+  if (w.step === 3) {
+    return head + '<div class="grid2"><div class="panel stack">' +
+      '<div class="note"><b>' + esc(nom(m)) + '</b><span class="arrow">→</span><b>' + esc(nom(w.destino)) + '</b></div>' +
+      '<label class="f">¿Qué envías?<textarea class="t" id="descin" placeholder="Ej. Material de curación, 3 cajas">' + esc(w.desc || '') + '</textarea></label>' +
+      '<div style="display:grid;gap:6px"><span style="font-weight:700;font-size:14px">Número de bultos</span><div class="qty"><button type="button" data-a="qty" data-v="-1" aria-label="Menos">−</button><span>' + (w.bultos || 1) + '</span><button type="button" data-a="qty" data-v="1" aria-label="Más">+</button></div><span class="muted" style="font-size:13px">Se imprime una etiqueta por bulto.</span></div>' +
+      '<div class="row"><button class="btn ghost" type="button" data-a="atras">Atrás</button><button class="btn primary" type="button" data-a="crear"' + (w.enviando ? ' disabled' : '') + '>' + (w.enviando ? 'Generando…' : 'Generar traspaso e imprimir') + '</button></div>' + err +
+      '</div><div class="panel stack"><h2>Así saldrá la etiqueta</h2><div class="labels">' +
+      etiquetaHTML({ folio: m + '-0000', origen: m, destino: w.destino, bultos: w.bultos || 1, fecha: '', hora: horaAhora(), por: w.persona.nombre }, 1, 0, true) + '</div></div></div>';
+  }
+  var t = w.t;
+  return head + '<div class="panel stack"><div class="feedback ok">✓ Traspaso <span class="num">' + esc(t.folio) + '</span> creado. Se mandaron ' + t.bultos + ' etiqueta(s) a imprimir. Pégalas en los bultos; queda en espera de gestoría.</div>' +
+    '<div class="labels">' + rango(t.bultos).map(function (b) { return etiquetaHTML(t, b, 0, true); }).join('') + '</div>' +
+    '<div class="row"><button class="btn" type="button" data-a="reimp-auto">Volver a imprimir</button><button class="btn" type="button" data-a="open" data-v="' + esc(t.folio) + '">Ver detalle</button><button class="btn primary" type="button" data-a="otro">Crear otro traspaso</button></div></div>';
+}
+function rutaNota(m, d) {
+  if (!d) return '';
+  var A = S.A;
+  if (R.esMor(A, d) || R.esMor(A, m)) {
+    var r = R.esMor(A, m) ? 'Paquetería → Logística (Oficinas) → ' + (R.esOf(A, d) ? 'entrega interna' : 'gestoría') + ' → destino'
+      : R.esOf(A, m) ? 'Entrega a Logística → paquetería → Morelia' : 'Gestoría → Logística (Oficinas) → paquetería → Morelia';
+    return '<div class="note route"><b>Ruta con paquetería:</b> ' + r + '. Es el mismo folio de principio a fin.</div>';
+  }
+  if (R.esOf(A, m) && R.esOf(A, d)) return '<div class="note">Entrega interna en Oficinas: el área destino lo recibe escaneándolo.</div>';
+  return '<div class="note">Lo recoge gestoría y lo entrega en el destino.</div>';
+}
+function rango(n) { var a = []; for (var i = 1; i <= n; i++) a.push(i); return a; }
+
+/* ---------- Etiquetas ---------- */
+function etiquetaHTML(t, b, rp, pantalla) {
+  var aj = S.cat.ajustes;
+  var w = aj.etiquetaAncho, h = aj.etiquetaAlto;
+  var tam = pantalla ? 'width:100%;aspect-ratio:' + w + '/' + h + ';' : 'width:' + w + 'mm;height:' + h + 'mm;';
+  return '<div class="' + (pantalla ? 'label ' : '') + 'lbl" style="' + tam + '">' + (rp ? '<span class="rp">R' + rp + '</span>' : '') +
+    '<div><div class="k">DESTINO</div><div class="dest">' + esc(t.destino ? nom(t.destino) : '—') + '</div></div>' +
+    '<div><div class="k">ORIGEN</div><div class="orig">' + esc(nom(t.origen)) + '</div></div>' +
+    '<div class="fol">' + esc(t.folio) + '</div>' +
+    '<svg class="bc" data-code="' + esc(t.folio) + '"></svg>' +
+    '<div class="bul">BULTO ' + b + ' DE ' + t.bultos + '</div>' +
+    '<div class="pie">' + esc((t.fecha || '') + ' ' + (t.hora || '')) + '<br>Creó: ' + esc(String(t.por || '').split(' · ')[0]) + '</div></div>';
+}
+function pintarCodigos(raiz) {
+  if (!window.JsBarcode) return;
+  raiz.querySelectorAll('svg.bc').forEach(function (s) {
+    try { JsBarcode(s, s.getAttribute('data-code'), { format: 'CODE128', displayValue: false, height: 60, margin: 0, width: 2 }); s.setAttribute('preserveAspectRatio', 'none'); } catch (e) { }
+  });
+}
+function imprimir(t, bultos, rp) {
+  var aj = S.cat.ajustes;
+  var p = $('#print');
+  p.innerHTML = '<style>@page{size:' + aj.etiquetaAncho + 'mm ' + aj.etiquetaAlto + 'mm;margin:0}</style>' +
+    bultos.map(function (b) { return etiquetaHTML(t, b, rp || 0, false); }).join('');
+  pintarCodigos(p);
+  setTimeout(function () { window.print(); }, 200);
+}
+
+/* ---------- Escáner ---------- */
+function vEscaner() {
+  var sc = S.scan, m = me();
+  var falta = sc.modo === 'ENTREGAR' && !sc.gestor;
+  var fb = sc.fb;
+  var fbh = !fb ? '<div class="feedback idle">Escanea con la pistola o teclea solo el folio (ej. ' + esc(m) + '-0001) y presiona Enter.</div>'
+    : '<div class="feedback ' + fb.k + '" role="alert"><span style="font-size:20px;line-height:1">' + ({ ok: '✓', err: '✕', warn: '!' })[fb.k] + '</span><span>' + esc(fb.m) +
+      (fb.ubicable ? '<br><button class="btn" type="button" style="margin-top:8px" data-a="ubicar" data-v="' + esc(fb.folio) + '">Registrar que está aquí</button>' : '') + '</span></div>';
+  var cola = sc.lote.length ? sc.lote.slice().reverse().map(function (it) {
+    var t = it.t;
+    return '<div class="qrow"><span style="color:var(--ok);font-weight:900">✓</span><div style="min-width:0"><div class="row" style="gap:6px 10px">' + areaTag(t.destino) + '<span><span class="num">' + esc(t.folio) + '</span> · ' + esc(nom(t.origen)) + '<span class="arrow">→</span>' + esc(nom(t.destino)) + '</span></div>' +
+      '<div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + t.bultos + ' bulto(s) · ' + esc(t.desc) + ' · creó ' + esc(String(t.por).split(' · ')[0]) + '</div></div>' +
+      (sc.modo === 'RECIBIR' ? '<label><input type="checkbox" data-a="faltan" data-v="' + esc(t.folio) + '"' + (it.faltan ? ' checked' : '') + '> Faltan / dañado</label>' : '<span></span>') + '</div>';
+  }).join('') : '<div class="empty">Aún no hay traspasos en la lista. Escanea el primero.</div>';
+  return '<h1>Escáner en ráfaga</h1><p class="sub">Una sola pantalla para recibir y para entregar a gestoría. Cada folio se revisa al instante y se va formando la fila. Al final confirma.</p>' +
+    '<div class="seg"><button type="button" data-a="modo" data-v="RECIBIR" aria-pressed="' + (sc.modo === 'RECIBIR') + '">Recibir traspasos</button><button type="button" data-a="modo" data-v="ENTREGAR" aria-pressed="' + (sc.modo === 'ENTREGAR') + '">Entregar a gestor</button></div>' +
+    '<div class="scanner"><div class="stack">' +
+    (sc.modo === 'ENTREGAR' ? (sc.gestor ? '<div class="gestorpill"><div><b>' + esc(sc.gestor.nombre) + '</b><div class="muted" style="font-size:13px">Gestor · ' + esc(sc.gestor.codigo) + '</div></div><button class="btn ghost" type="button" data-a="gclear" style="margin-left:auto">Cambiar</button></div>'
+      : '<div class="scanbox"><b>Primero escanea la credencial del gestor</b><span class="muted">Para cuando el gestor no trae su celular.</span></div>') : '') +
+    '<label class="f">' + (falta ? 'Credencial del gestor' : 'Folio') + '<input class="scaninput" id="' + (falta ? 'gestin' : 'scanin') + '" autocomplete="off" placeholder="' + (falta ? 'Credencial' : esc(m) + '-0001') + '"></label>' + fbh +
+    '</div><div class="stack"><div class="row" style="justify-content:space-between"><h2 style="margin:0">' + (sc.modo === 'RECIBIR' ? 'Recibiendo' : 'Entregando a gestor') + ' · ' + sc.lote.length + '</h2>' +
+    '<div class="row"><button class="btn ghost" type="button" data-a="vaciar"' + (sc.lote.length ? '' : ' disabled') + '>Vaciar</button><button class="btn primary" type="button" data-a="confirmar"' + (sc.lote.length && !sc.enviando ? '' : ' disabled') + '>' + (sc.enviando ? 'Guardando…' : 'Confirmar ' + (sc.modo === 'RECIBIR' ? 'recepción' : 'salida')) + '</button></div></div>' +
+    '<div class="queue">' + cola + '</div></div></div>';
+}
+function alEscanear(texto) {
+  texto = String(texto || '').trim();
+  if (!texto) return;
+  var sc = S.scan, m = me();
+  var folio = R.folioDe(texto);
+  var t = MAPA[folio];
+  var v;
+  if (!R.valido(texto) && !t) v = { k: 'err', m: '"' + texto + '" no parece un folio de traspaso. Revisa que esté bien tecleado.' };
+  else v = sc.modo === 'RECIBIR' ? R.recibir(t, m, S.A, S.E) : R.salir(t, m, S.A, S.E, 'ENTREGAR');
+  if (v.k === 'ok' && sc.lote.some(function (it) { return R.limpio(it.t.folio) === folio; })) v = { k: 'warn', m: t.folio + ' ya está en la lista.' };
+  if (v.k === 'ok') {
+    sc.lote.push({ t: t, faltan: false });
+    v = { k: 'ok', m: t.folio + ' · ' + t.bultos + ' bulto(s) · ' + nom(t.origen) + ' → ' + nom(t.destino) };
+  }
+  v.folio = t ? t.folio : folio;
+  sc.fb = v;
+  sc.log.push({ texto: texto, resultado: v.k === 'ok' ? 'OK' : v.k === 'warn' ? 'AVISO' : 'ERROR', mensaje: v.m, hora: horaAhora() });
+  beep(v.k);
+  render();
+}
+function confirmarLote() {
+  var sc = S.scan;
+  if (!sc.lote.length || sc.enviando) return;
+  sc.enviando = true; S.ocupado = true; render();
+  srv('apiConfirmarLote', S.token, {
+    modo: sc.modo, gestorCodigo: sc.gestor ? sc.gestor.codigo : '',
+    items: sc.lote.map(function (it) { return { folio: it.t.folio, faltan: !!it.faltan }; }),
+    escaneos: sc.log
+  }).then(function (d) {
+    var ok = d.resultados.filter(function (r) { return r.ok; }).length;
+    var mal = d.resultados.filter(function (r) { return !r.ok; });
+    S.scan = { modo: sc.modo, lote: [], log: [], gestor: sc.gestor, enviando: false,
+      fb: mal.length ? { k: 'warn', m: ok + ' guardado(s). No se guardaron: ' + mal.map(function (r) { return r.folio + ' (' + r.msg + ')'; }).join('; ') } : { k: 'ok', m: ok + ' traspaso(s) guardados.' } };
+    toast(ok + ' traspaso(s) guardados');
+    S.ocupado = false; refrescar(false);
+  }).catch(function (e) { sc.enviando = false; S.ocupado = false; sc.fb = { k: 'err', m: e.message }; render(); });
+}
+
+/* ---------- Paquetería ---------- */
+function vPaqueteria() {
+  var m = me();
+  var por = S.data.traspasos.filter(function (t) { return R.paqueteria(t, m, S.A); });
+  var camino = S.data.traspasos.filter(function (t) { return t.estatus === 'PAQUETERIA'; });
+  var dist = m === 'LOG' ? S.data.traspasos.filter(function (t) { return t.estatus === 'EN_LOGISTICA' && !R.esMor(S.A, t.destino); }) : [];
+  var opts = S.cat.paqueterias.map(function (p) { return '<option>' + esc(p) + '</option>'; }).join('');
+  return '<h1>Paquetería</h1><p class="sub">Lo que va o viene de Morelia viaja con guía. Captura la paquetería y el número de guía para enviarlo.</p>' +
+    '<h2>Por enviar (' + por.length + ')</h2><div class="list" style="margin-bottom:22px">' + (por.length ? por.map(function (t) {
+      return '<div class="panel stack" style="padding:14px"><div class="row" style="justify-content:space-between"><div><span class="num" style="font-size:16px">' + esc(t.folio) + '</span> · ' + esc(nom(t.origen)) + '<span class="arrow">→</span><b>' + esc(nom(t.destino)) + '</b> · ' + t.bultos + ' bulto(s)</div>' + badge(t) + '</div>' +
+        '<div class="row"><select class="t" id="pq-' + esc(t.folio) + '" style="width:auto">' + opts + '</select><input class="t" id="gu-' + esc(t.folio) + '" placeholder="Número de guía" style="flex:1;min-width:180px"><button class="btn primary" type="button" data-a="enviarpq" data-v="' + esc(t.folio) + '">Marcar enviado</button></div></div>';
+    }).join('') : '<div class="empty">Nada por enviar.</div>') + '</div>' +
+    '<h2>En camino por paquetería (' + camino.length + ')</h2><div class="list" style="margin-bottom:22px">' + (camino.length ? camino.map(function (t) { return tcard(t); }).join('') : '<div class="empty">Nada en camino.</div>') + '</div>' +
+    (m === 'LOG' ? '<h2>En Logística, por distribuir (' + dist.length + ')</h2><div class="list">' + (dist.length ? dist.map(function (t) { return tcard(t); }).join('') : '<div class="empty">Nada por distribuir.</div>') + '</div>' : '');
+}
+
+/* ---------- Administración ---------- */
+function vTodos() {
+  var all = S.data.traspasos;
+  var lista = all.filter(function (t) { return !S.filtro || t.estatus === S.filtro; }).sort(orden);
+  return '<h1>Todos los traspasos</h1><p class="sub">En movimiento y entregados de los últimos 45 días. Para uno más viejo, búscalo por folio en el Buscador. Clic en un traspaso para editarlo, moverlo o eliminarlo.</p>' +
+    chips(all, 'filtro', S.filtro) +
+    '<div class="tablewrap"><table><thead><tr><th>Folio</th><th>Estatus</th><th>Origen</th><th>Destino</th><th>Bultos</th><th>Creado</th><th>Últ. actualización</th></tr></thead><tbody>' +
+    lista.map(function (t) { return '<tr class="click" data-a="open" data-v="' + esc(t.folio) + '"><td class="num">' + esc(t.folio) + '</td><td>' + badge(t) + '</td><td>' + esc(nom(t.origen)) + '</td><td>' + esc(nom(t.destino)) + '</td><td class="num">' + t.bultos + '</td><td>' + esc(t.fecha + ' ' + t.hora) + '</td><td>' + esc(t.act) + '</td></tr>'; }).join('') +
+    '</tbody></table></div>';
+}
+function vBuscar() {
+  var q = S.q.trim().toUpperCase();
+  var res = q ? S.data.traspasos.filter(function (t) {
+    return (t.folio + ' ' + t.desc + ' ' + t.por + ' ' + t.guia + ' ' + t.gestor + ' ' + nom(t.origen) + ' ' + nom(t.destino)).toUpperCase().indexOf(q) >= 0;
+  }).slice(0, 60) : [];
+  return '<h1>Buscador</h1><p class="sub">Escribe o escanea un folio y presiona Enter para ver su historia completa. También busca por guía, persona, gestor o descripción.</p>' +
+    '<form class="searchbar" data-form="buscar"><input id="busq" value="' + esc(S.q) + '" placeholder="NR-0041" autocomplete="off"><button class="btn gold" type="submit">Buscar</button></form>' +
+    (q ? (res.length ? '<div class="list">' + res.map(function (t) { return tcard(t); }).join('') + '</div>' : '<div class="empty">Nada en los últimos 45 días. Si es un folio exacto, presiona Enter para buscarlo en todo el historial.</div>') : '');
+}
+function vSolicitudes() {
+  var s = S.data.solicitudes;
+  return '<h1>Solicitudes de eliminación</h1><p class="sub">Mientras esperan respuesta, el traspaso queda congelado: gestoría no lo puede recolectar.</p><div class="list">' +
+    (s.length ? s.map(function (x) {
+      return '<div class="panel stack"><div class="row" style="justify-content:space-between"><span class="num" style="font-size:17px">' + esc(x.folio) + '</span><span class="muted">' + esc(x.fecha) + '</span></div>' +
+        '<div class="note"><b>' + esc(x.solicito) + '</b> · ' + esc(x.area) + '<br>"' + esc(x.motivo) + '"</div>' +
+        '<label class="f">Comentario (opcional)<input class="t" id="cm-' + esc(x.id) + '" autocomplete="off"></label>' +
+        '<div class="row"><button class="btn" type="button" data-a="open" data-v="' + esc(x.folio) + '">Ver historia</button><button class="btn" type="button" data-a="solno" data-v="' + esc(x.id) + '">Rechazar</button><button class="btn danger" type="button" data-a="solsi" data-v="' + esc(x.id) + '">Aprobar y eliminar</button></div></div>';
+    }).join('') : '<div class="empty">No hay solicitudes pendientes.</div>') + '</div>';
+}
+function vHoja() {
+  return '<h1>Catálogos</h1><p class="sub">Las áreas, personas, credenciales, gestores, administradores, colores de estatus y ajustes se editan directo en el archivo de Google Sheets (hojas azules CAT_ y morada CFG_). La app toma los cambios sola.</p>' +
+    '<div class="panel stack"><a class="btn gold" href="' + esc(S.cat.ajustes.urlHoja) + '" target="_blank" rel="noopener">Abrir Traspasos_FADERMEX_BD</a>' +
+    '<div class="note">Para dar de baja algo pon <b>Activo = NO</b>; no borres filas. Para quien pierde la credencial: Activo = NO y dale una nueva.</div></div>';
+}
+
+/* ---------- Detalle (modal) ---------- */
+function abrir(folio) {
+  S.bell = false;
+  S.modal = { folio: folio, det: null, form: null, err: null };
+  render();
+  srv('apiDetalle', S.token, folio).then(function (d) { if (S.modal && S.modal.folio === folio) { S.modal.det = d; render(); } })
+    .catch(function (e) { if (S.modal) { S.modal.err = e.message; render(); } });
+}
+function renderModal() {
+  var m = S.modal;
+  if (!m) { $('#modal').innerHTML = ''; return; }
+  var inner;
+  if (m.err && !m.det) inner = '<div class="feedback err">' + esc(m.err) + '</div><div class="row" style="margin-top:12px"><button class="btn" type="button" data-a="cerrar">Cerrar</button></div>';
+  else if (!m.det) inner = '<div class="cargando">Cargando historia…</div>';
+  else inner = detalleHTML(m.det.traspaso, m.det.movimientos);
+  $('#modal').innerHTML = '<div class="modal" data-a="fondo"><div class="box" role="dialog" aria-modal="true">' + inner + '</div></div>';
+  pintarCodigos($('#modal'));
+}
+function detalleHTML(t, movs) {
+  var m = S.modal, yo = me(), adm = S.ctx.admin;
+  var dl = [['Origen', nom(t.origen)], ['Destino', nom(t.destino)], ['Bultos', t.bultos], ['Creado', t.fecha + ' ' + t.hora], ['Creó', t.por]];
+  if (t.gestor) dl.push(['Gestor', t.gestor]);
+  if (t.guia) dl.push(['Paquetería / guía', t.paqueteria + ' · ' + t.guia]);
+  if (t.recibio) dl.push(['Recibido', t.recibio + ' · ' + t.fechaEnt]);
+  if (R.viaLog(t)) dl.push(['Ruta', 'Vía Logística + paquetería']);
+  var acc = '';
+  var puedeRe = adm || t.origen === yo;
+  var motR = S.cat.motivos.REIMPRESION.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('');
+  var forms = '';
+  if (m.form === 'rp') {
+    forms += '<div class="inline-form"><div class="row"><label class="f" style="flex:1;min-width:140px">¿Qué etiqueta?<select class="t" id="rpb"><option value="0">Todas (' + t.bultos + ')</option>' + rango(t.bultos).map(function (b) { return '<option value="' + b + '">Bulto ' + b + ' de ' + t.bultos + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f" style="flex:1;min-width:160px">Motivo<select class="t" id="rpm">' + motR + '</select></label></div>' +
+      '<label class="f">Tu credencial' + (adm ? ' (opcional para administradores)' : '') + '<input class="t num" id="rpc" autocomplete="off"></label>' +
+      '<div class="row"><button class="btn primary" type="button" data-a="rpgo" data-v="' + esc(t.folio) + '">Reimprimir</button><button class="btn ghost" type="button" data-a="form" data-v="">Cancelar</button></div></div>';
+  }
+  if (m.form === 'del') {
+    forms += '<div class="inline-form"><label class="f">¿Por qué se debe eliminar? (obligatorio)<textarea class="t" id="delm"></textarea></label><div class="muted" style="font-size:13px">No se borra al momento: un administrador revisa tu solicitud. Mientras tanto el traspaso queda congelado.</div>' +
+      '<div class="row"><button class="btn danger" type="button" data-a="delgo" data-v="' + esc(t.folio) + '">Enviar solicitud</button><button class="btn ghost" type="button" data-a="form" data-v="">Cancelar</button></div></div>';
+  }
+  var botones = [];
+  if (puedeRe && t.estatus !== 'ELIMINADO' && m.form !== 'rp') botones.push('<button class="btn" type="button" data-a="form" data-v="rp">Reimprimir etiqueta</button>');
+  if (!adm && R.eliminable(t, yo) && m.form !== 'del') botones.push('<button class="btn" type="button" data-a="form" data-v="del">Solicitar eliminación</button>');
+  if (botones.length || forms) acc += '<div class="actions"><div class="row">' + botones.join('') + '</div>' + forms + '</div>';
+
+  if (adm) {
+    var ests = S.cat.estatus.map(function (e) { return '<option value="' + e.clave + '"' + (t.estatus === e.clave ? ' selected' : '') + '>' + esc(e.nombre) + '</option>'; }).join('');
+    var areas = function (sel) { return S.cat.areas.map(function (a) { return '<option value="' + a.id + '"' + (sel === a.id ? ' selected' : '') + '>' + esc(a.nombre) + '</option>'; }).join(''); };
+    acc += '<div class="actions"><div class="muted" style="font-size:12px;font-weight:900;letter-spacing:.08em">ACCIONES DE ADMINISTRADOR</div><div class="inline-form">' +
+      '<div class="row"><label class="f" style="flex:1;min-width:180px">Cambiar estatus<select class="t" id="aest">' + ests + '</select></label>' +
+      '<label class="f" style="flex:1;min-width:180px">Mover a otro destino<select class="t" id="adest">' + areas(t.destino) + '</select></label></div>' +
+      '<div class="row"><label class="f" style="flex:1;min-width:180px">Dónde está (si el estatus es "El traspaso está en…")<select class="t" id="aubic"><option value="">—</option>' + areas(t.ubic) + '</select></label>' +
+      '<label class="f" style="flex:1;min-width:180px">Motivo<input class="t" id="amot" placeholder="Opcional" autocomplete="off"></label></div>' +
+      '<div class="row"><button class="btn gold" type="button" data-a="asave" data-v="' + esc(t.folio) + '">Guardar cambios</button>' +
+      (m.confirmDel ? '<span style="font-weight:800;color:var(--err)">¿Eliminar ' + esc(t.folio) + '?</span><button class="btn danger" type="button" data-a="adel" data-v="' + esc(t.folio) + '">Sí, eliminar</button><button class="btn ghost" type="button" data-a="adelno">No</button>'
+        : '<button class="btn danger" type="button" data-a="adelask">Eliminar</button>') + '</div></div></div>';
+  }
+  return '<div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="num" style="font-size:28px">' + esc(t.folio) + '</div><div class="muted">' + esc(t.desc) + '</div></div><div class="row">' + badge(t) + areaTag(t.destino) + '<button class="btn ghost" type="button" data-a="cerrar" aria-label="Cerrar">✕</button></div></div>' +
+    (m.err ? '<div class="feedback err" style="margin-top:10px">' + esc(m.err) + '</div>' : '') +
+    '<dl class="dl">' + dl.map(function (x) { return '<div><dt>' + x[0] + '</dt><dd>' + esc(x[1]) + '</dd></div>'; }).join('') + '</dl>' +
+    '<h2>Línea de tiempo</h2><ol class="timeline">' + (movs.length ? movs.map(function (e) {
+      var c = (S.EC[e.nuevo] && S.EC[e.nuevo].color) || '#9AA7B3';
+      return '<li style="--tl:' + c + '"><div class="when">' + esc(e.fecha + ' ' + e.hora) + '</div><div class="what">' + esc(e.accion) + '</div><div class="detail">' + esc([e.persona, e.donde, e.medio, e.detalle].filter(Boolean).join(' · ')) + '</div></li>';
+    }).join('') : '<li>Sin movimientos.</li>') + '</ol>' +
+    '<details style="margin:8px 0 4px"><summary style="cursor:pointer;font-weight:800">Ver etiquetas (' + t.bultos + ')</summary><div class="labels" style="margin-top:12px">' + rango(t.bultos).map(function (b) { return etiquetaHTML(t, b, t.reimp || 0, true); }).join('') + '</div></details>' + acc;
+}
+
+/* ---------- eventos ---------- */
+document.addEventListener('click', function (e) {
+  var el = e.target.closest('[data-a]'); if (!el) return;
+  var a = el.getAttribute('data-a'), v = el.getAttribute('data-v');
+  if (a === 'fondo' && e.target !== el) return;
+  if (a === 'faltan') return;
+  var w = S.wiz;
+  switch (a) {
+    case 'entrar': return entrar(v);
+    case 'salir': e.preventDefault(); return salir();
+    case 'tab': S.tab = v; S.filtro = null; S.bell = false; break;
+    case 'dir': S.dir = v; S.filtro = null; break;
+    case 'filtro': S.filtro = S.filtro === v ? null : v; break;
+    case 'bell':
+      S.bell = !S.bell;
+      if (S.bell && S.noVistos) { srv('apiAvisosVistos', S.token).catch(function () { }); S.data.avisos.forEach(function (x) { x.visto = true; }); S.noVistos = 0; document.title = 'Traspasos'; }
+      break;
+    case 'open': return abrir(v);
+    case 'cerrar': case 'fondo': S.modal = null; break;
+    case 'form': S.modal.form = v || null; S.modal.err = null; break;
+
+    case 'cred': return validarCred($('#credin').value);
+    case 'sincred': w.sinCred = true; break;
+    case 'sincredok': {
+      var n = $('#scn').value.trim(), num = $('#scnum').value.trim();
+      if (!n || !num) { w.err = 'Escribe tu nombre y número de empleado.'; break; }
+      w.persona = { nombre: n, codigo: '', num: num, sinCred: true }; w.err = null; w.step = 2; break;
+    }
+    case 'atras': w.step--; w.err = null; break;
+    case 'dest': { var d = $('#destin').value; if (!d) { w.err = 'Elige el destino.'; break; } w.destino = d; w.bultos = w.bultos || 1; w.err = null; w.step = 3; break; }
+    case 'qty': w.desc = $('#descin').value; w.bultos = Math.min(99, Math.max(1, (w.bultos || 1) + Number(v))); break;
+    case 'crear': return crear();
+    case 'otro': S.wiz = { step: 1 }; break;
+    case 'reimp-auto': if (w.t) imprimir(w.t, rango(w.t.bultos), 0); return;
+
+    case 'modo': S.scan = { modo: v, lote: [], fb: null, gestor: null, log: [], enviando: false }; break;
+    case 'gclear': S.scan.gestor = null; S.scan.lote = []; S.scan.fb = null; break;
+    case 'vaciar': S.scan.lote = []; S.scan.fb = null; break;
+    case 'confirmar': return confirmarLote();
+    case 'ubicar':
+      srv('apiUbicar', S.token, v).then(function () { toast('Registrado: ' + v + ' está en ' + nom(me())); S.scan.fb = { k: 'ok', m: 'Quedó registrado que ' + v + ' está aquí. Se avisó al origen, al destino y a administración.' }; refrescar(false); })
+        .catch(function (er) { toast(er.message); });
+      return;
+
+    case 'enviarpq': {
+      var g = $('#gu-' + v).value.trim(); if (!g) { toast('Captura el número de guía'); return; }
+      srv('apiPaqueteria', S.token, v, $('#pq-' + v).value, g).then(function () { toast(v + ' enviado por paquetería'); refrescar(false); }).catch(function (er) { toast(er.message); });
+      return;
+    }
+    case 'rpgo': {
+      var b = $('#rpb').value, mot = $('#rpm').value, cod = $('#rpc').value.trim();
+      srv('apiReimprimir', S.token, { folio: v, bulto: b, motivo: mot, codigo: cod }).then(function (d) {
+        S.modal.form = null; imprimir(d.traspaso, d.bultos, d.rp); abrir(v);
+      }).catch(function (er) { S.modal.err = er.message; render(); });
+      return;
+    }
+    case 'delgo': {
+      var mt = $('#delm').value.trim(); if (!mt) { S.modal.err = 'Escribe el motivo.'; break; }
+      srv('apiSolicitarEliminacion', S.token, v, mt).then(function () { toast('Solicitud enviada a los administradores'); S.modal = null; refrescar(false); })
+        .catch(function (er) { S.modal.err = er.message; render(); });
+      return;
+    }
+    case 'asave':
+      srv('apiAdminEditar', S.token, v, { estatus: $('#aest').value, destino: $('#adest').value, ubic: $('#aubic').value }, $('#amot').value)
+        .then(function () { toast('Cambios guardados'); abrir(v); refrescar(false); }).catch(function (er) { S.modal.err = er.message; render(); });
+      return;
+    case 'adelask': S.modal.confirmDel = true; break;
+    case 'adelno': S.modal.confirmDel = false; break;
+    case 'adel':
+      srv('apiAdminEliminar', S.token, v, $('#amot') ? $('#amot').value : '').then(function () { toast(v + ' eliminado'); S.modal = null; refrescar(false); })
+        .catch(function (er) { S.modal.err = er.message; render(); });
+      return;
+    case 'solsi': case 'solno':
+      srv('apiAdminResolver', S.token, v, a === 'solsi', $('#cm-' + v).value).then(function () { toast(a === 'solsi' ? 'Aprobada: traspaso eliminado' : 'Solicitud rechazada'); refrescar(false); })
+        .catch(function (er) { toast(er.message); });
+      return;
+    default: return;
+  }
+  render();
+});
+document.addEventListener('change', function (e) {
+  if (e.target.id === 'destin') $('#rutanote').innerHTML = rutaNota(me(), e.target.value);
+  if (e.target.getAttribute('data-a') === 'faltan') {
+    var f = e.target.getAttribute('data-v');
+    S.scan.lote.forEach(function (it) { if (it.t.folio === f) it.faltan = e.target.checked; });
+  }
+});
+document.addEventListener('input', function (e) { if (e.target.id === 'descin') S.wiz.desc = e.target.value; });
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && S.modal) { S.modal = null; render(); return; }
+  if (e.key !== 'Enter') return;
+  var id = e.target.id;
+  if (id === 'scanin') { e.preventDefault(); alEscanear(e.target.value); }
+  else if (id === 'gestin') { e.preventDefault(); validarGestor(e.target.value); }
+  else if (id === 'credin') { e.preventDefault(); validarCred(e.target.value); }
+});
+document.addEventListener('submit', function (e) {
+  if (e.target.getAttribute('data-form') !== 'buscar') return;
+  e.preventDefault();
+  S.q = $('#busq').value;
+  var f = R.folioDe(S.q);
+  if (R.valido(S.q)) return abrir(f);
+  render();
+});
+
+function validarCred(cod) {
+  cod = String(cod || '').trim(); if (!cod) return;
+  srv('apiPersona', S.token, cod).then(function (p) { S.wiz.persona = p; S.wiz.err = null; S.wiz.step = 2; beep('ok'); render(); })
+    .catch(function (e) { S.wiz.err = e.message; beep('err'); render(); });
+}
+function validarGestor(cod) {
+  cod = String(cod || '').trim(); if (!cod) return;
+  srv('apiGestor', S.token, cod).then(function (g) { S.scan.gestor = g; S.scan.fb = { k: 'ok', m: 'Gestor: ' + g.nombre + '. Ahora escanea los traspasos que se lleva.' }; beep('ok'); render(); })
+    .catch(function (e) { S.scan.fb = { k: 'err', m: e.message }; beep('err'); render(); });
+}
+function crear() {
+  var w = S.wiz;
+  w.desc = $('#descin').value.trim();
+  if (!w.desc) { w.err = 'Describe qué envías.'; return render(); }
+  w.enviando = true; w.err = null; render();
+  var d = { destino: w.destino, desc: w.desc, bultos: w.bultos || 1 };
+  if (w.persona.sinCred) d.sinCred = { nombre: w.persona.nombre, num: w.persona.num }; else d.codigo = w.persona.codigo;
+  srv('apiCrear', S.token, d).then(function (t) {
+    S.wiz = { step: 4, t: t };
+    render();
+    imprimir(t, rango(t.bultos), 0);
+    refrescar(false);
+  }).catch(function (e) { w.enviando = false; w.err = e.message; render(); });
+}
+
+arrancar();
+</script>

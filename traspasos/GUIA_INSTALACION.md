@@ -1,0 +1,126 @@
+# Guía de instalación: Traspasos FADERMEX
+
+Hay **dos partes**:
+
+- **A. El sistema de traspasos (nuevo).** Es la página que usan sucursales, áreas y administradores. Vive dentro del archivo **Traspasos_FADERMEX_BD**.
+- **B. La conexión con la app de gestores.** Es un archivo que se agrega, más 3 líneas que se cambian en la app que ya tienes.
+
+Haz primero la parte **A** y después la **B**.
+
+---
+
+## A. Sistema de traspasos
+
+### A1. Crear el proyecto de Apps Script
+1. Abre el archivo **Traspasos_FADERMEX_BD** en Google Sheets con **jaraujo@fadermex.com**.
+2. Menú **Extensiones → Apps Script**.
+3. Arriba a la izquierda, cambia el nombre del proyecto a **Traspasos FADERMEX**.
+4. Borra el contenido del archivo `Código.gs` que viene de ejemplo. Después renómbralo a `01_Config` (en los tres puntitos → Cambiar nombre).
+
+### A2. Pegar los archivos
+Están en GitHub, en la carpeta `traspasos/apps-script/`. Para cada uno, crea un archivo con **+ → Secuencia de comandos** (o **+ → HTML**), ponle el nombre exacto y pega su contenido:
+
+| Tipo | Nombre en Apps Script | Archivo en GitHub |
+|---|---|---|
+| Secuencia de comandos | `01_Config` | `01_Config.gs` |
+| Secuencia de comandos | `02_Reglas` | `02_Reglas.gs` |
+| Secuencia de comandos | `03_Datos` | `03_Datos.gs` |
+| Secuencia de comandos | `04_Api` | `04_Api.gs` |
+| Secuencia de comandos | `05_Instalar` | `05_Instalar.gs` |
+| HTML | `Index` | `Index.html` |
+| HTML | `Estilos` | `Estilos.html` |
+| HTML | `App` | `App.html` |
+
+Los HTML se llaman **sin** `.html` (Apps Script lo agrega solo). Al final, guarda con 💾.
+
+### A3. Instalar (una sola vez)
+1. En la barra de arriba elige la función **`instalar`** y presiona **Ejecutar**.
+2. Google pedirá permisos: **Revisar permisos → tu cuenta → Configuración avanzada → Ir a Traspasos FADERMEX → Permitir**.
+3. Vuelve a la hoja y recárgala. Aparece el menú **🔄 Traspasos**.
+
+`instalar` agrega el estatus *"Entregado por gestor, falta confirmar"* y los contadores de folio de cada área. Puedes correrlo las veces que quieras: nunca borra nada.
+
+### A4. Llenar los catálogos (en la hoja)
+- **CAT_Areas → "Correo de la cuenta":** el correo con el que entra cada área.
+  - PV y Rebotica de una sucursal llevan **el mismo correo**.
+  - Puedes poner varios correos separados por coma.
+  - **Sin correo, nadie puede entrar como esa área.**
+- **CAT_Personas:** el personal con su **código de credencial** (lo que lee la pistola), con *Tiene credencial = SI* y *Activo = SI*.
+- **CAT_Gestores:** los gestores con el **mismo código de credencial** que usan en su app (hoja `APP_Usuarios` del archivo de Operaciones).
+- **CAT_Administradores:** revisa que estén los 3 correos.
+- Menú **🔄 Traspasos → Revisar configuración** te dice qué falta.
+
+### A5. Publicar la página
+1. En Apps Script: **Implementar → Nueva implementación**.
+2. Tipo: **Aplicación web**.
+3. **Ejecutar como:** *Yo (jaraujo@fadermex.com)*.
+4. **Quién tiene acceso:** *Cualquier usuario de fadermex.com*.
+5. **Implementar** y copia la **URL** (termina en `/exec`). Esa es la dirección de la página.
+
+### A6. En cada computadora
+1. Abre la URL en **Chrome**, con la cuenta de Google del área.
+2. Elige el área de esa computadora (PV, Rebotica, Contabilidad…). La app la recuerda durante 12 horas.
+3. Crea un acceso directo: Chrome **⋮ → Transmitir, guardar y compartir → Crear acceso directo** (marca "Abrir como ventana").
+4. **Etiquetadora:** ponla como **impresora predeterminada** y elige el tamaño de etiqueta en su configuración. Para que imprima **sin preguntar**, al acceso directo de Chrome agrégale al final `--kiosk-printing` (clic derecho al ícono → Propiedades → Destino).
+5. Ajusta el tamaño de la etiqueta en **CFG_Ajustes** (`etiqueta_ancho_mm`, `etiqueta_alto_mm`) cuando tengas el modelo de la Brother.
+
+### Cuando cambies el código
+Si algún día cambias un archivo, ve a **Implementar → Administrar implementaciones → ✏️ → Versión: Nueva versión → Implementar**. Así la URL **no cambia**.
+
+---
+
+## B. Conexión con la app de gestores
+
+En el proyecto de Apps Script de la app de gestores (el que tiene `00_CONFIG.gs`, `02_BACKEND.gs`…):
+
+### B1. Agregar el archivo nuevo
+**+ → Secuencia de comandos**, con el nombre `09_TRASPASOS_NUEVOS`. Pega el contenido de `traspasos/conexion-app-gestores/09_TRASPASOS_NUEVOS.gs`.
+
+### B2. Tres cambios en `02_BACKEND.gs`
+
+**Cambio 1.** En `apiRecolectarTraspasos`, busca esta línea:
+```js
+const cat = _buscarCatalogoTraspaso(folio) || { origen: '', destino: '', area: '', contenido: '' };
+```
+y cámbiala por:
+```js
+const cat = _tnBuscar(folio) || _buscarCatalogoTraspaso(folio) || { origen: '', destino: '', area: '', contenido: '' };
+```
+
+**Cambio 2.** En la misma función, busca:
+```js
+      shH.getRange(shH.getLastRow() + 1, 1, hist.length, 15).setValues(hist);
+```
+y **justo debajo** agrega:
+```js
+      try { _tnRecolectados(nuevas.map(function (n) { return n[0]; }), s.gestor, s.vehiculo); } catch (e) { }
+```
+
+**Cambio 3.** En `apiCerrarTraspaso`, busca el final del `appendRow` del historial:
+```js
+      url, p.lat || '', p.lng || ''
+    ]);
+```
+y **justo debajo** agrega:
+```js
+    try { _tnCierreGestor(p.folio, s.gestor, entregado, url, p.motivo, p.comentario); } catch (e) { }
+```
+
+### B3. Foto opcional
+En la hoja **APP_Config** del archivo de Operaciones, pon **`EXIGIR_FOTO_TRASPASO` = FALSE**. También se puede desde el panel de administrador de la app.
+
+### B4. Actualizar sin cambiar la URL ⚠️
+**Implementar → Administrar implementaciones → ✏️ (editar) → Versión: Nueva versión → Implementar.**
+**No** uses "Nueva implementación", porque cambiaría la URL y la app de los celulares dejaría de conectarse.
+
+### Para apagar la conexión
+En `09_TRASPASOS_NUEVOS.gs` cambia `ACTIVO: true` por `ACTIVO: false` y vuelve a hacer el paso B4. La app vuelve a funcionar exactamente como antes.
+
+---
+
+## Prueba rápida (5 minutos)
+1. En una computadora de sucursal: **Nuevo traspaso** → credencial → destino → bultos → se imprimen las etiquetas.
+2. El gestor escanea el folio en su app. En la página, el traspaso pasa a 🟡 **Recolectado** y al destino le llega su 🔔.
+3. El gestor lo marca entregado en su app y queda *"Entregado por gestor, falta confirmar"*.
+4. En el destino: **Escáner → Recibir** → escanea el folio → **Confirmar recepción** → 🟢 **Entregado**.
+5. Como administrador: **Buscador** → escribe el folio → ves toda su línea de tiempo.
