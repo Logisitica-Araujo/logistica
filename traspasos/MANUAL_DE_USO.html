@@ -91,6 +91,7 @@ footer{padding-block:40px;color:var(--muted);font-size:14px}
   <a href="#recibir">Recibir</a>
   <a href="#otros">Reimprimir y cancelar</a>
   <a href="#usuario">Puede / no puede</a>
+  <a href="#recepcion">Recepción Oficinas</a>
   <a href="#logistica">Logística</a>
   <a href="#gestores">Gestores</a>
   <a href="#admin">Administradores</a>
@@ -105,8 +106,8 @@ footer{padding-block:40px;color:var(--muted);font-size:14px}
   <p>No hay contraseña nueva. La llave es la cuenta de Google de tu área (@fadermex.com), que ya está abierta en Chrome de tu computadora.</p>
   <ol class="steps">
     <li><div><b>Abre el ícono "Traspasos"</b> del escritorio.</div></li>
-    <li><div><b>La primera vez, elige el área de esta computadora.</b><p class="muted">En la computadora de PV elige PV; en la de Rebotica, Rebotica. La página la recuerda.</p></div></li>
-    <li><div><b>Cada 12 horas te pide elegir el área otra vez.</b><p class="muted">Es un clic, sin contraseña. Así ninguna computadora se queda días con una sesión vieja.</p></div></li>
+    <li><div><b>La primera vez, elige el área de esta computadora.</b><p class="muted">Solo se iluminan las áreas de tu cuenta (en sucursal: PV y Rebotica). Las demás salen en gris con 🔒 y no se pueden elegir. En la computadora de PV elige PV; en la de Rebotica, Rebotica.</p></div></li>
+    <li><div><b>La sesión se queda abierta.</b><p class="muted">No hay que volver a entrar. Solo si alguien presiona "Salir" hay que elegir el área otra vez. Las áreas con 🔑 piden PIN.</p></div></li>
   </ol>
   <div class="box">
     <b>Lo que ves arriba:</b> el nombre de tu área, cuánto falta para que cierre la sesión, la campana de avisos 🔔 y tres pestañas:
@@ -120,7 +121,7 @@ footer{padding-block:40px;color:var(--muted);font-size:14px}
 <section id="crear">
   <h2>Crear un traspaso</h2>
   <ol class="steps">
-    <li><div><b>Nuevo traspaso → escanea tu credencial.</b><p class="muted">Es obligatorio: así queda registrado quién lo creó. Si todavía no tienes credencial, usa <span class="kbd">No tengo credencial</span> y escribe tu nombre y número de empleado.</p></div></li>
+    <li><div><b>Nuevo traspaso → escanea tu credencial.</b><p class="muted">Es obligatorio: así queda registrado quién lo creó. Si no tienes credencial, abre <span class="kbd">¿Sin credencial? Teclea usuario y NIP</span>. Tu usuario y NIP te los da un administrador.</p></div></li>
     <li><div><b>Elige el destino.</b><p class="muted">La lista ya trae todas las sucursales y áreas. Si es Morelia, la página te avisa que va por Logística y paquetería.</p></div></li>
     <li><div><b>Escribe qué envías y cuántos bultos son.</b><p class="muted">Un bulto es cada caja o paquete por separado.</p></div></li>
     <li><div><b>Presiona <span class="btnlike">Generar traspaso e imprimir</span>.</b><p class="muted">Sale el folio (por ejemplo <span class="folio">NR-0001</span>) y se imprime una etiqueta por bulto: "BULTO 1 DE 3", "BULTO 2 DE 3"…</p></div></li>
@@ -136,7 +137,7 @@ footer{padding-block:40px;color:var(--muted);font-size:14px}
   <h3>Si el gestor no trae su celular</h3>
   <ol class="steps">
     <li><div><b>Escáner → <span class="kbd">Entregar a gestor</span>.</b></div></li>
-    <li><div><b>Escanea la credencial del gestor.</b></div></li>
+    <li><div><b>Escanea la credencial del gestor</b> (o su usuario y NIP).</div></li>
     <li><div><b>Escanea cada traspaso que se lleva</b>, uno tras otro.<p class="muted">Basta escanear una etiqueta por traspaso, o teclear solo el folio y Enter.</p></div></li>
     <li><div><b>Presiona <span class="btnlike">Confirmar salida</span>.</b></div></li>
   </ol>
@@ -195,6 +196,26 @@ footer{padding-block:40px;color:var(--muted);font-size:14px}
   </div>
 </section>
 
+<section id="recepcion">
+  <h2>Recepción Oficinas (computadora del patio)</h2>
+  <p>Es el stand donde los gestores dejan lo que no pudieron entregar en su área, para que después lo recoja el área o otro gestor. La pantalla tiene tres pestañas grandes.</p>
+  <h3>📥 Dejar (gestores)</h3>
+  <ol class="steps">
+    <li><div><b>Escanea tu credencial</b> (o teclea usuario y NIP). Solo un gestor puede dejar.</div></li>
+    <li><div><b>Escanea cada traspaso</b> que dejas en el stand.</div></li>
+    <li><div><b>Confirmar: dejar.</b><p class="muted">Quedan <span class="st" style="color:#8A4B12;background:#F6E7D8">En Recepción Oficinas</span> y al área destino le llega el aviso.</p></div></li>
+  </ol>
+  <h3>📤 Recoger</h3>
+  <ol class="steps">
+    <li><div><b>Escanea tu credencial</b> (o usuario y NIP). La pantalla te muestra lo que hay para ti.</div></li>
+    <li><div><b>Escanea lo que te llevas</b>, o tócalo en la lista "Disponibles".</div></li>
+    <li><div><b>Confirmar: me llevo.</b>
+      <p class="muted"><b>Si eres gestor</b> y te lo llevas a su destino, queda <span class="st" style="color:#9A6400;background:#FFF0CC">Recolectado por gestoría</span>, y el destino lo confirma al recibirlo.<br>
+      <b>Si eres de un área de Oficinas</b>, solo puedes llevarte lo de tu área, y queda <span class="st" style="color:#1B7F38;background:#DFF3E5">Entregado</span> a tu nombre.</p></div></li>
+  </ol>
+  <p><b>En resguardo</b> muestra lo que hay en el stand, por destino, y cuánto tiempo lleva ahí.</p>
+</section>
+
 <section id="logistica">
   <h2>Logística</h2>
   <p>Logística es el centro: recibe todo lo que va o viene de Morelia y distribuye en Oficinas.</p>
@@ -223,7 +244,7 @@ footer{padding-block:40px;color:var(--muted);font-size:14px}
   <div class="adm"><b>Quiénes:</b> jaraujo@fadermex.com, Oramirez@fadermex.com y sistemasfed@fadermex.com.</div>
   <p>En el día a día entran como <b>usuarios de su área</b> y trabajan igual que todos. Cuando hay que arreglar algo:</p>
   <ol class="steps">
-    <li><div><b>Botón dorado <span class="btnlike gold">Modo administrador</span></b> arriba. Aparece la barra negra "MODO ADMINISTRADOR".</div></li>
+    <li><div><b>Botón dorado <span class="btnlike gold">Modo administrador</span></b> arriba. Pide el PIN de administrador y aparece la barra negra "MODO ADMINISTRADOR".<p class="muted">En la computadora de Recepción Oficinas este botón no aparece.</p></div></li>
     <li><div><b>Arreglas lo necesario</b> (abajo te digo dónde).</div></li>
     <li><div><b><span class="kbd">← Volver a mi área</span></b> al terminar.</div></li>
   </ol>
@@ -259,6 +280,9 @@ footer{padding-block:40px;color:var(--muted);font-size:14px}
     <thead><tr><th>Quieres…</th><th>Hoja</th></tr></thead>
     <tbody>
       <tr><td>Persona o credencial nueva</td><td>CAT_Personas</td></tr>
+      <tr><td>Usuario y NIP (sin credencial)</td><td>CAT_Personas / CAT_Gestores → columnas Usuario y NIP</td></tr>
+      <tr><td>PIN para entrar a un área</td><td>CAT_Areas → PIN de entrada</td></tr>
+      <tr><td>PIN del Modo administrador</td><td>CFG_Ajustes → pin_administrador</td></tr>
       <tr><td>Gestor nuevo</td><td>CAT_Gestores (y APP_Usuarios de la app de gestores)</td></tr>
       <tr><td>Área nueva o correo de un área</td><td>CAT_Areas</td></tr>
       <tr><td>Impresora y tamaño de etiqueta</td><td>CAT_Impresoras</td></tr>
@@ -295,9 +319,11 @@ footer{padding-block:40px;color:var(--muted);font-size:14px}
     <thead><tr><th>Lo que ves</th><th>Qué hacer</th></tr></thead>
     <tbody>
       <tr><td>"Tu correo no tiene un área asignada"</td><td>Pide a un administrador que agregue tu correo en CAT_Areas.</td></tr>
-      <tr><td>"La credencial no está registrada"</td><td>Usa "No tengo credencial" y avisa a un administrador para que te dé de alta en CAT_Personas.</td></tr>
+      <tr><td>"La credencial no está registrada"</td><td>Teclea tu usuario y NIP, y avisa a un administrador para que registre tu credencial en CAT_Personas.</td></tr>
+      <tr><td>"Usuario o NIP incorrectos"</td><td>Revisa que estén bien escritos. Si no lo recuerdas, pídelo a un administrador.</td></tr>
+      <tr><td>"Demasiados NIP equivocados"</td><td>Ese usuario quedó bloqueado 15 minutos. Espera e inténtalo otra vez.</td></tr>
       <tr><td>"No es de un gestor activo"</td><td>El gestor no está en CAT_Gestores. Avisa a un administrador.</td></tr>
-      <tr><td>"Tu sesión terminó"</td><td>Pasaron 12 horas. Elige tu área otra vez.</td></tr>
+      <tr><td>Me salió la pantalla para elegir área</td><td>Alguien presionó "Salir". Elige tu área otra vez (si tiene 🔑, pide el PIN).</td></tr>
       <tr><td>La página no abre ("Lo sentimos…")</td><td>Hay varias cuentas de Google abiertas en ese Chrome. Usa el perfil que solo tiene la cuenta del área.</td></tr>
       <tr><td>La etiqueta sale sin código de barras</td><td>Revisa que la computadora tenga internet y vuelve a imprimir.</td></tr>
       <tr><td>Un traspaso nuevo no aparece en otra computadora</td><td>Espera un minuto o presiona F5. La página revisa cada 45 segundos.</td></tr>
