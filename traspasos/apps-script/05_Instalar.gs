@@ -78,6 +78,16 @@ function instalar() {
    .map(function (p) { return { 'Parámetro': p[0], 'Valor': p[1], 'Qué hace': p[2] }; });
   ta.agregarVarias(faltan);
 
+  // 3b) Tamaño general de etiqueta: el rollo de todas las sucursales es de 50 × 20 mm.
+  //     Solo se cambia si todavía tiene los valores de ejemplo (62 × 100).
+  const fAn = ta.filas().filter(function (f) { return _norm(f['Parámetro']) === 'etiqueta_ancho_mm'; })[0];
+  const fAl = ta.filas().filter(function (f) { return _norm(f['Parámetro']) === 'etiqueta_alto_mm'; })[0];
+  if (fAn && fAl && Number(fAn['Valor']) === 62 && Number(fAl['Valor']) === 100) {
+    ta.actualizar(fAn._fila, { 'Valor': 50, 'Qué hace': 'Ancho de la etiqueta en mm (rollo de todas las sucursales: 5 cm).' });
+    ta.actualizar(fAl._fila, { 'Valor': 20, 'Qué hace': 'Alto de la etiqueta en mm (rollo de todas las sucursales: 2 cm).' });
+    hechos.push('Tamaño general de etiqueta: 50 × 20 mm.');
+  }
+
   // 4) Hoja de impresoras: una fila por área, para poner el tamaño de etiqueta de cada una
   if (_crearHojaImpresoras()) hechos.push('Se creó la hoja CAT_Impresoras: llena el tamaño de etiqueta de cada área.');
 

@@ -100,8 +100,8 @@ function _catalogos() {
     motivos: motivos,
     ajustes: {
       revisarSeg: Number(_ajuste('revisar_avisos_cada_seg', 45)) || 45,
-      etiquetaAncho: Number(_ajuste('etiqueta_ancho_mm', 62)) || 62,
-      etiquetaAlto: Number(_ajuste('etiqueta_alto_mm', 100)) || 100,
+      etiquetaAncho: Number(_ajuste('etiqueta_ancho_mm', 50)) || 50,
+      etiquetaAlto: Number(_ajuste('etiqueta_alto_mm', 20)) || 20,
       logo: _logo(),
       urlHoja: _libro().getUrl()
     },
