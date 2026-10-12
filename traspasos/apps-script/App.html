@@ -335,6 +335,13 @@ function etiquetaHTML(t, b, rp, pantalla) {
   var tm = tamEtiqueta();
   var w = tm.w, h = tm.h;
   var tam = pantalla ? 'width:100%;aspect-ratio:' + w + '/' + h + ';' : 'width:' + w + 'mm;height:' + h + 'mm;';
+  // Etiqueta MINI (menos de 30 mm de alto, ej. 50 × 20 mm de la Argox): folio, bulto, código y destino.
+  if (h < 30) {
+    return '<div class="' + (pantalla ? 'label ' : '') + 'lbl mini" style="' + tam + '">' +
+      '<div class="mrow"><span class="fol">' + esc(t.folio) + '</span><span class="bul">' + (rp ? 'R' + rp + ' · ' : '') + b + '/' + t.bultos + '</span></div>' +
+      '<svg class="bc" data-code="' + esc(t.folio) + '"></svg>' +
+      '<div class="dest">→ ' + esc(t.destino ? nom(t.destino) : '—') + '</div></div>';
+  }
   var chica = h < 50 ? ' chica' : '';   // etiquetas chicas (ej. 62 × 29 mm): solo lo esencial
   return '<div class="' + (pantalla ? 'label ' : '') + 'lbl' + chica + '" style="' + tam + '">' + (rp ? '<span class="rp">R' + rp + '</span>' : '') +
     '<div><div class="k">DESTINO</div><div class="dest">' + esc(t.destino ? nom(t.destino) : '—') + '</div></div>' +
@@ -511,6 +518,12 @@ function cajaHTML(c, pantalla) {
   var tm = tamEtiqueta(), w = tm.w, h = tm.h;
   var tam = pantalla ? 'width:100%;aspect-ratio:' + w + '/' + h + ';' : 'width:' + w + 'mm;height:' + h + 'mm;';
   var det = (c.detalle || c.traspasos.map(function (f) { var t = MAPA[f]; return { folio: f, destino: t ? t.destino : '', bultos: t ? t.bultos : '' }; }));
+  if (h < 30) {
+    return '<div class="' + (pantalla ? 'label ' : '') + 'lbl mini" style="' + tam + '">' +
+      '<div class="mrow"><span class="fol">' + esc(c.folio) + '</span><span class="bul">' + c.traspasos.length + ' trasp.</span></div>' +
+      '<svg class="bc" data-code="' + esc(c.folio) + '"></svg>' +
+      '<div class="dest">CAJA → ' + esc(String(c.destino).toUpperCase()) + ' · ' + c.bultos + ' bultos</div></div>';
+  }
   var chica = h < 50;
   return '<div class="' + (pantalla ? 'label ' : '') + 'lbl' + (chica ? ' chica' : '') + '" style="' + tam + '">' +
     '<div><div class="k">CAJA PARA</div><div class="dest">' + esc(String(c.destino).toUpperCase()) + '</div></div>' +
