@@ -33,13 +33,17 @@ function apiInicio() {
     if (!yo) throw new Error('No pude identificar tu cuenta de Google. Entra con tu correo @fadermex.com.');
     const A = _areas();
     const admin = _esAdmin(yo);
-    const mias = Object.keys(A)
-      .filter(function (id) { return A[id].activa && (admin || A[id].correos.indexOf(yo) >= 0); })
-      .map(function (id) { return { id: id, nombre: R.nom(A, id), suc: A[id].sucNombre || 'Oficinas', tipo: A[id].tipo }; });
-    if (!mias.length && !admin) {
+    // Se muestran TODAS las áreas, pero solo se pueden elegir las que tienen tu correo en CAT_Areas.
+    const areas = Object.keys(A)
+      .filter(function (id) { return A[id].activa; })
+      .map(function (id) {
+        return { id: id, nombre: R.nom(A, id), suc: A[id].sucNombre || 'Oficinas', tipo: A[id].tipo,
+                 mia: A[id].correos.indexOf(yo) >= 0 };
+      });
+    if (!areas.some(function (a) { return a.mia; }) && !admin) {
       throw new Error('Tu correo ' + yo + ' no tiene un área asignada. Pide a un administrador que lo agregue en la hoja CAT_Areas.');
     }
-    return { email: yo, admin: admin, areas: mias, logo: _logo() };
+    return { email: yo, admin: admin, areas: areas, logo: _logo() };
   });
 }
 
@@ -55,7 +59,7 @@ function apiEntrar(area, dispositivo) {
       if (!admin) throw new Error('Solo los administradores pueden entrar a Administración.');
     } else {
       if (!A[area] || !A[area].activa) throw new Error('Esa área no existe o está desactivada.');
-      if (!admin && A[area].correos.indexOf(yo) < 0) throw new Error('Tu correo no tiene permiso para esa área.');
+      if (A[area].correos.indexOf(yo) < 0) throw new Error('Tu correo no tiene permiso para esa área.');
     }
     const modoAdmin = admin && area === TR.AREA_ADMIN;
     const tk = _crearToken(yo, area, modoAdmin);

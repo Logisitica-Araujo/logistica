@@ -76,7 +76,11 @@ function pantallaEntrada(msg) {
     if (d.admin) html += '<div class="grupo"><h2>Administración</h2><div class="areas"><button class="adm" data-a="entrar" data-v="ADMIN">Entrar como administrador</button></div><p class="muted" style="margin:0;font-size:13.5px">Para el día a día entra como tu área. Cuando necesites arreglar algo, usa el botón dorado "Modo administrador" de arriba.</p></div>';
     Object.keys(porSuc).forEach(function (s) {
       html += '<div class="grupo"><h2>' + esc(s) + '</h2><div class="areas">' +
-        porSuc[s].map(function (a) { return '<button data-a="entrar" data-v="' + esc(a.id) + '">' + esc(a.nombre) + '<div class="muted" style="font-size:12.5px;font-weight:700">Folios ' + esc(a.id) + '-0001</div></button>'; }).join('') +
+        porSuc[s].map(function (a) {
+          return a.mia
+            ? '<button data-a="entrar" data-v="' + esc(a.id) + '">' + esc(a.nombre) + '<div class="muted" style="font-size:12.5px;font-weight:700">Folios ' + esc(a.id) + '-0001</div></button>'
+            : '<button class="bloq" disabled title="Esta cuenta no tiene acceso a esta área">🔒 ' + esc(a.nombre) + '<div style="font-size:12.5px;font-weight:700">Sin acceso con esta cuenta</div></button>';
+        }).join('') +
         '</div></div>';
     });
     $('#view').innerHTML = html + '</div>';
@@ -198,7 +202,7 @@ function renderHeader() {
       return '<button type="button" class="bellitem ' + (a.visto ? '' : 'unseen') + '" data-a="open" data-v="' + esc(a.folio) + '"><span class="num">' + esc(a.folio) + '</span><span>' + esc(a.msg) + '</span><span class="muted" style="font-size:12px">' + esc(a.fecha + ' ' + a.hora) + '</span></button>';
     }).join('') : '<div class="muted">Sin avisos.</div>') + '</div>' : '') + '</div>';
   $('#header').innerHTML = '<div class="brand">' + logo + 'Traspasos</div>' +
-    cambioModo() + '<div class="who"><span class="p">' + esc(S.ctx.areaNombre) + '</span><span class="u">' + esc(S.ctx.email) + ' · sesión: cierra en ' + Math.floor(min / 60) + ' h ' + ('0' + (min % 60)).slice(-2) + ' min · <a href="#" data-a="salir">Salir</a></span></div>' +
+    cambioModo() + '<div class="who"><span class="p">' + esc(S.ctx.areaNombre) + '</span><span class="u">' + esc(S.ctx.email) + (min < 60 * 24 * 30 ? ' · sesión: cierra en ' + Math.floor(min / 60) + ' h ' + ('0' + (min % 60)).slice(-2) + ' min' : '') + ' · <a href="#" data-a="salir">Salir</a></span></div>' +
     bell + '<nav class="tabs">' + tabs.map(function (x) {
       return '<button type="button" data-a="tab" data-v="' + x[0] + '"' + (S.tab === x[0] ? ' aria-current="page"' : '') + '>' + x[1] + (x[2] ? ' <span class="count">' + x[2] + '</span>' : '') + '</button>';
     }).join('') + '</nav>';

@@ -174,7 +174,9 @@ function _firmar(txt) {
 }
 
 function _crearToken(email, area, admin) {
-  const horas = Number(_ajuste(admin ? 'sesion_horas_admin' : 'sesion_horas_sucursal', 12)) || 12;
+  // 0 (o vacío) en CFG_Ajustes = la sesión no se cierra sola.
+  let horas = Number(_ajuste(admin ? 'sesion_horas_admin' : 'sesion_horas_sucursal', 0)) || 0;
+  if (!(horas > 0)) horas = 24 * 365 * 10;
   const exp = Date.now() + horas * 3600000;
   const p = [email, area, admin ? 1 : 0, exp].join('|');
   return { token: Utilities.base64EncodeWebSafe(p) + '.' + _firmar(p), exp: exp };
