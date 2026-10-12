@@ -101,10 +101,54 @@ function _catalogos() {
       revisarSeg: Number(_ajuste('revisar_avisos_cada_seg', 45)) || 45,
       etiquetaAncho: Number(_ajuste('etiqueta_ancho_mm', 62)) || 62,
       etiquetaAlto: Number(_ajuste('etiqueta_alto_mm', 100)) || 100,
-      logo: String(_ajuste('logo_empresa', '')),
+      logo: _logo(),
       urlHoja: _libro().getUrl()
-    }
+    },
+    impresoras: _impresoras()
   };
+}
+
+/**
+ * Logo de CFG_Ajustes → logo_empresa.
+ * Un link de Google Drive ("…/file/d/ID/view") NO es una imagen: el navegador
+ * la muestra rota. Aquí se lee el archivo de Drive y se manda ya como imagen.
+ * Sirve con cualquier link de Drive, aunque no esté compartido al público.
+ */
+function _logo() {
+  const v = String(_ajuste('logo_empresa', '') || '').trim();
+  if (!v) return '';
+  const esDrive = /drive\.google\.com|docs\.google\.com|googleusercontent\.com/i.test(v);
+  const m = v.match(/(?:\/d\/|[?&]id=)([-\w]{20,})/);
+  if (!esDrive || !m) return v;
+  const id = m[1];
+  const cache = CacheService.getScriptCache();
+  const k = 'logo_' + id;
+  const ya = cache.get(k);
+  if (ya) return ya;
+  try {
+    const b = DriveApp.getFileById(id).getBlob();
+    const uri = 'data:' + b.getContentType() + ';base64,' + Utilities.base64Encode(b.getBytes());
+    if (uri.length < 95000) cache.put(k, uri, 21600);      // 6 h en memoria
+    return uri;
+  } catch (e) {
+    return 'https://drive.google.com/thumbnail?id=' + id + '&sz=w400';
+  }
+}
+
+/**
+ * Tamaño de etiqueta por área (hoja CAT_Impresoras). Cada computadora imprime
+ * con el tamaño de SU área; si no tiene, usa el de CFG_Ajustes.
+ */
+function _impresoras() {
+  const out = {};
+  const sh = _libro().getSheetByName(TR.H.IMPRESORAS);
+  if (!sh) return out;
+  _tb(TR.H.IMPRESORAS).filas().forEach(function (f) {
+    const id = String(f['Área (prefijo)']).trim().toUpperCase();
+    const an = Number(f['Ancho etiqueta (mm)']), al = Number(f['Alto etiqueta (mm)']);
+    if (id && an > 0 && al > 0) out[id] = { ancho: an, alto: al, modelo: String(f['Impresora (marca y modelo)'] || '') };
+  });
+  return out;
 }
 
 

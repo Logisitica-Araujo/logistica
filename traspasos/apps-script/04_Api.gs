@@ -39,7 +39,7 @@ function apiInicio() {
     if (!mias.length && !admin) {
       throw new Error('Tu correo ' + yo + ' no tiene un área asignada. Pide a un administrador que lo agregue en la hoja CAT_Areas.');
     }
-    return { email: yo, admin: admin, areas: mias, logo: String(_ajuste('logo_empresa', '')) };
+    return { email: yo, admin: admin, areas: mias, logo: _logo() };
   });
 }
 

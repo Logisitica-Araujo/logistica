@@ -73,7 +73,10 @@ Los HTML se llaman **sin** `.html` (Apps Script lo agrega solo). Al final, guard
 2. Elige el área de esa computadora (PV, Rebotica, Contabilidad…). La app la recuerda durante 12 horas.
 3. Crea un acceso directo: Chrome **⋮ → Transmitir, guardar y compartir → Crear acceso directo** (marca "Abrir como ventana").
 4. **Etiquetadora:** ponla como **impresora predeterminada** y elige el tamaño de etiqueta en su configuración. Para que imprima **sin preguntar**, al acceso directo de Chrome agrégale al final `--kiosk-printing` (clic derecho al ícono → Propiedades → Destino).
-5. Ajusta el tamaño de la etiqueta en **CFG_Ajustes** (`etiqueta_ancho_mm`, `etiqueta_alto_mm`) cuando tengas el modelo de la Brother.
+5. **Tamaño de etiqueta por área:** en la hoja **CAT_Impresoras** (la crea `instalar`) pon, en la fila de cada área, la marca y modelo de su impresora y el **ancho** y **alto** de su etiqueta en milímetros. Si una fila queda vacía, esa área usa el tamaño general de **CFG_Ajustes** (`etiqueta_ancho_mm`, `etiqueta_alto_mm`). Las etiquetas chicas (menos de 50 mm de alto) salen en versión compacta: destino, folio, código y bulto.
+
+### Logo
+En **CFG_Ajustes → logo_empresa** pega el link de Drive del logo, tal cual (por ejemplo `https://drive.google.com/file/d/…/view`). La app lo convierte sola en imagen. Después corre **🔄 Traspasos → Instalar / reparar** una vez: la primera vez pide permiso para leer Drive.
 
 ### Cuando cambies el código
 Si algún día cambias un archivo, ve a **Implementar → Administrar implementaciones → ✏️ → Versión: Nueva versión → Implementar**. Así la URL **no cambia**.

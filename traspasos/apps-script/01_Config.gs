@@ -37,7 +37,8 @@ const TR = {
     ADMINLOG:    'RES_Administracion',
     SESIONES:    'RES_Sesiones',
     AVISOS:      'RES_Avisos',
-    FOLIOS:      'SYS_Folios'
+    FOLIOS:      'SYS_Folios',
+    IMPRESORAS:  'CAT_Impresoras'
   },
 
   // Área especial para entrar como administrador (vista de todo).

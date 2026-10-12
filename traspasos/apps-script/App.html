@@ -183,8 +183,9 @@ function renderHeader() {
     }
   }
   var min = Math.max(0, Math.floor((S.ctx.exp - Date.now()) / 60000));
-  var logo = S.cat.ajustes.logo && /^https?:/i.test(S.cat.ajustes.logo)
-    ? '<img class="logo-img" src="' + esc(S.cat.ajustes.logo) + '" alt="Logo">' : '<span class="logo" title="Aquí va el logo (CFG_Ajustes → logo_empresa)">LOGO</span>';
+  var hueco = '<span class="logo" title="Aquí va el logo (CFG_Ajustes → logo_empresa)">LOGO</span>';
+  var logo = S.cat.ajustes.logo && /^(https?:|data:image)/i.test(S.cat.ajustes.logo)
+    ? '<img class="logo-img" src="' + esc(S.cat.ajustes.logo) + '" alt="" onerror="this.nextSibling.hidden=false;this.remove()">' + hueco.replace('<span ', '<span hidden ') : hueco;
   var avisos = S.data.avisos || [];
   var bell = '<div class="bellwrap"><button type="button" class="bell" data-a="bell" aria-label="Avisos">🔔' + (S.noVistos ? '<span class="count">' + S.noVistos + '</span>' : '') + '</button>' +
     (S.bell ? '<div class="bellpanel"><b>Avisos</b>' + (avisos.length ? avisos.map(function (a) {
@@ -297,11 +298,17 @@ function rutaNota(m, d) {
 function rango(n) { var a = []; for (var i = 1; i <= n; i++) a.push(i); return a; }
 
 /* ---------- Etiquetas ---------- */
+/** Tamaño de etiqueta de ESTA computadora (CAT_Impresoras), o el general de CFG_Ajustes. */
+function tamEtiqueta() {
+  var imp = (S.cat.impresoras || {})[me()];
+  return imp ? { w: imp.ancho, h: imp.alto } : { w: S.cat.ajustes.etiquetaAncho, h: S.cat.ajustes.etiquetaAlto };
+}
 function etiquetaHTML(t, b, rp, pantalla) {
-  var aj = S.cat.ajustes;
-  var w = aj.etiquetaAncho, h = aj.etiquetaAlto;
+  var tm = tamEtiqueta();
+  var w = tm.w, h = tm.h;
   var tam = pantalla ? 'width:100%;aspect-ratio:' + w + '/' + h + ';' : 'width:' + w + 'mm;height:' + h + 'mm;';
-  return '<div class="' + (pantalla ? 'label ' : '') + 'lbl" style="' + tam + '">' + (rp ? '<span class="rp">R' + rp + '</span>' : '') +
+  var chica = h < 50 ? ' chica' : '';   // etiquetas chicas (ej. 62 × 29 mm): solo lo esencial
+  return '<div class="' + (pantalla ? 'label ' : '') + 'lbl' + chica + '" style="' + tam + '">' + (rp ? '<span class="rp">R' + rp + '</span>' : '') +
     '<div><div class="k">DESTINO</div><div class="dest">' + esc(t.destino ? nom(t.destino) : '—') + '</div></div>' +
     '<div><div class="k">ORIGEN</div><div class="orig">' + esc(nom(t.origen)) + '</div></div>' +
     '<div class="fol">' + esc(t.folio) + '</div>' +
@@ -316,9 +323,9 @@ function pintarCodigos(raiz) {
   });
 }
 function imprimir(t, bultos, rp) {
-  var aj = S.cat.ajustes;
+  var tm = tamEtiqueta();
   var p = $('#print');
-  p.innerHTML = '<style>@page{size:' + aj.etiquetaAncho + 'mm ' + aj.etiquetaAlto + 'mm;margin:0}</style>' +
+  p.innerHTML = '<style>@page{size:' + tm.w + 'mm ' + tm.h + 'mm;margin:0}</style>' +
     bultos.map(function (b) { return etiquetaHTML(t, b, rp || 0, false); }).join('');
   pintarCodigos(p);
   setTimeout(function () { window.print(); }, 200);

@@ -50,6 +50,12 @@ function instalar() {
    .map(function (p) { return { 'Parámetro': p[0], 'Valor': p[1], 'Qué hace': p[2] }; });
   ta.agregarVarias(faltan);
 
+  // 4) Hoja de impresoras: una fila por área, para poner el tamaño de etiqueta de cada una
+  if (_crearHojaImpresoras()) hechos.push('Se creó la hoja CAT_Impresoras: llena el tamaño de etiqueta de cada área.');
+
+  // 5) Logo (esto también pide el permiso de Drive la primera vez)
+  try { if (_logo()) hechos.push('Logo leído correctamente.'); } catch (e) { hechos.push('No pude leer el logo: ' + e.message); }
+
   const msg = 'Listo.\n\n• ' + hechos.join('\n• ') + '\n\n' + _textoRevision();
   try { SpreadsheetApp.getUi().alert('Traspasos', msg, SpreadsheetApp.getUi().ButtonSet.OK); } catch (e) { Logger.log(msg); }
   return msg;
@@ -75,4 +81,27 @@ function _textoRevision() {
   l.push(gestores ? '✓ ' + gestores + ' gestor(es) en CAT_Gestores.' : '⚠ CAT_Gestores está vacía: las sucursales no podrán registrar la salida con la credencial del gestor.');
   l.push('✓ ' + admins + ' administrador(es) activos.');
   return l.join('\n');
+}
+
+function _crearHojaImpresoras() {
+  const ss = _libro();
+  if (ss.getSheetByName(TR.H.IMPRESORAS)) return false;
+  const sh = ss.insertSheet(TR.H.IMPRESORAS);
+  const enc = ['Área (prefijo)', 'Área', 'Impresora (marca y modelo)', 'Ancho etiqueta (mm)', 'Alto etiqueta (mm)', 'Notas'];
+  sh.getRange(1, 1).setValue('CAT_Impresoras  —  CATÁLOGO · La app LEE esta hoja · Solo administradores la editan.  ' +
+    'Tamaño de etiqueta de cada área. Si Ancho/Alto quedan vacíos, se usa el de CFG_Ajustes.');
+  sh.getRange(2, 1, 1, enc.length).setValues([enc]);
+  const A = _areas();
+  const filas = Object.keys(A).map(function (id) { return [id, R.nom(A, id), 'PENDIENTE', '', '', '']; });
+  if (filas.length) sh.getRange(3, 1, filas.length, enc.length).setValues(filas);
+  try {
+    sh.setTabColor('#1F63D6');
+    sh.getRange(1, 1, 1, enc.length).merge().setBackground('#DCE8FF').setFontColor('#1F63D6').setFontWeight('bold').setWrap(true);
+    sh.setRowHeight(1, 36);
+    sh.getRange(2, 1, 1, enc.length).setBackground('#1F63D6').setFontColor('#FFFFFF').setFontWeight('bold');
+    sh.setFrozenRows(2);
+    [16, 30, 30, 20, 20, 40].forEach(function (w, i) { sh.setColumnWidth(i + 1, w * 7); });
+  } catch (e) { }
+  __TB = {};
+  return true;
 }
