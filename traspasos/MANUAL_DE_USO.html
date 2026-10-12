@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manual de Traspasos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap">
+<style>
+/* Layout: manual de una columna con índice fijo arriba; tarjetas de pasos numerados solo donde el orden importa. */
+:root{
+  --bg:#F1F4F7; --surface:#FFFFFF; --surface-2:#F6F8FA; --ink:#1B2733; --muted:#5D6C7A; --line:#DCE3E9;
+  --accent:#0E7C66; --accent-soft:#DDF1EB; --gold:#B7861F; --gold-soft:#FBF0D6;
+  --ok:#1B7F38; --ok-bg:#DFF3E5; --no:#B42330; --no-bg:#FCE6E8;
+  --f:"Nunito",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1419; --surface:#171E25; --surface-2:#1D252D; --ink:#E5ECF2; --muted:#9AA8B5; --line:#2B3640;
+  --accent:#3DBB9C; --accent-soft:#12342C; --gold:#E2B54E; --gold-soft:#33280E;
+  --ok:#62CF88; --ok-bg:#133020; --no:#FF7D86; --no-bg:#3A161A; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0F1419; --surface:#171E25; --surface-2:#1D252D; --ink:#E5ECF2; --muted:#9AA8B5; --line:#2B3640;
+  --accent:#3DBB9C; --accent-soft:#12342C; --gold:#E2B54E; --gold-soft:#33280E;
+  --ok:#62CF88; --ok-bg:#133020; --no:#FF7D86; --no-bg:#3A161A; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:16px;line-height:1.6}
+.wrap{max-width:900px;margin:0 auto;padding-inline:16px}
+header.top{padding-block:28px 8px}
+.eyebrow{font-size:12px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(30px,5vw,42px);font-weight:900;line-height:1.1;margin:.2em 0 .3em;text-wrap:balance}
+.lead{color:var(--muted);font-size:18px;max-width:62ch;margin:0}
+nav.idx{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);margin-top:18px}
+nav.idx .wrap{display:flex;gap:6px;overflow-x:auto;padding-block:10px}
+nav.idx a{white-space:nowrap;text-decoration:none;color:var(--ink);font-weight:800;font-size:14px;padding:7px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
+nav.idx a:hover,nav.idx a:focus-visible{border-color:var(--accent);color:var(--accent);outline:none}
+section{padding-block:34px 6px;scroll-margin-top:64px}
+h2{font-size:28px;font-weight:900;margin:0 0 6px;text-wrap:balance}
+h3{font-size:19px;font-weight:800;margin:26px 0 8px}
+p{margin:0 0 12px;max-width:68ch}
+.muted{color:var(--muted)}
+.kbd{display:inline-block;font-weight:800;background:var(--surface-2);border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:0 7px;font-size:14px}
+.btnlike{display:inline-block;font-weight:800;background:var(--accent);color:#fff;border-radius:8px;padding:0 8px;font-size:14px}
+.btnlike.gold{background:#E2AE3A;color:#1a1405}
+.folio{font-weight:900;font-variant-numeric:tabular-nums}
+.steps{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:10px;counter-reset:s}
+.steps li{counter-increment:s;display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
+.steps li::before{content:counter(s);width:34px;height:34px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:900;display:grid;place-items:center}
+.steps li b{font-weight:800}
+.steps li p{margin:4px 0 0}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}
+.box.tip{background:var(--accent-soft);border-color:transparent}
+.box.warn{background:var(--gold-soft);border-color:transparent}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:12px}
+@media (max-width:640px){.two{grid-template-columns:1fr}}
+.can,.cant{border-radius:14px;padding:14px 16px}
+.can{background:var(--ok-bg)} .cant{background:var(--no-bg)}
+.can h4,.cant h4{margin:0 0 6px;font-size:15px;font-weight:900;letter-spacing:.04em;text-transform:uppercase}
+.can h4{color:var(--ok)} .cant h4{color:var(--no)}
+.can ul,.cant ul{margin:0;padding-left:18px}
+.can li,.cant li{margin:3px 0}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface);margin:12px 0}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);background:var(--surface-2)}
+td:first-child{min-width:170px}
+.st{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:800;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.st::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.tag{display:inline-block;font-size:12px;font-weight:900;letter-spacing:.05em;padding:2px 8px;border-radius:6px}
+.tag.pv{background:#D3F1E8;color:#0E6E5C} .tag.rb{background:#FBDDEB;color:#A3195B}
+.adm{background:#14181D;color:#F3E3B5;border-radius:14px;padding:16px;border-bottom:3px solid #E2AE3A;margin:12px 0}
+.adm b{color:#E2AE3A}
+footer{padding-block:40px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+
+
+<header class="top"><div class="wrap">
+  <div class="eyebrow">FADERMEX · Logística</div>
+  <h1>Manual de Traspasos</h1>
+  <p class="lead">Cómo crear, entregar y recibir traspasos en sucursales y áreas, y qué puede hacer cada quien. Léelo una vez completo; después úsalo como consulta.</p>
+</div></header>
+
+<nav class="idx" aria-label="Índice"><div class="wrap">
+  <a href="#entrar">Entrar</a>
+  <a href="#crear">Crear</a>
+  <a href="#entregar">Entregar a gestor</a>
+  <a href="#recibir">Recibir</a>
+  <a href="#otros">Reimprimir y cancelar</a>
+  <a href="#usuario">Puede / no puede</a>
+  <a href="#logistica">Logística</a>
+  <a href="#gestores">Gestores</a>
+  <a href="#admin">Administradores</a>
+  <a href="#estatus">Colores</a>
+  <a href="#problemas">Problemas</a>
+</div></nav>
+
+<main class="wrap">
+
+<section id="entrar">
+  <h2>Entrar al sistema</h2>
+  <p>No hay contraseña nueva. La llave es la cuenta de Google de tu área (@fadermex.com), que ya está abierta en Chrome de tu computadora.</p>
+  <ol class="steps">
+    <li><div><b>Abre el ícono "Traspasos"</b> del escritorio.</div></li>
+    <li><div><b>La primera vez, elige el área de esta computadora.</b><p class="muted">En la computadora de PV elige PV; en la de Rebotica, Rebotica. La página la recuerda.</p></div></li>
+    <li><div><b>Cada 12 horas te pide elegir el área otra vez.</b><p class="muted">Es un clic, sin contraseña. Así ninguna computadora se queda días con una sesión vieja.</p></div></li>
+  </ol>
+  <div class="box">
+    <b>Lo que ves arriba:</b> el nombre de tu área, cuánto falta para que cierre la sesión, la campana de avisos 🔔 y tres pestañas:
+    <span class="kbd">Mi bandeja</span> para consultar, <span class="kbd">Nuevo traspaso</span> para crear y <span class="kbd">Escáner</span> para recibir o entregar.
+  </div>
+  <h3>Mi bandeja</h3>
+  <p><b>Entrantes:</b> todo lo que viene para tu sucursal. En sucursales se ven juntos los de PV y Rebotica, y cada uno trae su etiqueta <span class="tag pv">PARA PV</span> o <span class="tag rb">PARA REBOTICA</span>. <b>Salientes:</b> lo que salió de tu área.</p>
+  <p>Las bolitas de colores de arriba filtran por estatus. Haz clic en cualquier traspaso para ver su historia completa (quién lo creó, quién lo llevó, dónde está).</p>
+</section>
+
+<section id="crear">
+  <h2>Crear un traspaso</h2>
+  <ol class="steps">
+    <li><div><b>Nuevo traspaso → escanea tu credencial.</b><p class="muted">Es obligatorio: así queda registrado quién lo creó. Si todavía no tienes credencial, usa <span class="kbd">No tengo credencial</span> y escribe tu nombre y número de empleado.</p></div></li>
+    <li><div><b>Elige el destino.</b><p class="muted">La lista ya trae todas las sucursales y áreas. Si es Morelia, la página te avisa que va por Logística y paquetería.</p></div></li>
+    <li><div><b>Escribe qué envías y cuántos bultos son.</b><p class="muted">Un bulto es cada caja o paquete por separado.</p></div></li>
+    <li><div><b>Presiona <span class="btnlike">Generar traspaso e imprimir</span>.</b><p class="muted">Sale el folio (por ejemplo <span class="folio">NR-0001</span>) y se imprime una etiqueta por bulto: "BULTO 1 DE 3", "BULTO 2 DE 3"…</p></div></li>
+    <li><div><b>Pega cada etiqueta en su bulto</b> y déjalo listo para gestoría.</div></li>
+  </ol>
+  <div class="box tip">El folio se genera solo y nunca se repite. Cada área tiene su propia numeración.</div>
+</section>
+
+<section id="entregar">
+  <h2>Entregar al gestor</h2>
+  <h3>Si el gestor trae su celular</h3>
+  <p>No haces nada en la página. El gestor escanea las etiquetas con su app y el traspaso pasa solo a <span class="st" style="color:#9A6400;background:#FFF0CC">Recolectado por gestoría</span>.</p>
+  <h3>Si el gestor no trae su celular</h3>
+  <ol class="steps">
+    <li><div><b>Escáner → <span class="kbd">Entregar a gestor</span>.</b></div></li>
+    <li><div><b>Escanea la credencial del gestor.</b></div></li>
+    <li><div><b>Escanea cada traspaso que se lleva</b>, uno tras otro.<p class="muted">Basta escanear una etiqueta por traspaso, o teclear solo el folio y Enter.</p></div></li>
+    <li><div><b>Presiona <span class="btnlike">Confirmar salida</span>.</b></div></li>
+  </ol>
+</section>
+
+<section id="recibir">
+  <h2>Recibir traspasos</h2>
+  <ol class="steps">
+    <li><div><b>Escáner → <span class="kbd">Recibir traspasos</span>.</b></div></li>
+    <li><div><b>Escanea las etiquetas una tras otra</b>, o teclea el folio y presiona Enter.<p class="muted">En sucursal, cualquiera puede recibir lo de PV o de Rebotica. Fíjate en la etiqueta <span class="tag pv">PARA PV</span> / <span class="tag rb">PARA REBOTICA</span> de cada fila y entrégalo a quien corresponde.</p></div></li>
+    <li><div><b>Si falta un bulto o llegó dañado, marca <span class="kbd">Faltan / dañado</span></b> en esa fila.</div></li>
+    <li><div><b>Presiona <span class="btnlike">Confirmar recepción</span>.</b><p class="muted">Queda <span class="st" style="color:#1B7F38;background:#DFF3E5">Entregado</span> y al origen le llega el aviso.</p></div></li>
+  </ol>
+  <h3>Mensajes al escanear</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Mensaje</th><th>Qué significa y qué hacer</th></tr></thead>
+    <tbody>
+      <tr><td>✓ En verde</td><td>Correcto. Se agregó a la lista.</td></tr>
+      <tr><td>"Ese folio no existe"</td><td>Se tecleó mal o la etiqueta está dañada. Revisa el folio.</td></tr>
+      <tr><td>"Este traspaso NO es para… Va para: …"</td><td>Llegó al lugar equivocado. Presiona <span class="kbd">Registrar que está aquí</span>: se avisa al origen, al destino y a administración. Apártalo para que el gestor lo lleve a su destino.</td></tr>
+      <tr><td>"Ya está en la lista"</td><td>Lo escaneaste dos veces. No pasa nada.</td></tr>
+      <tr><td>"Todavía no ha sido recolectado"</td><td>El gestor no lo ha registrado. Avisa a Logística.</td></tr>
+      <tr><td>"Tiene una solicitud de eliminación"</td><td>Está congelado. No lo muevas hasta que responda un administrador.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="box tip"><b>Cajas de Morelia:</b> si llega una caja con etiqueta <span class="folio">CJ-0001</span>, escanea solo esa etiqueta y se agregan todos los traspasos que trae.</div>
+</section>
+
+<section id="otros">
+  <h2>Reimprimir y cancelar</h2>
+  <h3>Reimprimir una etiqueta</h3>
+  <p>Abre el traspaso → <span class="kbd">Reimprimir etiqueta</span> → elige qué bulto (o todos) y el motivo → escanea tu credencial. La etiqueta nueva sale marcada con <b>R1</b>, R2…, y queda registrado quién la reimprimió.</p>
+  <h3>Cancelar un traspaso hecho por error</h3>
+  <p>Nadie que no sea administrador puede borrar. Abre el traspaso → <span class="kbd">Solicitar eliminación</span> → escribe por qué. Solo se puede mientras sigue como <span class="st" style="color:#1F63D6;background:#E2ECFF">Nuevo traspaso</span>. Mientras un administrador responde, el traspaso queda congelado y el gestor no lo puede recolectar.</p>
+</section>
+
+<section id="usuario">
+  <h2>Sucursales y áreas: qué puedes y qué no</h2>
+  <div class="two">
+    <div class="can"><h4>Sí puedes</h4><ul>
+      <li>Crear traspasos de tu área</li>
+      <li>Imprimir y reimprimir sus etiquetas</li>
+      <li>Recibir lo que llega a tu sucursal (PV y Rebotica)</li>
+      <li>Entregar al gestor con su credencial</li>
+      <li>Ver la historia de tus traspasos</li>
+      <li>Solicitar que se elimine uno hecho por error</li>
+      <li>Registrar que un traspaso llegó a tu área por equivocación</li>
+    </ul></div>
+    <div class="cant"><h4>No puedes</h4><ul>
+      <li>Borrar o editar un traspaso</li>
+      <li>Cambiar un estatus a mano</li>
+      <li>Dar salida a traspasos de otra área (PV no saca lo de Rebotica)</li>
+      <li>Ver traspasos de otras sucursales</li>
+      <li>Crear un traspaso sin credencial ni nombre</li>
+    </ul></div>
+  </div>
+</section>
+
+<section id="logistica">
+  <h2>Logística</h2>
+  <p>Logística es el centro: recibe todo lo que va o viene de Morelia y distribuye en Oficinas.</p>
+  <h3>Cajas para Morelia</h3>
+  <ol class="steps">
+    <li><div><b>Recibe en el Escáner</b> lo que llega para Morelia. Queda <span class="st" style="color:#38559E;background:#E5EBF7">En Logística</span>.</div></li>
+    <li><div><b>Paquetería → Armar caja:</b> escanea los traspasos que van dentro → <span class="btnlike">Crear caja e imprimir etiqueta</span>. Sale el folio <span class="folio">CJ-0001</span>.</div></li>
+    <li><div><b>Registra el envío en tu hoja Operaciones</b> con <span class="folio">CJ-0001</span> en "ID Pedido / Tarea", con su proveedor y Nº de Guía.<p class="muted">Un traspaso suelto se registra con su propio folio.</p></div></li>
+    <li><div><b>Listo.</b> Cada 10 minutos el sistema lee Operaciones y los pasa solo a <span class="st" style="color:#0B6C80;background:#DAF2F7">Enviado por paquetería</span>. Si no quieres esperar, usa <span class="kbd">Revisar Operaciones ahora</span>.</div></li>
+  </ol>
+  <h3>Lo que llega de Morelia</h3>
+  <p>Recíbelo en el Escáner: queda <span class="st" style="color:#38559E;background:#E5EBF7">En Logística</span>. Si va a una sucursal, entrégalo al gestor (Escáner → Entregar a gestor). Si va a un área de Oficinas, llévalo y que esa área lo escanee al recibir.</p>
+</section>
+
+<section id="gestores">
+  <h2>Gestores (app del celular)</h2>
+  <ol class="steps">
+    <li><div><b>Traspasos → Recolectar:</b> escanea en ráfaga las etiquetas. La app le muestra el destino y los bultos de cada uno.</div></li>
+    <li><div><b>Al entregar: Entregar</b> en su app. La foto es opcional.<p class="muted">Queda <span class="st" style="color:#0E7C66;background:#D9F2EA">Entregado por gestor, falta confirmar</span>.</p></div></li>
+    <li><div><b>El traspaso queda <span class="st" style="color:#1B7F38;background:#DFF3E5">Entregado</span> hasta que el destino lo escanea.</b> Si el destino nunca lo escanea, se nota de inmediato.</div></li>
+  </ol>
+</section>
+
+<section id="admin">
+  <h2>Administradores</h2>
+  <div class="adm"><b>Quiénes:</b> jaraujo@fadermex.com, Oramirez@fadermex.com y sistemasfed@fadermex.com.</div>
+  <p>En el día a día entran como <b>usuarios de su área</b> y trabajan igual que todos. Cuando hay que arreglar algo:</p>
+  <ol class="steps">
+    <li><div><b>Botón dorado <span class="btnlike gold">Modo administrador</span></b> arriba. Aparece la barra negra "MODO ADMINISTRADOR".</div></li>
+    <li><div><b>Arreglas lo necesario</b> (abajo te digo dónde).</div></li>
+    <li><div><b><span class="kbd">← Volver a mi área</span></b> al terminar.</div></li>
+  </ol>
+  <h3>Qué hay en Modo administrador</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Pestaña</th><th>Para qué</th></tr></thead>
+    <tbody>
+      <tr><td>Todos los traspasos</td><td>Todo lo que está en movimiento y lo entregado de los últimos 45 días, de todas las sucursales. Filtra por color de estatus.</td></tr>
+      <tr><td>Buscador</td><td>Escribe o escanea un folio y Enter: ves su línea de tiempo completa. También busca por guía, persona, gestor o descripción.</td></tr>
+      <tr><td>Solicitudes</td><td>Las peticiones de eliminar. <b>Aprobar y eliminar</b> o <b>Rechazar</b>, con comentario opcional. El área recibe la respuesta en su campana.</td></tr>
+      <tr><td>Catálogos</td><td>Abre el archivo de Google Sheets para dar de alta personas, gestores, áreas, impresoras y ajustes.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Al abrir cualquier traspaso</h3>
+  <p><b>Cambiar estatus</b> (por ejemplo a Extraviado), <b>Mover a otro destino</b>, indicar <b>Dónde está</b> si quedó en otro lugar, <b>Reimprimir</b> sin credencial y <b>Eliminar</b> (pide confirmar). Escribe un motivo: queda en la línea de tiempo.</p>
+  <div class="two">
+    <div class="can"><h4>Sí puede</h4><ul>
+      <li>Ver todos los traspasos de todas las sucursales</li>
+      <li>Cambiar estatus, destino y ubicación</li>
+      <li>Eliminar traspasos</li>
+      <li>Aprobar o rechazar solicitudes</li>
+      <li>Reimprimir cualquier etiqueta</li>
+      <li>Dar de alta y de baja personas, gestores, áreas y administradores (en Sheets)</li>
+    </ul></div>
+    <div class="cant"><h4>No puede (a propósito)</h4><ul>
+      <li>Borrar la historia: cada cambio queda registrado con su nombre y hora</li>
+      <li>Crear traspasos o escanear en Modo administrador (vuelve a tu área para eso)</li>
+      <li>Hacer cambios de administrador estando como usuario</li>
+    </ul></div>
+  </div>
+  <h3>Altas y bajas (en el archivo de Sheets)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Quieres…</th><th>Hoja</th></tr></thead>
+    <tbody>
+      <tr><td>Persona o credencial nueva</td><td>CAT_Personas</td></tr>
+      <tr><td>Gestor nuevo</td><td>CAT_Gestores (y APP_Usuarios de la app de gestores)</td></tr>
+      <tr><td>Área nueva o correo de un área</td><td>CAT_Areas</td></tr>
+      <tr><td>Impresora y tamaño de etiqueta</td><td>CAT_Impresoras</td></tr>
+      <tr><td>Administrador nuevo</td><td>CAT_Administradores</td></tr>
+      <tr><td>Colores y nombres de estatus</td><td>CAT_Estatus</td></tr>
+      <tr><td>Tiempos de sesión, avisos y logo</td><td>CFG_Ajustes</td></tr>
+    </tbody>
+  </table></div>
+  <div class="box warn"><b>Reglas de oro:</b> para dar de baja pon <b>Activo = NO</b>, nunca borres filas. No cambies los encabezados (fila 2). No escribas a mano en las hojas verdes RES_: esas las llena el sistema.</div>
+</section>
+
+<section id="estatus">
+  <h2>Qué significa cada color</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Estatus</th><th>Qué pasa</th></tr></thead>
+    <tbody>
+      <tr><td><span class="st" style="color:#1F63D6;background:#E2ECFF">Nuevo traspaso</span></td><td>Creado y etiquetado. Espera al gestor.</td></tr>
+      <tr><td><span class="st" style="color:#9A6400;background:#FFF0CC">Recolectado por gestoría</span></td><td>Va en camino con un gestor.</td></tr>
+      <tr><td><span class="st" style="color:#0E7C66;background:#D9F2EA">Entregado por gestor, falta confirmar</span></td><td>El gestor dice que lo entregó. Falta que el destino lo escanee.</td></tr>
+      <tr><td><span class="st" style="color:#38559E;background:#E5EBF7">En Logística</span></td><td>En Oficinas, por enviar a Morelia o por distribuir.</td></tr>
+      <tr><td><span class="st" style="color:#0B6C80;background:#DAF2F7">Enviado por paquetería</span></td><td>Va o viene de Morelia con guía.</td></tr>
+      <tr><td><span class="st" style="color:#1B7F38;background:#DFF3E5">Entregado</span></td><td>El destino lo escaneó. Terminado.</td></tr>
+      <tr><td><span class="st" style="color:#C4440B;background:#FFE8DA">Recibido con incidencia</span></td><td>Llegó, pero faltan bultos o llegó dañado.</td></tr>
+      <tr><td><span class="st" style="color:#7036B8;background:#EFE5FB">El traspaso está en…</span></td><td>Se escaneó en un lugar que no es su destino.</td></tr>
+      <tr><td><span class="st" style="color:#C8232D;background:#FDE6E7">Extraviado</span></td><td>No aparece.</td></tr>
+      <tr><td><span class="st" style="color:#4E5B67;background:#E8ECF0">Eliminación solicitada</span></td><td>Congelado hasta que responda un administrador.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="problemas">
+  <h2>Problemas comunes</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Lo que ves</th><th>Qué hacer</th></tr></thead>
+    <tbody>
+      <tr><td>"Tu correo no tiene un área asignada"</td><td>Pide a un administrador que agregue tu correo en CAT_Areas.</td></tr>
+      <tr><td>"La credencial no está registrada"</td><td>Usa "No tengo credencial" y avisa a un administrador para que te dé de alta en CAT_Personas.</td></tr>
+      <tr><td>"No es de un gestor activo"</td><td>El gestor no está en CAT_Gestores. Avisa a un administrador.</td></tr>
+      <tr><td>"Tu sesión terminó"</td><td>Pasaron 12 horas. Elige tu área otra vez.</td></tr>
+      <tr><td>La página no abre ("Lo sentimos…")</td><td>Hay varias cuentas de Google abiertas en ese Chrome. Usa el perfil que solo tiene la cuenta del área.</td></tr>
+      <tr><td>La etiqueta sale sin código de barras</td><td>Revisa que la computadora tenga internet y vuelve a imprimir.</td></tr>
+      <tr><td>Un traspaso nuevo no aparece en otra computadora</td><td>Espera un minuto o presiona F5. La página revisa cada 45 segundos.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</main>
+<footer><div class="wrap">Sistema de Traspasos FADERMEX. Dudas: Logística (jaraujo@fadermex.com).</div></footer>
+
+</body>
+</html>
