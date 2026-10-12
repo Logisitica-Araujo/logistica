@@ -39,6 +39,7 @@ Están en GitHub, en la carpeta `traspasos/apps-script/`. Para cada uno, crea un
 | Secuencia de comandos | `04_Api` | `04_Api.gs` |
 | Secuencia de comandos | `05_Instalar` | `05_Instalar.gs` |
 | Secuencia de comandos | `06_Cajas` | `06_Cajas.gs` |
+| Secuencia de comandos | `07_Recepcion` | `07_Recepcion.gs` |
 | HTML | `Index` | `Index.html` |
 | HTML | `Estilos` | `Estilos.html` |
 | HTML | `App` | `App.html` |
@@ -152,3 +153,25 @@ En `09_TRASPASOS_NUEVOS.gs` cambia `ACTIVO: true` por `ACTIVO: false` y vuelve a
 ¿Armaste mal una caja? Usa **"Deshacer caja"**, siempre que todavía no tenga guía.
 
 Lo que va de Morelia hacia acá lo sigue capturando Morelia en su pestaña Paquetería (paquetería y guía).
+
+---
+
+## Recepción Oficinas (computadora del patio)
+
+1. Corre **`instalar`**. Agrega el área **REC (Recepción Oficinas)** con tu correo, el estatus **"En Recepción Oficinas"** y las columnas **Usuario**, **NIP** y **PIN de entrada**.
+2. **Protege tu cuenta en esa computadora** (está abierta con jaraujo):
+   - **CAT_Areas → "PIN de entrada"** de **LOG**: pon un PIN. Así, en la computadora del patio solo se puede entrar libre a Recepción; Logística pide PIN.
+   - **CFG_Ajustes → pin_administrador**: pon un PIN para el Modo administrador.
+   - Abre la página en **modo quiosco**, para que no se pueda navegar a Gmail o Drive: el acceso directo de Chrome con `--kiosk "URL-de-la-página" --kiosk-printing`. Para salir del modo quiosco: **Alt + F4**.
+3. En esa computadora entra como **Recepción Oficinas**. La sesión no se cierra sola si `sesion_horas_sucursal` = 0.
+
+**Cómo se usa:**
+- **📥 Dejar:** el gestor se identifica (credencial, o usuario y NIP), escanea los traspasos y confirma. Quedan **En Recepción Oficinas** y al destino le llega su aviso.
+- **📤 Recoger:** quien recoge se identifica.
+  - Si es **gestor**, puede llevarse cualquiera y queda *Recolectado por gestoría*.
+  - Si es **persona de Oficinas**, solo se lleva lo de su área (según "Área (prefijo)" en CAT_Personas) y queda *Entregado*.
+- **En resguardo:** lo que hay en el stand, por destino y con cuánto tiempo lleva.
+
+## Usuario y NIP (sin credencial)
+
+En **CAT_Personas** y **CAT_Gestores** llena **Usuario** (por ejemplo `sofia`) y **NIP** (por ejemplo `123TAB`; no importan mayúsculas o minúsculas). En cualquier lugar donde se escanea credencial está **"¿Sin credencial? Teclea usuario y NIP"**. En CAT_Personas también sirve el **No. de empleado** como usuario. Si alguien se equivoca 5 veces de NIP, ese usuario se bloquea 15 minutos.

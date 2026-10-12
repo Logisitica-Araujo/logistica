@@ -38,17 +38,17 @@ function apiInicio() {
       .filter(function (id) { return A[id].activa; })
       .map(function (id) {
         return { id: id, nombre: R.nom(A, id), suc: A[id].sucNombre || 'Oficinas', tipo: A[id].tipo,
-                 mia: A[id].correos.indexOf(yo) >= 0 };
+                 mia: A[id].correos.indexOf(yo) >= 0, pin: !!A[id].pin };
       });
     if (!areas.some(function (a) { return a.mia; }) && !admin) {
       throw new Error('Tu correo ' + yo + ' no tiene un área asignada. Pide a un administrador que lo agregue en la hoja CAT_Areas.');
     }
-    return { email: yo, admin: admin, areas: areas, logo: _logo() };
+    return { email: yo, admin: admin, adminPin: !!String(_ajuste('pin_administrador', '') || '').trim(), areas: areas, logo: _logo() };
   });
 }
 
 /** Elegir el área de esta computadora (o "Administración"). */
-function apiEntrar(area, dispositivo) {
+function apiEntrar(area, dispositivo, pin) {
   return _api(function () {
     const yo = _email();
     if (!yo) throw new Error('No pude identificar tu cuenta de Google.');
@@ -57,9 +57,11 @@ function apiEntrar(area, dispositivo) {
     area = String(area || '').toUpperCase();
     if (area === TR.AREA_ADMIN) {
       if (!admin) throw new Error('Solo los administradores pueden entrar a Administración.');
+      _validarPin(yo + '_ADMIN', String(_ajuste('pin_administrador', '') || ''), pin);
     } else {
       if (!A[area] || !A[area].activa) throw new Error('Esa área no existe o está desactivada.');
       if (A[area].correos.indexOf(yo) < 0) throw new Error('Tu correo no tiene permiso para esa área.');
+      _validarPin(yo + '_' + area, A[area].pin, pin);
     }
     const modoAdmin = admin && area === TR.AREA_ADMIN;
     const tk = _crearToken(yo, area, modoAdmin);
@@ -177,21 +179,32 @@ function apiDetalle(token, folio) {
 
 /* ======================= CREDENCIALES ======================= */
 
-function apiPersona(token, codigo) {
+/** d = 'credencial'  ó  {codigo}  ó  {usuario, nip} */
+function apiPersona(token, d) {
   return _api(function () {
     _ctx(token);
-    const p = _personaPorCodigo(codigo);
-    if (!p) throw new Error('La credencial "' + codigo + '" no está registrada o está desactivada.');
+    const p = _personaPorCodigo(d);
+    if (!p) throw new Error(_noReconocido(d));
     return p;
   });
 }
 
-function apiGestor(token, codigo) {
+function apiGestor(token, d) {
   return _api(function () {
     _ctx(token);
-    const g = _gestorPorCodigo(codigo);
-    if (!g) throw new Error('La credencial "' + codigo + '" no es de un gestor activo.');
+    const g = _gestorPorCodigo(d);
+    if (!g) throw new Error(_noReconocido(d, 'gestor'));
     return g;
+  });
+}
+
+/** Cualquiera: persona o gestor (Recepción Oficinas). */
+function apiIdentificar(token, d) {
+  return _api(function () {
+    _ctx(token);
+    const q = _identificar(d, '');
+    if (!q) throw new Error(_noReconocido(d));
+    return q;
   });
 }
 
@@ -217,22 +230,17 @@ function apiCrear(token, d) {
     if (!desc) throw new Error('Describe qué envías.');
     const bultos = Math.max(1, Math.min(99, parseInt(d.bultos, 10) || 1));
 
-    let persona, cred = '', sinCred = false;
-    if (d.codigo) {
-      persona = _personaPorCodigo(d.codigo);
-      if (!persona) throw new Error('La credencial "' + d.codigo + '" no está registrada o está desactivada.');
-      cred = persona.codigo;
-    } else if (d.sinCred && String(d.sinCred.nombre || '').trim() && String(d.sinCred.num || '').trim()) {
-      persona = _registrarSinCredencial(String(d.sinCred.nombre).trim(), String(d.sinCred.num).trim(), me);
-      sinCred = true;
-    } else {
-      throw new Error('Escanea tu credencial, o escribe tu nombre y número de empleado.');
-    }
+    const quien = d.codigo ? { codigo: d.codigo } : { usuario: d.usuario, nip: d.nip };
+    if (!quien.codigo && !String(quien.usuario || '').trim()) throw new Error('Escanea tu credencial, o teclea tu usuario y NIP.');
+    const persona = _personaPorCodigo(quien);
+    if (!persona) throw new Error(_noReconocido(quien));
+    const sinCred = !persona.codigo;
+    const cred = persona.via;
 
     return _conCandado(function () {
       const folio = _siguienteFolio(me);
       const via = (A[me].tipo === 'FORANEA' || A[dest].tipo === 'FORANEA') ? 'VIA_LOGISTICA' : 'DIRECTA';
-      const por = persona.nombre + (sinCred ? ' · sin credencial (#' + persona.num + ')' : ' · ' + cred);
+      const por = persona.nombre + ' · ' + cred;
       const fila = {
         'Folio': folio, 'Fecha creación': _hoy(), 'Hora': _hora(),
         'Origen (prefijo)': me, 'Origen': R.nom(A, me), 'Destino (prefijo)': dest, 'Destino': R.nom(A, dest),
@@ -245,8 +253,8 @@ function apiCrear(token, d) {
       const lista = [];
       for (let i = 1; i <= bultos; i++) lista.push(i);
       _tb(TR.H.MOV).agregarVarias([
-        _movObj(t, 'CREADO', '', 'NUEVO', { donde: me, persona: persona.nombre, cred: cred || ('sin credencial #' + persona.num),
-          medio: sinCred ? 'SIN CREDENCIAL' : 'CREDENCIAL', equipo: me,
+        _movObj(t, 'CREADO', '', 'NUEVO', { donde: me, persona: persona.nombre, cred: cred,
+          medio: sinCred ? 'USUARIO Y NIP' : 'CREDENCIAL', equipo: me,
           detalle: via === 'VIA_LOGISTICA' ? 'Ruta con paquetería vía Logística' : '' }),
         _movObj(t, 'ETIQUETAS IMPRESAS', '', '', { donde: me, persona: persona.nombre, detalle: bultos + ' etiqueta(s)' })
       ]);
@@ -283,8 +291,8 @@ function apiConfirmarLote(token, d) {
     const E = _mapaEstatus();
     let gestor = null;
     if (modo === 'ENTREGAR') {
-      gestor = _gestorPorCodigo(d.gestorCodigo);
-      if (!gestor) throw new Error('Primero escanea la credencial de un gestor activo.');
+      gestor = _gestorPorCodigo(d.gestor || d.gestorCodigo);
+      if (!gestor) throw new Error('Primero identifica al gestor (credencial, o usuario y NIP).');
     }
 
     const res = _conCandado(function () {
@@ -313,7 +321,7 @@ function apiConfirmarLote(token, d) {
         if (modo === 'ENTREGAR') {
           _actualizarT(t, { 'Estatus': 'RECOLECTADO', 'Gestor': gestor.nombre, 'Fecha recolección': _ahoraTxt(), 'Ubicación actual': '' });
           movs.push(_movObj(t, 'RECOLECTADO POR GESTORÍA', antes, 'RECOLECTADO',
-            { donde: me, persona: gestor.nombre, cred: gestor.codigo, medio: 'CREDENCIAL DEL GESTOR', equipo: me }));
+            { donde: me, persona: gestor.nombre, cred: gestor.via, medio: gestor.codigo ? 'CREDENCIAL DEL GESTOR' : 'USUARIO Y NIP DEL GESTOR', equipo: me }));
           avisos.push(_avisoObj(t.destino, t.folio, 'Va en camino para ti · lo lleva ' + gestor.nombre));
           resultados.push({ folio: t.folio, ok: true, msg: 'Entregado a ' + gestor.nombre });
           return;
@@ -395,11 +403,12 @@ function apiReimprimir(token, d) {
     if (!t || t.estatus === 'ELIMINADO') throw new Error('No encontré el folio.');
     if (!c.admin && t.origen !== c.area) throw new Error('Solo el área que creó el traspaso puede reimprimir.');
     let persona = null;
-    if (d.codigo) {
-      persona = _personaPorCodigo(d.codigo);
-      if (!persona) throw new Error('La credencial "' + d.codigo + '" no está registrada.');
+    const ident = d.codigo ? { codigo: d.codigo } : (String(d.usuario || '').trim() ? { usuario: d.usuario, nip: d.nip } : null);
+    if (ident) {
+      persona = _personaPorCodigo(ident);
+      if (!persona) throw new Error(_noReconocido(ident));
     } else if (!c.admin) {
-      throw new Error('Escanea tu credencial para reimprimir.');
+      throw new Error('Escanea tu credencial (o teclea usuario y NIP) para reimprimir.');
     }
     const quien = persona ? persona.nombre : c.email;
     const b = parseInt(d.bulto, 10) || 0;
@@ -409,7 +418,7 @@ function apiReimprimir(token, d) {
     _actualizarT(t, { 'Reimpresiones': n });
     _tb(TR.H.ETIQUETAS).agregarVarias(_etiquetasObj(t, lista, 'R' + n, quien, d.motivo));
     _mov(t, b ? ('REIMPRESIÓN BULTO ' + b + ' DE ' + t.bultos) : 'REIMPRESIÓN DE TODAS LAS ETIQUETAS', '', '',
-      { donde: c.area === TR.AREA_ADMIN ? '' : c.area, persona: quien, cred: persona ? persona.codigo : 'administrador',
+      { donde: c.area === TR.AREA_ADMIN ? '' : c.area, persona: quien, cred: persona ? persona.via : 'administrador',
         detalle: 'Motivo: ' + (d.motivo || '—') });
     const tt = _tObj(_buscarFila(t.folio));
     return { traspaso: tt, bultos: lista, rp: n };

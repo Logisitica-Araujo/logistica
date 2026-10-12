@@ -61,40 +61,54 @@ function arrancar() {
     .catch(function () { borrar('token'); pantallaEntrada(); });
 }
 
-function pantallaEntrada(msg) {
+function pantallaEntrada(msg, pinPara) {
   pararPoll();
   S.token = null; S.ctx = null;
   $('#hdr').hidden = true; $('#adminbar').innerHTML = ''; $('#modal').innerHTML = '';
   $('#view').innerHTML = '<div class="cargando">Revisando tu cuenta…</div>';
-  srv('apiInicio').then(function (d) {
-    var porSuc = {};
-    d.areas.forEach(function (a) { (porSuc[a.suc] = porSuc[a.suc] || []).push(a); });
-    var html = '<div class="entrada">' +
-      (msg ? '<div class="feedback warn">' + esc(msg) + '</div>' : '') +
-      '<div><h1>Traspasos</h1><p class="sub">Hola <b>' + esc(d.email) + '</b>. Elige el área de <b>esta computadora</b>. ' +
-      'La app la recordará hasta que se cierre la sesión.</p></div>';
-    if (d.admin) html += '<div class="grupo"><h2>Administración</h2><div class="areas"><button class="adm" data-a="entrar" data-v="ADMIN">Entrar como administrador</button></div><p class="muted" style="margin:0;font-size:13.5px">Para el día a día entra como tu área. Cuando necesites arreglar algo, usa el botón dorado "Modo administrador" de arriba.</p></div>';
-    Object.keys(porSuc).forEach(function (s) {
-      html += '<div class="grupo"><h2>' + esc(s) + '</h2><div class="areas">' +
-        porSuc[s].map(function (a) {
-          return a.mia
-            ? '<button data-a="entrar" data-v="' + esc(a.id) + '">' + esc(a.nombre) + '<div class="muted" style="font-size:12.5px;font-weight:700">Folios ' + esc(a.id) + '-0001</div></button>'
-            : '<button class="bloq" disabled title="Esta cuenta no tiene acceso a esta área">🔒 ' + esc(a.nombre) + '<div style="font-size:12.5px;font-weight:700">Sin acceso con esta cuenta</div></button>';
-        }).join('') +
-        '</div></div>';
+  srv('apiInicio').then(function (d) { S.inicio = d; dibujarEntrada(msg, pinPara); })
+    .catch(function (e) {
+      $('#view').innerHTML = '<div class="entrada"><h1>Traspasos</h1><div class="feedback err">' + esc(e.message) + '</div></div>';
     });
-    $('#view').innerHTML = html + '</div>';
-  }).catch(function (e) {
-    $('#view').innerHTML = '<div class="entrada"><h1>Traspasos</h1><div class="feedback err">' + esc(e.message) + '</div></div>';
-  });
 }
 
-function entrar(area) {
+function dibujarEntrada(msg, pinPara) {
+  var d = S.inicio;
+  var porSuc = {};
+  d.areas.forEach(function (a) { (porSuc[a.suc] = porSuc[a.suc] || []).push(a); });
+  var nomPin = pinPara === 'ADMIN' ? 'Modo administrador' : ((d.areas.filter(function (a) { return a.id === pinPara; })[0] || {}).nombre || pinPara);
+  var html = '<div class="entrada">' +
+    (msg ? '<div class="feedback warn">' + esc(msg) + '</div>' : '') +
+    (pinPara ? '<div class="panel stack pinbox"><b style="font-size:17px">🔑 PIN para entrar a ' + esc(nomPin) + '</b>' +
+      '<div class="row"><input class="t" id="pinin" type="password" autocomplete="off" placeholder="PIN" style="max-width:220px">' +
+      '<button class="btn primary" type="button" data-a="entrarpin" data-v="' + esc(pinPara) + '">Entrar</button>' +
+      '<button class="btn ghost" type="button" data-a="pincancel">Cancelar</button></div></div>' : '') +
+    '<div><h1>Traspasos</h1><p class="sub">Hola <b>' + esc(d.email) + '</b>. Elige el área de <b>esta computadora</b>. ' +
+    'La app la recordará.</p></div>';
+  if (d.admin) html += '<div class="grupo"><h2>Administración</h2><div class="areas"><button class="adm" data-a="entrar" data-v="ADMIN">' + (d.adminPin ? '🔑 ' : '') + 'Entrar como administrador</button></div><p class="muted" style="margin:0;font-size:13.5px">Para el día a día entra como tu área. Cuando necesites arreglar algo, usa el botón dorado "Modo administrador" de arriba.</p></div>';
+  Object.keys(porSuc).forEach(function (s) {
+    html += '<div class="grupo"><h2>' + esc(s) + '</h2><div class="areas">' +
+      porSuc[s].map(function (a) {
+        return a.mia
+          ? '<button data-a="entrar" data-v="' + esc(a.id) + '">' + (a.pin ? '🔑 ' : '') + esc(a.nombre) + '<div class="muted" style="font-size:12.5px;font-weight:700">' + (a.pin ? 'Pide PIN · ' : '') + 'Folios ' + esc(a.id) + '-0001</div></button>'
+          : '<button class="bloq" disabled title="Esta cuenta no tiene acceso a esta área">🔒 ' + esc(a.nombre) + '<div style="font-size:12.5px;font-weight:700">Sin acceso con esta cuenta</div></button>';
+      }).join('') +
+      '</div></div>';
+  });
+  $('#view').innerHTML = html + '</div>';
+  if ($('#pinin')) $('#pinin').focus();
+}
+
+function entrar(area, pin) {
   if (area !== 'ADMIN') guardar('ultimaArea', area);
   $('#view').innerHTML = '<div class="cargando">Entrando…</div>';
-  srv('apiEntrar', area, navigator.userAgent).then(function (d) {
+  srv('apiEntrar', area, navigator.userAgent, pin || '').then(function (d) {
     guardar('token', d.token); S.token = d.token; aplicarSesion(d.ctx, d.cat);
-  }).catch(function (e) { pantallaEntrada(e.message); });
+  }).catch(function (e) {
+    if (e.message === 'PIN_REQUERIDO') return S.inicio && !S.ctx ? dibujarEntrada('', area) : pantallaEntrada('', area);
+    if (S.inicio && !S.ctx) return dibujarEntrada(e.message, pin ? area : null);
+    pantallaEntrada(e.message);
+  });
 }
 
 function aplicarSesion(ctx, cat) {
@@ -104,7 +118,8 @@ function aplicarSesion(ctx, cat) {
   var css = cat.estatus.map(function (e) { return '.b-' + e.clave + '{color:' + e.color + ';background:' + e.fondo + '}'; }).join('');
   var st = document.getElementById('est-css') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'est-css' }));
   st.textContent = css;
-  S.tab = esVistaAdmin() ? 'todos' : 'bandeja';
+  S.tab = esVistaAdmin() ? 'todos' : (ctx.area === 'REC' ? 'dejar' : 'bandeja');
+  S.rec = { quien: null, quienId: null, lote: [], fb: null, enviando: false };
   S.scan = { modo: 'RECIBIR', lote: [], fb: null, gestor: null, log: [], enviando: false };
   S.wiz = { step: 1 };
   $('#hdr').hidden = false;
@@ -132,7 +147,9 @@ function refrescar(inicial) {
       document.title = '(' + S.noVistos + ') Traspasos';
     }
     if (!S.noVistos) document.title = 'Traspasos';
-    render();
+    var ae = document.activeElement;
+    if (!inicial && ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName) && ae.value) renderHeader();
+    else render();
   }).catch(function (e) { if (inicial) toast(e.message); });
 }
 function iniciarPoll() {
@@ -168,12 +185,13 @@ function render() {
   if (esVistaAdmin()) {
     v = S.tab === 'buscar' ? vBuscar() : S.tab === 'sol' ? vSolicitudes() : S.tab === 'hoja' ? vHoja() : vTodos();
   } else {
-    v = S.tab === 'nuevo' ? vNuevo() : S.tab === 'escaner' ? vEscaner() : S.tab === 'paq' ? vPaqueteria() : vBandeja();
+    v = me() === 'REC' ? vRecepcion()
+      : S.tab === 'nuevo' ? vNuevo() : S.tab === 'escaner' ? vEscaner() : S.tab === 'paq' ? vPaqueteria() : vBandeja();
   }
   $('#view').innerHTML = v;
   pintarCodigos($('#view'));
   renderModal();
-  var si = $('#scanin') || $('#credin') || $('#gestin') || $('#cajain');
+  var si = $('#scanin') || $('#crea-cod') || $('#gest-cod') || $('#rec-cod') || $('#recin') || $('#cajain');
   if (si && !S.modal && !S.bell) si.focus({ preventScroll: true });
 }
 
@@ -181,6 +199,9 @@ function renderHeader() {
   var tabs = [];
   if (esVistaAdmin()) {
     tabs = [['todos', 'Todos los traspasos'], ['buscar', 'Buscador'], ['sol', 'Solicitudes', S.data.solicitudes.length], ['hoja', 'Catálogos']];
+  } else if (me() === 'REC') {
+    var enRec = S.data.traspasos.filter(function (t) { return t.estatus === 'EN_RECEPCION'; }).length;
+    tabs = [['dejar', '📥 Dejar'], ['recoger', '📤 Recoger'], ['resguardo', 'En resguardo', enRec]];
   } else {
     tabs = [['bandeja', 'Mi bandeja'], ['nuevo', 'Nuevo traspaso'], ['escaner', 'Escáner']];
     if (me() === 'LOG' || R.esMor(S.A, me())) {
@@ -210,7 +231,7 @@ function renderHeader() {
 
 /** Solo los administradores ven este botón: pasan de su área al modo administrador y de regreso. */
 function cambioModo() {
-  if (!S.ctx.puedeAdmin) return '';
+  if (!S.ctx.puedeAdmin || me() === 'REC') return '';
   if (esVistaAdmin()) {
     var ult = leer('ultimaArea');
     return '<button class="btn" type="button" data-a="' + (ult ? 'entrar' : 'cambiarArea') + '" data-v="' + esc(ult || '') + '" title="Volver a trabajar como usuario">← ' + (ult && S.A[ult] ? 'Volver a ' + esc(nom(ult)) : 'Elegir mi área') + '</button>';
@@ -225,7 +246,7 @@ function tcard(t, desdeOrigen) {
     '<span class="route">' + ruta + '</span><span class="desc">' + esc(t.desc) + '</span></span>' +
     '<span class="side"><b>' + t.bultos + ' ' + (t.bultos > 1 ? 'bultos' : 'bulto') + '</b><span>' + esc(t.fecha + ' ' + t.hora) + '</span><span>' + esc(t.act ? 'Act. ' + t.act : '') + '</span></span></button>';
 }
-var ORD = { UBICADO: 0, EXTRAVIADO: 1, INCIDENCIA: 2, ENTREGADO_GESTOR: 3, RECOLECTADO: 4, PAQUETERIA: 5, EN_LOGISTICA: 6, NUEVO: 7, ENTREGADO: 9 };
+var ORD = { UBICADO: 0, EXTRAVIADO: 1, INCIDENCIA: 2, EN_RECEPCION: 3, ENTREGADO_GESTOR: 3, RECOLECTADO: 4, PAQUETERIA: 5, EN_LOGISTICA: 6, NUEVO: 7, ENTREGADO: 9 };
 function orden(a, b) { var x = (a.solicitud ? -1 : (ORD[a.estatus] != null ? ORD[a.estatus] : 5)), y = (b.solicitud ? -1 : (ORD[b.estatus] != null ? ORD[b.estatus] : 5)); return x - y || String(b.act).localeCompare(String(a.act)); }
 
 function chips(lista, accion, sel) {
@@ -263,18 +284,15 @@ function vNuevo() {
   if (w.step === 1) {
     return head + '<div class="grid2"><div class="panel stack">' +
       '<div class="scanbox"><b style="font-size:18px">Escanea tu credencial</b><span class="muted">Es obligatorio: queda registrado quién creó el traspaso.</span></div>' +
-      '<label class="f">Código de credencial<input class="t num" id="credin" autocomplete="off" placeholder="Escanea o escribe"></label>' +
-      '<div class="row"><button class="btn primary" type="button" data-a="cred">Continuar</button></div>' + err +
-      '</div><div class="panel stack"><h2>¿Aún no tienes credencial?</h2><p class="muted" style="margin:0">Regístrate como <b>usuario sin credencial</b>. El traspaso quedará marcado y administración verá que te falta.</p>' +
-      (w.sinCred ? '<label class="f">Nombre completo<input class="t" id="scn" autocomplete="off"></label><label class="f">Número de empleado<input class="t" id="scnum" autocomplete="off" inputmode="numeric"></label><button class="btn" type="button" data-a="sincredok">Continuar sin credencial</button>'
-        : '<button class="btn" type="button" data-a="sincred">No tengo credencial</button>') + '</div></div>';
+      idHTML('crea', 'Credencial', 'Escanea tu credencial') + err +
+      '</div><div class="panel stack"><h2>¿No tienes credencial?</h2><p class="muted" style="margin:0">Abre <b>"¿Sin credencial?"</b> y teclea tu <b>usuario</b> (o número de empleado) y tu <b>NIP</b>. Si todavía no tienes, pídelos a un administrador.</p></div></div>';
   }
   if (w.step === 2) {
     var grupos = {};
     S.cat.areas.filter(function (a) { return a.activa && a.id !== m; }).forEach(function (a) { var g = a.tipo === 'OFICINAS' ? 'Oficinas' : (a.sucNombre || a.corto); (grupos[g] = grupos[g] || []).push(a); });
     var opts = Object.keys(grupos).map(function (g) { return '<optgroup label="' + esc(g) + '">' + grupos[g].map(function (a) { return '<option value="' + esc(a.id) + '"' + (w.destino === a.id ? ' selected' : '') + '>' + esc(a.nombre) + '</option>'; }).join('') + '</optgroup>'; }).join('');
     return head + '<div class="grid2"><div class="panel stack">' +
-      '<div class="note">Creado por: <b>' + esc(w.persona.nombre) + '</b>' + (w.persona.codigo ? ' · ' + esc(w.persona.codigo) : ' · <b>sin credencial</b>') + '</div>' +
+      '<div class="note">Creado por: <b>' + esc(w.persona.nombre) + '</b>' + ' · ' + esc(w.persona.via || w.persona.codigo) + '</div>' +
       '<label class="f">¿Para dónde va?<select class="t" id="destin"><option value="">Elige el destino…</option>' + opts + '</select></label>' +
       '<div id="rutanote">' + rutaNota(m, w.destino) + '</div>' +
       '<div class="row"><button class="btn ghost" type="button" data-a="atras">Atrás</button><button class="btn primary" type="button" data-a="dest">Continuar</button></div>' + err +
@@ -360,7 +378,7 @@ function vEscaner() {
     '<div class="scanner"><div class="stack">' +
     (sc.modo === 'ENTREGAR' ? (sc.gestor ? '<div class="gestorpill"><div><b>' + esc(sc.gestor.nombre) + '</b><div class="muted" style="font-size:13px">Gestor · ' + esc(sc.gestor.codigo) + '</div></div><button class="btn ghost" type="button" data-a="gclear" style="margin-left:auto">Cambiar</button></div>'
       : '<div class="scanbox"><b>Primero escanea la credencial del gestor</b><span class="muted">Para cuando el gestor no trae su celular.</span></div>') : '') +
-    '<label class="f">' + (falta ? 'Credencial del gestor' : 'Folio') + '<input class="scaninput" id="' + (falta ? 'gestin' : 'scanin') + '" autocomplete="off" placeholder="' + (falta ? 'Credencial' : esc(m) + '-0001') + '"></label>' + fbh +
+    (falta ? idHTML('gest', 'Credencial del gestor', 'Credencial') : '<label class="f">Folio<input class="scaninput" id="scanin" autocomplete="off" placeholder="' + esc(m) + '-0001"></label>') + fbh +
     '</div><div class="stack"><div class="row" style="justify-content:space-between"><h2 style="margin:0">' + (sc.modo === 'RECIBIR' ? 'Recibiendo' : 'Entregando a gestor') + ' · ' + sc.lote.length + '</h2>' +
     '<div class="row"><button class="btn ghost" type="button" data-a="vaciar"' + (sc.lote.length ? '' : ' disabled') + '>Vaciar</button><button class="btn primary" type="button" data-a="confirmar"' + (sc.lote.length && !sc.enviando ? '' : ' disabled') + '>' + (sc.enviando ? 'Guardando…' : 'Confirmar ' + (sc.modo === 'RECIBIR' ? 'recepción' : 'salida')) + '</button></div></div>' +
     '<div class="queue">' + cola + '</div></div></div>';
@@ -411,13 +429,13 @@ function confirmarLote() {
   if (!sc.lote.length || sc.enviando) return;
   sc.enviando = true; S.ocupado = true; render();
   srv('apiConfirmarLote', S.token, {
-    modo: sc.modo, gestorCodigo: sc.gestor ? sc.gestor.codigo : '',
+    modo: sc.modo, gestor: sc.gestorId || null,
     items: sc.lote.map(function (it) { return { folio: it.t.folio, faltan: !!it.faltan, caja: it.caja || '' }; }),
     escaneos: sc.log
   }).then(function (d) {
     var ok = d.resultados.filter(function (r) { return r.ok; }).length;
     var mal = d.resultados.filter(function (r) { return !r.ok; });
-    S.scan = { modo: sc.modo, lote: [], log: [], gestor: sc.gestor, enviando: false,
+    S.scan = { modo: sc.modo, lote: [], log: [], gestor: sc.gestor, gestorId: sc.gestorId, enviando: false,
       fb: mal.length ? { k: 'warn', m: ok + ' guardado(s). No se guardaron: ' + mal.map(function (r) { return r.folio + ' (' + r.msg + ')'; }).join('; ') } : { k: 'ok', m: ok + ' traspaso(s) guardados.' } };
     toast(ok + ' traspaso(s) guardados');
     S.ocupado = false; refrescar(false);
@@ -508,6 +526,80 @@ function imprimirCaja(c) {
   setTimeout(function () { window.print(); }, 200);
 }
 
+/* ---------- Recepción Oficinas (computadora del patio) ---------- */
+function vRecepcion() {
+  if (S.tab === 'resguardo') return vResguardo();
+  var r = S.rec, dejar = S.tab !== 'recoger';
+  var fb = r.fb ? '<div class="feedback ' + r.fb.k + '" role="alert">' + esc(r.fb.m) + '</div>' : '';
+  var titulo = dejar ? 'Dejar traspasos en Recepción' : 'Recoger traspasos de Recepción';
+  var sub = dejar ? 'Para gestores: deja aquí lo que no se pudo entregar en su área. Escanea cada traspaso.'
+                  : 'Un gestor que se los lleva a su destino, o una persona de Oficinas que recoge lo de su área.';
+  if (!r.quien) {
+    return '<h1>' + titulo + '</h1><p class="sub">' + sub + '</p><div class="panel stack rec-id">' +
+      '<div class="scanbox"><b style="font-size:22px">' + (dejar ? 'Gestor: escanea tu credencial' : 'Escanea tu credencial') + '</b></div>' +
+      idHTML('rec', dejar ? 'Credencial del gestor' : 'Credencial', 'Credencial') + fb + '</div>';
+  }
+  var q = r.quien;
+  var disp = dejar ? [] : S.data.traspasos.filter(function (t) {
+    return R.recogible(t, S.A, S.E, q).k === 'ok' && !r.lote.some(function (x) { return x.folio === t.folio; });
+  });
+  return '<h1>' + titulo + '</h1>' +
+    '<div class="gestorpill" style="margin-bottom:16px"><div><b style="font-size:18px">' + esc(q.nombre) + '</b><div class="muted" style="font-size:13px">' +
+      (q.tipo === 'GESTOR' ? 'Gestor' : (q.area && S.A[q.area] ? nom(q.area) : 'Persona')) + ' · ' + esc(q.via) + '</div></div>' +
+      '<button class="btn ghost" type="button" data-a="recquien" style="margin-left:auto">Cambiar de persona</button></div>' +
+    '<div class="scanner"><div class="stack">' +
+      '<label class="f">Escanea cada traspaso<input class="scaninput" id="recin" autocomplete="off" placeholder="NR-0001"></label>' + fb +
+      (dejar ? '' : '<div class="panel stack" style="padding:14px"><b>Disponibles para ' + (q.tipo === 'GESTOR' ? 'llevar' : 'ti') + ' (' + disp.length + ')</b>' +
+        (disp.length ? disp.map(function (t) { return '<button type="button" class="btn" style="justify-content:space-between" data-a="recadd" data-v="' + esc(t.folio) + '"><span class="num">' + esc(t.folio) + '</span><span class="muted">' + esc(nom(t.destino)) + '</span><span>＋</span></button>'; }).join('') : '<div class="muted">Nada pendiente.</div>') + '</div>') +
+    '</div><div class="stack"><div class="row" style="justify-content:space-between"><h2 style="margin:0">' + (dejar ? 'Deja' : 'Se lleva') + ' · ' + r.lote.length + '</h2>' +
+      '<button class="btn primary" type="button" data-a="recconfirmar"' + (r.lote.length && !r.enviando ? '' : ' disabled') + '>' + (r.enviando ? 'Guardando…' : (dejar ? 'Confirmar: dejar ' : 'Confirmar: me llevo ') + r.lote.length) + '</button></div>' +
+      '<div class="queue">' + (r.lote.length ? r.lote.map(function (t) {
+        return '<div class="qrow"><span style="color:var(--ok);font-weight:900">✓</span><div style="min-width:0"><div class="row" style="gap:6px 10px">' + areaTag(t.destino) + '<span><span class="num">' + esc(t.folio) + '</span> · ' + esc(nom(t.origen)) + '<span class="arrow">→</span>' + esc(nom(t.destino)) + '</span></div><div class="muted" style="font-size:13px">' + t.bultos + ' bulto(s) · ' + esc(t.desc) + '</div></div><button class="btn ghost" type="button" data-a="recquitar" data-v="' + esc(t.folio) + '">Quitar</button></div>';
+      }).join('') : '<div class="empty">Escanea el primer traspaso.</div>') + '</div></div></div>';
+}
+function vResguardo() {
+  var lista = S.data.traspasos.filter(function (t) { return t.estatus === 'EN_RECEPCION'; });
+  var grupos = {};
+  lista.forEach(function (t) { (grupos[t.destino] = grupos[t.destino] || []).push(t); });
+  var horas = function (t) { var d = new Date(String(t.act).replace(' ', 'T')); var h = Math.floor((Date.now() - d.getTime()) / 3600000); return isNaN(h) ? '' : (h < 1 ? 'menos de 1 h' : h + ' h'); };
+  return '<h1>En resguardo</h1><p class="sub">Lo que está ahorita en el stand de Recepción Oficinas, por destino.</p>' +
+    (lista.length ? Object.keys(grupos).map(function (dst) {
+      return '<h2 style="margin-top:18px">' + esc(nom(dst)) + ' (' + grupos[dst].length + ')</h2><div class="list">' + grupos[dst].map(function (t) {
+        return '<button type="button" class="tcard" data-a="open" data-v="' + esc(t.folio) + '" style="color:' + colorDe(t) + '"><span class="stripe"></span><span class="body"><span class="top"><span class="folio">' + esc(t.folio) + '</span>' + badge(t) + '</span><span class="route">' + esc(nom(t.origen)) + '<span class="arrow">→</span>' + esc(nom(t.destino)) + '</span><span class="desc">' + esc(t.desc) + '</span></span><span class="side"><b>' + t.bultos + ' bulto(s)</b><span>Aquí desde hace ' + horas(t) + '</span></span></button>';
+      }).join('') + '</div>';
+    }).join('') : '<div class="empty">No hay nada en resguardo.</div>');
+}
+function identificarRec(d) {
+  var dejar = S.tab !== 'recoger';
+  srv('apiIdentificar', S.token, d).then(function (q) {
+    if (dejar && q.tipo !== 'GESTOR') { S.rec.fb = { k: 'err', m: q.nombre + ' no es gestor. Para dejar traspasos se identifica un gestor.' }; beep('err'); return render(); }
+    S.rec = { quien: q, quienId: d, lote: [], fb: { k: 'ok', m: 'Hola ' + q.nombre + '. Ahora escanea los traspasos.' }, enviando: false };
+    S.idAbierto = null; beep('ok'); render();
+  }).catch(function (e) { S.rec.fb = { k: 'err', m: e.message }; beep('err'); render(); });
+}
+function recEscanear(texto) {
+  var r = S.rec, dejar = S.tab !== 'recoger';
+  var f = R.folioDe(texto); if (!f) return;
+  var t = MAPA[f];
+  var v = dejar ? R.dejable(t, S.A, S.E) : R.recogible(t, S.A, S.E, r.quien);
+  if (v.k === 'ok' && r.lote.some(function (x) { return x.folio === t.folio; })) v = { k: 'warn', m: t.folio + ' ya está en la lista.' };
+  if (v.k === 'ok') { r.lote.push(t); v = { k: 'ok', m: t.folio + ' · ' + t.bultos + ' bulto(s) → ' + nom(t.destino) }; }
+  r.fb = v; beep(v.k); render();
+}
+function recConfirmar() {
+  var r = S.rec, dejar = S.tab !== 'recoger';
+  if (!r.lote.length || r.enviando) return;
+  r.enviando = true; S.ocupado = true; render();
+  srv('apiRecepcion', S.token, { modo: dejar ? 'DEJAR' : 'RECOGER', quien: r.quienId, folios: r.lote.map(function (t) { return t.folio; }) })
+    .then(function (d) {
+      var ok = d.resultados.filter(function (x) { return x.ok; }).length;
+      var mal = d.resultados.filter(function (x) { return !x.ok; });
+      S.rec = { quien: null, quienId: null, lote: [], enviando: false,
+        fb: { k: mal.length ? 'warn' : 'ok', m: '✓ ' + ok + ' traspaso(s) ' + (dejar ? 'dejados en Recepción' : 'entregados a ' + d.quien) + '.' + (mal.length ? ' No se guardaron: ' + mal.map(function (x) { return x.folio + ' (' + x.msg + ')'; }).join('; ') : ' Listo, puede pasar el siguiente.') } };
+      toast(ok + ' traspaso(s) guardados'); S.ocupado = false; refrescar(false);
+    }).catch(function (e) { r.enviando = false; S.ocupado = false; r.fb = { k: 'err', m: e.message }; render(); });
+}
+
 /* ---------- Administración ---------- */
 function vTodos() {
   var all = S.data.traspasos;
@@ -576,6 +668,7 @@ function detalleHTML(t, movs) {
     forms += '<div class="inline-form"><div class="row"><label class="f" style="flex:1;min-width:140px">¿Qué etiqueta?<select class="t" id="rpb"><option value="0">Todas (' + t.bultos + ')</option>' + rango(t.bultos).map(function (b) { return '<option value="' + b + '">Bulto ' + b + ' de ' + t.bultos + '</option>'; }).join('') + '</select></label>' +
       '<label class="f" style="flex:1;min-width:160px">Motivo<select class="t" id="rpm">' + motR + '</select></label></div>' +
       '<label class="f">Tu credencial' + (adm ? ' (opcional para administradores)' : '') + '<input class="t num" id="rpc" autocomplete="off"></label>' +
+      '<div class="row"><input class="t" id="rpu" autocomplete="off" placeholder="o tu usuario" style="flex:1;min-width:140px"><input class="t" id="rpn" type="password" autocomplete="off" placeholder="NIP" style="width:120px"></div>' +
       '<div class="row"><button class="btn primary" type="button" data-a="rpgo" data-v="' + esc(t.folio) + '">Reimprimir</button><button class="btn ghost" type="button" data-a="form" data-v="">Cancelar</button></div></div>';
   }
   if (m.form === 'del') {
@@ -620,7 +713,9 @@ document.addEventListener('click', function (e) {
     case 'entrar': return entrar(v);
     case 'salir': e.preventDefault(); return salir();
     case 'cambiarArea': return pantallaEntrada();
-    case 'tab': S.tab = v; S.filtro = null; S.bell = false; break;
+    case 'tab':
+      if (me() === 'REC' && S.tab !== v) S.rec = { quien: null, quienId: null, lote: [], fb: null, enviando: false };
+      S.tab = v; S.filtro = null; S.bell = false; break;
     case 'dir': S.dir = v; S.filtro = null; break;
     case 'filtro': S.filtro = S.filtro === v ? null : v; break;
     case 'bell':
@@ -631,13 +726,13 @@ document.addEventListener('click', function (e) {
     case 'cerrar': case 'fondo': S.modal = null; break;
     case 'form': S.modal.form = v || null; S.modal.err = null; break;
 
-    case 'cred': return validarCred($('#credin').value);
-    case 'sincred': w.sinCred = true; break;
-    case 'sincredok': {
-      var n = $('#scn').value.trim(), num = $('#scnum').value.trim();
-      if (!n || !num) { w.err = 'Escribe tu nombre y número de empleado.'; break; }
-      w.persona = { nombre: n, codigo: '', num: num, sinCred: true }; w.err = null; w.step = 2; break;
-    }
+    case 'idman': return alIdentificar(v, leerId(v, true));
+    case 'entrarpin': return entrar(v, $('#pinin').value);
+    case 'pincancel': return leer('token') ? arrancar() : dibujarEntrada();
+    case 'recquien': S.rec = { quien: null, quienId: null, lote: [], fb: null, enviando: false }; break;
+    case 'recadd': return recEscanear(v);
+    case 'recquitar': S.rec.lote = S.rec.lote.filter(function (t) { return t.folio !== v; }); break;
+    case 'recconfirmar': return recConfirmar();
     case 'atras': w.step--; w.err = null; break;
     case 'dest': { var d = $('#destin').value; if (!d) { w.err = 'Elige el destino.'; break; } w.destino = d; w.bultos = w.bultos || 1; w.err = null; w.step = 3; break; }
     case 'qty': w.desc = $('#descin').value; w.bultos = Math.min(99, Math.max(1, (w.bultos || 1) + Number(v))); break;
@@ -679,7 +774,7 @@ document.addEventListener('click', function (e) {
     }
     case 'rpgo': {
       var b = $('#rpb').value, mot = $('#rpm').value, cod = $('#rpc').value.trim();
-      srv('apiReimprimir', S.token, { folio: v, bulto: b, motivo: mot, codigo: cod }).then(function (d) {
+      srv('apiReimprimir', S.token, { folio: v, bulto: b, motivo: mot, codigo: cod, usuario: $('#rpu').value.trim(), nip: $('#rpn').value.trim() }).then(function (d) {
         S.modal.form = null; imprimir(d.traspaso, d.bultos, d.rp); abrir(v);
       }).catch(function (er) { S.modal.err = er.message; render(); });
       return;
@@ -722,8 +817,13 @@ document.addEventListener('keydown', function (e) {
   var id = e.target.id;
   if (id === 'scanin') { e.preventDefault(); alEscanear(e.target.value); }
   else if (id === 'cajain') { e.preventDefault(); agregarACaja(e.target.value); }
-  else if (id === 'gestin') { e.preventDefault(); validarGestor(e.target.value); }
-  else if (id === 'credin') { e.preventDefault(); validarCred(e.target.value); }
+  else if (id === 'recin') { e.preventDefault(); recEscanear(e.target.value); }
+  else if (id === 'pinin') { e.preventDefault(); entrar(S.pinPara || e.target.closest('.pinbox').querySelector('[data-a=entrarpin]').getAttribute('data-v'), e.target.value); }
+  else if (/-(cod|nip|usr)$/.test(id)) {
+    e.preventDefault();
+    var p = id.replace(/-(cod|nip|usr)$/, '');
+    alIdentificar(p, leerId(p, !/-cod$/.test(id)));
+  }
 });
 document.addEventListener('submit', function (e) {
   if (e.target.getAttribute('data-form') !== 'buscar') return;
@@ -734,14 +834,31 @@ document.addEventListener('submit', function (e) {
   render();
 });
 
-function validarCred(cod) {
-  cod = String(cod || '').trim(); if (!cod) return;
-  srv('apiPersona', S.token, cod).then(function (p) { S.wiz.persona = p; S.wiz.err = null; S.wiz.step = 2; beep('ok'); render(); })
+/* ---------- Identificarse: credencial, o usuario + NIP ---------- */
+function idHTML(p, etiqueta, ph) {
+  return '<label class="f">' + etiqueta + '<input class="scaninput" id="' + p + '-cod" autocomplete="off" placeholder="' + esc(ph || 'Escanea la credencial') + '"></label>' +
+    '<details class="sincred"' + (S.idAbierto === p ? ' open' : '') + '><summary>¿Sin credencial? Teclea usuario y NIP</summary>' +
+    '<div class="row" style="margin-top:8px"><input class="t" id="' + p + '-usr" autocomplete="off" placeholder="Usuario o No. de empleado" style="flex:1;min-width:150px">' +
+    '<input class="t" id="' + p + '-nip" type="password" autocomplete="off" placeholder="NIP" style="width:130px">' +
+    '<button class="btn primary" type="button" data-a="idman" data-v="' + p + '">Continuar</button></div></details>';
+}
+function leerId(p, manual) {
+  var g = function (sfx) { var el = $('#' + p + '-' + sfx); return el ? String(el.value || '').trim() : ''; };
+  if (manual) { S.idAbierto = p; return { usuario: g('usr'), nip: g('nip') }; }
+  return { codigo: g('cod') };
+}
+function alIdentificar(p, d) {
+  if (!d.codigo && !(d.usuario && d.nip)) return;
+  if (p === 'crea') validarCred(d);
+  else if (p === 'gest') validarGestor(d);
+  else if (p === 'rec') identificarRec(d);
+}
+function validarCred(d) {
+  srv('apiPersona', S.token, d).then(function (p) { S.wiz.persona = p; S.wiz.ident = d; S.wiz.err = null; S.wiz.step = 2; S.idAbierto = null; beep('ok'); render(); })
     .catch(function (e) { S.wiz.err = e.message; beep('err'); render(); });
 }
-function validarGestor(cod) {
-  cod = String(cod || '').trim(); if (!cod) return;
-  srv('apiGestor', S.token, cod).then(function (g) { S.scan.gestor = g; S.scan.fb = { k: 'ok', m: 'Gestor: ' + g.nombre + '. Ahora escanea los traspasos que se lleva.' }; beep('ok'); render(); })
+function validarGestor(d) {
+  srv('apiGestor', S.token, d).then(function (g) { S.scan.gestor = g; S.scan.gestorId = d; S.idAbierto = null; S.scan.fb = { k: 'ok', m: 'Gestor: ' + g.nombre + '. Ahora escanea los traspasos que se lleva.' }; beep('ok'); render(); })
     .catch(function (e) { S.scan.fb = { k: 'err', m: e.message }; beep('err'); render(); });
 }
 function crear() {
@@ -750,7 +867,8 @@ function crear() {
   if (!w.desc) { w.err = 'Describe qué envías.'; return render(); }
   w.enviando = true; w.err = null; render();
   var d = { destino: w.destino, desc: w.desc, bultos: w.bultos || 1 };
-  if (w.persona.sinCred) d.sinCred = { nombre: w.persona.nombre, num: w.persona.num }; else d.codigo = w.persona.codigo;
+  var id = w.ident || {};
+  if (id.codigo) d.codigo = id.codigo; else { d.usuario = id.usuario; d.nip = id.nip; }
   srv('apiCrear', S.token, d).then(function (t) {
     S.wiz = { step: 4, t: t };
     render();

@@ -37,7 +37,8 @@ function _areas() {
       tipo: s.tipo,
       correos: String(f['Correo de la cuenta'] || '').toLowerCase().split(/[\s,;]+/)
                  .filter(function (c) { return c.indexOf('@') > 0; }),
-      activa: _activo(f['Activa']) && s.activa
+      activa: _activo(f['Activa']) && s.activa,
+      pin: String(f['PIN de entrada'] == null ? '' : f['PIN de entrada']).trim()
     };
   });
   __AREAS = A;
@@ -311,22 +312,78 @@ function _etiquetasObj(t, bultos, impresion, persona, motivo) {
 
 /* ======================= PERSONAS Y GESTORES ======================= */
 
-function _personaPorCodigo(codigo) {
-  const c = _normCod(codigo);
-  if (!c) return null;
-  const f = _tb(TR.H.PERSONAS).filas().filter(function (p) {
-    return _normCod(p['Código de credencial']) === c && _activo(p['Activo']);
-  })[0];
-  return f ? { nombre: String(f['Nombre completo']), codigo: String(f['Código de credencial']), num: String(f['No. empleado'] || '') } : null;
+/**
+ * ¿Quién es? Por credencial escaneada  →  d = 'EMP-0153'  ó  {codigo:'EMP-0153'}
+ *            o tecleando usuario y NIP →  d = {usuario:'sofia', nip:'123TAB'}
+ * "usuario" puede ser la columna Usuario o el No. de empleado.
+ * tipo = 'PERSONA' | 'GESTOR' | '' (cualquiera). Regresa null si no coincide.
+ * 5 NIP equivocados con el mismo usuario lo bloquean 15 minutos.
+ */
+function _identificar(d, tipo) {
+  if (d == null) return null;
+  if (typeof d !== 'object') d = { codigo: d };
+  const cod = _normCod(d.codigo);
+  const usr = String(d.usuario || '').trim();
+  const nip = String(d.nip || '').trim().toUpperCase();
+  if (!cod && !usr) return null;
+
+  let bloqueo = null;
+  if (!cod) {
+    bloqueo = CacheService.getScriptCache();
+    const n = Number(bloqueo.get('nip_' + _norm(usr)) || 0);
+    if (n >= 5) throw new Error('Demasiados NIP equivocados con ese usuario. Espera 15 minutos.');
+  }
+
+  const buscar = function (hoja, t) {
+    if (tipo && tipo !== t) return null;
+    const f = _tb(hoja).filas().filter(function (p) {
+      if (!_activo(p['Activo'])) return false;
+      if (cod) return _normCod(p['Código de credencial']) === cod;
+      const u = _norm(usr);
+      const esEl = (_norm(p['Usuario']) === u && u) || (t === 'PERSONA' && _normCod(p['No. empleado']) === _normCod(usr) && _normCod(usr));
+      return esEl && nip && String(p['NIP'] == null ? '' : p['NIP']).trim().toUpperCase() === nip;
+    })[0];
+    if (!f) return null;
+    return {
+      tipo: t,
+      nombre: String(f['Nombre completo']),
+      codigo: cod ? String(f['Código de credencial']) : '',
+      usuario: String(f['Usuario'] || usr),
+      num: String(f['No. empleado'] || ''),
+      area: String(f['Área (prefijo)'] || '').trim().toUpperCase(),
+      // cómo se identificó (para la bitácora)
+      via: cod ? String(f['Código de credencial']) : 'usuario ' + String(f['Usuario'] || usr)
+    };
+  };
+  const r = buscar(TR.H.PERSONAS, 'PERSONA') || buscar(TR.H.GESTORES, 'GESTOR');
+  if (bloqueo) {
+    const k = 'nip_' + _norm(usr);
+    if (r) bloqueo.remove(k); else bloqueo.put(k, String(Number(bloqueo.get(k) || 0) + 1), 900);
+  }
+  return r;
 }
 
-function _gestorPorCodigo(codigo) {
-  const c = _normCod(codigo);
-  if (!c) return null;
-  const f = _tb(TR.H.GESTORES).filas().filter(function (g) {
-    return _normCod(g['Código de credencial']) === c && _activo(g['Activo']);
-  })[0];
-  return f ? { nombre: String(f['Nombre completo']), codigo: String(f['Código de credencial']) } : null;
+function _personaPorCodigo(d) { return _identificar(d, 'PERSONA'); }
+function _gestorPorCodigo(d) { return _identificar(d, 'GESTOR'); }
+
+/** Texto de error cuando no se reconoce a alguien. */
+function _noReconocido(d, que) {
+  if (d && typeof d === 'object' && !d.codigo) return 'Usuario o NIP incorrectos' + (que ? ' (' + que + ')' : '') + '.';
+  const c = (d && typeof d === 'object') ? d.codigo : d;
+  return 'La credencial "' + c + '" no está registrada' + (que ? ' como ' + que : '') + ' o está desactivada.';
+}
+
+/** Valida un PIN (de área o de administrador). 5 errores = 15 min de bloqueo. */
+function _validarPin(clave, esperado, pin) {
+  if (!esperado) return true;
+  const cache = CacheService.getScriptCache();
+  const k = 'pin_' + clave;
+  const n = Number(cache.get(k) || 0);
+  if (n >= 5) throw new Error('Demasiados PIN equivocados. Espera 15 minutos.');
+  if (!String(pin || '').trim()) throw new Error('PIN_REQUERIDO');
+  if (String(pin).trim().toUpperCase() === String(esperado).trim().toUpperCase()) { cache.remove(k); return true; }
+  cache.put(k, String(n + 1), 900);
+  throw new Error('PIN incorrecto.');
 }
 
 /** Registra (una sola vez) a quien todavía no tiene credencial. */

@@ -49,6 +49,7 @@ function TR_REGLAS() {
 
   /** ¿Este traspaso aparece en "Entrantes" de esta área? */
   R.esEntrante = function (t, me, A) {
+    if (me === 'REC') return t.estatus === 'EN_RECEPCION';
     if (R.mismaSuc(A, t.destino, me)) return true;
     return me === 'LOG' && R.viaLog(t) && (!R.pasoLog(t) || t.estatus === 'EN_LOGISTICA');
   };
@@ -70,7 +71,7 @@ function TR_REGLAS() {
       permitidos = R.esOf(A, t.origen) ? ['NUEVO', 'RECOLECTADO', 'ENTREGADO_GESTOR']
                                        : ['RECOLECTADO', 'ENTREGADO_GESTOR', 'PAQUETERIA'];
     } else {
-      permitidos = ['RECOLECTADO', 'ENTREGADO_GESTOR', 'PAQUETERIA', 'EN_LOGISTICA', 'UBICADO', 'EXTRAVIADO'];
+      permitidos = ['RECOLECTADO', 'ENTREGADO_GESTOR', 'PAQUETERIA', 'EN_LOGISTICA', 'UBICADO', 'EXTRAVIADO', 'EN_RECEPCION'];
       if (R.esOf(A, t.origen) && R.esOf(A, t.destino)) permitidos.push('NUEVO');   // entrega interna en Oficinas
     }
     if (permitidos.indexOf(t.estatus) < 0) {
@@ -90,7 +91,8 @@ function TR_REGLAS() {
     }
     var ok = (t.estatus === 'NUEVO' && !R.esMor(A, t.origen) && !(R.viaLog(t) && R.esOf(A, t.origen)) &&
               !(R.esOf(A, t.origen) && R.esOf(A, t.destino))) ||
-             (t.estatus === 'EN_LOGISTICA' && !R.esMor(A, t.destino) && !R.esOf(A, t.destino));
+             (t.estatus === 'EN_LOGISTICA' && !R.esMor(A, t.destino) && !R.esOf(A, t.destino)) ||
+             (t.estatus === 'EN_RECEPCION' && modo === 'GESTOR');
     if (!ok) return { k: 'err', m: t.folio + ' está como "' + nomE(E, t.estatus) + '". No se puede entregar a gestoría.' };
     return { k: 'ok', m: '' };
   };
@@ -100,6 +102,29 @@ function TR_REGLAS() {
     if (t.solicitud) return false;
     if (me === 'LOG' && t.estatus === 'EN_LOGISTICA' && R.esMor(A, t.destino)) return true;
     return R.esMor(A, me) && t.origen === me && t.estatus === 'NUEVO';
+  };
+
+  /* ---------- Recepción Oficinas ---------- */
+
+  /** ¿El gestor lo puede DEJAR en Recepción Oficinas? */
+  R.dejable = function (t, A, E) {
+    if (!t) return { k: 'err', m: 'Ese folio no existe. Revisa que esté bien tecleado.' };
+    if (t.solicitud) return { k: 'err', m: t.folio + ' tiene una solicitud de eliminación pendiente. No se debe mover.' };
+    if (t.estatus === 'EN_RECEPCION') return { k: 'warn', m: t.folio + ' ya está en Recepción Oficinas.' };
+    var ok = ['RECOLECTADO', 'ENTREGADO_GESTOR', 'UBICADO', 'EXTRAVIADO'].indexOf(t.estatus) >= 0 ||
+             (t.estatus === 'NUEVO' && R.esOf(A, t.origen));
+    if (!ok) return { k: 'err', m: t.folio + ' está como "' + nomE(E, t.estatus) + '". No se puede dejar en Recepción.' };
+    return { k: 'ok', m: '' };
+  };
+
+  /** ¿Lo puede RECOGER esta persona o gestor? quien = {tipo:'PERSONA'|'GESTOR', area} */
+  R.recogible = function (t, A, E, quien) {
+    if (!t) return { k: 'err', m: 'Ese folio no existe. Revisa que esté bien tecleado.' };
+    if (t.estatus !== 'EN_RECEPCION') return { k: 'err', m: t.folio + ' no está en Recepción (está como "' + nomE(E, t.estatus) + '").' };
+    if (quien && quien.tipo === 'PERSONA' && !R.mismaSuc(A, t.destino, quien.area)) {
+      return { k: 'err', m: t.folio + ' es para ' + R.nom(A, t.destino) + '. Solo lo puede recoger esa área o un gestor.' };
+    }
+    return { k: 'ok', m: '' };
   };
 
   /** ¿Se puede meter en una caja para Morelia? (solo Logística) */

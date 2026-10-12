@@ -27,7 +27,7 @@ const TN = {
   H: { T: 'RES_Traspasos', MOV: 'RES_Movimientos', AVISOS: 'RES_Avisos' },
   // Solo se recolectan traspasos en estos estatus. Es el candado extra
   // para que un folio viejo con el mismo texto nunca mueva uno nuevo.
-  RECOLECTABLES: ['NUEVO', 'EN_LOGISTICA']
+  RECOLECTABLES: ['NUEVO', 'EN_LOGISTICA', 'EN_RECEPCION']
 };
 
 var __TN_LIBRO = null;

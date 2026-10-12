@@ -32,6 +32,33 @@ function instalar() {
     hechos.push('Se agregó el estatus ENTREGADO_GESTOR a CAT_Estatus.');
   }
 
+  // 1b) Estatus nuevo: "En Recepción Oficinas"
+  if (claves.indexOf('EN_RECEPCION') < 0) {
+    te.agregar({
+      'Clave': 'EN_RECEPCION', 'Nombre en pantalla': 'En Recepción Oficinas',
+      'Significado': 'Un gestor lo dejó en el stand de Recepción Oficinas. Espera a que lo recoja su área o un gestor.',
+      'Quién lo provoca': 'Gestor en la computadora de Recepción Oficinas', 'Color texto (hex)': '8A4B12', 'Color fondo (hex)': 'F6E7D8',
+      'Orden': 4, 'Muestra': 'En Recepción Oficinas', 'Estado en app de gestores': ''
+    });
+    hechos.push('Se agregó el estatus EN_RECEPCION (En Recepción Oficinas).');
+  }
+
+  // 1c) Columnas nuevas: PIN de entrada por área, usuario y NIP para quien no tiene credencial
+  [[TR.H.AREAS, 'PIN de entrada'], [TR.H.PERSONAS, 'Usuario'], [TR.H.PERSONAS, 'NIP'],
+   [TR.H.GESTORES, 'Usuario'], [TR.H.GESTORES, 'NIP']].forEach(function (x) {
+    if (_agregarColumna(x[0], x[1])) hechos.push('Columna "' + x[1] + '" agregada en ' + x[0] + '.');
+  });
+
+  // 1d) Área Recepción Oficinas (computadora del patio)
+  const ta0 = _tb(TR.H.AREAS);
+  if (!ta0.filas().some(function (f) { return String(f['Prefijo de folio']).trim().toUpperCase() === 'REC'; })) {
+    ta0.agregar({ 'Prefijo de folio': 'REC', 'Nombre del área': 'Recepción Oficinas', 'Sucursal (ID)': 'OFI',
+                  'Correo de la cuenta': 'jaraujo@fadermex.com', 'Activa': 'SI',
+                  'Notas': 'Computadora del patio: los gestores dejan y recogen traspasos.' });
+    __AREAS = null;
+    hechos.push('Se agregó el área REC (Recepción Oficinas) con tu correo.');
+  }
+
   // 2) Un contador de folios por cada área
   const tf = _tb(TR.H.FOLIOS);
   const ya = {};
@@ -45,7 +72,8 @@ function instalar() {
   const ta = _tb(TR.H.AJUSTES);
   const params = ta.filas().map(function (f) { return _norm(f['Parámetro']); });
   const faltan = [
-    ['revisar_avisos_cada_seg', 45, 'Cada cuántos segundos la página revisa si hay traspasos nuevos para el área.']
+    ['revisar_avisos_cada_seg', 45, 'Cada cuántos segundos la página revisa si hay traspasos nuevos para el área.'],
+    ['pin_administrador', '', 'PIN para entrar al Modo administrador. Vacío = sin PIN. Recomendado si tu cuenta está abierta en una computadora compartida.']
   ].filter(function (p) { return params.indexOf(_norm(p[0])) < 0; })
    .map(function (p) { return { 'Parámetro': p[0], 'Valor': p[1], 'Qué hace': p[2] }; });
   ta.agregarVarias(faltan);
@@ -137,5 +165,22 @@ function _crearActivador() {
   const ya = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'sincronizarOperaciones'; });
   if (ya) return false;
   ScriptApp.newTrigger('sincronizarOperaciones').timeBased().everyMinutes(TR.OPS.CADA_MIN).create();
+  return true;
+}
+
+/** Agrega una columna al final de la fila de encabezados si no existe. */
+function _agregarColumna(hoja, nombre) {
+  const sh = _libro().getSheetByName(hoja);
+  if (!sh) return false;
+  const lc = Math.max(1, sh.getLastColumn());
+  const enc = sh.getRange(TR.FILA_ENC, 1, 1, lc).getValues()[0].map(function (h) { return _norm(h); });
+  if (enc.indexOf(_norm(nombre)) >= 0) return false;
+  const cel = sh.getRange(TR.FILA_ENC, lc + 1);
+  cel.setValue(nombre);
+  try {
+    const prev = sh.getRange(TR.FILA_ENC, lc);
+    cel.setBackground(prev.getBackground()).setFontColor(prev.getFontColor()).setFontWeight('bold');
+  } catch (e) { }
+  __TB = {};
   return true;
 }
