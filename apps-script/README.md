@@ -2,7 +2,7 @@
 
 | Archivo | Qué es |
 |---|---|
-| `Operaciones.gs` | Script principal (v6.2): onEdit, fórmulas de autocompletado, fechas, TAREA, hora real de salida en AE. |
+| `Operaciones.gs` | Script principal (v6.3): activador propio opsAlEditar, fórmulas de autocompletado, fechas, TAREA, hora real de salida en AE. |
 | `Entregas_Correo.gs` | **Entregas automáticas**: cada 15 min lee los correos "entregado" de Skydropx y Mienvio, busca la guía en M y marca W + fecha en V. Va en el MISMO proyecto que Operaciones.gs (archivo aparte). |
 | `tablero/` | **Tablero de KPIs** (proyecto aparte, Web App). Instalación paso a paso: [`tablero/INSTRUCCIONES.md`](tablero/INSTRUCCIONES.md). |
 | `Diseno_Atajos.gs` | Presentación: diseño, menú ⚡ Atajos, filas compactas, auditoría. **Opcional** — no hace falta reemplazar el que ya tienes. |
@@ -32,10 +32,10 @@
 | F | Fecha | Script: fecha/hora al elegir Área. |
 | G | Zona | Desplegable (Datos!X). |
 | H | Método de envío | Desplegable (Datos!P). Activa desplegables y "NO APLICA" en I:N. |
-| I | Gestor | Desplegable (Datos!A) — Logística Interna. |
-| J | Vehículo | Desplegable (Datos!E) — Logística Interna. |
+| I | Gestor | Desplegable (Datos!A) — Logística Interna y Recolección. |
+| J | Vehículo | Desplegable (Datos!E) — Logística Interna y Recolección. |
 | K | Paquetería | Desplegable (Datos!AJ) — Paquetería Externa. |
-| L | Plataforma | Desplegable (Datos!AF) — UBER. |
+| L | Plataforma | Desplegable (Datos!AF) — UBER y Paquetería Externa. |
 | M | Guía | Manual — Paquetería Externa. |
 | N | Costo | Manual. |
 | O | ETA (Promesa) | Tú escribes la ETA que da la paquetería. Si está vacía, el script pone la hora de salida. |
@@ -54,6 +54,7 @@
 | Método | Bloquea ("NO APLICA") | Sale cuando… |
 |---|---|---|
 | Logística Interna | K:N | hay Gestor (I) y Vehículo (J) |
+| Recolección | K:N | hay Gestor (I) y Vehículo (J) |
 | Paquetería Externa | I:J | hay Guía (M) |
 | UBER | I:K | hay Plataforma (L) |
 | En ruta por otro método | — | al elegir el método |

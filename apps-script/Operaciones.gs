@@ -1,5 +1,17 @@
 // ============================================================
-//  OPERACIONES v6.2 — Script principal
+//  OPERACIONES v6.3 — Script principal
+//
+//  🆕 v6.3 — "LO AUTOMÁTICO NO FUNCIONA" (Método de envío no bloqueaba
+//  celdas ni ponía listas). Causa: este proyecto tiene ~20 archivos (app
+//  de gestores, Atajos, etc.). Si OTRO archivo también tiene una función
+//  llamada onEdit, Google usa solo la del último archivo y la de aquí
+//  nunca corre. Ahora la función se llama opsAlEditar y OPS_INSTALAR_TODO
+//  le crea su propio activador: corre siempre, sin importar los demás
+//  archivos. Además:
+//    • Recolección se comporta igual que Logística Interna.
+//    • Paquetería Externa: lista de Paquetería (K) Y de Plataforma (L).
+//    • OPS_REVISAR_CHOQUES() dice qué onEdit/onOpen/doGet está ganando.
+//  ⚠️ Después de pegar: ejecuta OPS_INSTALAR_TODO una vez.
 //
 //  🆕 v6.2: la columna V (Fecha de Entrega) tiene una fórmula que trae la
 //  fecha de la hoja APP_Entregas. Antes, al DESMARCAR la casilla W, el
@@ -88,14 +100,16 @@
 //  "Ejecutar". No toca el diseño (colores, fuentes, menú ⚡ Atajos).
 // ============================================================
 function OPS_INSTALAR_TODO() {
-  const eliminados = OPS_quitarTriggerDuplicadoOnEdit(true);
+  // v6.3: ya no se borran activadores de "onEdit" (pueden ser de otros
+  // archivos del proyecto); solo se instala el propio.
+  opsInstalarActivadorEdicion_();
   if (!OPS_instalarFormulasAutocompletado(true)) return;
   OPS_configurarFormatoCondicionalDuplicados(true);
   opsTituloSalidaAuto_();
   opsLimpiarCacheListas_();
   SpreadsheetApp.getUi().alert(
     "✅ TODO INSTALADO\n\n" +
-    "• Activadores duplicados eliminados: " + eliminados + "\n" +
+    "• Activador propio de edición instalado (lo automático ya corre siempre)\n" +
     "• Fórmulas rápidas instaladas en C, D, E, Y, Z\n" +
     "• Aviso rosa de duplicados activado\n" +
     "• Columna AE = \"" + OPS_TITULO_SALIDA_AUTO + "\" (hora real de salida)\n" +
@@ -171,13 +185,15 @@ const OPS_METODO_LOGISTICA_INTERNA  = "Logística Interna";
 const OPS_METODO_UBER               = "UBER";
 const OPS_METODO_PAQUETERIA_EXTERNA = "Paquetería Externa";
 const OPS_METODO_OTRO               = "En ruta por otro método";
+const OPS_METODO_RECOLECCION        = "Recolección"; // v6.3: igual que Logística Interna
 const OPS_OPCIONES_METODO_ENVIO_RESPALDO = [ // respaldo si Datos!P está vacío
-  OPS_METODO_LOGISTICA_INTERNA, OPS_METODO_UBER, OPS_METODO_PAQUETERIA_EXTERNA, OPS_METODO_OTRO,
+  OPS_METODO_LOGISTICA_INTERNA, OPS_METODO_UBER, OPS_METODO_PAQUETERIA_EXTERNA, OPS_METODO_OTRO, OPS_METODO_RECOLECCION,
 ];
 
 // [primera, última] columna que queda en "NO APLICA" con cada método.
 const OPS_RANGOS_BLOQUEADOS_POR_METODO = {
   [OPS_METODO_LOGISTICA_INTERNA]:  [OPS_COL_PAQUETERIA, OPS_COL_COSTO],   // K:N
+  [OPS_METODO_RECOLECCION]:        [OPS_COL_PAQUETERIA, OPS_COL_COSTO],   // K:N (v6.3)
   [OPS_METODO_PAQUETERIA_EXTERNA]: [OPS_COL_GESTOR, OPS_COL_VEHICULO],    // I:J
   [OPS_METODO_UBER]:               [OPS_COL_GESTOR, OPS_COL_PAQUETERIA],  // I:K (v6: antes I:L, bloqueaba Plataforma)
 };
@@ -198,7 +214,8 @@ const OPS_DATOS_COL_PAQUETERIAS   = 36; // AJ
 // Qué desplegable lleva cada columna (I..L) según el método.
 const OPS_LISTAS_POR_METODO = {
   [OPS_METODO_LOGISTICA_INTERNA]:  { [OPS_COL_GESTOR]: OPS_DATOS_COL_GESTORES, [OPS_COL_VEHICULO]: OPS_DATOS_COL_VEHICULOS },
-  [OPS_METODO_PAQUETERIA_EXTERNA]: { [OPS_COL_PAQUETERIA]: OPS_DATOS_COL_PAQUETERIAS },
+  [OPS_METODO_RECOLECCION]:        { [OPS_COL_GESTOR]: OPS_DATOS_COL_GESTORES, [OPS_COL_VEHICULO]: OPS_DATOS_COL_VEHICULOS },
+  [OPS_METODO_PAQUETERIA_EXTERNA]: { [OPS_COL_PAQUETERIA]: OPS_DATOS_COL_PAQUETERIAS, [OPS_COL_PLATAFORMA]: OPS_DATOS_COL_PLATAFORMAS },
   [OPS_METODO_UBER]:               { [OPS_COL_PLATAFORMA]: OPS_DATOS_COL_PLATAFORMAS },
 };
 
@@ -480,15 +497,11 @@ function OPS_configurarFormatoCondicionalDuplicados(silencioso) {
 // ============================================================
 //  TRIGGER PRINCIPAL
 // ============================================================
-function onEdit(e) {
+// v6.3: ya NO se llama onEdit (otro archivo del proyecto con ese mismo
+// nombre la tapaba). La corre su propio activador, que crea
+// OPS_INSTALAR_TODO (ver opsInstalarActivadorEdicion_).
+function opsAlEditar(e) {
   if (!e || !e.range) return;
-
-  // 🔧 v6 — si existe un activador instalable que también apunta a onEdit,
-  // Google corre esta función DOS veces por edición. La copia del
-  // activador simple (LIMITED) hace el trabajo; la del instalable (FULL)
-  // se sale de inmediato. Para quitarla del todo:
-  // OPS_quitarTriggerDuplicadoOnEdit().
-  if (String(e.authMode) === 'FULL') return;
 
   const sheet = e.range.getSheet();
   const nombreHoja = sheet.getName();
@@ -668,7 +681,7 @@ function opsActivarSalidaConValores_(sheet, fila, v) {
 
   let listo = false;
   if (metodo === OPS_METODO_PAQUETERIA_EXTERNA)     listo = esReal(txt(OPS_COL_GUIA));
-  else if (metodo === OPS_METODO_LOGISTICA_INTERNA) listo = esReal(txt(OPS_COL_GESTOR)) && esReal(txt(OPS_COL_VEHICULO));
+  else if (metodo === OPS_METODO_LOGISTICA_INTERNA || metodo === OPS_METODO_RECOLECCION) listo = esReal(txt(OPS_COL_GESTOR)) && esReal(txt(OPS_COL_VEHICULO));
   else if (metodo === OPS_METODO_UBER)              listo = esReal(txt(OPS_COL_PLATAFORMA));
   else if (metodo === OPS_METODO_OTRO)              listo = true;
   if (!listo) return;
@@ -819,6 +832,33 @@ function OPS_quitarTriggerDuplicadoOnEdit(silencioso) {
   Logger.log(msg);
   if (silencioso === true) return eliminados;
   try { SpreadsheetApp.getUi().alert(msg); } catch (err) {}
+}
+
+// v6.3: activador instalable propio → opsAlEditar. Uno solo (borra copias).
+function opsInstalarActivadorEdicion_() {
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'opsAlEditar')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('opsAlEditar').forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet()).onEdit().create();
+}
+
+// v6.3: dice qué función gana cuando varios archivos usan el mismo nombre.
+function OPS_REVISAR_CHOQUES() {
+  const L = ['REVISIÓN DE CHOQUES ENTRE ARCHIVOS', ''];
+  ['onEdit', 'onOpen', 'onSelectionChange', 'doGet', 'doPost'].forEach(nombre => {
+    let f = null;
+    try { f = eval(nombre); } catch (err) {}
+    if (typeof f !== 'function') { L.push('• ' + nombre + ': no existe'); return; }
+    L.push('• ' + nombre + ' que gana empieza así:\n      ' + f.toString().split('\n').slice(0, 3).join('\n      '));
+  });
+  const act = ScriptApp.getProjectTriggers().map(t => t.getHandlerFunction() + ' (' + t.getEventType() + ')');
+  L.push('', 'Activadores instalados: ' + (act.length ? act.join(', ') : 'ninguno'));
+  L.push(act.indexOf('opsAlEditar (ON_EDIT)') >= 0
+    ? '✅ Lo automático de Operaciones está activo.'
+    : '❌ Falta el activador de Operaciones: ejecuta OPS_INSTALAR_TODO.');
+  const texto = L.join('\n');
+  Logger.log(texto);
+  try { SpreadsheetApp.getUi().alert(texto); } catch (err) {}
 }
 
 // Se conserva el nombre de v5, pero ya NO crea un activador nuevo (eso era
