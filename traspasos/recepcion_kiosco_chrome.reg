@@ -40,4 +40,4 @@ Windows Registry Editor Version 5.00
 
 ; Al abrir Chrome: la pagina de Traspasos (cambia la URL por la tuya /exec)
 [HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome\RestoreOnStartupURLs]
-"https://script.google.com/a/macros/fadermex.com/s/AKfycbyEe93gdE_Sa18T8paJD182ocQ8IAUwJzVCG1MRX7uPBf-ObHvvkfHPAAQ7GRf4H1gl0Q/exec"
+"1"="https://script.google.com/a/macros/fadermex.com/s/AKfycbyEe93gdE_Sa18T8paJD182ocQ8IAUwJzVCG1MRX7uPBf-ObHvvkfHPAAQ7GRf4H1gl0Q/exec"
