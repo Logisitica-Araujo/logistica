@@ -59,18 +59,18 @@ function srv(fn) {
 
 /* ---------- entrada y sesión ---------- */
 function arrancar() {
-  // ?cambiar=1 abre directo la ventana de "Salir" (pide el PIN del área).
+  // Para sacar de su área a una computadora fijada (ej. Recepción en modo kiosco): abrir la URL con ?cambiar=1
   try {
     google.script.url.getLocation(function (l) {
-      S.pedirSalida = !!(l && l.parameter && l.parameter.cambiar);
-      seguir();
+      if (l && l.parameter && l.parameter.cambiar) { borrar('token'); pantallaEntrada('Elige el área de esta computadora.'); }
+      else seguir();
     });
   } catch (e) { seguir(); }
 }
 function seguir() {
   var tk = leer('token');
   if (!tk) return pantallaEntrada();
-  srv('apiReanudar', tk).then(function (d) { S.token = tk; aplicarSesion(d.ctx, d.cat); if (S.pedirSalida) { S.pedirSalida = false; salir(); } })
+  srv('apiReanudar', tk).then(function (d) { S.token = tk; aplicarSesion(d.ctx, d.cat); })
     .catch(function () { borrar('token'); pantallaEntrada(); });
 }
 
@@ -142,23 +142,7 @@ function aplicarSesion(ctx, cat) {
 }
 
 function cerrarSesion(msg) { borrar('token'); pantallaEntrada(msg); }
-/**
- * Salir del área pide la MISMA contraseña (PIN) con la que se entra a esa área
- * (o el PIN de administrador si el área no tiene). Así nadie saca a la computadora de su área.
- */
-function salir() {
-  var tk = S.token;
-  if (!tk) return pantallaEntrada();
-  srv('apiSalidaPidePin', tk).then(function (pide) {
-    if (!pide) return salirYa('');
-    S.salida = { err: null }; S.modal = null; render();
-  }).catch(function () { borrar('token'); pantallaEntrada(); });
-}
-function salirYa(pin) {
-  var tk = S.token;
-  srv('apiSalir', tk, pin).then(function () { S.salida = null; borrar('token'); pantallaEntrada(); })
-    .catch(function (e) { S.salida = { err: e.message === 'PIN_REQUERIDO' ? 'Escribe el PIN.' : e.message }; render(); });
-}
+function salir() { var tk = S.token; borrar('token'); if (tk) srv('apiSalir', tk).catch(function () { }); pantallaEntrada(); }
 
 /* ---------- datos ---------- */
 var MAPA = {}, CAJAS = {};
@@ -208,8 +192,7 @@ function colorDe(t) { return (S.EC[t.estatus] && S.EC[t.estatus].color) || '#5D6
 function render() {
   if (!S.ctx) return;
   var adm = S.ctx.admin;
-  var mant = S.data.mant && S.data.mant.on ? '<div class="mantbar"><div class="wrap">🛠 <b>EN MANTENIMIENTO</b> · ' + esc(S.data.mant.msg) + '</div></div>' : '';
-  $('#adminbar').innerHTML = mant + (adm ? '<div class="adminbar"><div class="wrap"><strong>MODO ADMINISTRADOR</strong><span>' + esc(S.ctx.email) + ' · control total: editar, mover, cambiar estatus y eliminar</span></div></div>' : '');
+  $('#adminbar').innerHTML = adm ? '<div class="adminbar"><div class="wrap"><strong>MODO ADMINISTRADOR</strong><span>' + esc(S.ctx.email) + ' · control total: editar, mover, cambiar estatus y eliminar</span></div></div>' : '';
   renderHeader();
   var v = '';
   if (esVistaAdmin()) {
@@ -253,7 +236,7 @@ function renderHeader() {
       return '<button type="button" class="bellitem ' + (a.visto ? '' : 'unseen') + '" data-a="open" data-v="' + esc(a.folio) + '"><span class="num">' + esc(a.folio) + '</span><span>' + esc(a.msg) + '</span><span class="muted" style="font-size:12px">' + esc(a.fecha + ' ' + a.hora) + '</span></button>';
     }).join('') : '<div class="muted">Sin avisos.</div>') + '</div>' : '') + '</div>';
   $('#header').innerHTML = '<div class="brand">' + logo + 'Traspasos</div>' +
-    cambioModo() + '<div class="who"><span class="p">' + esc(S.ctx.areaNombre) + '</span><span class="u">' + esc(S.ctx.email) + (min < 60 * 24 * 30 ? ' · sesión: cierra en ' + Math.floor(min / 60) + ' h ' + ('0' + (min % 60)).slice(-2) + ' min' : '') + ' · <a href="#" data-a="salir">' + (me() === 'REC' ? '🔒 ' : '') + 'Salir</a></span></div>' +
+    cambioModo() + '<div class="who"><span class="p">' + esc(S.ctx.areaNombre) + '</span><span class="u">' + esc(S.ctx.email) + (min < 60 * 24 * 30 ? ' · sesión: cierra en ' + Math.floor(min / 60) + ' h ' + ('0' + (min % 60)).slice(-2) + ' min' : '') + (me() === 'REC' ? ' · 🔒 equipo fijo' : ' · <a href="#" data-a="salir">Salir</a>') + '</span></div>' +
     bell + '<nav class="tabs">' + tabs.map(function (x) {
       return '<button type="button" data-a="tab" data-v="' + x[0] + '"' + (S.tab === x[0] ? ' aria-current="page"' : '') + '>' + x[1] + (x[2] ? ' <span class="count">' + x[2] + '</span>' : '') + '</button>';
     }).join('') + '</nav>';
@@ -291,8 +274,7 @@ function chips(lista, accion, sel) {
 function vBandeja() {
   var m = me(), A = S.A;
   var ent = S.data.traspasos.filter(function (t) { return R.esEntrante(t, m, A) || (t.ubic === m && t.estatus === 'UBICADO'); });
-  var sal = S.data.traspasos.filter(function (t) { return t.origen === m && t.estatus !== 'RESERVADO'; });
-  var reservados = S.data.traspasos.filter(function (t) { return t.origen === m && t.estatus === 'RESERVADO'; });
+  var sal = S.data.traspasos.filter(function (t) { return t.origen === m; });
   var src = S.dir === 'in' ? ent : sal;
   var lista = src.filter(function (t) { return !S.filtro || t.estatus === S.filtro; }).sort(orden);
   var a = A[m] || {};
@@ -302,41 +284,7 @@ function vBandeja() {
   return '<h1>Mi bandeja</h1><p class="sub">' + nota + ' Para recibir o entregar usa el <b>Escáner</b>.</p>' +
     '<div class="seg"><button type="button" data-a="dir" data-v="in" aria-pressed="' + (S.dir === 'in') + '">Entrantes (' + ent.length + ')</button><button type="button" data-a="dir" data-v="out" aria-pressed="' + (S.dir === 'out') + '">Salientes (' + sal.length + ')</button></div>' +
     chips(src, 'filtro', S.filtro) +
-    '<div class="list">' + (lista.length ? lista.map(function (t) { return tcard(t, S.dir === 'out'); }).join('') : '<div class="empty">No hay traspasos aquí.</div>') + '</div>' +
-    planB(reservados);
-}
-/** Plan B: etiquetas con folio apartado para cuando no haya sistema. */
-function planB(reservados) {
-  return '<details class="panel planb" style="margin-top:26px"><summary><b>🧯 Plan B: folios de contingencia</b> <span class="muted">· tienes ' + reservados.length + ' sin usar</span></summary>' +
-    '<div class="stack" style="margin-top:12px"><p class="muted" style="margin:0">Imprime unas etiquetas <b>ahora</b> y guárdalas en un sobre junto a la impresora. Si un día no hay internet o la página está en mantenimiento: pega una al bulto, escribe a mano el destino y los bultos, y anótalo en papel. Cuando regrese el sistema, ve a <b>Nuevo traspaso</b> y escanéala en <b>"¿Usaste un folio de contingencia?"</b>: se captura con ese mismo folio.</p>' +
-    (reservados.length ? '<div class="muted" style="font-size:13.5px">Sin usar: ' + reservados.map(function (t) { return '<span class="num">' + esc(t.folio) + '</span>'; }).join(', ') + '</div>' : '') +
-    '<div class="row"><label class="f" style="grid-auto-flow:column;align-items:center;gap:8px">¿Cuántas?<input class="t" id="contn" type="number" min="1" max="30" value="10" style="width:90px"></label>' +
-    '<button class="btn" type="button" data-a="contimp">Imprimir folios de contingencia</button></div></div></details>';
-}
-function contingenciaHTML(folio, pantalla) {
-  var tm = tamEtiqueta(), tam = estiloTam(tm, pantalla);
-  if (tm.formato === 'MINI') {
-    return '<div class="lbl mini" style="' + tam + '"><div class="mrow"><span class="fol">' + esc(folio) + '</span><span class="bul">__/__</span></div>' +
-      '<svg class="bc" data-code="' + esc(folio) + '"></svg><div class="dest">PLAN B → ____________</div></div>';
-  }
-  return '<div class="lbl' + (tm.formato === 'CHICA' ? ' chica' : '') + '" style="' + tam + '"><div><div class="k">CONTINGENCIA · DESTINO:</div><div class="dest">______________</div></div>' +
-    '<div class="fol">' + esc(folio) + '</div><svg class="bc" data-code="' + esc(folio) + '"></svg><div class="bul">BULTO ___ DE ___</div></div>';
-}
-function imprimirContingencia(n) {
-  toast('Apartando ' + n + ' folios…');
-  srv('apiContingencia', S.token, n).then(function (d) {
-    mandarImprimir(d.folios.map(function (f) { return contingenciaHTML(f, false); }).join(''));
-    toast(d.folios.length + ' folios de contingencia: ' + d.folios[0] + ' a ' + d.folios[d.folios.length - 1]);
-    refrescar(false);
-  }).catch(function (e) { toast(e.message); });
-}
-function usarContingencia(v) {
-  var f = R.folioDe(v), t = MAPA[f], w = S.wiz;
-  if (!t || t.estatus !== 'RESERVADO') w.err = f + ' no es un folio de contingencia sin usar.';
-  else if (t.origen !== me()) w.err = f + ' es de ' + nom(t.origen) + ', no de esta área.';
-  else { w.contingencia = t.folio; w.err = null; beep('ok'); }
-  if (w.err) beep('err');
-  render();
+    '<div class="list">' + (lista.length ? lista.map(function (t) { return tcard(t, S.dir === 'out'); }).join('') : '<div class="empty">No hay traspasos aquí.</div>') + '</div>';
 }
 
 /* ---------- Nuevo traspaso ---------- */
@@ -360,8 +308,6 @@ function vNuevo() {
       '<div class="note">Creado por: <b>' + esc(w.persona.nombre) + '</b>' + (sinCred() ? ' · con la cuenta de Oficinas' : '') + '</div>' +
       '<label class="f">¿Para dónde va?<select class="t" id="destin"><option value="">Elige el destino…</option>' + opts + '</select></label>' +
       '<div id="rutanote">' + rutaNota(m, w.destino) + '</div>' +
-      (w.contingencia ? '<div class="note route">🧯 Se capturará con el folio de contingencia <b class="num">' + esc(w.contingencia) + '</b> (ya tiene su etiqueta pegada). <button class="btn ghost" type="button" data-a="contquitar">Quitar</button></div>'
-        : '<details class="sincred"><summary>¿Usaste un folio de contingencia (Plan B)? Escanéalo</summary><input class="scaninput" id="contin" autocomplete="off" placeholder="' + esc(m) + '-0000" style="margin-top:8px"></details>') +
       '<div class="row">' + (sinCred() ? '' : '<button class="btn ghost" type="button" data-a="atras">Atrás</button>') + '<button class="btn primary" type="button" data-a="dest">Continuar</button></div>' + err +
       '</div><div class="panel"><h2>Rutas precargadas</h2><p class="muted" style="margin:0">Aquí aparecen todas las áreas activas de CAT_Areas. Si el destino es Morelia, la ruta va sola por Logística y paquetería.</p></div></div>';
   }
@@ -375,7 +321,7 @@ function vNuevo() {
       etiquetaHTML({ folio: m + '-0000', origen: m, destino: w.destino, bultos: w.bultos || 1, fecha: '', hora: horaAhora(), por: w.persona.nombre }, 1, 0, true) + '</div></div></div>';
   }
   var t = w.t;
-  return head + '<div class="panel stack"><div class="feedback ok">✓ Traspaso <span class="num">' + esc(t.folio) + '</span> ' + (t.contingencia ? 'capturado con su folio de contingencia (no se imprimió nada: ya tiene su etiqueta).' : 'creado. Se mandaron ' + t.bultos + ' etiqueta(s) a imprimir. Pégalas en los bultos; queda en espera de gestoría.') + '</div>' +
+  return head + '<div class="panel stack"><div class="feedback ok">✓ Traspaso <span class="num">' + esc(t.folio) + '</span> creado. Se mandaron ' + t.bultos + ' etiqueta(s) a imprimir. Pégalas en los bultos; queda en espera de gestoría.</div>' +
     '<div class="labels">' + rango(t.bultos).map(function (b) { return etiquetaHTML(t, b, 0, true); }).join('') + '</div>' +
     '<div class="row"><button class="btn" type="button" data-a="reimp-auto">Volver a imprimir</button><button class="btn" type="button" data-a="open" data-v="' + esc(t.folio) + '">Ver detalle</button><button class="btn primary" type="button" data-a="otro">Crear otro traspaso</button></div></div>';
 }
@@ -746,15 +692,6 @@ function abrir(folio) {
     .catch(function (e) { if (S.modal) { S.modal.err = e.message; render(); } });
 }
 function renderModal() {
-  if (S.salida) {
-    $('#modal').innerHTML = '<div class="modal"><div class="box pinbox" role="dialog" aria-modal="true" style="max-width:440px">' +
-      '<h2>🔒 Salir de ' + esc(S.ctx.areaNombre) + '</h2><p class="muted" style="margin-top:0">Escribe el PIN con el que se entra a esta área.</p>' +
-      '<div class="row"><input class="t" id="salpin" type="password" autocomplete="off" placeholder="PIN" style="max-width:200px">' +
-      '<button class="btn primary" type="button" data-a="salirpin">Salir</button><button class="btn ghost" type="button" data-a="salirno">Cancelar</button></div>' +
-      (S.salida.err ? '<div class="feedback err" style="margin-top:10px">' + esc(S.salida.err) + '</div>' : '') + '</div></div>';
-    $('#salpin').focus();
-    return;
-  }
   var m = S.modal;
   if (!m) { $('#modal').innerHTML = ''; return; }
   var inner;
@@ -822,10 +759,6 @@ document.addEventListener('click', function (e) {
   switch (a) {
     case 'entrar': return entrar(v);
     case 'salir': e.preventDefault(); return salir();
-    case 'salirpin': return salirYa($('#salpin').value);
-    case 'salirno': S.salida = null; break;
-    case 'contimp': return imprimirContingencia(Number($('#contn').value) || 10);
-    case 'contquitar': S.wiz.contingencia = null; break;
     case 'cambiarArea': return pantallaEntrada();
     case 'tab':
       if (me() === 'REC' && S.tab !== v) S.rec = { quien: null, quienId: null, lote: [], fb: null, enviando: false };
@@ -935,8 +868,6 @@ function procesarCampo(el) {
   if (id === 'scanin') alEscanear(v);
   else if (id === 'cajain') agregarACaja(v);
   else if (id === 'recin') recEscanear(v);
-  else if (id === 'salpin') salirYa(v);
-  else if (id === 'contin') usarContingencia(v);
   else if (id === 'pinin') entrar(S.pinPara || el.closest('.pinbox').querySelector('[data-a=entrarpin]').getAttribute('data-v'), v);
   else if (/-(cod|nip|usr)$/.test(id)) {
     var p = id.replace(/-(cod|nip|usr)$/, '');
@@ -953,9 +884,9 @@ function procesarCampo(el) {
  * Si la pistola además manda Enter, no se duplica.
  */
 var AUTO = { el: null, t: null, ult: 0, rapidas: 0, lentas: 0 };
-var CAMPOS_AUTO = /^(scanin|cajain|recin|contin|[a-z]+-cod)$/;
+var CAMPOS_AUTO = /^(scanin|cajain|recin|[a-z]+-cod)$/;
 document.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape' && (S.modal || S.salida)) { S.modal = null; S.salida = null; render(); return; }
+  if (e.key === 'Escape' && S.modal) { S.modal = null; render(); return; }
   var el = e.target;
   if (e.key === 'Enter') {
     if (!el.id) return;
@@ -1033,13 +964,13 @@ function crear() {
   w.desc = $('#descin').value.trim();
   if (!w.desc) { w.err = 'Describe qué envías.'; return render(); }
   w.enviando = true; w.err = null; render();
-  var d = { destino: w.destino, desc: w.desc, bultos: w.bultos || 1, folioContingencia: w.contingencia || '' };
+  var d = { destino: w.destino, desc: w.desc, bultos: w.bultos || 1 };
   var id = w.ident || {};
   if (id.codigo) d.codigo = id.codigo; else { d.usuario = id.usuario; d.nip = id.nip; }
   srv('apiCrear', S.token, d).then(function (t) {
     S.wiz = { step: 4, t: t };
     render();
-    if (!t.contingencia) imprimir(t, rango(t.bultos), 0);   // los de contingencia ya traen su etiqueta
+    imprimir(t, rango(t.bultos), 0);
     refrescar(false);
   }).catch(function (e) { w.enviando = false; w.err = e.message; render(); });
 }

@@ -62,7 +62,6 @@ function _siguienteCaja() {
 function apiArmarCaja(token, folios) {
   return _api(function () {
     const c = _ctx(token);
-    _noMantenimiento(c);
     if (c.area !== 'LOG' && !c.admin) throw new Error('Solo Logística puede armar cajas.');
     if (!_libro().getSheetByName(TR.H.CAJAS)) throw new Error('Falta la hoja RES_Cajas. Corre 🔄 Traspasos → Instalar / reparar.');
     const A = _areas();
@@ -186,9 +185,7 @@ function _guiasOperaciones() {
   let cEta = -1;
   for (let i = 0; i < enc.length; i++) if (enc[i].indexOf('eta') === 0) { cEta = i; break; }
   const ult = sh.getLastRow();
-  // Después de "Limpiar para lanzamiento" se ignoran las filas viejas (sus folios podrían repetirse).
-  const ignorar = Number(_ajuste('ops_ignorar_hasta_fila', 0)) || 0;
-  const desde = Math.max(TR.OPS.FILA_ENC + 1, ult - TR.OPS.MAX_FILAS + 1, ignorar + 1);
+  const desde = Math.max(TR.OPS.FILA_ENC + 1, ult - TR.OPS.MAX_FILAS + 1);
   if (ult < desde) return {};
   const datos = sh.getRange(desde, 1, ult - desde + 1, lc).getValues();
   const out = {};
