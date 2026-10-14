@@ -32,11 +32,11 @@ Hazlo **dentro del usuario Recepcion de Windows**, **antes** de la capa 3.
 2. Abre la URL de la página (la que termina en `/exec`). Google te pide entrar: usa **jaraujo@fadermex.com** y marca que recuerde el equipo.
 3. En la página elige **Recepción Oficinas**. Queda guardado en esa computadora.
 4. **Protege el resto de tu cuenta dentro de la página:**
-   - **CAT_Areas → "PIN de entrada":** pon PIN a **TODAS** tus áreas menos REC (LOG y las demás que tengan tu correo).
+   - **CAT_Areas → "PIN de entrada":** pon PIN a **TODAS** tus áreas, **incluida REC**. Ese mismo PIN es el que se pide para **Salir**: así nadie saca a la computadora de Recepción sin la contraseña.
    - **CFG_Ajustes → pin_administrador:** pon un PIN.
    - **CFG_Ajustes → sesion_horas_sucursal = 0:** la sesión no se cierra sola.
 
-En Recepción **ya no aparece "Salir"**: dice 🔒 *equipo fijo*.
+En Recepción el botón dice **🔒 Salir** y pide el PIN de REC. Si REC no tiene PIN, pide el de administrador.
 
 ## Capa 3: bloquear Chrome (solo abre Traspasos)
 
@@ -86,11 +86,11 @@ Para volver a la página: doble clic al acceso directo **Traspasos**, o reinicia
 
 ## Cuando TÚ necesites cambiar el área de esa computadora
 
-En kiosco no hay "Salir". Haz esto:
+1. Clic en **🔒 Salir** (arriba, junto al correo).
+2. Escribe el **PIN de REC** (el mismo con el que se entra).
+3. Elige la otra área. Las que tienen PIN te lo piden.
 
-1. Cierra con **Alt + F4**.
-2. Abre Chrome normal y entra a tu URL agregando `?cambiar=1` al final. Ejemplo: `https://script.google.com/a/macros/fadermex.com/s/TU-ID/exec?cambiar=1`
-3. Elige el área. Las que tienen PIN te lo piden.
+Con 5 PIN equivocados se bloquea 15 minutos. Abrir la URL con `?cambiar=1` sólo abre esa misma ventana de Salir: también pide el PIN.
 
 ## Resumen de seguridad
 
@@ -102,3 +102,4 @@ En kiosco no hay "Salir". Haz esto:
 | Cambiar de cuenta de Google | Sin agregar personas ni invitados (capa 3) |
 | Ver tus archivos de Windows | Usuario estándar `Recepcion` (capa 1) |
 | Que se cierre la sesión | `sesion_horas_sucursal = 0` |
+| Que alguien la saque de Recepción | **Salir** pide el PIN de entrada del área |

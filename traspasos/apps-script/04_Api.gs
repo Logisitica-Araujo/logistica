@@ -43,7 +43,7 @@ function apiInicio() {
     if (!areas.some(function (a) { return a.mia; }) && !admin) {
       throw new Error('Tu correo ' + yo + ' no tiene un área asignada. Pide a un administrador que lo agregue en la hoja CAT_Areas.');
     }
-    return { email: yo, admin: admin, adminPin: !!String(_ajuste('pin_administrador', '') || '').trim(), areas: areas, logo: _logo() };
+    return { email: yo, admin: admin, adminPin: !!String(_ajuste('pin_administrador', '') || '').trim(), areas: areas, logo: _logo(), mant: _mantenimiento() };
   });
 }
 
@@ -88,13 +88,32 @@ function apiReanudar(token) {
   });
 }
 
-function apiSalir(token) {
+/**
+ * Salir del área de esta computadora. Pide la MISMA contraseña (PIN) con la que se entra a esa área.
+ * Si el área no tiene PIN, pide el PIN de administrador; si tampoco hay, sale libre.
+ * 5 errores = 15 min de bloqueo.
+ */
+function apiSalir(token, pin) {
   return _api(function () {
-    try {
-      const c = _ctx(token);
-      _tb(TR.H.SESIONES).agregar({ 'Fecha': _hoy(), 'Hora': _hora(), 'Cuenta': c.email, 'Equipo': c.area, 'Evento': 'SALIDA', 'Dispositivo': '' });
-    } catch (e) { }
+    let c;
+    try { c = _ctx(token); } catch (e) { return true; }      // sesión vencida: ya está afuera
+    if (c.area !== TR.AREA_ADMIN) {
+      const a = _areas()[c.area];
+      const esperado = (a && a.pin) || String(_ajuste('pin_administrador', '') || '').trim();
+      _validarPin(c.email + '_SALIR_' + c.area, esperado, pin);
+    }
+    _tb(TR.H.SESIONES).agregar({ 'Fecha': _hoy(), 'Hora': _hora(), 'Cuenta': c.email, 'Equipo': c.area, 'Evento': 'SALIDA', 'Dispositivo': '' });
     return true;
+  });
+}
+
+/** ¿Salir de esta área pide PIN? (para mostrar o no la cajita) */
+function apiSalidaPidePin(token) {
+  return _api(function () {
+    const c = _ctx(token);
+    if (c.area === TR.AREA_ADMIN) return false;
+    const a = _areas()[c.area];
+    return !!((a && a.pin) || String(_ajuste('pin_administrador', '') || '').trim());
   });
 }
 
@@ -154,7 +173,7 @@ function apiDatos(token) {
         });
     }
 
-    return { traspasos: mios, activos: activos, avisos: avisos, solicitudes: solicitudes, cajas: _cajasVisibles(), ahora: _ahoraTxt() };
+    return { traspasos: mios, activos: activos, avisos: avisos, solicitudes: solicitudes, cajas: _cajasVisibles(), ahora: _ahoraTxt(), mant: _mantenimiento() };
   });
 }
 
@@ -238,6 +257,7 @@ function apiCrear(token, d) {
     const c = _ctx(token);
     const me = c.area;
     if (me === TR.AREA_ADMIN) throw new Error('Para crear un traspaso entra como un área, no como Administración.');
+    _noMantenimiento(c);
     const A = _areas();
     if (!A[me]) throw new Error('Tu área ya no existe en CAT_Areas.');
     d = d || {};
@@ -262,7 +282,14 @@ function apiCrear(token, d) {
     const cred = persona.via;
 
     return _conCandado(function () {
-      const folio = _siguienteFolio(me);
+      // ¿Es un folio de contingencia (etiqueta impresa antes, usada cuando no había sistema)?
+      let reservado = null;
+      if (d.folioContingencia) {
+        reservado = _buscarT(d.folioContingencia);
+        if (!reservado || reservado.estatus !== 'RESERVADO') throw new Error('Ese folio de contingencia no existe o ya se capturó.');
+        if (reservado.origen !== me) throw new Error('Ese folio de contingencia es de ' + R.nom(A, reservado.origen) + ', no de esta área.');
+      }
+      const folio = reservado ? reservado.folio : _siguienteFolio(me);
       const via = (A[me].tipo === 'FORANEA' || A[dest].tipo === 'FORANEA') ? 'VIA_LOGISTICA' : 'DIRECTA';
       const por = persona.nombre;   // el código de la credencial va aparte (columna Credencial), nunca a la vista
       const fila = {
@@ -272,8 +299,19 @@ function apiCrear(token, d) {
         'Estatus': 'NUEVO', 'Ruta': via, 'Reimpresiones': 0, 'Eliminación solicitada': 'NO',
         'Última actualización': _ahoraTxt()
       };
-      _tb(TR.H.TRASPASOS).agregar(fila);
       const t = { folio: folio, bultos: bultos };
+      if (reservado) {
+        delete fila['Folio']; delete fila['Fecha creación']; delete fila['Hora'];   // conserva la fecha en que se reservó
+        _actualizarT(reservado, fila);
+        _tb(TR.H.MOV).agregar(_movObj(t, 'CAPTURADO (FOLIO DE CONTINGENCIA)', 'RESERVADO', 'NUEVO', { donde: me, persona: persona.nombre, cred: cred, equipo: me,
+          detalle: 'Se usó en papel cuando no había sistema; capturado el ' + _ahoraTxt() }));
+        _aviso(dest, folio, 'Nuevo traspaso para ti desde ' + R.nom(A, me) + ' (capturado de contingencia)');
+        const nuevoC = _tObj(_buscarFila(folio));
+        delete nuevoC.cred; delete nuevoC._fila;
+        nuevoC.contingencia = true;
+        return nuevoC;
+      }
+      _tb(TR.H.TRASPASOS).agregar(fila);
       const lista = [];
       for (let i = 1; i <= bultos; i++) lista.push(i);
       _tb(TR.H.MOV).agregarVarias([
@@ -310,6 +348,7 @@ function apiConfirmarLote(token, d) {
     const c = _ctx(token);
     const me = c.area;
     if (me === TR.AREA_ADMIN) throw new Error('Para escanear entra como un área.');
+    _noMantenimiento(c);
     d = d || {};
     const modo = String(d.modo || '').toUpperCase();
     if (modo !== 'RECIBIR' && modo !== 'ENTREGAR') throw new Error('Modo no válido.');
@@ -477,6 +516,7 @@ function apiSolicitarEliminacion(token, folio, motivo) {
 function apiPaqueteria(token, folio, paqueteria, guia) {
   return _api(function () {
     const c = _ctx(token);
+    _noMantenimiento(c);
     const A = _areas();
     guia = String(guia || '').trim();
     if (!guia) throw new Error('Captura el número de guía.');
@@ -489,6 +529,40 @@ function apiPaqueteria(token, folio, paqueteria, guia) {
     const para = R.esMor(A, c.area) ? 'LOG' : t.destino;
     _aviso(para, t.folio, 'Va en camino por paquetería · ' + paqueteria + ' · guía ' + guia);
     return true;
+  });
+}
+
+/* ======================= PLAN B: FOLIOS DE CONTINGENCIA =======================
+ * Para cuando no haya internet, la página falle o esté en mantenimiento.
+ * Cada área imprime ANTES unas etiquetas con folio ya apartado (estatus RESERVADO).
+ * Sin sistema: se pega una, se escribe a mano destino y bultos, y se anota en papel.
+ * Al volver: "Nuevo traspaso" → "¿Usaste un folio de contingencia?" → se captura con ese mismo folio.
+ * ============================================================================== */
+function apiContingencia(token, n) {
+  return _api(function () {
+    const c = _ctx(token);
+    const me = c.area;
+    const A = _areas();
+    if (!A[me] || R.esPausa(me)) throw new Error('Los folios de contingencia se imprimen desde un área que crea traspasos.');
+    n = Math.max(1, Math.min(30, parseInt(n, 10) || 10));
+    return _conCandado(function () {
+      const ya = _traspasos().filter(function (t) { return t.origen === me && t.estatus === 'RESERVADO'; }).length;
+      if (ya + n > 40) throw new Error('Ya tienes ' + ya + ' folios de contingencia sin usar. Usa esos primero (máximo 40 apartados).');
+      const filas = [], movs = [], folios = [];
+      for (let i = 0; i < n; i++) {
+        const folio = _siguienteFolio(me);
+        folios.push(folio);
+        filas.push({ 'Folio': folio, 'Fecha creación': _hoy(), 'Hora': _hora(), 'Origen (prefijo)': me, 'Origen': R.nom(A, me),
+          'Destino (prefijo)': '', 'Destino': '', 'Descripción': '(folio de contingencia sin usar)', 'Bultos': 1,
+          'Creado por': c.email, 'Credencial': '', 'Sin credencial': 'SI', 'Estatus': 'RESERVADO', 'Ruta': '',
+          'Reimpresiones': 0, 'Eliminación solicitada': 'NO', 'Última actualización': _ahoraTxt() });
+        movs.push(_movObj({ folio: folio }, 'FOLIO DE CONTINGENCIA APARTADO', '', 'RESERVADO', { donde: me, persona: c.email, equipo: me }));
+        // _siguienteFolio revisa los existentes: se agrega de una vez para que el siguiente no repita
+        _tb(TR.H.TRASPASOS).agregar(filas[filas.length - 1]);
+      }
+      _tb(TR.H.MOV).agregarVarias(movs);
+      return { folios: folios, origen: me, fecha: _hoy() };
+    });
   });
 }
 

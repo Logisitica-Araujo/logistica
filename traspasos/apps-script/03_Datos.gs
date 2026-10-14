@@ -237,6 +237,16 @@ function _ctx(token) {
   return { email: d[0], area: d[1], admin: admin, exp: Number(d[3]), puedeAdmin: _esAdmin(d[0]) };
 }
 
+/** Modo mantenimiento (CFG_Ajustes → modo_mantenimiento = SI). Mientras dure, sólo los administradores mueven traspasos. */
+function _mantenimiento() {
+  return { on: _si(_ajuste('modo_mantenimiento', 'NO')),
+           msg: String(_ajuste('mensaje_mantenimiento', '') || 'Estamos dando mantenimiento a Traspasos. Usa tus folios de contingencia y captúralos cuando regrese.') };
+}
+function _noMantenimiento(c) {
+  const m = _mantenimiento();
+  if (m.on && !c.admin) throw new Error('🛠 ' + m.msg);
+}
+
 function _exigirAdmin(c) {
   if (!c.admin) throw new Error('Solo un administrador puede hacer esto.');
 }

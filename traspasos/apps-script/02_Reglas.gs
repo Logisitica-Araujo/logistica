@@ -70,6 +70,7 @@ function TR_REGLAS() {
   R.recibir = function (t, me, A, E) {
     if (!t) return { k: 'err', m: 'Ese folio no existe. Revisa que esté bien tecleado.' };
     if (t.solicitud) return { k: 'err', m: t.folio + ' tiene una solicitud de eliminación pendiente. No se debe mover hasta que responda un administrador.' };
+    if (t.estatus === 'RESERVADO') return { k: 'err', m: t.folio + ' es un folio de contingencia que todavía no se captura. El área que lo usó debe capturarlo primero en "Nuevo traspaso".' };
     var esLog = me === 'LOG' && R.viaLog(t) && !R.pasoLog(t);
     if (!R.mismaSuc(A, t.destino, me) && !esLog) {
       var aqui = (A[me] && (A[me].tipo === 'SUCURSAL' || A[me].tipo === 'FORANEA')) ? A[me].sucNombre : R.nom(A, me);
@@ -115,7 +116,7 @@ function TR_REGLAS() {
     if (t.solicitud) return { k: 'err', m: t.folio + ' tiene una solicitud de eliminación pendiente. No se debe mover.' };
     if (t.estatus === 'EN_RECEPCION') return { k: 'warn', m: t.folio + ' ya está en Recepción Oficinas.' };
     // Cualquier traspaso que siga en camino se puede dejar en pausa aquí (aunque se haya saltado un paso).
-    var ok = R.FINALES.indexOf(t.estatus) < 0;
+    var ok = R.FINALES.indexOf(t.estatus) < 0 && t.estatus !== 'RESERVADO';
     if (!ok) return { k: 'err', m: t.folio + ' está como "' + nomE(E, t.estatus) + '". No se puede dejar en Recepción.' };
     return { k: 'ok', m: '' };
   };
@@ -144,7 +145,7 @@ function TR_REGLAS() {
 
   /** ¿Se puede solicitar eliminarlo? Solo el origen, y solo antes de que se mueva. */
   R.eliminable = function (t, me) {
-    return t.origen === me && t.estatus === 'NUEVO' && !t.solicitud;
+    return t.origen === me && (t.estatus === 'NUEVO' || t.estatus === 'RESERVADO') && !t.solicitud;
   };
 
   return R;

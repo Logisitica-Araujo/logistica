@@ -22,6 +22,7 @@ function apiRecepcion(token, d) {
   return _api(function () {
     const c = _ctx(token);
     if (c.area !== AREA_REC) throw new Error('Esto solo se hace desde la computadora de Recepción Oficinas.');
+    _noMantenimiento(c);
     d = d || {};
     const modo = String(d.modo || '').toUpperCase();
     if (modo !== 'DEJAR' && modo !== 'RECOGER') throw new Error('Modo no válido.');
