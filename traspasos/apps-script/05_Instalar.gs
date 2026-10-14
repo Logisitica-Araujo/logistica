@@ -73,7 +73,10 @@ function instalar() {
   const params = ta.filas().map(function (f) { return _norm(f['Parámetro']); });
   const faltan = [
     ['revisar_avisos_cada_seg', 45, 'Cada cuántos segundos la página revisa si hay traspasos nuevos para el área.'],
-    ['pin_administrador', '', 'PIN para entrar al Modo administrador. Vacío = sin PIN. Recomendado si tu cuenta está abierta en una computadora compartida.']
+    ['pin_administrador', '', 'PIN para entrar al Modo administrador. Vacío = sin PIN. Recomendado si tu cuenta está abierta en una computadora compartida.'],
+    ['ops_columna_folio', 'A', 'Hoja Operaciones: columna (letra) donde va el folio del traspaso o de la caja.'],
+    ['ops_columna_paqueteria', 'K', 'Hoja Operaciones: columna (letra) de la paquetería (DHL, Estafeta…).'],
+    ['ops_columna_guia', 'M', 'Hoja Operaciones: columna (letra) del número de guía. Con guía, el traspaso pasa solo a "Enviado por paquetería".']
   ].filter(function (p) { return params.indexOf(_norm(p[0])) < 0; })
    .map(function (p) { return { 'Parámetro': p[0], 'Valor': p[1], 'Qué hace': p[2] }; });
   ta.agregarVarias(faltan);
@@ -90,10 +93,24 @@ function instalar() {
 
   // 4) Hoja de impresoras: una fila por área, para poner el tamaño de etiqueta de cada una
   if (_crearHojaImpresoras()) hechos.push('Se creó la hoja CAT_Impresoras: llena el tamaño de etiqueta de cada área.');
+  ['Margen superior (mm)', 'Margen izquierdo (mm)', 'Orientación', 'Formato'].forEach(function (h) {
+    if (_agregarColumna(TR.H.IMPRESORAS, h)) hechos.push('Columna "' + h + '" agregada en CAT_Impresoras (opcional).');
+  });
+  const imp = _impresoras();
+  hechos.push('Impresoras configuradas: ' + (Object.keys(imp).length
+    ? Object.keys(imp).map(function (id) { return id + ' ' + imp[id].ancho + '×' + imp[id].alto; }).join(', ')
+    : 'ninguna (todas usan el tamaño general de CFG_Ajustes)') + '.');
 
   // 5) Cajas para Morelia y revisión automática de guías en "Operaciones"
   if (_crearHojaCajas()) hechos.push('Se creó la hoja RES_Cajas (cajas para Morelia).');
   if (_crearActivador()) hechos.push('Activado: cada ' + TR.OPS.CADA_MIN + ' min se revisan las guías en "Operaciones".');
+  try { if (_crearActivadorEdicion()) hechos.push('Activado: al escribir en "Operaciones" (columnas folio / paquetería / guía) el traspaso se actualiza al momento.'); }
+  catch (e) { hechos.push('⚠ No pude crear el activador "al editar Operaciones": ' + e.message); }
+  try {
+    const r = sincronizarOperaciones(true);
+    hechos.push('Revisión de Operaciones: ' + r.n + ' traspaso(s) pasaron a "Enviado por paquetería".' +
+      (r.omitidos.length ? ' Sin cambiar: ' + r.omitidos.slice(0, 15).map(function (o) { return o.folio + ' (' + o.motivo + ')'; }).join('; ') : ''));
+  } catch (e) { hechos.push('⚠ Revisión de Operaciones: ' + e.message); }
   try { _guiasOperaciones(); hechos.push('Conexión con la hoja "Operaciones": OK.'); }
   catch (e) { hechos.push('⚠ No pude leer "Operaciones": ' + e.message); }
 
@@ -131,12 +148,14 @@ function _crearHojaImpresoras() {
   const ss = _libro();
   if (ss.getSheetByName(TR.H.IMPRESORAS)) return false;
   const sh = ss.insertSheet(TR.H.IMPRESORAS);
-  const enc = ['Área (prefijo)', 'Área', 'Impresora (marca y modelo)', 'Ancho etiqueta (mm)', 'Alto etiqueta (mm)', 'Notas'];
+  const enc = ['Área (prefijo)', 'Área', 'Impresora (marca y modelo)', 'Ancho etiqueta (mm)', 'Alto etiqueta (mm)', 'Notas',
+               'Margen superior (mm)', 'Margen izquierdo (mm)', 'Orientación', 'Formato'];
   sh.getRange(1, 1).setValue('CAT_Impresoras  —  CATÁLOGO · La app LEE esta hoja · Solo administradores la editan.  ' +
-    'Tamaño de etiqueta de cada área. Si Ancho/Alto quedan vacíos, se usa el de CFG_Ajustes.');
+    'Tamaño de etiqueta de cada área. En "Área (prefijo)" puede ir el área (NR), la sucursal (Nueva Roma = todas sus áreas) o TODAS. ' +
+    'Si Ancho/Alto quedan vacíos, se usa el de CFG_Ajustes. Márgenes para mover la impresión; Orientación Horizontal/Vertical; Formato AUTO/MINI/CHICA/COMPLETA.');
   sh.getRange(2, 1, 1, enc.length).setValues([enc]);
   const A = _areas();
-  const filas = Object.keys(A).map(function (id) { return [id, R.nom(A, id), 'PENDIENTE', '', '', '']; });
+  const filas = Object.keys(A).map(function (id) { return [id, R.nom(A, id), 'PENDIENTE', '', '', '', '', '', '', '']; });
   if (filas.length) sh.getRange(3, 1, filas.length, enc.length).setValues(filas);
   try {
     sh.setTabColor('#1F63D6');
@@ -144,7 +163,7 @@ function _crearHojaImpresoras() {
     sh.setRowHeight(1, 36);
     sh.getRange(2, 1, 1, enc.length).setBackground('#1F63D6').setFontColor('#FFFFFF').setFontWeight('bold');
     sh.setFrozenRows(2);
-    [16, 30, 30, 20, 20, 40].forEach(function (w, i) { sh.setColumnWidth(i + 1, w * 7); });
+    [16, 30, 30, 20, 20, 40, 18, 18, 14, 14].forEach(function (w, i) { sh.setColumnWidth(i + 1, w * 7); });
   } catch (e) { }
   __TB = {};
   return true;
@@ -175,6 +194,14 @@ function _crearActivador() {
   const ya = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'sincronizarOperaciones'; });
   if (ya) return false;
   ScriptApp.newTrigger('sincronizarOperaciones').timeBased().everyMinutes(TR.OPS.CADA_MIN).create();
+  return true;
+}
+
+/** Activador "Al editar" en el archivo de Operaciones (solo uno). */
+function _crearActivadorEdicion() {
+  const ya = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'alEditarOperaciones'; });
+  if (ya) return false;
+  ScriptApp.newTrigger('alEditarOperaciones').forSpreadsheet(_idOperaciones()).onEdit().create();
   return true;
 }
 

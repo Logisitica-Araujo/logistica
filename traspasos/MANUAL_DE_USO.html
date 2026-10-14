@@ -121,7 +121,7 @@ footer{padding-block:40px;color:var(--muted);font-size:14px}
 <section id="crear">
   <h2>Crear un traspaso</h2>
   <ol class="steps">
-    <li><div><b>Nuevo traspaso → escanea tu credencial.</b><p class="muted">Es obligatorio: así queda registrado quién lo creó. Si no tienes credencial, abre <span class="kbd">¿Sin credencial? Teclea usuario y NIP</span>. Tu usuario y NIP te los da un administrador.</p></div></li>
+    <li><div><b>Nuevo traspaso → escanea tu credencial.</b><p class="muted">En sucursales es obligatorio: así queda registrado quién lo creó. En Oficinas no se pide: se usa la cuenta abierta. Sólo se ve tu nombre, nunca el código. Si no tienes credencial, abre <span class="kbd">¿Sin credencial? Teclea usuario y NIP</span>. Tu usuario y NIP te los da un administrador.</p></div></li>
     <li><div><b>Elige el destino.</b><p class="muted">La lista ya trae todas las sucursales y áreas. Si es Morelia, la página te avisa que va por Logística y paquetería.</p></div></li>
     <li><div><b>Escribe qué envías y cuántos bultos son.</b><p class="muted">Un bulto es cada caja o paquete por separado.</p></div></li>
     <li><div><b>Presiona <span class="btnlike">Generar traspaso e imprimir</span>.</b><p class="muted">Sale el folio (por ejemplo <span class="folio">NR-0001</span>) y se imprime una etiqueta por bulto: "BULTO 1 DE 3", "BULTO 2 DE 3"…</p></div></li>
@@ -138,7 +138,7 @@ footer{padding-block:40px;color:var(--muted);font-size:14px}
   <ol class="steps">
     <li><div><b>Escáner → <span class="kbd">Entregar a gestor</span>.</b></div></li>
     <li><div><b>Escanea la credencial del gestor</b> (o su usuario y NIP).</div></li>
-    <li><div><b>Escanea cada traspaso que se lleva</b>, uno tras otro.<p class="muted">Basta escanear una etiqueta por traspaso, o teclear solo el folio y Enter.</p></div></li>
+    <li><div><b>Escanea cada traspaso que se lleva</b>, uno tras otro.<p class="muted">Basta escanear una etiqueta por traspaso: se agrega sola, sin Enter.</p></div></li>
     <li><div><b>Presiona <span class="btnlike">Confirmar salida</span>.</b></div></li>
   </ol>
 </section>
@@ -147,7 +147,7 @@ footer{padding-block:40px;color:var(--muted);font-size:14px}
   <h2>Recibir traspasos</h2>
   <ol class="steps">
     <li><div><b>Escáner → <span class="kbd">Recibir traspasos</span>.</b></div></li>
-    <li><div><b>Escanea las etiquetas una tras otra</b>, o teclea el folio y presiona Enter.<p class="muted">En sucursal, cualquiera puede recibir lo de PV o de Rebotica. Fíjate en la etiqueta <span class="tag pv">PARA PV</span> / <span class="tag rb">PARA REBOTICA</span> de cada fila y entrégalo a quien corresponde.</p></div></li>
+    <li><div><b>Escanea las etiquetas una tras otra</b>: se agregan solas, sin Enter. Si llega algo que nadie registró como recolectado, igual se recibe (sale en amarillo y queda anotado).<p class="muted">En sucursal, primero escanea <b>tu credencial</b> (queda registrado quién recibió; en pantalla sólo sale tu nombre). En Oficinas no se pide: se usa la cuenta abierta. En sucursal, cualquiera puede recibir lo de PV o de Rebotica. Fíjate en la etiqueta <span class="tag pv">PARA PV</span> / <span class="tag rb">PARA REBOTICA</span> de cada fila y entrégalo a quien corresponde.</p></div></li>
     <li><div><b>Si falta un bulto o llegó dañado, marca <span class="kbd">Faltan / dañado</span></b> en esa fila.</div></li>
     <li><div><b>Presiona <span class="btnlike">Confirmar recepción</span>.</b><p class="muted">Queda <span class="st" style="color:#1B7F38;background:#DFF3E5">Entregado</span> y al origen le llega el aviso.</p></div></li>
   </ol>
@@ -170,7 +170,7 @@ footer{padding-block:40px;color:var(--muted);font-size:14px}
 <section id="otros">
   <h2>Reimprimir y cancelar</h2>
   <h3>Reimprimir una etiqueta</h3>
-  <p>Abre el traspaso → <span class="kbd">Reimprimir etiqueta</span> → elige qué bulto (o todos) y el motivo → escanea tu credencial. La etiqueta nueva sale marcada con <b>R1</b>, R2…, y queda registrado quién la reimprimió.</p>
+  <p>Abre el traspaso → <span class="kbd">Reimprimir etiqueta</span> → elige qué bulto (o todos) y el motivo → <span class="kbd">Reimprimir</span>. <b>No pide credencial.</b> La etiqueta nueva sale marcada con <b>R1</b>, R2…, y queda registrado con la cuenta de esa computadora.</p>
   <h3>Cancelar un traspaso hecho por error</h3>
   <p>Nadie que no sea administrador puede borrar. Abre el traspaso → <span class="kbd">Solicitar eliminación</span> → escribe por qué. Solo se puede mientras sigue como <span class="st" style="color:#1F63D6;background:#E2ECFF">Nuevo traspaso</span>. Mientras un administrador responde, el traspaso queda congelado y el gestor no lo puede recolectar.</p>
 </section>
@@ -202,7 +202,7 @@ footer{padding-block:40px;color:var(--muted);font-size:14px}
   <p>Es el stand donde los gestores dejan lo que no pudieron entregar en su área, para que después lo recoja el área o otro gestor. La pantalla tiene tres pestañas grandes.</p>
   <h3>📥 Dejar (gestores)</h3>
   <ol class="steps">
-    <li><div><b>Escanea tu credencial</b> (o teclea usuario y NIP). Solo un gestor puede dejar.</div></li>
+    <li><div><b>Escanea tu credencial</b> (o teclea usuario y NIP). Puede dejar cualquier persona registrada. Recepción es un punto de pausa, no un destino.</div></li>
     <li><div><b>Escanea cada traspaso</b> que dejas en el stand.</div></li>
     <li><div><b>Confirmar: dejar.</b><p class="muted">Quedan <span class="st" style="color:#8A4B12;background:#F6E7D8">En Recepción Oficinas</span> y al área destino le llega el aviso.</p></div></li>
   </ol>
@@ -224,8 +224,8 @@ footer{padding-block:40px;color:var(--muted);font-size:14px}
   <ol class="steps">
     <li><div><b>Recibe en el Escáner</b> lo que llega para Morelia. Queda <span class="st" style="color:#38559E;background:#E5EBF7">En Logística</span>.</div></li>
     <li><div><b>Paquetería → Armar caja:</b> escanea los traspasos que van dentro → <span class="btnlike">Crear caja e imprimir etiqueta</span>. Sale el folio <span class="folio">CJ-0001</span>.</div></li>
-    <li><div><b>Registra el envío en tu hoja Operaciones</b> con <span class="folio">CJ-0001</span> en "ID Pedido / Tarea", con su proveedor y Nº de Guía.<p class="muted">Un traspaso suelto se registra con su propio folio.</p></div></li>
-    <li><div><b>Listo.</b> Cada 10 minutos el sistema lee Operaciones y los pasa solo a <span class="st" style="color:#0B6C80;background:#DAF2F7">Enviado por paquetería</span>. Si no quieres esperar, usa <span class="kbd">Revisar Operaciones ahora</span>.</div></li>
+    <li><div><b>Registra el envío en tu hoja Operaciones</b> con <span class="folio">CJ-0001</span> (o el folio suelto) en la <b>columna A</b>, la paquetería en la <b>K</b> y la guía en la <b>M</b>.<p class="muted">Un traspaso suelto se registra con su propio folio.</p></div></li>
+    <li><div><b>Listo.</b> Al escribir la guía, el sistema los pasa solo a <span class="st" style="color:#0B6C80;background:#DAF2F7">Enviado por paquetería</span>. Si no quieres esperar, usa <span class="kbd">Revisar Operaciones ahora</span>.</div></li>
   </ol>
   <h3>Lo que llega de Morelia</h3>
   <p>Recíbelo en el Escáner: queda <span class="st" style="color:#38559E;background:#E5EBF7">En Logística</span>. Si va a una sucursal, entrégalo al gestor (Escáner → Entregar a gestor). Si va a un área de Oficinas, llévalo y que esa área lo escanee al recibir.</p>

@@ -1,0 +1,4 @@
+Windows Registry Editor Version 5.00
+
+; Quita el bloqueo de Chrome de la computadora de Recepcion Oficinas.
+[-HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome]

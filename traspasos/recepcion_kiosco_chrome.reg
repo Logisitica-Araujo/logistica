@@ -1,0 +1,43 @@
+Windows Registry Editor Version 5.00
+
+; =====================================================================
+;  TRASPASOS FADERMEX - Bloqueo de Chrome para la computadora de
+;  RECEPCION OFICINAS (patio). Doble clic -> Si (pide administrador).
+;  Despues de aplicarlo, Chrome SOLO abre la pagina de Traspasos.
+;  Gmail, Drive, YouTube y todo lo demas queda bloqueado.
+;  Para quitarlo: recepcion_kiosco_QUITAR.reg (o borrar la clave en regedit).
+;  OJO: aplica a TODO Chrome de esa computadora. Usalo solo en la del patio.
+; =====================================================================
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome]
+; Sin modo incognito, sin invitados, sin agregar otras personas/cuentas
+"IncognitoModeAvailability"=dword:00000001
+"BrowserGuestModeEnabled"=dword:00000000
+"BrowserAddPersonEnabled"=dword:00000000
+"BrowserSignin"=dword:00000000
+; Sin herramientas de desarrollador, sin guardar contrasenas, sin descargas
+"DeveloperToolsAvailability"=dword:00000002
+"PasswordManagerEnabled"=dword:00000000
+"DownloadRestrictions"=dword:00000003
+; No abrir paginas al inicio que no sean la de Traspasos
+"RestoreOnStartup"=dword:00000004
+
+; Todo bloqueado...
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome\URLBlocklist]
+"1"="*"
+
+; ...menos lo que la pagina de Traspasos necesita para funcionar
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome\URLAllowlist]
+"1"="script.google.com"
+"2"="googleusercontent.com"
+"3"="accounts.google.com"
+"4"="ssl.gstatic.com"
+"5"="www.gstatic.com"
+"6"="fonts.googleapis.com"
+"7"="fonts.gstatic.com"
+"8"="cdnjs.cloudflare.com"
+"9"="apis.google.com"
+
+; Al abrir Chrome: la pagina de Traspasos (cambia la URL por la tuya /exec)
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome\RestoreOnStartupURLs]
+"1"="https://script.google.com/a/macros/fadermex.com/s/PEGA-AQUI-TU-ID/exec"

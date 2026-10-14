@@ -3,7 +3,9 @@
  * ---------------------------------------------------------------------
  * RECEPCIÓN OFICINAS (la computadora del patio, área REC)
  *
- *  DEJAR   → un gestor deja traspasos en el stand de Oficinas.
+ *  Recepción es un CENTRO DE PAUSA: aquí los traspasos esperan, nunca es destino final.
+ *
+ *  DEJAR   → un gestor (o cualquier persona registrada) deja traspasos en el stand.
  *            Estatus: "En Recepción Oficinas". Al destino le llega aviso.
  *  RECOGER → • un GESTOR se los lleva a su destino (sucursal, etc.)
  *              → "Recolectado por gestoría"
@@ -25,7 +27,7 @@ function apiRecepcion(token, d) {
     if (modo !== 'DEJAR' && modo !== 'RECOGER') throw new Error('Modo no válido.');
     const quien = _identificar(d.quien, '');
     if (!quien) throw new Error(_noReconocido(d.quien));
-    if (modo === 'DEJAR' && quien.tipo !== 'GESTOR') throw new Error('Para DEJAR traspasos se identifica un gestor.');
+    // DEJAR: cualquier persona registrada (gestor o empleado) puede dejar traspasos.
     const A = _areas();
     const E = _mapaEstatus();
 
@@ -47,7 +49,7 @@ function apiRecepcion(token, d) {
           _actualizarT(t, { 'Estatus': 'EN_RECEPCION', 'Ubicación actual': AREA_REC });
           movs.push(_movObj(t, 'DEJADO EN RECEPCIÓN OFICINAS', antes, 'EN_RECEPCION',
             { donde: AREA_REC, persona: quien.nombre, cred: quien.via, medio: 'RECEPCIÓN', equipo: AREA_REC }));
-          avisos.push(_avisoObj(t.destino, t.folio, 'Tu traspaso está en Recepción Oficinas (lo dejó ' + quien.nombre + ')'));
+          avisos.push(_avisoObj(t.destino, t.folio, 'Tu traspaso está en pausa en Recepción Oficinas (lo dejó ' + quien.nombre + ')'));
           resultados.push({ folio: t.folio, ok: true, msg: 'En Recepción' });
           return;
         }

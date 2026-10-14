@@ -56,7 +56,17 @@ function TR_REGLAS() {
 
   var nomE = function (E, k) { return (E && E[k]) || k; };
 
-  /** ¿Puede "me" RECIBIR este traspaso? → {k:'ok'|'warn'|'err', m, accion, ubicable} */
+  /** Estatus que ya no se pueden recibir. */
+  R.FINALES = ['ENTREGADO', 'ELIMINADO', 'INCIDENCIA'];
+
+  /** Recepción Oficinas es un "centro de pausa": nunca es destino final. */
+  R.esPausa = function (id) { return id === 'REC'; };
+
+  /**
+   * ¿Puede "me" RECIBIR este traspaso? → {k:'ok'|'warn'|'err', m, accion, ubicable, salto}
+   * Si el paquete llegó físicamente pero alguien se saltó un paso (el gestor no
+   * registró la recolección, etc.), SÍ se recibe: salto = true y queda en la bitácora.
+   */
   R.recibir = function (t, me, A, E) {
     if (!t) return { k: 'err', m: 'Ese folio no existe. Revisa que esté bien tecleado.' };
     if (t.solicitud) return { k: 'err', m: t.folio + ' tiene una solicitud de eliminación pendiente. No se debe mover hasta que responda un administrador.' };
@@ -66,19 +76,12 @@ function TR_REGLAS() {
       return { k: 'err', m: 'Este traspaso NO es para ' + aqui + '. Va para: ' + R.nom(A, t.destino) + '.', ubicable: true };
     }
     if (t.estatus === 'ENTREGADO') return { k: 'warn', m: t.folio + ' ya fue recibido anteriormente.' };
-    var permitidos;
-    if (esLog) {
-      permitidos = R.esOf(A, t.origen) ? ['NUEVO', 'RECOLECTADO', 'ENTREGADO_GESTOR']
-                                       : ['RECOLECTADO', 'ENTREGADO_GESTOR', 'PAQUETERIA'];
-    } else {
-      permitidos = ['RECOLECTADO', 'ENTREGADO_GESTOR', 'PAQUETERIA', 'EN_LOGISTICA', 'UBICADO', 'EXTRAVIADO', 'EN_RECEPCION'];
-      if (R.esOf(A, t.origen) && R.esOf(A, t.destino)) permitidos.push('NUEVO');   // entrega interna en Oficinas
-    }
-    if (permitidos.indexOf(t.estatus) < 0) {
-      if (t.estatus === 'NUEVO') return { k: 'err', m: t.folio + ' todavía no ha sido recolectado por gestoría.' };
-      return { k: 'err', m: t.folio + ' está como "' + nomE(E, t.estatus) + '". No se puede recibir.' };
-    }
-    return { k: 'ok', m: '', accion: esLog ? 'EN_LOGISTICA' : 'ENTREGADO' };
+    if (R.FINALES.indexOf(t.estatus) >= 0) return { k: 'err', m: t.folio + ' está como "' + nomE(E, t.estatus) + '". No se puede recibir.' };
+    if (esLog && t.estatus === 'EN_LOGISTICA') return { k: 'warn', m: t.folio + ' ya está en Logística.' };
+    // Lo normal es que llegue recolectado / en paquetería. Si viene "Nuevo" es que se saltó la
+    // recolección: se recibe igual (el paquete está aquí) y se anota el salto.
+    var salto = t.estatus === 'NUEVO' && !(R.esOf(A, t.origen) && (esLog || R.esOf(A, t.destino)));
+    return { k: 'ok', m: '', accion: esLog ? 'EN_LOGISTICA' : 'ENTREGADO', salto: salto };
   };
 
   /** ¿Se le puede entregar al gestor? modo 'ENTREGAR' (desde un área) o 'GESTOR' (celular del gestor). */
@@ -100,7 +103,7 @@ function TR_REGLAS() {
   /** ¿Puede esta área mandarlo por paquetería? (Logística hacia Morelia, o Morelia hacia acá) */
   R.paqueteria = function (t, me, A) {
     if (t.solicitud) return false;
-    if (me === 'LOG' && t.estatus === 'EN_LOGISTICA' && R.esMor(A, t.destino)) return true;
+    if (me === 'LOG' && R.empacable(t, A)) return true;
     return R.esMor(A, me) && t.origen === me && t.estatus === 'NUEVO';
   };
 
@@ -111,13 +114,16 @@ function TR_REGLAS() {
     if (!t) return { k: 'err', m: 'Ese folio no existe. Revisa que esté bien tecleado.' };
     if (t.solicitud) return { k: 'err', m: t.folio + ' tiene una solicitud de eliminación pendiente. No se debe mover.' };
     if (t.estatus === 'EN_RECEPCION') return { k: 'warn', m: t.folio + ' ya está en Recepción Oficinas.' };
-    var ok = ['RECOLECTADO', 'ENTREGADO_GESTOR', 'UBICADO', 'EXTRAVIADO'].indexOf(t.estatus) >= 0 ||
-             (t.estatus === 'NUEVO' && R.esOf(A, t.origen));
+    // Cualquier traspaso que siga en camino se puede dejar en pausa aquí (aunque se haya saltado un paso).
+    var ok = R.FINALES.indexOf(t.estatus) < 0;
     if (!ok) return { k: 'err', m: t.folio + ' está como "' + nomE(E, t.estatus) + '". No se puede dejar en Recepción.' };
     return { k: 'ok', m: '' };
   };
 
-  /** ¿Lo puede RECOGER esta persona o gestor? quien = {tipo:'PERSONA'|'GESTOR', area} */
+  /**
+   * ¿Lo puede RECOGER esta persona o gestor? quien = {tipo:'PERSONA'|'GESTOR', area}
+   * GESTOR: se lo lleva a donde vaya (transporta para otros). PERSONA: solo lo de su área / sucursal.
+   */
   R.recogible = function (t, A, E, quien) {
     if (!t) return { k: 'err', m: 'Ese folio no existe. Revisa que esté bien tecleado.' };
     if (t.estatus !== 'EN_RECEPCION') return { k: 'err', m: t.folio + ' no está en Recepción (está como "' + nomE(E, t.estatus) + '").' };
@@ -127,9 +133,13 @@ function TR_REGLAS() {
     return { k: 'ok', m: '' };
   };
 
-  /** ¿Se puede meter en una caja para Morelia? (solo Logística) */
+  /**
+   * ¿Se puede meter en una caja / mandar por paquetería a Morelia? (solo Logística)
+   * Ya recibido en Logística, o creado por la misma Logística (no pasa por otra área).
+   */
   R.empacable = function (t, A) {
-    return !!t && !t.solicitud && t.estatus === 'EN_LOGISTICA' && R.esMor(A, t.destino);
+    if (!t || t.solicitud || !R.esMor(A, t.destino)) return false;
+    return t.estatus === 'EN_LOGISTICA' || (t.origen === 'LOG' && t.estatus === 'NUEVO');
   };
 
   /** ¿Se puede solicitar eliminarlo? Solo el origen, y solo antes de que se mueva. */

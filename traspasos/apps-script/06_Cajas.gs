@@ -7,9 +7,10 @@
  *     etiqueta. Las etiquetas de cada traspaso se quedan en sus bultos.
  *  2. En la hoja "Operaciones" se registra el envío como siempre, con
  *     CJ-0001 (o el folio de un traspaso suelto) en "ID Pedido / Tarea".
- *  3. Cada 10 minutos sincronizarOperaciones() busca esas filas; cuando ya
- *     tienen Nº de Guía, los traspasos pasan solos a "Enviado por
- *     paquetería" con proveedor, guía y fecha prometida.
+ *  3. Al editar "Operaciones" (y además cada 10 minutos) sincronizarOperaciones()
+ *     busca esas filas: columna A = folio, K = paquetería, M = guía. Cuando ya
+ *     tienen guía, los traspasos pasan solos a "Enviado por paquetería".
+ *     Sirve también para traspasos que creó Logística y siguen en "Nuevo".
  *  4. Morelia escanea la etiqueta de la caja y recibe todo junto.
  ***********************************************************************/
 
@@ -146,53 +147,93 @@ function _idOperaciones() {
   return m ? m[1] : TR.OPS.ID_ARCHIVO;
 }
 
-/** Lee de "Operaciones" las filas con guía: { 'CJ-0001': {prov, guia, eta}, 'NR-0003': {...} } */
+/** Letra de columna ("A", "K", "AB") → número (1, 11, 28). */
+function _colNum(letra, porDefecto) {
+  const s = String(letra || '').trim().toUpperCase();
+  if (!/^[A-Z]{1,2}$/.test(s)) return porDefecto;
+  let n = 0;
+  for (let i = 0; i < s.length; i++) n = n * 26 + (s.charCodeAt(i) - 64);
+  return n;
+}
+
+/**
+ * Columnas de "Operaciones" que se leen. Por defecto:
+ *   A = folio del traspaso o de la caja (ID Pedido / Tarea)
+ *   K = paquetería (DHL, Estafeta…)
+ *   M = número de guía
+ * Se pueden cambiar en CFG_Ajustes: ops_columna_folio, ops_columna_paqueteria, ops_columna_guia.
+ */
+function _colsOperaciones() {
+  return {
+    id: _colNum(_ajuste('ops_columna_folio', 'A'), 1),
+    prov: _colNum(_ajuste('ops_columna_paqueteria', 'K'), 11),
+    guia: _colNum(_ajuste('ops_columna_guia', 'M'), 13)
+  };
+}
+
+/**
+ * Lee de "Operaciones" las filas con guía:
+ *   { 'CJ-0001': {prov, guia, eta, fila}, 'NR-0003': {...} }
+ * En la columna del folio puede venir uno solo o varios separados por coma o espacio.
+ */
 function _guiasOperaciones() {
   const sh = SpreadsheetApp.openById(_idOperaciones()).getSheetByName(TR.OPS.HOJA);
   if (!sh) throw new Error('No encontré la hoja "' + TR.OPS.HOJA + '" en el archivo de Operaciones.');
-  const lc = sh.getLastColumn();
+  const C = _colsOperaciones();
+  const lc = Math.max(sh.getLastColumn(), C.id, C.prov, C.guia);
   const enc = sh.getRange(TR.OPS.FILA_ENC, 1, 1, lc).getValues()[0].map(_norm);
-  const col = function (prueba) { for (let i = 0; i < enc.length; i++) if (prueba(enc[i])) return i; return -1; };
-  const cId = col(function (h) { return h.indexOf('id pedido') === 0 || h === 'id'; });
-  const cProv = col(function (h) { return h === 'proveedor'; });                 // la PRIMERA "Proveedor" (DHL, Estafeta, AMPM…)
-  const cGuia = col(function (h) { return h.indexOf('guia') >= 0; });
-  const cEta = col(function (h) { return h.indexOf('eta') === 0; });
-  if (cId < 0 || cGuia < 0) throw new Error('En "Operaciones" no encontré las columnas "ID Pedido / Tarea" y "Nº de Guía".');
-  const hasta = Math.max(cId, cProv, cGuia, cEta) + 1;
+  let cEta = -1;
+  for (let i = 0; i < enc.length; i++) if (enc[i].indexOf('eta') === 0) { cEta = i; break; }
   const ult = sh.getLastRow();
   const desde = Math.max(TR.OPS.FILA_ENC + 1, ult - TR.OPS.MAX_FILAS + 1);
   if (ult < desde) return {};
-  const datos = sh.getRange(desde, 1, ult - desde + 1, hasta).getValues();
+  const datos = sh.getRange(desde, 1, ult - desde + 1, lc).getValues();
   const out = {};
-  datos.forEach(function (f) {
-    const id = R.folioDe(f[cId]);
-    const guia = String(f[cGuia] == null ? '' : f[cGuia]).trim();
-    if (!id || !guia || /no aplica/i.test(guia)) return;
-    out[id] = { prov: cProv >= 0 ? String(f[cProv] || '').trim() : '', guia: guia, eta: cEta >= 0 ? _txt(f[cEta]) : '' };
+  datos.forEach(function (f, i) {
+    const guia = String(f[C.guia - 1] == null ? '' : f[C.guia - 1]).trim();
+    if (!guia || /no aplica|^n\/?a$|^-+$/i.test(guia)) return;
+    const prov = String(f[C.prov - 1] == null ? '' : f[C.prov - 1]).trim();
+    String(f[C.id - 1] == null ? '' : f[C.id - 1]).split(/[\s,;\/]+/).forEach(function (x) {
+      const id = R.folioDe(x);
+      if (!id || !R.valido(id)) return;
+      out[id] = { prov: prov, guia: guia, eta: cEta >= 0 ? _txt(f[cEta]) : '', fila: desde + i };
+    });
   });
   return out;
 }
 
+/** Estatus desde los que una guía en Operaciones manda el traspaso a "Enviado por paquetería". */
+const OPS_ANTES_DE_ENVIAR = ['NUEVO', 'RECOLECTADO', 'ENTREGADO_GESTOR', 'EN_LOGISTICA', 'EN_RECEPCION', 'UBICADO', 'EXTRAVIADO'];
+
 /**
- * La corre un activador cada 10 minutos (lo crea "instalar").
- * También se puede correr a mano desde la página (botón "Revisar Operaciones ahora").
- * Regresa cuántos traspasos actualizó.
+ * La corre un activador cada 10 minutos y otro al editar "Operaciones" (los crea "instalar").
+ * También desde la página (botón "Revisar Operaciones ahora").
+ * Regresa cuántos traspasos actualizó. Con detalle = true regresa {n, omitidos:[{folio, motivo}]}.
  */
-function sincronizarOperaciones() {
-  return _conCandado(function () {
+function sincronizarOperaciones(detalle) {
+  const r = _conCandado(function () {
     const guias = _guiasOperaciones();
     const A = _areas();
+    const E = _mapaEstatus();
     const mapa = {};
     _traspasos().forEach(function (t) { mapa[R.limpio(t.folio)] = t; });
-    const movs = [], avisos = [];
+    const movs = [], avisos = [], omitidos = [];
     let n = 0;
 
-    const enviar = function (t, g, caja) {
-      if (!t || t.estatus !== 'EN_LOGISTICA' || !R.esMor(A, t.destino)) return;
-      _actualizarT(t, { 'Estatus': 'PAQUETERIA', 'Paquetería': g.prov, 'Guía': g.guia });
-      movs.push(_movObj(t, 'ENVIADO POR PAQUETERÍA', 'EN_LOGISTICA', 'PAQUETERIA',
-        { donde: 'LOG', medio: 'OPERACIONES (AUTOMÁTICO)', detalle: (caja ? 'Caja ' + caja + ' · ' : '') + g.prov + ' · guía ' + g.guia + (g.eta ? ' · llega ' + g.eta : '') }));
-      avisos.push(_avisoObj(t.destino, t.folio, 'Va en camino por paquetería · ' + g.prov + ' · guía ' + g.guia + (caja ? ' · caja ' + caja : '')));
+    const enviar = function (t, g, caja, id) {
+      if (!t) { omitidos.push({ folio: id, motivo: 'No existe en Traspasos (fila ' + g.fila + ' de Operaciones).' }); return; }
+      if (t.estatus === 'PAQUETERIA' || t.estatus === 'ENTREGADO' || t.estatus === 'INCIDENCIA') return;   // ya avanzó: nada que hacer
+      // Solo la ruta de paquetería (Morelia). Así un pedido a domicilio cuyo código coincida con un folio no mueve nada.
+      if (!R.esMor(A, t.destino) && !R.esMor(A, t.origen)) { omitidos.push({ folio: t.folio, motivo: 'No va ni viene de Morelia; la guía automática es solo para paquetería a Morelia.' }); return; }
+      if (t.solicitud) { omitidos.push({ folio: t.folio, motivo: 'Tiene una solicitud de eliminación pendiente.' }); return; }
+      if (OPS_ANTES_DE_ENVIAR.indexOf(t.estatus) < 0) { omitidos.push({ folio: t.folio, motivo: 'Está como "' + (E[t.estatus] || t.estatus) + '".' }); return; }
+      const antes = t.estatus;
+      const cambios = { 'Estatus': 'PAQUETERIA', 'Paquetería': g.prov, 'Guía': g.guia, 'Ubicación actual': '' };
+      if (R.viaLog(t)) cambios['Ruta'] = 'VIA_LOGISTICA_OK';
+      _actualizarT(t, cambios);
+      movs.push(_movObj(t, 'ENVIADO POR PAQUETERÍA', antes, 'PAQUETERIA',
+        { donde: 'LOG', medio: 'OPERACIONES (AUTOMÁTICO)', detalle: (caja ? 'Caja ' + caja + ' · ' : '') + (g.prov || 'Paquetería') + ' · guía ' + g.guia + (g.eta ? ' · llega ' + g.eta : '') }));
+      avisos.push(_avisoObj(t.destino, t.folio, 'Va en camino por paquetería · ' + (g.prov || '') + ' · guía ' + g.guia + (caja ? ' · caja ' + caja : '')));
       t.estatus = 'PAQUETERIA';
       n++;
     };
@@ -204,26 +245,44 @@ function sincronizarOperaciones() {
       if (cj.estatus !== 'ARMADA') return;
       const g = guias[R.limpio(cj.folio)];
       if (!g) return;
-      cj.traspasos.forEach(function (f) { enviar(mapa[f], g, cj.folio); });
+      cj.traspasos.forEach(function (f) { enviar(mapa[f], g, cj.folio, f); });
       _tb(TR.H.CAJAS).actualizar(cj._fila, { 'Estatus': 'ENVIADA', 'Paquetería': g.prov, 'Guía': g.guia, 'ETA': g.eta, 'Última actualización': _ahoraTxt() });
     });
 
     // 2) Traspasos sueltos con su propio folio en Operaciones
     Object.keys(guias).forEach(function (id) {
-      if (enCaja[id]) return;
-      enviar(mapa[id], guias[id], '');
+      if (enCaja[id] || /^CJ-/.test(id)) return;
+      enviar(mapa[id], guias[id], '', id);
     });
 
     _tb(TR.H.MOV).agregarVarias(movs);
     _tb(TR.H.AVISOS).agregarVarias(avisos);
-    return n;
+    return { n: n, omitidos: omitidos };
   });
+  return detalle === true ? r : r.n;
+}
+
+/**
+ * Activador "Al editar" del archivo de Operaciones: en cuanto escribes el folio,
+ * la paquetería o la guía, el traspaso se actualiza (sin esperar los 10 minutos).
+ */
+function alEditarOperaciones(e) {
+  try {
+    if (e && e.range) {
+      if (e.range.getSheet().getName() !== TR.OPS.HOJA) return;
+      const C = _colsOperaciones();
+      const c1 = e.range.getColumn(), c2 = c1 + e.range.getNumColumns() - 1;
+      if (![C.id, C.prov, C.guia].some(function (c) { return c >= c1 && c <= c2; })) return;
+    }
+    sincronizarOperaciones();
+  } catch (err) { Logger.log('alEditarOperaciones: ' + err); }
 }
 
 function apiSincronizar(token) {
   return _api(function () {
     const c = _ctx(token);
     if (c.area !== 'LOG' && !c.admin) throw new Error('Solo Logística o un administrador.');
-    return { actualizados: sincronizarOperaciones() };
+    const r = sincronizarOperaciones(true);
+    return { actualizados: r.n, omitidos: r.omitidos };
   });
 }

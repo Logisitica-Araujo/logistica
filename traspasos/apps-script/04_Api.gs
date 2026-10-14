@@ -116,7 +116,8 @@ function apiDatos(token) {
     const corte = Utilities.formatDate(hace, TR.ZONA, 'yyyy-MM-dd');
     const reciente = function (t) { return t.estatus !== 'ENTREGADO' || String(t.act || t.fecha) >= corte; };
 
-    const limpiar = function (t) { const o = {}; Object.keys(t).forEach(function (k) { if (k !== '_fila') o[k] = t[k]; }); return o; };
+    // El código de la credencial nunca sale a la pantalla.
+    const limpiar = function (t) { const o = {}; Object.keys(t).forEach(function (k) { if (k !== '_fila' && k !== 'cred') o[k] = t[k]; }); o.por = String(o.por || '').split(' · ')[0]; return o; };
     const activos = todos.filter(reciente).map(limpiar);
 
     let mios;
@@ -171,7 +172,8 @@ function apiDetalle(token, folio) {
                  nuevo: String(m['Estatus nuevo'] || ''), donde: String(m['Dónde ocurrió (área)'] || ''),
                  persona: String(m['Persona'] || ''), medio: String(m['Medio'] || ''), detalle: String(m['Detalle'] || '') };
       });
-    delete t._fila;
+    delete t._fila; delete t.cred;
+    t.por = String(t.por || '').split(' · ')[0];
     return { traspaso: t, movimientos: mov };
   });
 }
@@ -185,7 +187,7 @@ function apiPersona(token, d) {
     _ctx(token);
     const p = _personaPorCodigo(d);
     if (!p) throw new Error(_noReconocido(d));
-    return p;
+    return _publico(p);
   });
 }
 
@@ -193,8 +195,8 @@ function apiGestor(token, d) {
   return _api(function () {
     _ctx(token);
     const g = _gestorPorCodigo(d);
-    if (!g) throw new Error(_noReconocido(d, 'gestor'));
-    return g;
+    if (!g) throw new Error(_noReconocido(d));
+    return _publico(g);
   });
 }
 
@@ -204,15 +206,31 @@ function apiIdentificar(token, d) {
     _ctx(token);
     const q = _identificar(d, '');
     if (!q) throw new Error(_noReconocido(d));
-    return q;
+    return _publico(q);
   });
 }
 
 
 /* ======================= CREAR TRASPASO ======================= */
 
+/** ¿Esta área trabaja con la cuenta abierta, sin credencial? (Oficinas) */
+function _sinCredencial(area) {
+  const a = _areas()[area];
+  return !!a && a.tipo === 'OFICINAS';
+}
+
+/** En Oficinas quien hace la acción es la cuenta abierta. Si en CAT_Personas hay columna "Correo", se usa su nombre. */
+function _personaDeCuenta(c) {
+  let nombre = '';
+  try {
+    const f = _tb(TR.H.PERSONAS).filas().filter(function (p) { return String(p['Correo'] || '').trim().toLowerCase() === c.email && _activo(p['Activo']); })[0];
+    if (f) nombre = String(f['Nombre completo'] || '');
+  } catch (e) { }
+  return { tipo: 'PERSONA', nombre: nombre || c.email, codigo: '', via: 'cuenta ' + c.email, area: c.area };
+}
+
 /**
- * d = { codigo }  ó  { sinCred: {nombre, num} }
+ * d = { codigo }  ó  { usuario, nip }  (en Oficinas no hace falta: se usa la cuenta abierta)
  *     + destino, desc, bultos
  */
 function apiCrear(token, d) {
@@ -226,21 +244,27 @@ function apiCrear(token, d) {
     const dest = String(d.destino || '').toUpperCase();
     if (!A[dest] || !A[dest].activa) throw new Error('Elige un destino válido.');
     if (dest === me) throw new Error('El destino no puede ser tu misma área.');
+    if (R.esPausa(dest)) throw new Error('Recepción Oficinas es solo un punto de paso, no un destino. Elige el área que lo va a recibir.');
     const desc = String(d.desc || '').trim();
     if (!desc) throw new Error('Describe qué envías.');
     const bultos = Math.max(1, Math.min(99, parseInt(d.bultos, 10) || 1));
 
-    const quien = d.codigo ? { codigo: d.codigo } : { usuario: d.usuario, nip: d.nip };
-    if (!quien.codigo && !String(quien.usuario || '').trim()) throw new Error('Escanea tu credencial, o teclea tu usuario y NIP.');
-    const persona = _personaPorCodigo(quien);
-    if (!persona) throw new Error(_noReconocido(quien));
+    let persona;
+    if (_sinCredencial(me)) {
+      persona = _personaDeCuenta(c);
+    } else {
+      const quien = d.codigo ? { codigo: d.codigo } : { usuario: d.usuario, nip: d.nip };
+      if (!quien.codigo && !String(quien.usuario || '').trim()) throw new Error('Escanea tu credencial, o teclea tu usuario y NIP.');
+      persona = _personaPorCodigo(quien);
+      if (!persona) throw new Error(_noReconocido(quien));
+    }
     const sinCred = !persona.codigo;
     const cred = persona.via;
 
     return _conCandado(function () {
       const folio = _siguienteFolio(me);
       const via = (A[me].tipo === 'FORANEA' || A[dest].tipo === 'FORANEA') ? 'VIA_LOGISTICA' : 'DIRECTA';
-      const por = persona.nombre + ' · ' + cred;
+      const por = persona.nombre;   // el código de la credencial va aparte (columna Credencial), nunca a la vista
       const fila = {
         'Folio': folio, 'Fecha creación': _hoy(), 'Hora': _hora(),
         'Origen (prefijo)': me, 'Origen': R.nom(A, me), 'Destino (prefijo)': dest, 'Destino': R.nom(A, dest),
@@ -254,13 +278,15 @@ function apiCrear(token, d) {
       for (let i = 1; i <= bultos; i++) lista.push(i);
       _tb(TR.H.MOV).agregarVarias([
         _movObj(t, 'CREADO', '', 'NUEVO', { donde: me, persona: persona.nombre, cred: cred,
-          medio: sinCred ? 'USUARIO Y NIP' : 'CREDENCIAL', equipo: me,
+          medio: persona.codigo ? 'CREDENCIAL' : (_sinCredencial(me) ? 'CUENTA DE OFICINAS' : 'USUARIO Y NIP'), equipo: me,
           detalle: via === 'VIA_LOGISTICA' ? 'Ruta con paquetería vía Logística' : '' }),
         _movObj(t, 'ETIQUETAS IMPRESAS', '', '', { donde: me, persona: persona.nombre, detalle: bultos + ' etiqueta(s)' })
       ]);
       _tb(TR.H.ETIQUETAS).agregarVarias(_etiquetasObj(t, lista, 'ORIGINAL', persona.nombre, ''));
       _aviso(dest, folio, 'Nuevo traspaso para ti desde ' + R.nom(A, me));
-      return _tObj(_buscarFila(folio));
+      const nuevo = _tObj(_buscarFila(folio));
+      delete nuevo.cred; delete nuevo._fila;
+      return nuevo;
     });
   });
 }
@@ -289,10 +315,17 @@ function apiConfirmarLote(token, d) {
     if (modo !== 'RECIBIR' && modo !== 'ENTREGAR') throw new Error('Modo no válido.');
     const A = _areas();
     const E = _mapaEstatus();
-    let gestor = null;
+    let gestor = null, receptor = null;
     if (modo === 'ENTREGAR') {
+      // Se lo puede llevar cualquier persona registrada (CAT_Gestores o CAT_Personas).
       gestor = _gestorPorCodigo(d.gestor || d.gestorCodigo);
-      if (!gestor) throw new Error('Primero identifica al gestor (credencial, o usuario y NIP).');
+      if (!gestor) throw new Error('Primero identifica a quien se lo lleva (credencial, o usuario y NIP).');
+    } else if (_sinCredencial(me)) {
+      receptor = _personaDeCuenta(c);
+    } else {
+      // Sucursales: es obligatorio registrar quién recibe.
+      receptor = _personaPorCodigo(d.receptor);
+      if (!receptor) throw new Error(d.receptor ? _noReconocido(d.receptor) : 'Escanea la credencial de quien recibe.');
     }
 
     const res = _conCandado(function () {
@@ -327,11 +360,12 @@ function apiConfirmarLote(token, d) {
           return;
         }
 
+        const nota = v.salto ? 'Llegó sin registro de recolección (se saltó ese paso). ' : '';
         if (v.accion === 'EN_LOGISTICA') {
           _actualizarT(t, { 'Estatus': 'EN_LOGISTICA', 'Ruta': 'VIA_LOGISTICA_OK', 'Ubicación actual': '' });
           movs.push(_movObj(t, 'RECIBIDO EN LOGÍSTICA', antes, 'EN_LOGISTICA',
-            { donde: me, medio: 'ESCÁNER', equipo: me,
-              detalle: R.esMor(A, t.destino) ? 'Por enviar a Morelia por paquetería' : 'Por distribuir' }));
+            { donde: me, medio: 'ESCÁNER', equipo: me, persona: receptor.nombre, cred: receptor.via,
+              detalle: nota + (R.esMor(A, t.destino) ? 'Por enviar a Morelia por paquetería' : 'Por distribuir') }));
           avisos.push(_avisoObj(t.destino, t.folio, 'Llegó a Logística (Oficinas) · ' +
             (R.esMor(A, t.destino) ? 'se enviará por paquetería' : 'en camino a ti')));
           resultados.push({ folio: t.folio, ok: true, msg: 'Recibido en Logística' });
@@ -340,12 +374,13 @@ function apiConfirmarLote(token, d) {
 
         const nuevo = it.faltan ? 'INCIDENCIA' : 'ENTREGADO';
         _actualizarT(t, {
-          'Estatus': nuevo, 'Fecha entrega': _ahoraTxt(), 'Recibido por': 'Computadora de ' + R.nom(A, me),
+          'Estatus': nuevo, 'Fecha entrega': _ahoraTxt(), 'Recibido por': receptor.nombre + ' (' + R.nom(A, me) + ')',
           'Bultos recibidos': it.faltan ? 'INCOMPLETO' : (t.bultos + ' de ' + t.bultos), 'Ubicación actual': ''
         });
         movs.push(_movObj(t, it.faltan ? 'RECIBIDO CON INCIDENCIA' : 'ENTREGADO', antes, nuevo,
-          { donde: me, medio: 'ESCÁNER', equipo: me, detalle: it.faltan ? 'Faltan bultos o llegó dañado' : (t.bultos + ' bulto(s)') }));
-        avisos.push(_avisoObj(t.origen, t.folio, (it.faltan ? 'Recibido CON INCIDENCIA en ' : 'Entregado en ') + R.nom(A, me)));
+          { donde: me, medio: 'ESCÁNER', equipo: me, persona: receptor.nombre, cred: receptor.via,
+            detalle: nota + (it.faltan ? 'Faltan bultos o llegó dañado' : (t.bultos + ' bulto(s)')) }));
+        avisos.push(_avisoObj(t.origen, t.folio, (it.faltan ? 'Recibido CON INCIDENCIA en ' : 'Entregado en ') + R.nom(A, me) + ' · recibió ' + receptor.nombre));
         resultados.push({ folio: t.folio, ok: true, msg: it.faltan ? 'Recibido con incidencia' : 'Entregado' });
       });
 
@@ -363,7 +398,7 @@ function apiConfirmarLote(token, d) {
     });
     try { _tb(TR.H.ESCANEOS).agregarVarias(esc); } catch (e) { }
 
-    return { resultados: res };
+    return { resultados: res, receptor: receptor ? receptor.nombre : '' };
   });
 }
 
@@ -402,15 +437,8 @@ function apiReimprimir(token, d) {
     const t = _buscarT(d.folio);
     if (!t || t.estatus === 'ELIMINADO') throw new Error('No encontré el folio.');
     if (!c.admin && t.origen !== c.area) throw new Error('Solo el área que creó el traspaso puede reimprimir.');
-    let persona = null;
-    const ident = d.codigo ? { codigo: d.codigo } : (String(d.usuario || '').trim() ? { usuario: d.usuario, nip: d.nip } : null);
-    if (ident) {
-      persona = _personaPorCodigo(ident);
-      if (!persona) throw new Error(_noReconocido(ident));
-    } else if (!c.admin) {
-      throw new Error('Escanea tu credencial (o teclea usuario y NIP) para reimprimir.');
-    }
-    const quien = persona ? persona.nombre : c.email;
+    // Reimprimir NUNCA pide credencial: queda registrado con la cuenta y el área de esta computadora.
+    const quien = c.email + (c.area === TR.AREA_ADMIN ? ' (administrador)' : ' · ' + _nom(c.area));
     const b = parseInt(d.bulto, 10) || 0;
     const lista = [];
     if (b) lista.push(Math.min(b, t.bultos)); else for (let i = 1; i <= t.bultos; i++) lista.push(i);
@@ -418,9 +446,11 @@ function apiReimprimir(token, d) {
     _actualizarT(t, { 'Reimpresiones': n });
     _tb(TR.H.ETIQUETAS).agregarVarias(_etiquetasObj(t, lista, 'R' + n, quien, d.motivo));
     _mov(t, b ? ('REIMPRESIÓN BULTO ' + b + ' DE ' + t.bultos) : 'REIMPRESIÓN DE TODAS LAS ETIQUETAS', '', '',
-      { donde: c.area === TR.AREA_ADMIN ? '' : c.area, persona: quien, cred: persona ? persona.via : 'administrador',
+      { donde: c.area === TR.AREA_ADMIN ? '' : c.area, persona: quien, cred: '', medio: 'CUENTA',
         detalle: 'Motivo: ' + (d.motivo || '—') });
     const tt = _tObj(_buscarFila(t.folio));
+    delete tt.cred; delete tt._fila;
+    tt.por = String(tt.por || '').split(' · ')[0];
     return { traspaso: tt, bultos: lista, rp: n };
   });
 }

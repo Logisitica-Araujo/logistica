@@ -137,17 +137,53 @@ function _logo() {
 }
 
 /**
- * Tamaño de etiqueta por área (hoja CAT_Impresoras). Cada computadora imprime
- * con el tamaño de SU área; si no tiene, usa el de CFG_Ajustes.
+ * Configuración de impresora por área o por sucursal (hoja CAT_Impresoras).
+ * En "Área (prefijo)" puede ir el prefijo del área (NR), el ID o nombre de la
+ * sucursal (NR / Nueva Roma: aplica a todas sus áreas) o TODAS.
+ * Columnas (por nombre; las opcionales pueden faltar):
+ *   Ancho etiqueta (mm) · Alto etiqueta (mm) · Margen superior (mm) · Margen izquierdo (mm)
+ *   Orientación (Horizontal / Vertical) · Formato (AUTO, MINI, CHICA, COMPLETA) · Impresora (marca y modelo)
+ * Regresa { 'NR': {ancho, alto, arriba, izq, girar, formato, modelo}, ... } ya resuelto por área.
+ * Si un área no tiene fila, usa el tamaño general de CFG_Ajustes.
  */
 function _impresoras() {
   const out = {};
-  const sh = _libro().getSheetByName(TR.H.IMPRESORAS);
-  if (!sh) return out;
-  _tb(TR.H.IMPRESORAS).filas().forEach(function (f) {
-    const id = String(f['Área (prefijo)']).trim().toUpperCase();
-    const an = Number(f['Ancho etiqueta (mm)']), al = Number(f['Alto etiqueta (mm)']);
-    if (id && an > 0 && al > 0) out[id] = { ancho: an, alto: al, modelo: String(f['Impresora (marca y modelo)'] || '') };
+  const libro = _libro();
+  const sh = libro.getSheetByName(TR.H.IMPRESORAS) ||
+    libro.getSheets().filter(function (h) { return _norm(h.getName()).indexOf('impresora') >= 0; })[0];
+  if (!sh || sh.getLastRow() <= TR.FILA_ENC) return out;
+  const lc = sh.getLastColumn();
+  const enc = sh.getRange(TR.FILA_ENC, 1, 1, lc).getValues()[0].map(_norm);
+  const col = function (prueba) { for (let i = 0; i < enc.length; i++) if (prueba(enc[i])) return i; return -1; };
+  const cId = col(function (h) { return h.indexOf('prefijo') >= 0 || h === 'area' || h.indexOf('sucursal') === 0; });
+  const cAn = col(function (h) { return h.indexOf('ancho') >= 0; });
+  const cAl = col(function (h) { return h.indexOf('alto') >= 0; });
+  const cArr = col(function (h) { return h.indexOf('margen sup') >= 0 || h.indexOf('arriba') >= 0; });
+  const cIzq = col(function (h) { return h.indexOf('margen izq') >= 0 || h.indexOf('izquierd') >= 0; });
+  const cOri = col(function (h) { return h.indexOf('orienta') >= 0; });
+  const cFmt = col(function (h) { return h.indexOf('formato') >= 0; });
+  const cMod = col(function (h) { return h.indexOf('impresora') >= 0 || h.indexOf('modelo') >= 0; });
+  if (cId < 0 || cAn < 0 || cAl < 0) return out;
+  const num = function (f, c) { return c >= 0 ? Number(String(f[c]).replace(',', '.')) || 0 : 0; };
+  const filas = sh.getRange(TR.FILA_ENC + 1, 1, sh.getLastRow() - TR.FILA_ENC, lc).getValues();
+  const conf = {};
+  filas.forEach(function (f) {
+    const k = _norm(f[cId]);
+    const an = num(f, cAn), al = num(f, cAl);
+    if (!k || !(an > 0) || !(al > 0)) return;
+    conf[k] = {
+      ancho: an, alto: al, arriba: num(f, cArr), izq: num(f, cIzq),
+      girar: cOri >= 0 && _norm(f[cOri]).indexOf('vert') === 0,
+      formato: cFmt >= 0 ? String(f[cFmt] || '').trim().toUpperCase() : '',
+      modelo: cMod >= 0 ? String(f[cMod] || '') : ''
+    };
+  });
+  const A = _areas();
+  Object.keys(A).forEach(function (id) {
+    const a = A[id];
+    const c = conf[_norm(id)] || conf[_norm(a.corto)] || conf[_norm(R.nom(A, id))] ||
+              conf[_norm(a.suc)] || conf[_norm(a.sucNombre)] || conf['todas'] || conf['todos'];
+    if (c) out[id] = c;
   });
   return out;
 }
@@ -335,7 +371,7 @@ function _identificar(d, tipo) {
   }
 
   const buscar = function (hoja, t) {
-    if (tipo && tipo !== t) return null;
+    if (!_libro().getSheetByName(hoja)) return null;
     const f = _tb(hoja).filas().filter(function (p) {
       if (!_activo(p['Activo'])) return false;
       if (cod) return _normCod(p['Código de credencial']) === cod;
@@ -344,8 +380,10 @@ function _identificar(d, tipo) {
       return esEl && nip && String(p['NIP'] == null ? '' : p['NIP']).trim().toUpperCase() === nip;
     })[0];
     if (!f) return null;
+    // Un empleado de CAT_Personas cuyo puesto/área diga "gestor" también cuenta como gestor.
+    const esGestor = t === 'GESTOR' || /gestor/i.test(String(f['Puesto'] || '') + ' ' + String(f['Área (prefijo)'] || ''));
     return {
-      tipo: t,
+      tipo: esGestor ? 'GESTOR' : 'PERSONA',
       nombre: String(f['Nombre completo']),
       codigo: cod ? String(f['Código de credencial']) : '',
       usuario: String(f['Usuario'] || usr),
@@ -355,7 +393,12 @@ function _identificar(d, tipo) {
       via: cod ? String(f['Código de credencial']) : 'usuario ' + String(f['Usuario'] || usr)
     };
   };
-  const r = buscar(TR.H.PERSONAS, 'PERSONA') || buscar(TR.H.GESTORES, 'GESTOR');
+  // Se busca en las DOS hojas: cualquier persona registrada se puede identificar.
+  // Si está en CAT_Gestores (aunque también esté en CAT_Personas) cuenta como GESTOR.
+  // "tipo" solo decide en qué hoja se busca primero.
+  const r = tipo === 'PERSONA'
+    ? (buscar(TR.H.PERSONAS, 'PERSONA') || buscar(TR.H.GESTORES, 'GESTOR'))
+    : (buscar(TR.H.GESTORES, 'GESTOR') || buscar(TR.H.PERSONAS, 'PERSONA'));
   if (bloqueo) {
     const k = 'nip_' + _norm(usr);
     if (r) bloqueo.remove(k); else bloqueo.put(k, String(Number(bloqueo.get(k) || 0) + 1), 900);
@@ -366,11 +409,17 @@ function _identificar(d, tipo) {
 function _personaPorCodigo(d) { return _identificar(d, 'PERSONA'); }
 function _gestorPorCodigo(d) { return _identificar(d, 'GESTOR'); }
 
+/** Lo que se le manda a la página: SOLO el nombre, nunca el código de la credencial. */
+function _publico(q) {
+  if (!q) return null;
+  const a = _areas()[q.area];
+  return { tipo: q.tipo, nombre: q.nombre, area: q.area, areaNombre: a ? R.nom(_areas(), q.area) : '', conCredencial: !!q.codigo };
+}
+
 /** Texto de error cuando no se reconoce a alguien. */
 function _noReconocido(d, que) {
   if (d && typeof d === 'object' && !d.codigo) return 'Usuario o NIP incorrectos' + (que ? ' (' + que + ')' : '') + '.';
-  const c = (d && typeof d === 'object') ? d.codigo : d;
-  return 'La credencial "' + c + '" no está registrada' + (que ? ' como ' + que : '') + ' o está desactivada.';
+  return 'Esa credencial no está registrada' + (que ? ' (' + que + ')' : '') + ' o está desactivada. Revisa CAT_Personas / CAT_Gestores.';
 }
 
 /** Valida un PIN (de área o de administrador). 5 errores = 15 min de bloqueo. */

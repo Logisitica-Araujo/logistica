@@ -146,8 +146,15 @@ En `09_TRASPASOS_NUEVOS.gs` cambia `ACTIVO: true` por `ACTIVO: false` y vuelve a
 ## Paquetería a Morelia: cajas y guías automáticas
 
 1. **Armar caja** (solo Logística): **Paquetería → Armar caja** → escanea los traspasos que van dentro → **Crear caja e imprimir etiqueta**. Sale un folio `CJ-0001` con su etiqueta, que lleva la lista de traspasos. Las etiquetas de cada traspaso se quedan en sus bultos, dentro de la caja.
-2. **Registrar el envío** en tu hoja **Operaciones**, como siempre, poniendo `CJ-0001` en **"ID Pedido / Tarea"**. Si mandas un traspaso suelto, pon su folio (por ejemplo `NR-0003`).
-3. **Automático:** cada 10 minutos el sistema revisa Operaciones. Cuando esa fila ya tiene **Nº de Guía**, los traspasos pasan solos a **Enviado por paquetería**, con proveedor (columna "Proveedor"), guía y fecha prometida (ETA). Morelia recibe su aviso. Para no esperar, usa el botón **"Revisar Operaciones ahora"**.
+2. **Registrar el envío** en tu hoja **Operaciones**:
+   - **Columna A:** `CJ-0001`. Si mandas un traspaso suelto, su folio (por ejemplo `LOG-0005`). Puedes poner varios en la misma celda, separados por coma.
+   - **Columna K:** la paquetería.
+   - **Columna M:** el número de guía.
+3. **Automático:** en cuanto escribes en A, K o M, los traspasos pasan solos a **Enviado por paquetería**, con paquetería, guía y fecha prometida (ETA). Morelia recibe su aviso.
+   - Además, cada 10 minutos se revisa todo, por si algo se escapó.
+   - Si quieres forzarlo, usa **"Revisar Operaciones ahora"**: te dice qué folios **no** pudo actualizar y por qué.
+   - Funciona aunque el traspaso siga en **"Nuevo"**, por ejemplo si lo creaste tú en Logística y no pasó por otra área. Sólo se necesita la guía.
+   - ¿Tus columnas son otras? Cámbialas en **CFG_Ajustes**: `ops_columna_folio`, `ops_columna_paqueteria` y `ops_columna_guia` (letra de la columna).
 4. **Morelia** escanea la etiqueta de la caja **una sola vez** y se reciben todos los traspasos que trae.
 
 ¿Armaste mal una caja? Usa **"Deshacer caja"**, siempre que todavía no tenga guía.
@@ -162,11 +169,13 @@ Lo que va de Morelia hacia acá lo sigue capturando Morelia en su pestaña Paque
 2. **Protege tu cuenta en esa computadora** (está abierta con jaraujo):
    - **CAT_Areas → "PIN de entrada"** de **LOG**: pon un PIN. Así, en la computadora del patio solo se puede entrar libre a Recepción; Logística pide PIN.
    - **CFG_Ajustes → pin_administrador**: pon un PIN para el Modo administrador.
-   - Abre la página en **modo quiosco**, para que no se pueda navegar a Gmail o Drive: el acceso directo de Chrome con `--kiosk "URL-de-la-página" --kiosk-printing`. Para salir del modo quiosco: **Alt + F4**.
+   - Ponla en **modo kiosco** paso a paso con **[MODO_KIOSCO.md](MODO_KIOSCO.md)**: usuario de Windows aparte, Chrome bloqueado para que solo abra Traspasos (`recepcion_kiosco_chrome.reg`) y pantalla completa al arrancar. En Recepción ya no aparece "Salir". Para cambiar el área, abre la URL con `?cambiar=1`.
 3. En esa computadora entra como **Recepción Oficinas**. La sesión no se cierra sola si `sesion_horas_sucursal` = 0.
 
 **Cómo se usa:**
-- **📥 Dejar:** el gestor se identifica (credencial, o usuario y NIP), escanea los traspasos y confirma. Quedan **En Recepción Oficinas** y al destino le llega su aviso.
+Recepción es un **centro de pausa**: los traspasos esperan ahí, pero nunca es su destino final. No se puede elegir como destino al crear un traspaso.
+
+- **📥 Dejar:** **cualquier persona registrada** (gestor o empleado) se identifica, escanea los traspasos y confirma. Quedan **En Recepción Oficinas** y al destino le llega su aviso. Se aceptan aunque se haya saltado un paso, por ejemplo si nadie registró la recolección.
 - **📤 Recoger:** quien recoge se identifica.
   - Si es **gestor**, puede llevarse cualquiera y queda *Recolectado por gestoría*.
   - Si es **persona de Oficinas**, solo se lleva lo de su área (según "Área (prefijo)" en CAT_Personas) y queda *Entregado*.
@@ -175,3 +184,55 @@ Lo que va de Morelia hacia acá lo sigue capturando Morelia en su pestaña Paque
 ## Usuario y NIP (sin credencial)
 
 En **CAT_Personas** y **CAT_Gestores** llena **Usuario** (por ejemplo `sofia`) y **NIP** (por ejemplo `123TAB`; no importan mayúsculas o minúsculas). En cualquier lugar donde se escanea credencial está **"¿Sin credencial? Teclea usuario y NIP"**. En CAT_Personas también sirve el **No. de empleado** como usuario. Si alguien se equivoca 5 veces de NIP, ese usuario se bloquea 15 minutos.
+
+
+---
+
+## Credenciales: cuándo se piden
+
+| Dónde | Crear traspaso | Recibir | Entregar a gestor | Reimprimir |
+|---|---|---|---|---|
+| **Oficinas** | No: usa la cuenta abierta | No: usa la cuenta abierta | Credencial de quien se lo lleva | **Nunca** |
+| **Sucursales** (PV, Rebotica, Botican, Morelia) | Sí | **Sí**: queda quién recibió | Credencial de quien se lo lleva | **Nunca** |
+| **Recepción Oficinas** | — | — | — | — |
+
+- En Recepción Oficinas, quien deja o recoge siempre se identifica.
+- **El código de la credencial nunca se ve:** el campo lo muestra como ●●●●. Después de escanearla, en pantalla sólo aparece el **nombre**. El código se guarda únicamente en la hoja, para auditoría.
+- **Cualquier persona registrada** en CAT_Personas **o** en CAT_Gestores se puede identificar.
+  - Si alguien está en las dos hojas (por ejemplo Juan Antonio), cuenta como **gestor**.
+  - Un gestor puede recoger cualquier traspaso. Una persona sólo lo de su área.
+- **Opcional:** en Oficinas, si agregas una columna **"Correo"** en CAT_Personas, el traspaso queda a nombre de esa persona en lugar del correo de la cuenta.
+
+## El escáner ya no necesita Enter
+
+La pistola "teclea" muy rápido. La página lo detecta y, al terminar la lectura, agrega el folio o identifica la credencial sola. Si la pistola además manda Enter, no se duplica. Si alguien teclea a mano un folio completo que existe, también se agrega solo al dejar de escribir.
+
+## Si un paso se saltó
+
+Si el paquete llega al destino pero nadie registró la recolección o la salida, **sí se puede recibir**. Sale en amarillo: *"nadie registró la recolección; queda anotado"*. Queda escrito en la línea de tiempo.
+
+## Impresoras por área o sucursal (CAT_Impresoras)
+
+Una fila por área (`NR`), por sucursal (`Nueva Roma`: aplica a PV y Rebotica) o `TODAS`.
+
+| Columna | Qué poner |
+|---|---|
+| **Ancho / Alto (mm)** | Obligatorios. Ej. Argox de PV Roma: **50 × 20**. |
+| **Margen superior / izquierdo (mm)** | Opcional. Para mover la impresión si sale corrida (ej. `1.5`). |
+| **Orientación** | `Horizontal` (normal) o `Vertical` (gira la etiqueta 90°). |
+| **Formato** | `AUTO` (por tamaño), `MINI`, `CHICA` o `COMPLETA`. |
+
+Si un área no tiene fila con medidas, usa `etiqueta_ancho_mm` / `etiqueta_alto_mm` de CFG_Ajustes. Al correr **instalar**, el mensaje final dice qué áreas quedaron configuradas.
+
+**Hojas en blanco al imprimir:** ya se corrigió. Ahora sale exactamente una hoja por etiqueta. Si aún salen hojas de más, revisa en el driver de la impresora que el tamaño de papel sea el mismo que en CAT_Impresoras y que esté en *"Etiquetas con separación"*.
+
+## Cómo actualizar a esta versión
+
+1. En Apps Script, reemplaza el contenido de: `02_Reglas.gs`, `03_Datos.gs`, `04_Api.gs`, `05_Instalar.gs`, `06_Cajas.gs`, `07_Recepcion.gs`, `App.html` y `Estilos.html`.
+2. Guarda y corre **`instalar`** una vez. Te pedirá permiso nuevo, porque ahora "escucha" cuando editas Operaciones: acéptalo.
+   - Crea el activador **al editar Operaciones**.
+   - Agrega a CFG_Ajustes las columnas de Operaciones (A, K, M).
+   - Agrega las columnas opcionales de CAT_Impresoras.
+   - Revisa Operaciones de inmediato: tus traspasos de Morelia que ya tienen guía cambian en ese momento.
+3. **Implementar → Administrar implementaciones → ✏️ → Nueva versión** (la URL no cambia).
+4. En cada computadora, recarga la página (F5).
