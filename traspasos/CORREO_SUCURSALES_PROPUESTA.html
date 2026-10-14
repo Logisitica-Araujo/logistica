@@ -2,155 +2,183 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap">
 <style>
-/* Layout: pestañas por público; cada una muestra un correo real de 600 px con estilos en línea (siempre claro, como en Gmail) dentro de un marco que sigue el tema. */
+/* Layout: marco de bandeja de correo (cambia con el tema) alrededor de un correo de 600 px con estilos en línea (siempre claro, como se ve en Gmail). */
 :root{
-  --bg:#E9EDF1; --frame:#FFFFFF; --ink:#1B2733; --muted:#5D6C7A; --line:#D9E0E6; --accent:#0E7C66; --accent-ink:#FFFFFF; --mailbg:#EEF2F5;
+  --bg:#E9EDF1; --frame:#FFFFFF; --ink:#1B2733; --muted:#5D6C7A; --line:#D9E0E6; --accent:#0E7C66;
   --f:"Nunito",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0E1318; --frame:#161D24; --ink:#E4EBF1; --muted:#98A6B3; --line:#2A3540; --accent:#3DBB9C; --accent-ink:#06261F; --mailbg:#1D262E; color-scheme:dark;
+  --bg:#0E1318; --frame:#161D24; --ink:#E4EBF1; --muted:#98A6B3; --line:#2A3540; --accent:#3DBB9C; color-scheme:dark;
 }}
 :root[data-theme="dark"]{
-  --bg:#0E1318; --frame:#161D24; --ink:#E4EBF1; --muted:#98A6B3; --line:#2A3540; --accent:#3DBB9C; --accent-ink:#06261F; --mailbg:#1D262E; color-scheme:dark;
+  --bg:#0E1318; --frame:#161D24; --ink:#E4EBF1; --muted:#98A6B3; --line:#2A3540; --accent:#3DBB9C; color-scheme:dark;
 }
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f)}
-.wrap{max-width:760px;margin:0 auto;padding-inline:16px;padding-block:24px 48px;display:grid;gap:14px}
-.nota{font-size:14px;color:var(--muted);margin:0;max-width:64ch}
+.wrap{max-width:760px;margin:0 auto;padding-inline:16px;padding-block:24px 48px}
+.nota{font-size:14px;color:var(--muted);margin:0 0 14px;max-width:62ch}
 .nota b{color:var(--ink)}
-.tabs{display:flex;flex-wrap:wrap;gap:6px;background:var(--frame);border:1px solid var(--line);border-radius:14px;padding:5px}
-.tab{flex:1 1 150px;border:none;background:none;color:var(--muted);font:inherit;font-weight:800;font-size:15px;padding:10px 12px;border-radius:10px;cursor:pointer}
-.tab:hover{color:var(--ink)}
-.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
-.tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .cliente{background:var(--frame);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.08)}
 .cab{padding:16px 20px;border-bottom:1px solid var(--line);display:grid;gap:4px;font-size:14px}
 .cab .asunto{font-size:20px;font-weight:900;color:var(--ink);text-wrap:balance}
 .cab .meta{color:var(--muted)}
 .cab .meta b{color:var(--ink);font-weight:700}
-.cuerpo{padding:20px 12px;background:var(--mailbg);overflow-x:auto}
+.cuerpo{padding:20px 12px;background:#EEF2F5;overflow-x:auto}
 </style>
+
 <div class="wrap">
-  <p class="nota"><b>Vista previa de los correos de lanzamiento.</b> Uno por público, con la página como funciona hoy. Cada correo está armado como correo real (600 px, estilos en línea, sin imágenes externas), así se ve igual en Gmail, en computadora y en celular.</p>
-  <nav class="tabs" role="tablist" aria-label="Público"><button type="button" class="tab" id="t-sucursales" data-k="sucursales" aria-selected="true" role="tab">Sucursales</button><button type="button" class="tab" id="t-oficinas" data-k="oficinas" aria-selected="false" role="tab">Oficinas y Recepción</button><button type="button" class="tab" id="t-admin" data-k="admin" aria-selected="false" role="tab">Administradores</button></nav>
-  <section class="cliente" id="p-sucursales" role="tabpanel">
-  <div class="cab"><div class="asunto">Adiós al Excel de traspasos 👋 Bienvenida la página de Traspasos</div><div class="meta">De: <b>Logística FADERMEX</b> &lt;jaraujo@fadermex.com&gt;</div><div class="meta">Para: <b>Sucursales (Nueva Roma, Vertiz, Doctores, Coapa, Ecatepec, Morelia y Botican)</b></div></div>
-  <div class="cuerpo"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#FFFFFF;border-radius:16px;font-family:Nunito,Segoe UI,Arial,sans-serif;color:#1B2733;"><tr><td style="padding:28px 28px 8px;">
+  <p class="nota"><b>Propuesta de correo para sucursales.</b> El correo de abajo está armado como correo real (600 px, estilos en línea, sin imágenes externas), así se ve igual en Gmail, en computadora y en celular.</p>
+
+  <div class="cliente">
+    <div class="cab">
+      <div class="asunto">Adiós al Excel de traspasos 👋 Bienvenida la página de Traspasos</div>
+      <div class="meta">De: <b>Logística FADERMEX</b> &lt;jaraujo@fadermex.com&gt;</div>
+      <div class="meta">Para: <b>Sucursales</b> (Nueva Roma, Vertiz, Doctores, Coapa, Ecatepec, Morelia y Botican)</div>
+    </div>
+    <div class="cuerpo">
+
+<!-- ===================== CORREO (estilos en línea) ===================== -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#FFFFFF;border-radius:16px;font-family:Nunito,Segoe UI,Arial,sans-serif;color:#1B2733;">
+  <!-- Encabezado -->
+  <tr><td style="padding:28px 28px 8px;">
     <div style="font-size:12px;font-weight:900;letter-spacing:2px;color:#0E7C66;">LOGÍSTICA · TRASPASOS</div>
-    <h1 style="margin:8px 0 10px;font-size:27px;line-height:1.15;font-weight:900;color:#1B2733;">Los traspasos ya viven en línea 📦✨</h1>
-    <p style="margin:0;font-size:16px;line-height:1.55;color:#3B4A57;">Hola, equipo. A partir de hoy <b>dejamos el archivo de Excel de traspasos</b> y usamos la página de <b>Traspasos</b>. Mismo trabajo, menos papeleo: cada traspaso con su folio, su etiqueta y su historia completa.</p></td></tr><tr><td style="padding:18px 28px 6px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td width="48%" valign="top" style="background:#FDECEC;border-radius:12px;padding:14px 16px;"><div style="font-size:26px;">📄😵‍💫</div>
+    <h1 style="margin:8px 0 10px;font-size:28px;line-height:1.15;font-weight:900;color:#1B2733;">Los traspasos ya viven en línea 📦✨</h1>
+    <p style="margin:0;font-size:16px;line-height:1.55;color:#3B4A57;">Hola, equipo. A partir de hoy <b>dejamos el archivo de Excel de traspasos</b> y usamos la página de <b>Traspasos</b>. Mismo trabajo, menos papeleo, y cada traspaso con su folio, su etiqueta y su historia completa.</p>
+  </td></tr>
+
+  <!-- Antes / Ahora -->
+  <tr><td style="padding:18px 28px 6px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td width="48%" valign="top" style="background:#FDECEC;border-radius:12px;padding:14px 16px;">
+        <div style="font-size:26px;">📄😵‍💫</div>
         <div style="font-weight:900;font-size:15px;margin:4px 0 6px;color:#B42330;">Antes: el Excel</div>
-        <div style="font-size:14px;line-height:1.5;color:#5B2A2E;">Varias versiones del mismo archivo · capturas a mano · "¿quién lo tiene?" · nadie sabe dónde quedó el paquete.</div></td>
+        <div style="font-size:14px;line-height:1.5;color:#5B2A2E;">Varias versiones del mismo archivo · capturas a mano · "¿quién lo tiene?" · nadie sabe dónde quedó el paquete.</div>
+      </td>
       <td width="4%"></td>
-      <td width="48%" valign="top" style="background:#DFF3E5;border-radius:12px;padding:14px 16px;"><div style="font-size:26px;">🌐😎</div>
+      <td width="48%" valign="top" style="background:#DFF3E5;border-radius:12px;padding:14px 16px;">
+        <div style="font-size:26px;">🌐😎</div>
         <div style="font-weight:900;font-size:15px;margin:4px 0 6px;color:#1B7F38;">Ahora: la página</div>
-        <div style="font-size:14px;line-height:1.5;color:#21452C;"><b>Centralizado</b> en un solo lugar · <b>automático</b> (folio, etiqueta y avisos solos) · <b>en línea</b> y guardado siempre.</div></td>
-    </tr></table></td></tr><tr><td style="padding:24px 28px 6px;"><h2 style="margin:0 0 4px;font-size:21px;font-weight:900;color:#1B2733;">Tu día con Traspasos, en 4 movimientos</h2><p style="margin:0 0 6px;font-size:14px;line-height:1.5;color:#5D6C7A;">Ábrela con el ícono <b>Traspasos</b> del escritorio. Ya está en tu área; las áreas que no son tuyas salen en gris.</p></td></tr><tr><td style="padding:4px 28px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#DDF1EB;font-size:26px;line-height:48px;text-align:center;">🪪</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">1. Crear</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;"><b>Nuevo traspaso</b> → escanea <b>tu credencial</b> (en pantalla solo sale tu nombre, nunca el número) → elige el destino → qué envías y cuántos bultos → <b>Generar</b>. El folio sale solo (ej. <b>NR-0001</b>) y se imprime <b>una etiqueta por bulto</b>.</div></td></tr></table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#FFF0CC;font-size:26px;line-height:48px;text-align:center;">🏷️</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">2. Etiquetar</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;">Pega cada etiqueta en su bulto. Si una se daña: abre el traspaso → <b>Reimprimir etiqueta</b>. No pide credencial.</div></td></tr></table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#FFE6CC;font-size:26px;line-height:48px;text-align:center;">🛵</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">3. Entregar al gestor</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;"><b>Escáner</b> → botón naranja <b>Entregar a gestor</b> → escanea la credencial de quien se lo lleva → escanea las etiquetas → <b>Confirmar salida</b>.</div></td></tr></table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#E2F4E7;font-size:26px;line-height:48px;text-align:center;">📥</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">4. Recibir</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;"><b>Escáner</b> → botón verde <b>Recibir traspasos</b> → escanea <b>tu credencial</b> (queda quién recibió) → escanea las etiquetas → <b>Confirmar recepción</b>. Cada fila te dice <span style="display:inline-block;padding:1px 8px;border-radius:6px;font-size:12px;font-weight:900;background:#D3F1E8;color:#0E6E5C;">PARA PV</span> o <span style="display:inline-block;padding:1px 8px;border-radius:6px;font-size:12px;font-weight:900;background:#FBDDEB;color:#A3195B;">PARA REBOTICA</span>. Si falta un bulto o llegó dañado, marca <b>Faltan / dañado</b>.</div></td></tr></table></td></tr><tr><td style="padding:16px 28px 0;"><div style="background:#E9F0FF;border-radius:12px;padding:14px 16px;"><div style="font-weight:900;font-size:15px;color:#1F4FA8;">🔫 La pistola ya no necesita Enter</div><div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:4px;">Escanea y listo: el folio o la credencial se agregan solos. Si algo no te deja, la pantalla te dice por qué en rojo (folio de otra sucursal, mal tecleado o repetido).</div></div></td></tr><tr><td style="padding:14px 28px 4px;"><table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr>
-      <td style="border:2px dashed #9AA7B3;border-radius:10px;padding:10px;background:#F6F8FA;">
-        <table role="presentation" cellpadding="0" cellspacing="0" style="width:250px;height:100px;background:#FFFFFF;border:1px solid #CCD3D9;border-radius:4px;font-family:Nunito,Segoe UI,Arial,sans-serif;color:#000;"><tr><td style="padding:8px 10px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="font-size:20px;font-weight:900;">NR-0001</td><td align="right" style="font-size:15px;font-weight:900;">1/3</td></tr></table>
-          <div style="height:30px;margin:5px 0;background:repeating-linear-gradient(90deg,#000 0 2px,#fff 2px 4px,#000 4px 5px,#fff 5px 8px,#000 8px 11px,#fff 11px 12px);"></div>
-          <div style="font-size:11px;font-weight:800;">→ Oficinas · Contabilidad</div></td></tr></table>
-      </td></tr></table>
-      <p style="margin:8px 0 0;text-align:center;font-size:13px;color:#5D6C7A;">Así sale tu etiqueta de 5 × 2 cm: <b>folio</b>, <b>bulto 1 de 3</b>, código de barras y destino.</p></td></tr><tr><td style="padding:24px 28px 6px;"><h2 style="margin:0 0 4px;font-size:21px;font-weight:900;color:#1B2733;">¿Cómo va mi traspaso?</h2><p style="margin:0 0 6px;font-size:14px;line-height:1.5;color:#5D6C7A;">En <b>Mi bandeja</b> ves lo que entra y lo que sale, con su color. Clic en uno y ves toda su historia.</p></td></tr><tr><td style="padding:2px 28px 0;"><span style="display:inline-block;margin:0 6px 8px 0;padding:4px 11px;border-radius:999px;font-size:12.5px;font-weight:800;color:#3B4A57;background:#E8ECF0;">● Nuevo</span><span style="display:inline-block;margin:0 6px 8px 0;padding:4px 11px;border-radius:999px;font-size:12.5px;font-weight:800;color:#7A4A00;background:#FFF0CC;">● Recolectado por gestoría</span><span style="display:inline-block;margin:0 6px 8px 0;padding:4px 11px;border-radius:999px;font-size:12.5px;font-weight:800;color:#8A4B12;background:#F6E7D8;">● En Recepción Oficinas</span><span style="display:inline-block;margin:0 6px 8px 0;padding:4px 11px;border-radius:999px;font-size:12.5px;font-weight:800;color:#3C3A9E;background:#E6E5FB;">● En Logística</span><span style="display:inline-block;margin:0 6px 8px 0;padding:4px 11px;border-radius:999px;font-size:12.5px;font-weight:800;color:#0B6C80;background:#DAF2F7;">● Enviado por paquetería</span><span style="display:inline-block;margin:0 6px 8px 0;padding:4px 11px;border-radius:999px;font-size:12.5px;font-weight:800;color:#1B7F38;background:#DFF3E5;">● Entregado</span><span style="display:inline-block;margin:0 6px 8px 0;padding:4px 11px;border-radius:999px;font-size:12.5px;font-weight:800;color:#C8232D;background:#FDE6E7;">● Incidencia</span></td></tr><tr><td style="padding:22px 28px 6px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td width="49%" valign="top" style="background:#E2F4E7;border-radius:12px;padding:14px 16px;"><div style="font-weight:900;font-size:16px;color:#1E8E3E;margin-bottom:6px;">✅ SÍ</div><div style="font-size:14px;line-height:1.5;color:#21452C;padding:3px 0;">Una etiqueta en <b>cada</b> bulto</div><div style="font-size:14px;line-height:1.5;color:#21452C;padding:3px 0;">Escanear al entregar y al recibir</div><div style="font-size:14px;line-height:1.5;color:#21452C;padding:3px 0;">Revisar si es <span style="display:inline-block;padding:1px 8px;border-radius:6px;font-size:12px;font-weight:900;background:#D3F1E8;color:#0E6E5C;">PARA PV</span> o <span style="display:inline-block;padding:1px 8px;border-radius:6px;font-size:12px;font-weight:900;background:#FBDDEB;color:#A3195B;">PARA REBOTICA</span></div><div style="font-size:14px;line-height:1.5;color:#21452C;padding:3px 0;">Recibir aunque el gestor no haya registrado la recolección (se anota solo)</div><div style="font-size:14px;line-height:1.5;color:#21452C;padding:3px 0;">Guardar tus <b>folios de Plan B</b> junto a la impresora</div></td>
-      <td width="2%"></td>
-      <td width="49%" valign="top" style="background:#FDE6E7;border-radius:12px;padding:14px 16px;"><div style="font-weight:900;font-size:16px;color:#C8232D;margin-bottom:6px;">🚫 NO</div><div style="font-size:14px;line-height:1.5;color:#5B2A2E;padding:3px 0;">Volver a capturar en Excel</div><div style="font-size:14px;line-height:1.5;color:#5B2A2E;padding:3px 0;">Prestar tu credencial</div><div style="font-size:14px;line-height:1.5;color:#5B2A2E;padding:3px 0;">Escribir folios a mano en lugar de imprimir</div><div style="font-size:14px;line-height:1.5;color:#5B2A2E;padding:3px 0;">Pegar una etiqueta en el bulto equivocado</div><div style="font-size:14px;line-height:1.5;color:#5B2A2E;padding:3px 0;">Dar "Salir" para cambiar de área: pide la contraseña</div></td>
-    </tr></table></td></tr><tr><td style="padding:24px 28px 6px;"><h2 style="margin:0 0 4px;font-size:21px;font-weight:900;color:#1B2733;">¿Algo raro? 🤔</h2></td></tr><tr><td style="padding:0 28px;"><div style="padding:10px 0;border-top:1px solid #E3E8ED;"><div style="font-weight:900;font-size:15px;color:#1B2733;">"Este traspaso NO es para tu sucursal"</div><div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:2px;">No lo recibas. Presiona <b>Registrar que está aquí</b>: le avisa al origen, al destino y a Logística.</div></div><div style="padding:10px 0;border-top:1px solid #E3E8ED;"><div style="font-weight:900;font-size:15px;color:#1B2733;">Se fue el internet o la página no abre</div><div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:2px;">Usa el <b>Plan B</b>: en <b>Mi bandeja → 🧯 Plan B</b> imprime hoy unas etiquetas de contingencia y guárdalas. Si falla el sistema: pega una, escribe a mano destino y bultos y anótalo en papel. Cuando regrese: <b>Nuevo traspaso → "¿Usaste un folio de contingencia?"</b>.</div></div><div style="padding:10px 0;border-top:1px solid #E3E8ED;"><div style="font-weight:900;font-size:15px;color:#1B2733;">Hay una barra roja de "Mantenimiento"</div><div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:2px;">Estamos ajustando algo. Usa el Plan B un ratito; te avisamos cuando termine.</div></div><div style="padding:10px 0;border-top:1px solid #E3E8ED;"><div style="font-weight:900;font-size:15px;color:#1B2733;">Me equivoqué en un traspaso</div><div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:2px;">Ábrelo → <b>Solicitar eliminación</b> y explica por qué. Un administrador lo revisa.</div></div></td></tr><tr><td style="padding:26px 28px 6px;" align="center"><a href="https://script.google.com/a/macros/fadermex.com/s/AKfycbyEe93gdE_Sa18T8paJD182ocQ8IAUwJzVCG1MRX7uPBf-ObHvvkfHPAAQ7GRf4H1gl0Q/exec" style="display:inline-block;background:#0E7C66;color:#FFFFFF;text-decoration:none;font-weight:900;font-size:16px;padding:14px 26px;border-radius:12px;">Abrir Traspasos</a>
-    <p style="margin:10px 0 0;font-size:12.5px;color:#5D6C7A;">Entra con tu cuenta @fadermex.com.</p></td></tr><tr><td style="padding:22px 28px 28px;"><div style="border-top:1px solid #E3E8ED;padding-top:16px;font-size:14px;line-height:1.5;color:#3B4A57;">
-    Cualquier duda, escríbannos. 🙌<br><b style="color:#1B2733;">Logística FADERMEX</b><br><span style="color:#5D6C7A;">jaraujo@fadermex.com</span></div></td></tr></table></div></section><section class="cliente" id="p-oficinas" role="tabpanel" hidden>
-  <div class="cab"><div class="asunto">Traspasos en Oficinas: sin credencial y con Recepción en el patio 🏢</div><div class="meta">De: <b>Logística FADERMEX</b> &lt;jaraujo@fadermex.com&gt;</div><div class="meta">Para: <b>Áreas de Oficinas (Dirección, Logística, Compras, Contabilidad, Facturación, RH…)</b></div></div>
-  <div class="cuerpo"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#FFFFFF;border-radius:16px;font-family:Nunito,Segoe UI,Arial,sans-serif;color:#1B2733;"><tr><td style="padding:28px 28px 8px;">
-    <div style="font-size:12px;font-weight:900;letter-spacing:2px;color:#0E7C66;">LOGÍSTICA · TRASPASOS</div>
-    <h1 style="margin:8px 0 10px;font-size:27px;line-height:1.15;font-weight:900;color:#1B2733;">Oficinas: tus traspasos, sin credencial 🏢</h1>
-    <p style="margin:0;font-size:16px;line-height:1.55;color:#3B4A57;">Hola, equipo de Oficinas. Ya está lista la página de <b>Traspasos</b> y <b>sustituye el archivo de Excel</b>. En Oficinas trabaja con la cuenta abierta de tu computadora: <b>no tienes que escanear credencial</b> para crear ni para recibir.</p></td></tr><tr><td style="padding:18px 28px 6px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td width="48%" valign="top" style="background:#FDECEC;border-radius:12px;padding:14px 16px;"><div style="font-size:26px;">📄😵‍💫</div>
-        <div style="font-weight:900;font-size:15px;margin:4px 0 6px;color:#B42330;">Antes: el Excel</div>
-        <div style="font-size:14px;line-height:1.5;color:#5B2A2E;">Varias versiones del mismo archivo · capturas a mano · "¿quién lo tiene?" · nadie sabe dónde quedó el paquete.</div></td>
+        <div style="font-size:14px;line-height:1.5;color:#21452C;"><b>Centralizado</b> en un solo lugar · <b>automático</b> (folio, etiqueta y avisos solos) · <b>en línea</b> y guardado siempre · sabes dónde va cada traspaso.</div>
+      </td>
+    </tr></table>
+  </td></tr>
+
+  <!-- 3 movimientos -->
+  <tr><td style="padding:22px 28px 4px;">
+    <h2 style="margin:0 0 4px;font-size:21px;font-weight:900;">Tu día con Traspasos, en 3 movimientos</h2>
+    <p style="margin:0 0 12px;font-size:14px;color:#5D6C7A;">Ábrela con el ícono <b>Traspasos</b> del escritorio. Ya está con la cuenta de tu sucursal; solo verás encendidas tus áreas: <b>PV</b> y <b>Rebotica</b>.</p>
+  </td></tr>
+
+  <tr><td style="padding:0 28px;">
+    <!-- 1 -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
+      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:24px;background:#E2ECFF;text-align:center;line-height:48px;font-size:24px;">✍️</div></td>
+      <td valign="top" style="padding:14px 16px;">
+        <div style="font-weight:900;font-size:16px;">1 · Crear y etiquetar</div>
+        <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:4px;"><b>Nuevo traspaso</b> → escanea tu <b>credencial</b> → elige el <b>destino</b> → escribe qué envías y cuántos <b>bultos</b> → <b>Generar</b>. Sale el folio y una etiqueta por bulto. ¡Pégalas y listo!</div>
+        <div style="font-size:13px;color:#5D6C7A;margin-top:6px;">¿Sin credencial? Usa "Teclea usuario y NIP".</div>
+      </td>
+    </tr></table>
+    <!-- 2 -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
+      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:24px;background:#FFF0CC;text-align:center;line-height:48px;font-size:24px;">🛵</div></td>
+      <td valign="top" style="padding:14px 16px;">
+        <div style="font-weight:900;font-size:16px;">2 · Entregar al gestor</div>
+        <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:4px;">El gestor escanea las etiquetas con su celular y <b>tú no haces nada</b>. ¿No trae celular? <b>Escáner → Entregar a gestor</b> → su credencial → escanea los traspasos → <b>Confirmar salida</b>.</div>
+      </td>
+    </tr></table>
+    <!-- 3 -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:6px;"><tr>
+      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:24px;background:#DFF3E5;text-align:center;line-height:48px;font-size:24px;">📥</div></td>
+      <td valign="top" style="padding:14px 16px;">
+        <div style="font-weight:900;font-size:16px;">3 · Recibir</div>
+        <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:4px;"><b>Escáner → Recibir</b> → escanea cada etiqueta (o teclea el folio) → <b>Confirmar recepción</b>. Cada fila te dice
+          <span style="display:inline-block;background:#D3F1E8;color:#0E6E5C;font-weight:900;font-size:12px;padding:1px 7px;border-radius:6px;">PARA PV</span> o
+          <span style="display:inline-block;background:#FBDDEB;color:#A3195B;font-weight:900;font-size:12px;padding:1px 7px;border-radius:6px;">PARA REBOTICA</span>: cualquiera lo recibe y se lo pasa a quien corresponde.</div>
+        <div style="font-size:13px;color:#5D6C7A;margin-top:6px;">¿Falta un bulto o llegó dañado? Marca "Faltan / dañado" antes de confirmar.</div>
+      </td>
+    </tr></table>
+  </td></tr>
+
+  <!-- Etiqueta -->
+  <tr><td style="padding:18px 28px 4px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td valign="middle" style="padding-right:14px;">
+        <div style="font-weight:900;font-size:16px;margin-bottom:4px;">Así se ve tu etiqueta 🏷️</div>
+        <div style="font-size:14px;line-height:1.5;color:#3B4A57;">Una por bulto, de 5 × 2 cm. El código de barras es el folio: con escanearlo, la página ya sabe todo lo demás.</div>
+      </td>
+      <td width="210" valign="middle">
+        <table role="presentation" width="200" cellpadding="0" cellspacing="0" style="border:2px solid #1B2733;border-radius:6px;background:#FFFFFF;">
+          <tr><td style="padding:6px 8px 0;font-weight:900;font-size:15px;">NR-0001 <span style="float:right;font-size:12px;">1/3</span></td></tr>
+          <tr><td style="padding:3px 8px;font-family:Courier New,monospace;font-size:22px;letter-spacing:-2px;line-height:1;color:#000;">▌▍▌▌▍▌▍▍▌▌▍▌▍▌▌▍▌</td></tr>
+          <tr><td style="padding:0 8px 6px;font-size:11px;font-weight:700;">→ Oficinas · Contabilidad</td></tr>
+        </table>
+      </td>
+    </tr></table>
+  </td></tr>
+
+  <!-- Semáforo -->
+  <tr><td style="padding:20px 28px 4px;">
+    <div style="font-weight:900;font-size:16px;margin-bottom:8px;">El semáforo de tus traspasos 🚦</div>
+    <div style="font-size:14px;line-height:2.1;">
+      <span style="background:#E2ECFF;color:#1F63D6;font-weight:800;padding:3px 10px;border-radius:999px;white-space:nowrap;">● Nuevo</span>&nbsp;
+      <span style="background:#FFF0CC;color:#9A6400;font-weight:800;padding:3px 10px;border-radius:999px;white-space:nowrap;">● Con el gestor</span>&nbsp;
+      <span style="background:#F6E7D8;color:#8A4B12;font-weight:800;padding:3px 10px;border-radius:999px;white-space:nowrap;">● En Recepción Oficinas</span>&nbsp;
+      <span style="background:#DFF3E5;color:#1B7F38;font-weight:800;padding:3px 10px;border-radius:999px;white-space:nowrap;">● Entregado</span>&nbsp;
+      <span style="background:#FFE8DA;color:#C4440B;font-weight:800;padding:3px 10px;border-radius:999px;white-space:nowrap;">● Con incidencia</span>&nbsp;
+      <span style="background:#FDE6E7;color:#C8232D;font-weight:800;padding:3px 10px;border-radius:999px;white-space:nowrap;">● Extraviado</span>
+    </div>
+    <div style="font-size:13px;color:#5D6C7A;margin-top:6px;">La campanita 🔔 te avisa cuando algo viene en camino para ti. Ya no hay que preguntar por WhatsApp.</div>
+  </td></tr>
+
+  <!-- Sí / No -->
+  <tr><td style="padding:20px 28px 4px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td width="48%" valign="top" style="background:#DFF3E5;border-radius:12px;padding:14px 16px;">
+        <div style="font-weight:900;font-size:14px;letter-spacing:1px;color:#1B7F38;margin-bottom:6px;">✅ SÍ</div>
+        <div style="font-size:14px;line-height:1.6;color:#21452C;">
+          • Una etiqueta en <b>cada</b> bulto<br>
+          • Escanear al <b>recibir</b>, siempre<br>
+          • Marcar "Faltan / dañado" si aplica<br>
+          • Si llega algo que no es tuyo: <b>"Registrar que está aquí"</b>
+        </div>
+      </td>
       <td width="4%"></td>
-      <td width="48%" valign="top" style="background:#DFF3E5;border-radius:12px;padding:14px 16px;"><div style="font-size:26px;">🌐😎</div>
-        <div style="font-weight:900;font-size:15px;margin:4px 0 6px;color:#1B7F38;">Ahora: la página</div>
-        <div style="font-size:14px;line-height:1.5;color:#21452C;"><b>Centralizado</b> en un solo lugar · <b>automático</b> (folio, etiqueta y avisos solos) · <b>en línea</b> y guardado siempre.</div></td>
-    </tr></table></td></tr><tr><td style="padding:24px 28px 6px;"><h2 style="margin:0 0 4px;font-size:21px;font-weight:900;color:#1B2733;">En tu computadora</h2></td></tr><tr><td style="padding:4px 28px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#DDF1EB;font-size:26px;line-height:48px;text-align:center;">✍️</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">Crear</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;"><b>Nuevo traspaso</b> → destino → qué envías y bultos → <b>Generar</b>. Sale el folio de tu área (ej. <b>CONT-0006</b>) y se imprimen las etiquetas.</div></td></tr></table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#E2F4E7;font-size:26px;line-height:48px;text-align:center;">📥</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">Recibir</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;"><b>Escáner</b> → botón verde <b>Recibir traspasos</b> → escanea las etiquetas → <b>Confirmar</b>. Queda registrado con tu cuenta.</div></td></tr></table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#FFE6CC;font-size:26px;line-height:48px;text-align:center;">🛵</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">Entregar al gestor</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;"><b>Escáner</b> → botón naranja <b>Entregar a gestor</b> → escanea la credencial de quien se lo lleva → etiquetas → <b>Confirmar salida</b>.</div></td></tr></table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#FFF0CC;font-size:26px;line-height:48px;text-align:center;">🏷️</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">Reimprimir</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;">Abre el traspaso → <b>Reimprimir etiqueta</b>. Sin credencial.</div></td></tr></table></td></tr><tr><td style="padding:24px 28px 6px;"><h2 style="margin:0 0 4px;font-size:21px;font-weight:900;color:#1B2733;">Recepción Oficinas, el stand del patio 🅿️</h2><p style="margin:0 0 6px;font-size:14px;line-height:1.5;color:#5D6C7A;">Es un <b>punto de pausa</b>: ahí los traspasos esperan. Nunca es el destino final, y no se puede elegir como destino.</p></td></tr><tr><td style="padding:4px 28px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#F6E7D8;font-size:26px;line-height:48px;text-align:center;">📦</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">Dejar</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;">Cualquier persona registrada (gestor o empleado): <b>📥 Dejar</b> → escanea tu credencial → escanea los traspasos → <b>Confirmar</b>. Al área destino le llega un aviso: <i>"Tu traspaso está en Recepción Oficinas"</i>.</div></td></tr></table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#E9F0FF;font-size:26px;line-height:48px;text-align:center;">🙋</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">Recoger lo tuyo</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;"><b>📤 Recoger</b> → escanea tu credencial → la pantalla te muestra lo que es de <b>tu área</b>. Solo puedes llevarte lo tuyo; si no es tuyo, el sistema no te deja.</div></td></tr></table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#FFE6CC;font-size:26px;line-height:48px;text-align:center;">🛵</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">Gestores</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;">Un gestor sí puede recoger cualquier traspaso: es quien lo lleva a su destino. Queda como <b>Recolectado por gestoría</b>.</div></td></tr></table></td></tr><tr><td style="padding:16px 28px 0;"><div style="background:#EEF1F4;border-radius:12px;padding:14px 16px;"><div style="font-weight:900;font-size:15px;color:#3B4A57;">🔒 La computadora del patio no se toca</div><div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:4px;">Está fija en Recepción. Para salir pide contraseña, y no abre Gmail ni otras páginas. Si se traba, avísale a Logística.</div></div></td></tr><tr><td style="padding:16px 28px 0;"><div style="background:#DAF2F7;border-radius:12px;padding:14px 16px;"><div style="font-weight:900;font-size:15px;color:#0B6C80;">🚚 Logística y Morelia</div><div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:4px;">Lo que va a Morelia lo empaca Logística en cajas (<b>CJ-0001</b>). Al poner la guía en la hoja Operaciones (columnas A, K y M), los traspasos pasan solos a <b>Enviado por paquetería</b>.</div></div></td></tr><tr><td style="padding:22px 28px 6px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td width="49%" valign="top" style="background:#E2F4E7;border-radius:12px;padding:14px 16px;"><div style="font-weight:900;font-size:16px;color:#1E8E3E;margin-bottom:6px;">✅ SÍ</div><div style="font-size:14px;line-height:1.5;color:#21452C;padding:3px 0;">Recoger en Recepción solo lo de tu área</div><div style="font-size:14px;line-height:1.5;color:#21452C;padding:3px 0;">Darle entrada en tu computadora a lo que recogiste</div><div style="font-size:14px;line-height:1.5;color:#21452C;padding:3px 0;">Avisar si algo lleva días en el stand</div></td>
-      <td width="2%"></td>
-      <td width="49%" valign="top" style="background:#FDE6E7;border-radius:12px;padding:14px 16px;"><div style="font-weight:900;font-size:16px;color:#C8232D;margin-bottom:6px;">🚫 NO</div><div style="font-size:14px;line-height:1.5;color:#5B2A2E;padding:3px 0;">Llevarte traspasos de otra área</div><div style="font-size:14px;line-height:1.5;color:#5B2A2E;padding:3px 0;">Usar Recepción como destino</div><div style="font-size:14px;line-height:1.5;color:#5B2A2E;padding:3px 0;">Mover cosas del stand sin escanearlas</div></td>
-    </tr></table></td></tr><tr><td style="padding:26px 28px 6px;" align="center"><a href="https://script.google.com/a/macros/fadermex.com/s/AKfycbyEe93gdE_Sa18T8paJD182ocQ8IAUwJzVCG1MRX7uPBf-ObHvvkfHPAAQ7GRf4H1gl0Q/exec" style="display:inline-block;background:#0E7C66;color:#FFFFFF;text-decoration:none;font-weight:900;font-size:16px;padding:14px 26px;border-radius:12px;">Abrir Traspasos</a>
-    <p style="margin:10px 0 0;font-size:12.5px;color:#5D6C7A;">Entra con tu cuenta @fadermex.com.</p></td></tr><tr><td style="padding:22px 28px 28px;"><div style="border-top:1px solid #E3E8ED;padding-top:16px;font-size:14px;line-height:1.5;color:#3B4A57;">
-    Cualquier duda, escríbannos. 🙌<br><b style="color:#1B2733;">Logística FADERMEX</b><br><span style="color:#5D6C7A;">jaraujo@fadermex.com</span></div></td></tr></table></div></section><section class="cliente" id="p-admin" role="tabpanel" hidden>
-  <div class="cab"><div class="asunto">Traspasos: tu tablero de administrador 🗝️</div><div class="meta">De: <b>Logística FADERMEX</b> &lt;jaraujo@fadermex.com&gt;</div><div class="meta">Para: <b>Oramirez@fadermex.com, sistemasfed@fadermex.com</b></div></div>
-  <div class="cuerpo"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#FFFFFF;border-radius:16px;font-family:Nunito,Segoe UI,Arial,sans-serif;color:#1B2733;"><tr><td style="padding:28px 28px 8px;">
-    <div style="font-size:12px;font-weight:900;letter-spacing:2px;color:#0E7C66;">SOLO ADMINISTRADORES</div>
-    <h1 style="margin:8px 0 10px;font-size:27px;line-height:1.15;font-weight:900;color:#1B2733;">Tu tablero de control de Traspasos 🗝️</h1>
-    <p style="margin:0;font-size:16px;line-height:1.55;color:#3B4A57;">Hola. Ustedes tres (jaraujo, Oramirez y sistemasfed) son los administradores de la página de Traspasos, que <b>sustituye el Excel</b>. El día a día lo trabajan como usuarios de su área; cuando haya que arreglar algo, pasan al <b>Modo administrador</b>.</p></td></tr><tr><td style="padding:24px 28px 6px;"><h2 style="margin:0 0 4px;font-size:21px;font-weight:900;color:#1B2733;">Entrar y salir del modo administrador</h2></td></tr><tr><td style="padding:4px 28px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#FFF0CC;font-size:26px;line-height:48px;text-align:center;">🟨</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">Botón dorado</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;">Arriba, <b>Modo administrador</b> → PIN de administrador. Aparece la barra negra con dorado: <i>"control total"</i>. Para volver: <b>← Volver a tu área</b>.</div></td></tr></table></td></tr><tr><td style="padding:24px 28px 6px;"><h2 style="margin:0 0 4px;font-size:21px;font-weight:900;color:#1B2733;">Lo que puedes hacer</h2></td></tr><tr><td style="padding:4px 28px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#E9F0FF;font-size:26px;line-height:48px;text-align:center;">🔎</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">Buscador con historia</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;">Escribe o escanea un folio y ves su <b>línea de tiempo completa</b>: quién lo creó, quién lo llevó, dónde se escaneó, quién recibió. También busca por guía, persona o gestor.</div></td></tr></table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#DDF1EB;font-size:26px;line-height:48px;text-align:center;">✏️</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">Corregir</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;">Cambiar estatus (ej. <b>Extraviado</b>), mover a otro destino o marcar <b>dónde está</b>. Pide un motivo y queda en la historia.</div></td></tr></table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#FDE6E7;font-size:26px;line-height:48px;text-align:center;">🗑️</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">Eliminar y aprobar</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;">Eliminar un traspaso, y aprobar o rechazar las <b>solicitudes de eliminación</b> de las áreas. Mientras se decide, el traspaso queda congelado.</div></td></tr></table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#EEF1F4;font-size:26px;line-height:48px;text-align:center;">🗂️</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">Catálogos en Sheets</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;">Áreas y correos, personas y credenciales, gestores, usuario y NIP, PIN por área, impresoras por sucursal y colores. Se editan en la hoja; la página los toma sola.</div></td></tr></table></td></tr><tr><td style="padding:16px 28px 0;"><div style="background:#FDE6E7;border-radius:12px;padding:14px 16px;"><div style="font-weight:900;font-size:15px;color:#B42330;">⚠️ Nunca borres filas en Sheets</div><div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:4px;">Para borrar un traspaso usa la página (Eliminar). Borrar la fila no deja rastro, deja su historia huérfana y puede hacer que un cambio caiga en el traspaso de abajo. Las hojas RES_ ahora te avisan si intentas editarlas a mano.</div></div></td></tr><tr><td style="padding:24px 28px 6px;"><h2 style="margin:0 0 4px;font-size:21px;font-weight:900;color:#1B2733;">Cuando algo falla 🧯</h2></td></tr><tr><td style="padding:4px 28px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#FDE6E7;font-size:26px;line-height:48px;text-align:center;">🛠</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">Mantenimiento</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;">En <b>CFG_Ajustes</b> pon <b>modo_mantenimiento = SI</b>: todos ven una barra roja con tu mensaje y solo los administradores pueden mover traspasos. Al terminar, regrésalo a <b>NO</b>.</div></td></tr></table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#FFF0CC;font-size:26px;line-height:48px;text-align:center;">📮</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">Plan B</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;">Cada área imprime por adelantado folios de contingencia. Sin sistema se usan en papel y después se capturan con el <b>mismo folio</b>. En la historia queda marcado <i>"capturado de contingencia"</i>.</div></td></tr></table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DCE3E9;border-radius:12px;margin-bottom:10px;"><tr>
-      <td width="64" valign="top" style="padding:14px 0 14px 14px;"><div style="width:48px;height:48px;border-radius:12px;background:#EEF1F4;font-size:26px;line-height:48px;text-align:center;">🔐</div></td>
-      <td valign="top" style="padding:14px 16px 14px 12px;"><div style="font-weight:900;font-size:16px;color:#1B2733;">Salidas con contraseña</div>
-      <div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:3px;"><b>Salir</b> pide el mismo PIN con el que se entra al área. Si un área no tiene PIN, pide el de administrador. 5 errores = 15 minutos bloqueado.</div></td></tr></table></td></tr><tr><td style="padding:16px 28px 0;"><div style="background:#DAF2F7;border-radius:12px;padding:14px 16px;"><div style="font-weight:900;font-size:15px;color:#0B6C80;">🧹 Antes del lanzamiento</div><div style="font-size:14px;line-height:1.55;color:#3B4A57;margin-top:4px;">Menú <b>🔄 Traspasos → Limpiar para lanzamiento</b> (escribe BORRAR). Guarda un respaldo en Drive, borra los traspasos de prueba y regresa todos los folios a 0001. No toca catálogos. Solo se usa una vez.</div></div></td></tr><tr><td style="padding:26px 28px 6px;" align="center"><a href="https://script.google.com/a/macros/fadermex.com/s/AKfycbyEe93gdE_Sa18T8paJD182ocQ8IAUwJzVCG1MRX7uPBf-ObHvvkfHPAAQ7GRf4H1gl0Q/exec" style="display:inline-block;background:#0E7C66;color:#FFFFFF;text-decoration:none;font-weight:900;font-size:16px;padding:14px 26px;border-radius:12px;">Abrir Traspasos</a>
-    <p style="margin:10px 0 0;font-size:12.5px;color:#5D6C7A;">Entra con tu cuenta @fadermex.com.</p></td></tr><tr><td style="padding:22px 28px 28px;"><div style="border-top:1px solid #E3E8ED;padding-top:16px;font-size:14px;line-height:1.5;color:#3B4A57;">
-    Cualquier duda, escríbannos. 🙌<br><b style="color:#1B2733;">Logística FADERMEX</b><br><span style="color:#5D6C7A;">jaraujo@fadermex.com</span></div></td></tr></table></div></section>
+      <td width="48%" valign="top" style="background:#FDECEC;border-radius:12px;padding:14px 16px;">
+        <div style="font-weight:900;font-size:14px;letter-spacing:1px;color:#B42330;margin-bottom:6px;">🚫 NO</div>
+        <div style="font-size:14px;line-height:1.6;color:#5B2A2E;">
+          • Seguir anotando en el Excel<br>
+          • Prestar tu credencial o tu NIP<br>
+          • Mandar paquetes sin etiqueta<br>
+          • Dar salida a lo de la otra área (PV ≠ Rebotica)
+        </div>
+      </td>
+    </tr></table>
+  </td></tr>
+
+  <!-- ¿Algo raro? -->
+  <tr><td style="padding:20px 28px 4px;">
+    <div style="font-weight:900;font-size:16px;margin-bottom:6px;">¿Algo raro? 🤔</div>
+    <div style="font-size:14px;line-height:1.6;color:#3B4A57;">
+      <b>¿Te equivocaste en un traspaso?</b> Ábrelo → "Solicitar eliminación" (Logística lo revisa).<br>
+      <b>¿Se dañó una etiqueta?</b> Ábrelo → "Reimprimir etiqueta".<br>
+      <b>¿Te salió la pantalla para elegir área?</b> Alguien presionó "Salir": elige tu área otra vez.
+    </div>
+  </td></tr>
+
+  <!-- Botones -->
+  <tr><td align="center" style="padding:24px 28px 8px;">
+    <a href="https://claude.ai/artifact/N1Mbj4HvaAXuvbByzXnMVP" style="display:inline-block;background:#0E7C66;color:#FFFFFF;font-weight:900;font-size:16px;text-decoration:none;padding:13px 26px;border-radius:12px;">📘 Ver el manual completo</a>
+    <div style="font-size:13px;color:#5D6C7A;margin-top:10px;">La página ya está instalada en tu computadora: búscala como <b>Traspasos</b> en el escritorio.</div>
+  </td></tr>
+
+  <!-- Firma -->
+  <tr><td style="padding:18px 28px 26px;border-top:1px solid #E6EBEF;">
+    <div style="font-size:14px;line-height:1.55;color:#3B4A57;">Gracias por sumarse. Cualquier duda, escríbanme.<br><b>Logística FADERMEX</b> · jaraujo@fadermex.com</div>
+  </td></tr>
+</table>
+<!-- ===================== FIN DEL CORREO ===================== -->
+
+    </div>
+  </div>
 </div>
-<script>
-(function(){
-  var tabs=[].slice.call(document.querySelectorAll('.tab'));
-  function show(k){
-    tabs.forEach(function(t){ var on=t.getAttribute('data-k')===k; t.setAttribute('aria-selected',on?'true':'false'); document.getElementById('p-'+t.getAttribute('data-k')).hidden=!on; });
-  }
-  tabs.forEach(function(t){ t.addEventListener('click',function(){ show(t.getAttribute('data-k')); try{history.replaceState(null,'','#'+t.getAttribute('data-k'));}catch(e){} }); });
-  var h=(location.hash||'').slice(1); if(document.getElementById('p-'+h)) show(h);
-})();
-</script>
