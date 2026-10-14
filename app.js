@@ -12,7 +12,7 @@
 // La URL vive en config.js, que se carga antes que este archivo.
 var API = (typeof window !== 'undefined' && window.FDX_API) ? window.FDX_API : '';
 
-var VERSION_APP = '1.6.0';
+var VERSION_APP = '1.7.0';
 var ESPERA_MS   = 45000;   // cuánto aguanta una subida antes de darse por vencida
 
 
@@ -902,9 +902,115 @@ function iniciarPoll(){
       }
       S.ultimoConteo=ahora;
       if(S.vista==='menu') pintarMenu();
+      sincronizarPendientes();
     }).catch(function(){});
     subirCola();
   }, seg*1000);
+}
+
+
+/* ===================================================================
+ *  PENDIENTES SIEMPRE AL DÍA
+ * -------------------------------------------------------------------
+ *  Quien decide qué sigue pendiente es el servidor, no el celular.
+ *  Si un pedido o traspaso ya se cerró por otro lado (la sucursal ya le
+ *  dio entrada, el sistema ya lo registró, alguien más lo cerró), el
+ *  servidor deja de mandarlo y aquí desaparece solo, sin que el gestor
+ *  tenga que tocar ↻.
+ *
+ *  Se revisa:  - cada vez que corre la revisión periódica (iniciarPoll)
+ *              - al volver a abrir la app (visibilitychange)
+ *  No se toca la pantalla mientras el gestor está cerrando algo.
+ * =================================================================== */
+function ocupadoCerrando(){
+  return !!(S.cierre || $('modal') || $('modalWA') || $('cargador'));
+}
+
+/** Lo que estaba en "antes" y ya no viene en "ahora". */
+function quitadosDe(antes, ahora, llave){
+  var siguen={};
+  (ahora||[]).forEach(function(x){ siguen[norm(x[llave])]=true; });
+  return (antes||[]).filter(function(x){ return !siguen[norm(x[llave])]; });
+}
+
+function avisarQuitados(lista, llave, nombre){
+  if(!lista.length) return;
+  var txt = lista.length===1
+    ? nombre+' '+lista[0][llave]+' ya se registró en el sistema y salió de tus pendientes'
+    : lista.length+' '+nombre.toLowerCase()+'s ya se registraron en el sistema y salieron de tus pendientes';
+  toast(txt,'ok');
+}
+
+/** Ids de las tarjetas que el gestor tenía abiertas, para dejarlas igual. */
+function tarjetasAbiertas(prefijo, lista, llave){
+  var abiertas={};
+  (lista||[]).forEach(function(x,i){
+    var t=$(prefijo+i); if(t && t.classList.contains('abierta')) abiertas[norm(x[llave])]=true;
+  });
+  return abiertas;
+}
+function reabrirTarjetas(prefijo, lista, llave, abiertas){
+  (lista||[]).forEach(function(x,i){
+    var t=$(prefijo+i); if(!t) return;
+    t.classList.toggle('abierta', !!abiertas[norm(x[llave])]);
+  });
+}
+
+function sincronizarPendientes(){
+  if(!S.token || !S.hayRed || ocupadoCerrando()) return;
+
+  if(S.vista==='pedidos'){
+    srv('pedidos').then(function(lista){
+      sinFallar(DB.set('pedidos', lista), null);
+      if(S.vista!=='pedidos' || ocupadoCerrando()) return;
+      var nueva = filtrarCerradosLocal(lista);
+      var quitados = quitadosDe(S.pedidos, nueva, 'id');
+      var nuevos = quitadosDe(nueva, S.pedidos, 'id');
+      if(!quitados.length && !nuevos.length) return;
+      var abiertas = tarjetasAbiertas('tp', S.pedidos, 'id');
+      S.pedidos = nueva; S.desdeCache = false;
+      pintarPedidos();
+      if(Object.keys(abiertas).length) reabrirTarjetas('tp', S.pedidos, 'id', abiertas);
+      avisarQuitados(quitados, 'id', 'Pedido');
+    }).catch(function(){});
+  }
+
+  if(S.vista==='traspasos'){
+    srv('traspasosPendientes').then(function(lista){
+      sinFallar(DB.set('traspasos', lista), null);
+      if(S.vista!=='traspasos' || ocupadoCerrando()) return;
+      var quitados = quitadosDe(S.traspasos, lista, 'folio');
+      var nuevos = quitadosDe(lista, S.traspasos, 'folio');
+      if(!quitados.length && !nuevos.length) return;
+      var abiertas = tarjetasAbiertas('tt', S.traspasos, 'folio');
+      S.traspasos = lista; S.desdeCache = false;
+      if(S.tabTras==='entregar'){
+        pintarEntregar();
+        if(Object.keys(abiertas).length) reabrirTarjetas('tt', S.traspasos, 'folio', abiertas);
+      } else {
+        // En "Recolectar" puede estar la cámara prendida: solo cambia el número de la pestaña
+        var tab=document.querySelectorAll('.tabs button')[1];
+        if(tab) tab.textContent='📤 Entregar ('+S.traspasos.length+')';
+      }
+      avisarQuitados(quitados, 'folio', 'Traspaso');
+    }).catch(function(){});
+  }
+}
+
+/** El servidor rechazó un cierre. Si fue porque ya no está pendiente
+ *  (se cerró por otro lado), lo quitamos de la lista en vez de dejar al
+ *  gestor atorado con un error. Devuelve true si así fue.               */
+function yaNoEstaPendiente(tipo, llave){
+  var accion = tipo==='PEDIDO' ? 'pedidos' : 'traspasosPendientes';
+  var campo  = tipo==='PEDIDO' ? 'id' : 'folio';
+  return srv(accion).then(function(lista){
+    var sigue = (lista||[]).some(function(x){ return norm(x[campo])===norm(llave); });
+    if(sigue) return false;
+    sinFallar(DB.set(tipo==='PEDIDO'?'pedidos':'traspasos', lista), null);
+    if(tipo==='PEDIDO') S.pedidos = filtrarCerradosLocal(lista);
+    else S.traspasos = lista;
+    return true;
+  }).catch(function(){ return false; });
 }
 function pararPoll(){ if(S.timerPoll){ clearInterval(S.timerPoll); S.timerPoll=null; } }
 
@@ -1168,7 +1274,14 @@ function enviarCierrePedido(){
                 motivo:c.motivo, comentario:c.comentario, recibio:c.recibio }
     });
   }).catch(function(e){
-    quitarCargando(); beep('malo'); toast(e.message,'err');
+    if(esErrorDeRed(e)){ quitarCargando(); beep('malo'); toast(e.message,'err'); return; }
+    yaNoEstaPendiente('PEDIDO', p.id).then(function(cerrado){
+      quitarCargando();
+      if(!cerrado){ beep('malo'); toast(e.message,'err'); return; }
+      cerrarModal();
+      toast('El pedido '+p.id+' ya estaba registrado en el sistema. Se quitó de tus pendientes.','ok');
+      if(S.vista==='pedidos') pintarPedidos();
+    });
   });
 }
 
@@ -1332,10 +1445,12 @@ function pintarRecolectar(){
   '<div class="bloque"><h3>📷 Escaneo continuo</h3>'+
     '<p class="pequeno mb">Apunta al código de barras. Cada lectura correcta suena y muestra una palomita.</p>'+
     '<div id="lector"></div>'+
+    '<div id="ctrlLector" class="ctrl-camara"></div>'+
     '<div class="fila-btn mt">'+
       '<button class="btn verde chico" id="btnIniScan" onclick="iniciarRafaga()">▶ Iniciar escaneo</button>'+
       '<button class="btn gris chico oculto" id="btnParaScan" onclick="pararScanner()">■ Detener</button>'+
     '</div>'+
+    '<button class="btn linea chico mt" onclick="recolectarDeFoto()">📸 No lo lee: tomar foto del código</button>'+
   '</div>'+
   '<div class="bloque"><h3>⌨️ Capturar folio a mano</h3>'+
     '<input class="campo mb" id="inFolio" placeholder="Teclea el folio" autocomplete="off" '+
@@ -1347,36 +1462,276 @@ function pintarRecolectar(){
 }
 
 function iniciarRafaga(){
-  if(!window.Html5Qrcode){ toast('El lector no cargó. Conéctate una vez para descargarlo.','err'); return; }
   beep();
   $('btnIniScan').classList.add('oculto');
   $('btnParaScan').classList.remove('oculto');
-
-  S.scanner = new Html5Qrcode('lector', {formatsToSupport: formatosCodigo(), verbose:false});
-  S.scanner.start(
-    {facingMode:'environment'},
-    {fps:15, qrbox:{width:260,height:150}, aspectRatio:1.4, disableFlip:true},
-    function(texto){ alLeerRafaga(texto); },
-    function(){}
-  ).catch(function(e){
-    toast('No pude abrir la cámara: '+e,'err');
-    $('btnIniScan').classList.remove('oculto');
-    $('btnParaScan').classList.add('oculto');
+  S.scanner = abrirCamara('lector', 'ctrlLector', alLeerRafaga, function(msg){
+    toast(msg,'err');
+    pararScanner();
   });
 }
 
-function formatosCodigo(){
-  if(!window.Html5QrcodeSupportedFormats) return undefined;
-  var F=Html5QrcodeSupportedFormats;
-  return [F.CODE_128,F.CODE_39,F.CODE_93,F.EAN_13,F.EAN_8,F.ITF,F.CODABAR,F.UPC_A,F.QR_CODE];
+/* ===================================================================
+ *  LECTOR DE CÓDIGOS DE BARRAS
+ * -------------------------------------------------------------------
+ *  Por qué antes fallaba tanto:
+ *   La librería anterior (html5-qrcode) decide qué es negro y qué es
+ *   blanco mirando TODO el renglón de la imagen. Si alrededor de la
+ *   etiqueta hay cartón, mesa o sombra, se confunde y no ve las barras.
+ *   Además abría la cámara en baja resolución y solo leía un cuadrito.
+ *
+ *  Ahora:
+ *   1. Si el celular trae lector propio (Android con Chrome), se usa ese.
+ *   2. Si no (iPhone, otros), se usa zxing-cpp: el mismo motor que usan
+ *      muchas apps de Android, compilado para la web (lib/zxing_reader.wasm).
+ *      Ve el código aunque el fondo sea feo, esté chueco o un poco borroso.
+ *   3. Cámara en alta resolución con enfoque continuo, linterna y zoom.
+ *   4. Si hay varios códigos en la etiqueta, toma el que está en la línea
+ *      roja del centro, y pide leerlo igual dos veces para no equivocarse.
+ *   5. Plan B: foto con la cámara normal del celular.
+ *  Todo queda guardado en el celular: funciona sin señal.
+ * =================================================================== */
+var LECTOR_FORMATOS = ['code_128','code_39','code_93','ean_13','ean_8','itf',
+                       'codabar','upc_a','upc_e','qr_code'];
+var LECTOR_CONFIRMAR = 2;    // lecturas iguales seguidas para aceptar un código de barras
+var _detector = null;
+
+/** Prepara el lector: el del celular si lo trae, si no el nuestro. */
+function obtenerDetector(){
+  if(_detector) return Promise.resolve(_detector);
+
+  var nativo = Promise.resolve(null);
+  if(window.BarcodeDetector && window.BarcodeDetector.getSupportedFormats){
+    nativo = window.BarcodeDetector.getSupportedFormats().then(function(soportados){
+      var f = LECTOR_FORMATOS.filter(function(x){ return soportados.indexOf(x)>=0; });
+      return f.indexOf('code_128')>=0 ? new window.BarcodeDetector({formats:f}) : null;
+    }).catch(function(){ return null; });
+  }
+
+  return nativo.then(function(det){
+    if(det){ _detector = det; return det; }
+    var api = window.BarcodeDetectionAPI;
+    if(!api) throw new Error('El lector no cargó. Conéctate una vez para descargarlo.');
+    api.prepareZXingModule({ overrides: {
+      // el motor vive en nuestra carpeta lib/, no en internet
+      locateFile: function(ruta, prefijo){ return /\.wasm$/.test(ruta) ? 'lib/'+ruta : prefijo+ruta; }
+    }});
+    _detector = new api.BarcodeDetector({formats: LECTOR_FORMATOS});
+    return _detector;
+  });
+}
+
+/** De todos los códigos que se ven, el más cercano al centro (la línea roja). */
+function codigoDelCentro(codigos, ancho, alto){
+  if(!codigos || !codigos.length) return null;
+  var cx=ancho/2, cy=alto/2, mejor=null, dist=Infinity;
+  codigos.forEach(function(c){
+    var b=c.boundingBox||{x:0,y:0,width:0,height:0};
+    var dx=Math.max(b.x-cx, 0, cx-(b.x+b.width));
+    var dy=Math.max(b.y-cy, 0, cy-(b.y+b.height));
+    var d=dx*dx+dy*dy;
+    if(d<dist){ dist=d; mejor=c; }
+  });
+  return mejor;
+}
+
+/** Un código de barras borroso a veces se lee con un dígito mal. Pedimos
+ *  leer lo mismo dos veces seguidas antes de aceptarlo: tarda una fracción
+ *  de segundo más y evita registrar un folio equivocado. Los QR traen su
+ *  propia verificación, esos se aceptan a la primera.                     */
+function conConfirmacion(alAceptar){
+  var ultimo='', veces=0, cuando=0;
+  return function(texto, formato){
+    texto = String(texto||'').trim();
+    if(!texto) return;
+    var ahora = Date.now();
+    if(texto===ultimo && ahora-cuando<1500) veces++; else { ultimo=texto; veces=1; }
+    cuando = ahora;
+    if(formato==='qr_code' || veces>=LECTOR_CONFIRMAR){
+      ultimo=''; veces=0;
+      alAceptar(texto);
+    }
+  };
+}
+
+/**
+ * Abre la cámara dentro de #idVisor y lee códigos sin parar.
+ * Devuelve un control con .parar(). alError recibe un mensaje para el gestor.
+ */
+function abrirCamara(idVisor, idControles, alLeer, alError){
+  var ctrl = { parado:false, stream:null, track:null };
+  var visor = $(idVisor);
+  visor.innerHTML = '<div class="visor"><video playsinline muted autoplay></video>'+
+                    '<div class="visor-marco"></div><div class="visor-linea"></div></div>';
+  var video = visor.querySelector('video');
+  var aceptar = conConfirmacion(alLeer);
+
+  ctrl.parar = function(){
+    ctrl.parado = true;
+    if(ctrl.stream) ctrl.stream.getTracks().forEach(function(t){ try{ t.stop(); }catch(e){} });
+    try{ video.srcObject = null; }catch(e){}
+    var c=$(idControles); if(c) c.innerHTML='';
+    var v=$(idVisor); if(v) v.innerHTML='';
+  };
+
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    setTimeout(function(){ alError('Este navegador no deja usar la cámara. Teclea el código.'); }, 0);
+    return ctrl;
+  }
+
+  obtenerDetector().then(function(det){
+    return navigator.mediaDevices.getUserMedia({ audio:false, video:{
+      facingMode: {ideal:'environment'},
+      width: {ideal:1920}, height: {ideal:1080}
+    }}).then(function(stream){
+      if(ctrl.parado){ stream.getTracks().forEach(function(t){ t.stop(); }); return; }
+      ctrl.stream = stream;
+      ctrl.track = stream.getVideoTracks()[0];
+      try{ ctrl.track.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(function(){}); }catch(e){}
+      video.srcObject = stream;
+      return Promise.resolve(video.play()).catch(function(){}).then(function(){
+        prepararControlesCamara(ctrl.track, idControles);
+        leerCuadro(det);
+      });
+    });
+  }).catch(function(e){
+    if(ctrl.parado) return;
+    var m = String((e && (e.name||e.message)) || e);
+    alError(/NotAllowed|Permission/i.test(m)
+      ? 'Sin permiso para usar la cámara. Actívalo en los ajustes del navegador.'
+      : (e && e.message && e.message.indexOf('lector')>=0 ? e.message : 'No pude abrir la cámara: '+m));
+  });
+
+  /* Si en un cuadro no encuentra nada, el siguiente lo intenta con la imagen
+     girada 10° a un lado y luego al otro: así lee aunque la etiqueta esté
+     chueca o el gestor no tenga el celular derecho.                        */
+  var fase = 0, lienzo = null;
+  function cuadroActual(){
+    if(fase===0) return video;
+    var w=video.videoWidth, h=video.videoHeight;
+    if(!lienzo) lienzo=document.createElement('canvas');
+    if(lienzo.width!==w || lienzo.height!==h){ lienzo.width=w; lienzo.height=h; }
+    var g=lienzo.getContext('2d');
+    g.save();
+    g.fillStyle='#fff'; g.fillRect(0,0,w,h);
+    g.translate(w/2,h/2); g.rotate((fase===1?10:-10)*Math.PI/180);
+    g.drawImage(video,-w/2,-h/2,w,h);
+    g.restore();
+    return lienzo;
+  }
+
+  function leerCuadro(det){
+    if(ctrl.parado) return;
+    if(video.readyState < 2 || !video.videoWidth){ setTimeout(function(){ leerCuadro(det); }, 80); return; }
+    det.detect(cuadroActual()).then(function(codigos){
+      if(ctrl.parado) return;
+      var c = codigoDelCentro(codigos, video.videoWidth, video.videoHeight);
+      if(c) aceptar(c.rawValue, c.format);
+      else fase = (fase+1) % 3;
+    }).catch(function(){ fase = 0; }).then(function(){
+      if(!ctrl.parado) setTimeout(function(){ leerCuadro(det); }, 30);
+    });
+  }
+  return ctrl;
+}
+
+/** Linterna y zoom, solo si el celular los permite (en iPhone casi nunca aparecen). */
+function prepararControlesCamara(track, idCont){
+  var cont=$(idCont); if(!cont || !track || !track.getCapabilities) return;
+  var caps; try{ caps=track.getCapabilities()||{}; }catch(e){ return; }
+  var html='';
+  var hayZoom = caps.zoom && caps.zoom.max > caps.zoom.min;
+  if(hayZoom){
+    html+='<label class="ctrl-zoom">🔍 Acercar'+
+          '<input type="range" id="'+idCont+'Zoom" min="'+caps.zoom.min+'" max="'+caps.zoom.max+'" step="'+(caps.zoom.step||0.1)+'">'+
+          '</label>';
+  }
+  if(caps.torch){
+    html+='<button class="btn gris chico" id="'+idCont+'Luz">🔦 Prender luz</button>';
+  }
+  cont.innerHTML=html;
+
+  if(hayZoom){
+    // Un poco de zoom ayuda: muchos celulares no enfocan de muy cerca,
+    // así el gestor aleja el teléfono y aun así el código se ve grande.
+    var inicial = Math.min(caps.zoom.max, Math.max(caps.zoom.min, 1.5));
+    $(idCont+'Zoom').value = inicial;
+    track.applyConstraints({advanced:[{zoom:inicial}]}).catch(function(){});
+    $(idCont+'Zoom').addEventListener('input', function(){
+      track.applyConstraints({advanced:[{zoom:parseFloat(this.value)}]}).catch(function(){});
+    });
+  }
+  if(caps.torch){
+    var prendida=false;
+    $(idCont+'Luz').addEventListener('click', function(){
+      var b=this;
+      track.applyConstraints({advanced:[{torch:!prendida}]}).then(function(){
+        prendida=!prendida;
+        b.textContent = prendida ? '🔦 Apagar luz' : '🔦 Prender luz';
+      }).catch(function(){ toast('No pude prender la luz.','err'); });
+    });
+  }
+}
+
+/** Plan B: una foto con la cámara normal del celular enfoca y se ilumina
+ *  mucho mejor que el video. Se busca el código dentro de la foto.        */
+function leerCodigoDeFoto(alLeer){
+  var inp=$('inputCamara');
+  inp.value='';
+  inp.onchange=function(){
+    var f=inp.files && inp.files[0];
+    if(!f) return;
+    cargando('Buscando el código en la foto…');
+    Promise.all([obtenerDetector(), reducirFoto(f, 2000)]).then(function(r){
+      var det=r[0], lienzo=r[1];
+      return det.detect(lienzo).then(function(codigos){
+        var c = codigoDelCentro(codigos, lienzo.width, lienzo.height);
+        if(!c) throw new Error('sin código');
+        return c.rawValue;
+      });
+    }).then(function(texto){
+      quitarCargando();
+      alLeer(String(texto||'').trim());
+    }).catch(function(){
+      quitarCargando(); beep('malo');
+      toast('No encontré el código en la foto. Que salga enfocado y llenando la foto.','err');
+    });
+  };
+  inp.click();
+}
+
+/** Las fotos del celular son de 12 MP o más; con 2000 px basta y es más rápido. */
+function reducirFoto(file, max){
+  return new Promise(function(res, rej){
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function(){
+      var w=img.naturalWidth, h=img.naturalHeight, k=Math.min(1, max/Math.max(w,h));
+      var cv=document.createElement('canvas');
+      cv.width=Math.round(w*k); cv.height=Math.round(h*k);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      URL.revokeObjectURL(url);
+      res(cv);
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); rej(new Error('foto')); };
+    img.src = url;
+  });
+}
+
+function recolectarDeFoto(){
+  pararScanner();
+  leerCodigoDeFoto(function(folio){
+    if(!folio) return;
+    alLeerRafaga(folio);
+  });
 }
 
 function pararScanner(){
-  if(!S.scanner) return;
-  try{ S.scanner.stop().then(function(){ try{S.scanner.clear();}catch(e){} S.scanner=null; }); }
-  catch(e){ S.scanner=null; }
   if($('btnIniScan')) $('btnIniScan').classList.remove('oculto');
   if($('btnParaScan')) $('btnParaScan').classList.add('oculto');
+  if(!S.scanner) return;
+  var lector=S.scanner; S.scanner=null;
+  lector.parar();
 }
 
 function alLeerRafaga(texto){
@@ -1385,6 +1740,11 @@ function alLeerRafaga(texto){
   var ahora=Date.now();
   if(S.vistosScan[folio] && (ahora-S.vistosScan[folio])<2500) return;
   S.vistosScan[folio]=ahora;
+  // Ya se leyó en esta sesión (y no falló): no se vuelve a contar.
+  // Con el lector nuevo esto pasa seguido: si el código se queda frente
+  // a la cámara, lo vuelve a leer a cada rato.
+  var repetido = S.colaScan.some(function(x){ return x.folio===folio && x.estado!=='no'; });
+  if(repetido){ toast('Ya leíste '+folio+' · sigue con el siguiente'); return; }
 
   beep(); flash(true);
   S.contadorScan++;
@@ -1662,7 +2022,16 @@ function enviarCierreTraspaso(){
                 contenido:t.contenido, area:t.area,
                 motivo:c.motivo, comentario:c.comentario }
     });
-  }).catch(function(e){ quitarCargando(); beep('malo'); toast(e.message,'err'); });
+  }).catch(function(e){
+    if(esErrorDeRed(e)){ quitarCargando(); beep('malo'); toast(e.message,'err'); return; }
+    yaNoEstaPendiente('TRASPASO', t.folio).then(function(cerrado){
+      quitarCargando();
+      if(!cerrado){ beep('malo'); toast(e.message,'err'); return; }
+      cerrarModal();
+      toast('El traspaso '+t.folio+' ya tenía entrada en el sistema. Se quitó de tus pendientes.','ok');
+      if(S.vista==='traspasos') pintarTraspasos();
+    });
+  });
 }
 
 
@@ -2005,24 +2374,29 @@ function abrirScannerSimple(titulo, alLeer){
     '<div class="agarre"></div><h2>'+esc(titulo)+'</h2>'+
     '<p class="sub">Acerca el código de barras hasta que suene.</p>'+
     '<div id="lectorSimple"></div>'+
+    '<div id="ctrlLectorSimple" class="ctrl-camara"></div>'+
+    '<button class="btn linea chico mt" onclick="leerSimpleDeFoto()">📸 No lo lee: tomar foto del código</button>'+
     '<button class="btn gris mt" onclick="cerrarScannerSimple()">Cancelar</button>'+
   '</div></div>';
   var m=$('modalScan'); if(m) m.remove();
   document.body.insertAdjacentHTML('beforeend', html);
 
-  if(!window.Html5Qrcode){ toast('El lector no cargó. Teclea el código a mano.','err'); return; }
-  S.scannerSimple = new Html5Qrcode('lectorSimple', {formatsToSupport: formatosCodigo(), verbose:false});
-  S.scannerSimple.start({facingMode:'environment'},
-    {fps:12, qrbox:{width:250,height:140}, aspectRatio:1.4},
-    function(texto){ cerrarScannerSimple(); alLeer(String(texto).trim()); },
-    function(){}
-  ).catch(function(e){ toast('No pude abrir la cámara: '+e,'err'); });
+  S.alLeerSimple = alLeer;
+  S.scannerSimple = abrirCamara('lectorSimple', 'ctrlLectorSimple',
+    function(texto){ cerrarScannerSimple(); alLeer(texto); },
+    function(msg){ toast(msg+' Puedes teclear el código.','err'); });
+}
+
+function leerSimpleDeFoto(){
+  var alLeer = S.alLeerSimple;
+  cerrarScannerSimple();
+  if(alLeer) leerCodigoDeFoto(alLeer);
 }
 
 function cerrarScannerSimple(){
   if(S.scannerSimple){
-    try{ S.scannerSimple.stop().then(function(){ try{S.scannerSimple.clear();}catch(e){} S.scannerSimple=null; }); }
-    catch(e){ S.scannerSimple=null; }
+    var lector=S.scannerSimple; S.scannerSimple=null;
+    lector.parar();
   }
   var m=$('modalScan'); if(m) m.remove();
 }
@@ -2282,7 +2656,10 @@ if('serviceWorker' in navigator){
 
 window.addEventListener('beforeunload', function(){ pararScanner(); });
 document.addEventListener('visibilitychange', function(){
-  if(!document.hidden && S.token){ refrescarCola().then(function(){ subirCola(); }); }
+  if(!document.hidden && S.token){
+    refrescarCola().then(function(){ subirCola(); });
+    sincronizarPendientes();
+  }
 });
 
 arrancar();

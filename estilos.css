@@ -397,3 +397,18 @@ body.con-barra-red .barra{margin-top:34px}
   font-size:12.5px;font-weight:800;display:flex;align-items:center;justify-content:center;
 }
 
+
+/* Visor del lector: línea roja = donde va el código */
+#lector:empty,#lectorSimple:empty{display:none}
+.visor{position:relative;width:100%;aspect-ratio:4/3;max-height:320px;border-radius:14px;overflow:hidden;background:#000}
+.visor video{width:100%;height:100%;object-fit:cover;display:block}
+.visor-marco{position:absolute;left:6%;right:6%;top:28%;bottom:28%;border:2px solid rgba(255,255,255,.85);
+  border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.28)}
+.visor-linea{position:absolute;left:8%;right:8%;top:50%;height:2px;margin-top:-1px;background:#FF3B30;
+  box-shadow:0 0 8px #FF3B30}
+
+/* Linterna y zoom del lector (solo aparecen si el celular los permite) */
+.ctrl-camara{display:flex;flex-direction:column;gap:8px}
+.ctrl-camara:not(:empty){margin-top:10px}
+.ctrl-zoom{display:flex;align-items:center;gap:10px;margin:0;font-size:13px;color:var(--gris)}
+.ctrl-zoom input{flex:1;accent-color:var(--azul2);height:28px}

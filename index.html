@@ -42,8 +42,9 @@
   <!-- Abre directo la cámara trasera del celular -->
   <input type="file" id="inputCamara" accept="image/*" capture="environment" hidden>
 
-  <!-- Lector de códigos de barras -->
-  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+  <!-- Lector de códigos de barras: motor zxing-cpp (lib/zxing_reader.wasm).
+       Copia propia en lib/: abre sin señal y no depende de otro sitio. -->
+  <script src="lib/barcode-detector.js" defer></script>
 
   <!-- config.js va primero: lleva la URL del Apps Script -->
   <script src="config.js"></script>

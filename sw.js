@@ -20,7 +20,7 @@
  *   y no había forma de que se enterara sola.
  ***********************************************************************/
 
-const VERSION = 'fdx-logistica-v10';
+const VERSION = 'fdx-logistica-v11';
 
 const ARCHIVOS = [
   './',
@@ -29,6 +29,8 @@ const ARCHIVOS = [
   './app.js',
   './config.js',
   './manifest.json',
+  './lib/barcode-detector.js',
+  './lib/zxing_reader.wasm',
   './iconos/icono-192.png',
   './iconos/icono-512.png',
   './iconos/icono-maskable-512.png',
