@@ -247,3 +247,16 @@ La etiquetadora está conectada solo a la computadora de Recepción. Por eso Rec
 4. Lo ya impreso aquí queda marcado *"ya impreso aquí"* y el botón cambia a **Imprimir otra vez**.
 
 Imprimir no cambia el estatus. Cada impresión queda en RES_Etiquetas (Impresión = RECEPCIÓN) y en la línea de tiempo del traspaso. La etiqueta sale con el tamaño de la fila **REC** de CAT_Impresoras.
+
+## 💡 Guía de qué se manda a cada área de Oficinas (CAT_EnviosOf)
+
+La hoja **CAT_EnviosOf** tiene en la fila 2 los encabezados **Documentos** | **Área**, y desde la fila 3 un renglón por documento.
+- **Área** se escribe **igual que el nombre del área en CAT_Areas**, por ejemplo "Coordinación PV". No importan mayúsculas ni acentos.
+- Un área puede tener varios renglones.
+- Para quitar una sugerencia, borra su renglón. Esta hoja no guarda historial, así que aquí sí se puede borrar.
+
+Al crear un traspaso:
+- **Paso 2 (Destino):** el recuadro derecho muestra *"Normalmente a … se le manda"* para el área elegida, y la guía completa *"¿Qué va a cada área de Oficinas?"*. Al tocar un área, se elige como destino.
+- **Paso 3 (Qué envías):** los documentos de esa área salen como botones. Al tocar uno, se agrega al texto.
+
+**🔄 Traspasos → Revisar configuración** dice cuántas sugerencias hay y avisa si alguna área de CAT_EnviosOf no coincide con CAT_Areas.

@@ -309,12 +309,13 @@ function vNuevo() {
       '<label class="f">¿Para dónde va?<select class="t" id="destin"><option value="">Elige el destino…</option>' + opts + '</select></label>' +
       '<div id="rutanote">' + rutaNota(m, w.destino) + '</div>' +
       '<div class="row">' + (sinCred() ? '' : '<button class="btn ghost" type="button" data-a="atras">Atrás</button>') + '<button class="btn primary" type="button" data-a="dest">Continuar</button></div>' + err +
-      '</div><div class="panel"><h2>Rutas precargadas</h2><p class="muted" style="margin:0">Aquí aparecen todas las áreas activas de CAT_Areas. Si el destino es Morelia, la ruta va sola por Logística y paquetería.</p></div></div>';
+      '</div><div class="panel stack" id="sugpanel">' + guiaEnvios(w.destino) + '</div></div>';
   }
   if (w.step === 3) {
     return head + '<div class="grid2"><div class="panel stack">' +
       '<div class="note"><b>' + esc(nom(m)) + '</b><span class="arrow">→</span><b>' + esc(nom(w.destino)) + '</b></div>' +
       '<label class="f">¿Qué envías?<textarea class="t" id="descin" placeholder="Ej. Material de curación, 3 cajas">' + esc(w.desc || '') + '</textarea></label>' +
+      sugerenciasDesc(w.destino) +
       '<div style="display:grid;gap:6px"><span style="font-weight:700;font-size:14px">Número de bultos</span><div class="qty"><button type="button" data-a="qty" data-v="-1" aria-label="Menos">−</button><span>' + (w.bultos || 1) + '</span><button type="button" data-a="qty" data-v="1" aria-label="Más">+</button></div><span class="muted" style="font-size:13px">Se imprime una etiqueta por bulto.</span></div>' +
       '<div class="row"><button class="btn ghost" type="button" data-a="atras">Atrás</button><button class="btn primary" type="button" data-a="crear"' + (w.enviando ? ' disabled' : '') + '>' + (w.enviando ? 'Generando…' : 'Generar traspaso e imprimir') + '</button></div>' + err +
       '</div><div class="panel stack"><h2>Así saldrá la etiqueta</h2><div class="labels">' +
@@ -325,6 +326,40 @@ function vNuevo() {
     '<div class="labels">' + rango(t.bultos).map(function (b) { return etiquetaHTML(t, b, 0, true); }).join('') + '</div>' +
     '<div class="row"><button class="btn" type="button" data-a="reimp-auto">Volver a imprimir</button><button class="btn" type="button" data-a="open" data-v="' + esc(t.folio) + '">Ver detalle</button><button class="btn primary" type="button" data-a="otro">Crear otro traspaso</button></div></div>';
 }
+/* ---------- Guía: qué se manda a cada área de Oficinas (hoja CAT_EnviosOf) ---------- */
+function docsDe(area) {
+  return (S.cat.enviosOf || []).filter(function (x) { return x.area === area; }).map(function (x) { return x.doc; });
+}
+/** Recuadro derecho del paso "Destino". */
+function guiaEnvios(dest) {
+  var lista = S.cat.enviosOf || [];
+  var nota = '<p class="muted" style="margin:0;font-size:13.5px">Si el destino es Morelia, la ruta va sola por Logística y paquetería.</p>';
+  if (!lista.length) return '<h2 style="margin:0">Rutas precargadas</h2><p class="muted" style="margin:0">Aquí aparecen todas las áreas activas.</p>' + nota;
+  var html = '';
+  if (dest && S.A[dest] && S.A[dest].tipo === 'OFICINAS') {
+    var docs = docsDe(dest);
+    html += docs.length
+      ? '<div class="sugbox"><b>Normalmente a ' + esc(S.A[dest].corto) + ' se le manda:</b><ul>' + docs.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul></div>'
+      : '<div class="sugbox neutro">No hay documentos registrados para <b>' + esc(S.A[dest].corto) + '</b>. Si no estás seguro de que sea el área correcta, revisa la guía de abajo.</div>';
+  }
+  // Guía completa: por área; clic = elegir ese destino
+  var grupos = {};
+  lista.forEach(function (x) { (grupos[x.area] = grupos[x.area] || []).push(x.doc); });
+  html += '<h2 style="margin:0;font-size:17px">¿Qué va a cada área de Oficinas?</h2>' +
+    '<p class="muted" style="margin:0;font-size:13.5px">¿No sabes a qué área mandarlo? Búscalo aquí y toca el área para elegirla.</p>' +
+    '<div class="guia">' + Object.keys(grupos).sort(function (a, b) { return String(S.A[a] ? S.A[a].corto : a).localeCompare(String(S.A[b] ? S.A[b].corto : b)); }).map(function (id) {
+      return '<button type="button" class="guiaarea' + (id === dest ? ' sel' : '') + '" data-a="sugdest" data-v="' + esc(id) + '"><b>' + esc(S.A[id] ? S.A[id].corto : id) + '</b><span>' + grupos[id].map(esc).join(' · ') + '</span></button>';
+    }).join('') + '</div>' + nota;
+  return html;
+}
+/** Botones del paso "Contenido": llenan "¿Qué envías?" con un clic. */
+function sugerenciasDesc(dest) {
+  var docs = docsDe(dest);
+  if (!docs.length) return '';
+  return '<div class="sugchips"><span class="muted" style="font-size:13px;font-weight:700">Lo que normalmente va a ' + esc(S.A[dest].corto) + ' (toca para agregarlo):</span><div class="row" style="gap:6px">' +
+    docs.map(function (d) { return '<button type="button" class="chipdoc" data-a="sugdesc" data-v="' + esc(d) + '">＋ ' + esc(d) + '</button>'; }).join('') + '</div></div>';
+}
+
 function rutaNota(m, d) {
   if (!d) return '';
   var A = S.A;
@@ -853,6 +888,13 @@ document.addEventListener('click', function (e) {
     case 'recconfirmar': return recConfirmar();
     case 'atras': w.step--; w.err = null; break;
     case 'dest': { var d = $('#destin').value; if (!d) { w.err = 'Elige el destino.'; break; } w.destino = d; w.bultos = w.bultos || 1; w.err = null; w.step = 3; break; }
+    case 'sugdest': if (v === me()) { w.err = 'Esa es tu misma área.'; break; } w.destino = v; w.err = null; break;
+    case 'sugdesc': {
+      var actual = $('#descin').value.trim();
+      if (actual.toLowerCase().indexOf(v.toLowerCase()) < 0) w.desc = actual ? actual + ', ' + v : v;
+      else w.desc = actual;
+      break;
+    }
     case 'qty': w.desc = $('#descin').value; w.bultos = Math.min(99, Math.max(1, (w.bultos || 1) + Number(v))); break;
     case 'crear': return crear();
     case 'otro': S.wiz = wizNuevo(); break;
@@ -927,7 +969,7 @@ document.addEventListener('click', function (e) {
   render();
 });
 document.addEventListener('change', function (e) {
-  if (e.target.id === 'destin') $('#rutanote').innerHTML = rutaNota(me(), e.target.value);
+  if (e.target.id === 'destin') { $('#rutanote').innerHTML = rutaNota(me(), e.target.value); if ($('#sugpanel')) $('#sugpanel').innerHTML = guiaEnvios(e.target.value); }
   if (e.target.id === 'impArea') cargarPendientes(e.target.value);
   if (e.target.getAttribute('data-a') === 'faltan') {
     var f = e.target.getAttribute('data-v');

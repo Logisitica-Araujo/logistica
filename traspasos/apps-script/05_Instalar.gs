@@ -141,6 +141,9 @@ function _textoRevision() {
   l.push(personas ? '✓ ' + personas + ' persona(s) en CAT_Personas.' : '⚠ CAT_Personas está vacía: nadie podrá crear traspasos con credencial.');
   l.push(gestores ? '✓ ' + gestores + ' gestor(es) en CAT_Gestores.' : '⚠ CAT_Gestores está vacía: las sucursales no podrán registrar la salida con la credencial del gestor.');
   l.push('✓ ' + admins + ' administrador(es) activos.');
+  const env = _enviosOficinas();
+  l.push(env.lista.length ? '✓ ' + env.lista.length + ' sugerencia(s) en CAT_EnviosOf.' : '• CAT_EnviosOf vacía o sin crear: no se muestran sugerencias de qué mandar a Oficinas.');
+  if (env.sinArea.length) l.push('⚠ En CAT_EnviosOf hay áreas que no existen en CAT_Areas (revisa que se escriban igual): ' + env.sinArea.join(', '));
   return l.join('\n');
 }
 

@@ -105,8 +105,44 @@ function _catalogos() {
       logo: _logo(),
       urlHoja: _libro().getUrl()
     },
-    impresoras: _impresoras()
+    impresoras: _impresoras(),
+    enviosOf: _enviosOficinas().lista
   };
+}
+
+/**
+ * Guía "¿Qué se manda a cada área de Oficinas?" (hoja CAT_EnviosOf).
+ * Columnas: Documentos | Área   (encabezados en la fila 2; el Área es el NOMBRE como en CAT_Areas, ej. "Coordinación PV").
+ * Regresa { lista: [{doc, area}], sinArea: ['Nombre que no existe', ...] }.
+ */
+function _enviosOficinas() {
+  const out = { lista: [], sinArea: [] };
+  const libro = _libro();
+  const sh = libro.getSheetByName('CAT_EnviosOf') ||
+    libro.getSheets().filter(function (h) { return _norm(h.getName()).replace(/[^a-z]/g, '') === 'catenviosof'; })[0];
+  if (!sh || sh.getLastRow() <= TR.FILA_ENC) return out;
+  const lc = Math.max(2, sh.getLastColumn());
+  const enc = sh.getRange(TR.FILA_ENC, 1, 1, lc).getValues()[0].map(_norm);
+  let cDoc = enc.findIndex(function (h) { return h.indexOf('document') >= 0 || h.indexOf('que se manda') >= 0; });
+  let cArea = enc.findIndex(function (h) { return h.indexOf('area') === 0; });
+  if (cDoc < 0) cDoc = 0;
+  if (cArea < 0) cArea = 1;
+  // nombre (o prefijo) del área → prefijo, solo áreas de Oficinas
+  const A = _areas(), porNombre = {};
+  Object.keys(A).forEach(function (id) {
+    if (A[id].tipo !== 'OFICINAS' || id === 'REC') return;
+    porNombre[_norm(A[id].corto)] = id;
+    porNombre[_norm(id)] = id;
+  });
+  sh.getRange(TR.FILA_ENC + 1, 1, sh.getLastRow() - TR.FILA_ENC, lc).getValues().forEach(function (f) {
+    const doc = String(f[cDoc] == null ? '' : f[cDoc]).trim();
+    const nombre = String(f[cArea] == null ? '' : f[cArea]).trim();
+    if (!doc || !nombre) return;
+    const id = porNombre[_norm(nombre)] || porNombre[_norm(nombre.replace(/^oficinas\s*[·\-]\s*/i, ''))];
+    if (id) out.lista.push({ doc: doc, area: id });
+    else if (out.sinArea.indexOf(nombre) < 0) out.sinArea.push(nombre);
+  });
+  return out;
 }
 
 /**
