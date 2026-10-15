@@ -86,11 +86,16 @@ Para volver a la página: doble clic al acceso directo **Traspasos**, o reinicia
 
 ## Cuando TÚ necesites cambiar el área de esa computadora
 
-En kiosco no hay "Salir". Haz esto:
+1. Cierra la pantalla completa con **Alt + F4**.
+2. Abre Chrome normal y en la barra de direcciones escribe la dirección de la página con **/SALIR** al final:
 
-1. Cierra con **Alt + F4**.
-2. Abre Chrome normal y entra a tu URL agregando `?cambiar=1` al final. Ejemplo: `https://script.google.com/a/macros/fadermex.com/s/TU-ID/exec?cambiar=1`
-3. Elige el área. Las que tienen PIN te lo piden.
+   `https://script.google.com/a/macros/fadermex.com/s/AKfycbyEe93gdE_Sa18T8paJD182ocQ8IAUwJzVCG1MRX7uPBf-ObHvvkfHPAAQ7GRf4H1gl0Q/exec/SALIR`
+
+3. Te lleva a la pantalla para elegir área. Escoge la que quieras; las que tienen PIN te lo piden.
+
+Para regresarla a Recepción, abre la dirección normal (sin /SALIR) y elige **Recepción Oficinas**.
+
+> Tip: guarda esa dirección con /SALIR como **marcador** en tu propio celular o computadora, para no tener que recordarla.
 
 ## Resumen de seguridad
 

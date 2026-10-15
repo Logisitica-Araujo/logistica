@@ -18,6 +18,7 @@
 
   <!-- Las mismas reglas que usa el servidor (02_Reglas.gs) -->
   <script>var R = (<?!= fuenteReglas(); ?>)();</script>
+  <script>var SALIR = <?!= salir ? 'true' : 'false' ?>;</script>
   <?!= include('App'); ?>
 </body>
 </html>

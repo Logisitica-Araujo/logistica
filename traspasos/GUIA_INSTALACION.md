@@ -169,7 +169,7 @@ Lo que va de Morelia hacia acá lo sigue capturando Morelia en su pestaña Paque
 2. **Protege tu cuenta en esa computadora** (está abierta con jaraujo):
    - **CAT_Areas → "PIN de entrada"** de **LOG**: pon un PIN. Así, en la computadora del patio solo se puede entrar libre a Recepción; Logística pide PIN.
    - **CFG_Ajustes → pin_administrador**: pon un PIN para el Modo administrador.
-   - Ponla en **modo kiosco** paso a paso con **[MODO_KIOSCO.md](MODO_KIOSCO.md)**: usuario de Windows aparte, Chrome bloqueado para que solo abra Traspasos (`recepcion_kiosco_chrome.reg`) y pantalla completa al arrancar. En Recepción ya no aparece "Salir". Para cambiar el área, abre la URL con `?cambiar=1`.
+   - Ponla en **modo kiosco** paso a paso con **[MODO_KIOSCO.md](MODO_KIOSCO.md)**: usuario de Windows aparte, Chrome bloqueado para que solo abra Traspasos (`recepcion_kiosco_chrome.reg`) y pantalla completa al arrancar. En Recepción ya no aparece "Salir". Para salir de Recepción, abre la dirección de la página con **/SALIR** al final: `…/exec/SALIR`.
 3. En esa computadora entra como **Recepción Oficinas**. La sesión no se cierra sola si `sesion_horas_sucursal` = 0.
 
 **Cómo se usa:**
@@ -256,7 +256,7 @@ La hoja **CAT_EnviosOf** tiene en la fila 2 los encabezados **Documentos** | **�
 - Para quitar una sugerencia, borra su renglón. Esta hoja no guarda historial, así que aquí sí se puede borrar.
 
 Al crear un traspaso:
-- **Paso 2 (Destino):** el recuadro derecho muestra *"Normalmente a … se le manda"* para el área elegida, y la guía completa *"¿Qué va a cada área de Oficinas?"*. Al tocar un área, se elige como destino.
+- **Paso 2 (Destino):** **solo si eligen un área de Oficinas**, el recuadro derecho muestra el aviso *"📌 A … normalmente se le manda"* con lo de esa área. Es solo un aviso, no se toca. Para sucursales no sale nada.
 - **Paso 3 (Qué envías):** los documentos de esa área salen como botones. Al tocar uno, se agrega al texto.
 
 **🔄 Traspasos → Revisar configuración** dice cuántas sugerencias hay y avisa si alguna área de CAT_EnviosOf no coincide con CAT_Areas.

@@ -5,9 +5,16 @@
  * {ok:true, datos} o {ok:false, error}.
  ***********************************************************************/
 
-/** Abre la página (la URL /exec de la implementación). */
-function doGet() {
-  return HtmlService.createTemplateFromFile('Index')
+/**
+ * Abre la página (la URL /exec de la implementación).
+ * URL terminada en /SALIR (…/exec/SALIR) → saca a esa computadora de su área y muestra
+ * la pantalla para elegir área. Sirve para la computadora de Recepción, que no tiene botón "Salir".
+ */
+function doGet(e) {
+  const t = HtmlService.createTemplateFromFile('Index');
+  const ruta = String((e && e.pathInfo) || '').replace(/\//g, '').trim().toLowerCase();
+  t.salir = ruta === 'salir' || !!(e && e.parameter && e.parameter.cambiar);
+  return t
     .evaluate()
     .setTitle(TR.NOMBRE_APP)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')

@@ -59,13 +59,9 @@ function srv(fn) {
 
 /* ---------- entrada y sesión ---------- */
 function arrancar() {
-  // Para sacar de su área a una computadora fijada (ej. Recepción en modo kiosco): abrir la URL con ?cambiar=1
-  try {
-    google.script.url.getLocation(function (l) {
-      if (l && l.parameter && l.parameter.cambiar) { borrar('token'); pantallaEntrada('Elige el área de esta computadora.'); }
-      else seguir();
-    });
-  } catch (e) { seguir(); }
+  // URL terminada en /SALIR (ej. Recepción en modo kiosco): olvida el área de esta computadora.
+  if (window.SALIR) { borrar('token'); return pantallaEntrada('Saliste del área. Elige el área de esta computadora.'); }
+  seguir();
 }
 function seguir() {
   var tk = leer('token');
@@ -330,27 +326,18 @@ function vNuevo() {
 function docsDe(area) {
   return (S.cat.enviosOf || []).filter(function (x) { return x.area === area; }).map(function (x) { return x.doc; });
 }
-/** Recuadro derecho del paso "Destino". */
+/**
+ * Recuadro derecho del paso "Destino": SOLO cuando el destino es un área de Oficinas.
+ * Es un aviso (no se toca): lo que normalmente se le manda a esa área, para no enviar por error.
+ */
 function guiaEnvios(dest) {
-  var lista = S.cat.enviosOf || [];
-  var nota = '<p class="muted" style="margin:0;font-size:13.5px">Si el destino es Morelia, la ruta va sola por Logística y paquetería.</p>';
-  if (!lista.length) return '<h2 style="margin:0">Rutas precargadas</h2><p class="muted" style="margin:0">Aquí aparecen todas las áreas activas.</p>' + nota;
-  var html = '';
-  if (dest && S.A[dest] && S.A[dest].tipo === 'OFICINAS') {
-    var docs = docsDe(dest);
-    html += docs.length
-      ? '<div class="sugbox"><b>Normalmente a ' + esc(S.A[dest].corto) + ' se le manda:</b><ul>' + docs.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul></div>'
-      : '<div class="sugbox neutro">No hay documentos registrados para <b>' + esc(S.A[dest].corto) + '</b>. Si no estás seguro de que sea el área correcta, revisa la guía de abajo.</div>';
-  }
-  // Guía completa: por área; clic = elegir ese destino
-  var grupos = {};
-  lista.forEach(function (x) { (grupos[x.area] = grupos[x.area] || []).push(x.doc); });
-  html += '<h2 style="margin:0;font-size:17px">¿Qué va a cada área de Oficinas?</h2>' +
-    '<p class="muted" style="margin:0;font-size:13.5px">¿No sabes a qué área mandarlo? Búscalo aquí y toca el área para elegirla.</p>' +
-    '<div class="guia">' + Object.keys(grupos).sort(function (a, b) { return String(S.A[a] ? S.A[a].corto : a).localeCompare(String(S.A[b] ? S.A[b].corto : b)); }).map(function (id) {
-      return '<button type="button" class="guiaarea' + (id === dest ? ' sel' : '') + '" data-a="sugdest" data-v="' + esc(id) + '"><b>' + esc(S.A[id] ? S.A[id].corto : id) + '</b><span>' + grupos[id].map(esc).join(' · ') + '</span></button>';
-    }).join('') + '</div>' + nota;
-  return html;
+  var base = '<h2 style="margin:0">Rutas precargadas</h2><p class="muted" style="margin:0">Aquí aparecen todas las áreas activas. Si el destino es Morelia, la ruta va sola por Logística y paquetería.</p>';
+  if (!dest || !S.A[dest] || S.A[dest].tipo !== 'OFICINAS') return base;
+  var docs = docsDe(dest);
+  if (!docs.length) return base;
+  return '<div class="sugbox" role="note"><b>📌 A ' + esc(S.A[dest].corto) + ' normalmente se le manda:</b><ul>' +
+    docs.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul>' +
+    '<div style="font-size:13px;margin-top:6px">Si lo que envías no es nada de esto, revisa que sea el área correcta.</div></div>';
 }
 /** Botones del paso "Contenido": llenan "¿Qué envías?" con un clic. */
 function sugerenciasDesc(dest) {
@@ -888,7 +875,6 @@ document.addEventListener('click', function (e) {
     case 'recconfirmar': return recConfirmar();
     case 'atras': w.step--; w.err = null; break;
     case 'dest': { var d = $('#destin').value; if (!d) { w.err = 'Elige el destino.'; break; } w.destino = d; w.bultos = w.bultos || 1; w.err = null; w.step = 3; break; }
-    case 'sugdest': if (v === me()) { w.err = 'Esa es tu misma área.'; break; } w.destino = v; w.err = null; break;
     case 'sugdesc': {
       var actual = $('#descin').value.trim();
       if (actual.toLowerCase().indexOf(v.toLowerCase()) < 0) w.desc = actual ? actual + ', ' + v : v;
