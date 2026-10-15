@@ -78,3 +78,99 @@ function apiRecepcion(token, d) {
     });
   });
 }
+
+
+/* ======================= CENTRO DE IMPRESIÓN =======================
+ * La computadora de Recepción es la única con la etiquetadora conectada por cable.
+ * Las áreas de Oficinas crean sus traspasos en su computadora y aquí se imprimen.
+ * Solo aparecen los traspasos en "Nuevo traspaso" (pedido creado, sin moverse aún).
+ * ================================================================== */
+
+/** Áreas de Oficinas que pueden mandar a imprimir aquí (no incluye Recepción). */
+function _areasOficinas(A) {
+  return Object.keys(A).filter(function (id) {
+    return A[id].activa && A[id].tipo === 'OFICINAS' && id !== AREA_REC;
+  });
+}
+
+/** ¿Este traspaso se puede imprimir desde Recepción? */
+function _imprimibleEnRec(t, A) {
+  return !!t && t.estatus === 'NUEVO' && !t.solicitud && !!A[t.origen] && A[t.origen].tipo === 'OFICINAS' && t.origen !== AREA_REC;
+}
+
+/** Cuántas veces se ha impreso cada folio en Recepción: { 'CONT-0006': 1, ... } */
+function _impresosEnRec() {
+  const out = {};
+  _tb(TR.H.ETIQUETAS).filas().forEach(function (f) {
+    if (String(f['Impresión']).trim().toUpperCase() !== 'RECEPCIÓN') return;
+    const k = R.limpio(f['Folio']);
+    out[k] = (out[k] || 0) + 1;
+  });
+  return out;
+}
+
+/** Para el desplegable: las áreas de Oficinas con cuántos traspasos tienen por imprimir. */
+function apiCentroImpresion(token) {
+  return _api(function () {
+    const c = _ctx(token);
+    if (c.area !== AREA_REC) throw new Error('El Centro de Impresión solo está en la computadora de Recepción Oficinas.');
+    const A = _areas();
+    const n = {};
+    _traspasos().forEach(function (t) { if (_imprimibleEnRec(t, A)) n[t.origen] = (n[t.origen] || 0) + 1; });
+    return _areasOficinas(A)
+      .map(function (id) { return { id: id, nombre: A[id].corto, pendientes: n[id] || 0 }; })
+      .sort(function (a, b) { return a.nombre.localeCompare(b.nombre); });
+  });
+}
+
+/** Traspasos del área elegida que siguen en "Nuevo traspaso" (los más recientes primero). */
+function apiPendientesImpresion(token, area) {
+  return _api(function () {
+    const c = _ctx(token);
+    if (c.area !== AREA_REC) throw new Error('El Centro de Impresión solo está en la computadora de Recepción Oficinas.');
+    const A = _areas();
+    area = String(area || '').trim().toUpperCase();
+    if (_areasOficinas(A).indexOf(area) < 0) throw new Error('Elige un área de Oficinas.');
+    const impresos = _impresosEnRec();
+    return _traspasos()
+      .filter(function (t) { return t.origen === area && _imprimibleEnRec(t, A); })
+      .sort(function (a, b) { return String(b.fecha + ' ' + b.hora).localeCompare(String(a.fecha + ' ' + a.hora)); })
+      .map(function (t) {
+        return { folio: t.folio, destino: t.destino, destinoNombre: R.nom(A, t.destino), fecha: t.fecha, hora: t.hora,
+                 bultos: t.bultos, desc: t.desc, por: String(t.por || '').split(' · ')[0],
+                 impresoEnRec: impresos[R.limpio(t.folio)] ? true : false };
+      });
+  });
+}
+
+/**
+ * Registra la impresión en Recepción y regresa el traspaso para imprimir sus etiquetas.
+ * folios = uno o varios. Cada uno debe seguir en "Nuevo traspaso" y ser de Oficinas.
+ */
+function apiImprimirEnRecepcion(token, folios) {
+  return _api(function () {
+    const c = _ctx(token);
+    if (c.area !== AREA_REC) throw new Error('Solo se imprime desde la computadora de Recepción Oficinas.');
+    const A = _areas();
+    const lista = [].concat(folios || []).map(R.folioDe).filter(Boolean);
+    if (!lista.length) throw new Error('No hay folios para imprimir.');
+    const mapa = {};
+    _traspasos().forEach(function (t) { mapa[R.limpio(t.folio)] = t; });
+    const listos = [], etiquetas = [], movs = [];
+    lista.forEach(function (k) {
+      const t = mapa[k];
+      if (!_imprimibleEnRec(t, A)) throw new Error(k + ' ya no está en "Nuevo traspaso" o no es de Oficinas. Actualiza la lista.');
+      const bultos = [];
+      for (let i = 1; i <= t.bultos; i++) bultos.push(i);
+      etiquetas.push.apply(etiquetas, _etiquetasObj(t, bultos, 'RECEPCIÓN', c.email, 'Centro de Impresión'));
+      movs.push(_movObj(t, 'ETIQUETAS IMPRESAS EN RECEPCIÓN', '', '', { donde: AREA_REC, persona: c.email, equipo: AREA_REC, detalle: t.bultos + ' etiqueta(s)' }));
+      const o = {};
+      Object.keys(t).forEach(function (x) { if (x !== '_fila' && x !== 'cred') o[x] = t[x]; });
+      o.por = String(o.por || '').split(' · ')[0];
+      listos.push({ traspaso: o, bultos: bultos });
+    });
+    _tb(TR.H.ETIQUETAS).agregarVarias(etiquetas);
+    _tb(TR.H.MOV).agregarVarias(movs);
+    return listos;
+  });
+}

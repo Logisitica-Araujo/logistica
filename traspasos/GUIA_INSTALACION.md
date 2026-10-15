@@ -236,3 +236,14 @@ Si un área no tiene fila con medidas, usa `etiqueta_ancho_mm` / `etiqueta_alto_
    - Revisa Operaciones de inmediato: tus traspasos de Morelia que ya tienen guía cambian en ese momento.
 3. **Implementar → Administrar implementaciones → ✏️ → Nueva versión** (la URL no cambia).
 4. En cada computadora, recarga la página (F5).
+
+## 🖨 Centro de Impresión (Recepción Oficinas)
+
+La etiquetadora está conectada solo a la computadora de Recepción. Por eso Recepción tiene la pestaña dorada **🖨 Centro de Impresión**.
+
+1. Elige el **área de Oficinas** en el desplegable. Entre paréntesis sale cuántos traspasos tiene por imprimir.
+2. Aparecen **solo** sus traspasos en **Nuevo traspaso**: creados, pero todavía sin recoger. En cuanto un gestor los recoge, salen de la lista.
+3. **🖨 Imprimir etiqueta** imprime las etiquetas de ese folio, una por bulto. **Imprimir todas** imprime las de toda el área en un solo envío.
+4. Lo ya impreso aquí queda marcado *"ya impreso aquí"* y el botón cambia a **Imprimir otra vez**.
+
+Imprimir no cambia el estatus. Cada impresión queda en RES_Etiquetas (Impresión = RECEPCIÓN) y en la línea de tiempo del traspaso. La etiqueta sale con el tamaño de la fila **REC** de CAT_Impresoras.

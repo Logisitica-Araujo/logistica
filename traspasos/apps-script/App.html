@@ -214,7 +214,7 @@ function renderHeader() {
     tabs = [['todos', 'Todos los traspasos'], ['buscar', 'Buscador'], ['sol', 'Solicitudes', S.data.solicitudes.length], ['hoja', 'Catálogos']];
   } else if (me() === 'REC') {
     var enRec = S.data.traspasos.filter(function (t) { return t.estatus === 'EN_RECEPCION'; }).length;
-    tabs = [['dejar', '📥 Dejar'], ['recoger', '📤 Recoger'], ['resguardo', 'En resguardo', enRec]];
+    tabs = [['dejar', '📥 Dejar'], ['recoger', '📤 Recoger'], ['resguardo', 'En resguardo', enRec], ['imprimir', '🖨 Centro de Impresión', 0, 'destacado']];
   } else {
     tabs = [['bandeja', 'Mi bandeja'], ['nuevo', 'Nuevo traspaso'], ['escaner', 'Escáner']];
     if (me() === 'LOG' || R.esMor(S.A, me())) {
@@ -238,7 +238,7 @@ function renderHeader() {
   $('#header').innerHTML = '<div class="brand">' + logo + 'Traspasos</div>' +
     cambioModo() + '<div class="who"><span class="p">' + esc(S.ctx.areaNombre) + '</span><span class="u">' + esc(S.ctx.email) + (min < 60 * 24 * 30 ? ' · sesión: cierra en ' + Math.floor(min / 60) + ' h ' + ('0' + (min % 60)).slice(-2) + ' min' : '') + (me() === 'REC' ? ' · 🔒 equipo fijo' : ' · <a href="#" data-a="salir">Salir</a>') + '</span></div>' +
     bell + '<nav class="tabs">' + tabs.map(function (x) {
-      return '<button type="button" data-a="tab" data-v="' + x[0] + '"' + (S.tab === x[0] ? ' aria-current="page"' : '') + '>' + x[1] + (x[2] ? ' <span class="count">' + x[2] + '</span>' : '') + '</button>';
+      return '<button type="button" data-a="tab" data-v="' + x[0] + '"' + (x[3] ? ' class="' + x[3] + '"' : '') + (S.tab === x[0] ? ' aria-current="page"' : '') + '>' + x[1] + (x[2] ? ' <span class="count">' + x[2] + '</span>' : '') + '</button>';
     }).join('') + '</nav>';
 }
 
@@ -578,6 +578,7 @@ function imprimirCaja(c) {
 /* ---------- Recepción Oficinas (computadora del patio) ---------- */
 function vRecepcion() {
   if (S.tab === 'resguardo') return vResguardo();
+  if (S.tab === 'imprimir') return vCentroImpresion();
   var r = S.rec, dejar = S.tab !== 'recoger';
   var fb = r.fb ? '<div class="feedback ' + r.fb.k + '" role="alert">' + esc(r.fb.m) + '</div>' : '';
   var titulo = dejar ? 'Dejar traspasos en Recepción' : 'Recoger traspasos de Recepción';
@@ -606,6 +607,71 @@ function vRecepcion() {
         return '<div class="qrow"><span style="color:var(--ok);font-weight:900">✓</span><div style="min-width:0"><div class="row" style="gap:6px 10px">' + areaTag(t.destino) + '<span><span class="num">' + esc(t.folio) + '</span> · ' + esc(nom(t.origen)) + '<span class="arrow">→</span>' + esc(nom(t.destino)) + '</span></div><div class="muted" style="font-size:13px">' + t.bultos + ' bulto(s) · ' + esc(t.desc) + '</div></div><button class="btn ghost" type="button" data-a="recquitar" data-v="' + esc(t.folio) + '">Quitar</button></div>';
       }).join('') : '<div class="empty">Escanea el primer traspaso.</div>') + '</div></div></div>';
 }
+/* ---------- Centro de Impresión (Recepción) ----------
+ * La etiquetadora está conectada solo a esta computadora. Las áreas de Oficinas
+ * crean sus traspasos en su equipo y aquí imprimen las etiquetas.
+ * Solo salen los traspasos en "Nuevo traspaso" (pedido creado, todavía sin moverse).
+ */
+function abrirCentroImpresion() {
+  S.imp = { areas: null, area: (S.imp && S.imp.area) || '', lista: null, err: null, ocupado: false };
+  srv('apiCentroImpresion', S.token).then(function (areas) {
+    S.imp.areas = areas;
+    if (S.imp.area) return cargarPendientes(S.imp.area);
+    render();
+  }).catch(function (e) { S.imp.err = e.message; render(); });
+}
+function cargarPendientes(area) {
+  S.imp.area = area; S.imp.lista = null; S.imp.err = null;
+  if (!area) return render();
+  render();
+  srv('apiPendientesImpresion', S.token, area).then(function (lista) {
+    if (S.imp.area !== area) return;          // cambió de área mientras cargaba
+    S.imp.lista = lista;
+    var a = (S.imp.areas || []).filter(function (x) { return x.id === area; })[0];
+    if (a) a.pendientes = lista.length;
+    render();
+  }).catch(function (e) { S.imp.err = e.message; render(); });
+}
+function imprimirEnRecepcion(folios) {
+  if (S.imp.ocupado) return;
+  S.imp.ocupado = true; S.ocupado = true; render();
+  srv('apiImprimirEnRecepcion', S.token, folios).then(function (listos) {
+    // Un solo trabajo de impresión con todas las etiquetas
+    mandarImprimir(listos.map(function (x) { return x.bultos.map(function (b) { return etiquetaHTML(x.traspaso, b, 0, false); }).join(''); }).join(''));
+    var n = listos.reduce(function (s, x) { return s + x.bultos.length; }, 0);
+    toast('🖨 ' + n + ' etiqueta(s) enviadas a la impresora');
+    S.imp.ocupado = false; S.ocupado = false;
+    cargarPendientes(S.imp.area);
+  }).catch(function (e) { S.imp.ocupado = false; S.ocupado = false; S.imp.err = e.message; render(); });
+}
+function vCentroImpresion() {
+  var im = S.imp || {};
+  var head = '<h1>🖨 Centro de Impresión</h1><p class="sub">Etiquetas de los traspasos que las áreas de Oficinas crearon en su computadora. Solo aparecen los que siguen en <b>Nuevo traspaso</b>; en cuanto un gestor los recoge, salen de aquí.</p>';
+  if (!im.areas) return head + (im.err ? '<div class="feedback err">' + esc(im.err) + '</div>' : '<div class="cargando">Cargando áreas…</div>');
+  var opts = '<option value="">Elige el área…</option>' + im.areas.map(function (a) {
+    return '<option value="' + esc(a.id) + '"' + (im.area === a.id ? ' selected' : '') + '>' + esc(a.nombre) + (a.pendientes ? ' (' + a.pendientes + ')' : '') + '</option>';
+  }).join('');
+  var cuerpo = '';
+  if (im.err) cuerpo = '<div class="feedback err">' + esc(im.err) + '</div>';
+  else if (!im.area) cuerpo = '<div class="empty">Elige un área para ver sus etiquetas por imprimir.</div>';
+  else if (!im.lista) cuerpo = '<div class="cargando">Buscando traspasos…</div>';
+  else if (!im.lista.length) cuerpo = '<div class="empty">Esta área no tiene traspasos en "Nuevo traspaso".</div>';
+  else {
+    var total = im.lista.reduce(function (s, t) { return s + t.bultos; }, 0);
+    cuerpo = '<div class="row" style="justify-content:space-between;margin-bottom:10px"><b>' + im.lista.length + ' traspaso(s) · ' + total + ' etiqueta(s)</b>' +
+      '<button class="btn primary" type="button" data-a="impTodas"' + (im.ocupado ? ' disabled' : '') + '>🖨 Imprimir todas</button></div>' +
+      '<div class="tablewrap"><table><thead><tr><th>Folio</th><th>Destino</th><th>Fecha</th><th>Bultos</th><th>Creó</th><th></th></tr></thead><tbody>' +
+      im.lista.map(function (t) {
+        return '<tr><td class="num">' + esc(t.folio) + (t.impresoEnRec ? '<div class="muted" style="font-size:12px;font-weight:700">ya impreso aquí</div>' : '') + '</td>' +
+          '<td>' + areaTag(t.destino) + ' ' + esc(t.destinoNombre) + '<div class="muted" style="font-size:12.5px;white-space:normal">' + esc(t.desc) + '</div></td>' +
+          '<td>' + esc(t.fecha + ' ' + t.hora) + '</td><td class="num">' + t.bultos + '</td><td>' + esc(t.por) + '</td>' +
+          '<td><button class="btn' + (t.impresoEnRec ? '' : ' primary') + '" type="button" data-a="impUno" data-v="' + esc(t.folio) + '"' + (im.ocupado ? ' disabled' : '') + '>🖨 ' + (t.impresoEnRec ? 'Imprimir otra vez' : 'Imprimir etiqueta') + '</button></td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  return head + '<div class="panel stack" style="margin-bottom:16px;max-width:520px"><label class="f">Área de Oficinas<select class="t" id="impArea">' + opts + '</select></label>' +
+    '<div class="row"><button class="btn ghost" type="button" data-a="impRecargar">↻ Actualizar</button></div></div>' + cuerpo;
+}
+
 function vResguardo() {
   var lista = S.data.traspasos.filter(function (t) { return t.estatus === 'EN_RECEPCION'; });
   var grupos = {};
@@ -762,7 +828,12 @@ document.addEventListener('click', function (e) {
     case 'cambiarArea': return pantallaEntrada();
     case 'tab':
       if (me() === 'REC' && S.tab !== v) S.rec = { quien: null, quienId: null, lote: [], fb: null, enviando: false };
-      S.tab = v; S.filtro = null; S.bell = false; break;
+      S.tab = v; S.filtro = null; S.bell = false;
+      if (v === 'imprimir') { abrirCentroImpresion(); return; }
+      break;
+    case 'impUno': return imprimirEnRecepcion([v]);
+    case 'impTodas': return imprimirEnRecepcion(S.imp.lista.map(function (t) { return t.folio; }));
+    case 'impRecargar': return abrirCentroImpresion();
     case 'dir': S.dir = v; S.filtro = null; break;
     case 'filtro': S.filtro = S.filtro === v ? null : v; break;
     case 'bell':
@@ -857,6 +928,7 @@ document.addEventListener('click', function (e) {
 });
 document.addEventListener('change', function (e) {
   if (e.target.id === 'destin') $('#rutanote').innerHTML = rutaNota(me(), e.target.value);
+  if (e.target.id === 'impArea') cargarPendientes(e.target.value);
   if (e.target.getAttribute('data-a') === 'faltan') {
     var f = e.target.getAttribute('data-v');
     S.scan.lote.forEach(function (it) { if (it.t.folio === f) it.faltan = e.target.checked; });
