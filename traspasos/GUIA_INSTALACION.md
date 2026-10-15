@@ -260,3 +260,15 @@ Al crear un traspaso:
 - **Paso 3 (Qué envías):** los documentos de esa área salen como botones. Al tocar uno, se agrega al texto.
 
 **🔄 Traspasos → Revisar configuración** dice cuántas sugerencias hay y avisa si alguna área de CAT_EnviosOf no coincide con CAT_Areas.
+
+## 🧹 Empezar de cero para el lanzamiento
+
+En la hoja: menú **🔄 Traspasos → 🧹 Limpiar para lanzamiento (empezar de cero)** → escribe **BORRAR** → Aceptar. Hace esto:
+1. **Guarda una copia completa** del archivo en tu Drive: "RESPALDO Traspasos antes de lanzamiento …".
+2. **Vacía** RES_Traspasos, RES_Movimientos, RES_Escaneos, RES_Etiquetas, RES_Solicitudes, RES_Avisos, RES_Cajas e IMP_Recolecciones.
+3. **Regresa los folios a 0001** en todas las áreas, y las cajas a CJ-0001.
+4. En CFG_Ajustes → `ops_ignorar_hasta_fila` anota hasta qué fila de **Operaciones** hay datos viejos. Así una guía vieja de `NR-0001` no mueve el `NR-0001` nuevo.
+
+**No toca:** áreas, personas, gestores, administradores, impresoras, CAT_EnviosOf ni ajustes. Solo lo puede correr un administrador. Si no escribes BORRAR, no borra nada.
+
+> ⚠ Úsalo una sola vez, justo antes del lanzamiento. Después borraría traspasos reales.

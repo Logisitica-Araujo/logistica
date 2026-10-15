@@ -1,6 +1,6 @@
 # Pendientes para mañana
 
-## 1. Regresar el botón "🧹 Limpiar para lanzamiento" (solo ese)
+## 1. ✅ HECHO: botón "🧹 Limpiar para lanzamiento" (solo ese)
 Va en el menú de la hoja **🔄 Traspasos**. Es para empezar de cero al lanzar la página. Hace esto:
 - Pide escribir **BORRAR** para confirmar.
 - Guarda una **copia completa del archivo en Drive** antes de borrar.

@@ -11,6 +11,8 @@ function onOpen() {
     .createMenu('🔄 Traspasos')
     .addItem('Instalar / reparar', 'instalar')
     .addItem('Revisar configuración', 'revisarConfiguracion')
+    .addSeparator()
+    .addItem('🧹 Limpiar para lanzamiento (empezar de cero)', 'limpiarParaLanzamiento')
     .addToUi();
 }
 
@@ -74,6 +76,7 @@ function instalar() {
   const faltan = [
     ['revisar_avisos_cada_seg', 45, 'Cada cuántos segundos la página revisa si hay traspasos nuevos para el área.'],
     ['pin_administrador', '', 'PIN para entrar al Modo administrador. Vacío = sin PIN. Recomendado si tu cuenta está abierta en una computadora compartida.'],
+    ['ops_ignorar_hasta_fila', 0, 'La revisión de Operaciones ignora las filas hasta este número (lo llena solo "Limpiar para lanzamiento").'],
     ['ops_columna_folio', 'A', 'Hoja Operaciones: columna (letra) donde va el folio del traspaso o de la caja.'],
     ['ops_columna_paqueteria', 'K', 'Hoja Operaciones: columna (letra) de la paquetería (DHL, Estafeta…).'],
     ['ops_columna_guia', 'M', 'Hoja Operaciones: columna (letra) del número de guía. Con guía, el traspaso pasa solo a "Enviado por paquetería".']
@@ -199,6 +202,63 @@ function _crearActivador() {
   ScriptApp.newTrigger('sincronizarOperaciones').timeBased().everyMinutes(TR.OPS.CADA_MIN).create();
   return true;
 }
+
+/**
+ * 🧹 EMPEZAR DE CERO (para el lanzamiento oficial).
+ *  1. Hace una COPIA completa del archivo en tu Drive (respaldo).
+ *  2. Vacía los traspasos de prueba y todo su historial (RES_ e IMP_Recolecciones).
+ *  3. Regresa los folios a 0001 en todas las áreas y cajas.
+ *  4. Marca hasta qué fila de "Operaciones" hay datos viejos, para no confundirlos con los nuevos folios.
+ * NO toca catálogos (áreas, personas, gestores, administradores, impresoras) ni ajustes.
+ */
+function limpiarParaLanzamiento() {
+  const ui = SpreadsheetApp.getUi();
+  const r = ui.prompt('🧹 Limpiar para lanzamiento',
+    'Esto BORRA todos los traspasos, cajas, avisos, escaneos y su historial, y regresa los folios a 0001.\n' +
+    'Antes se guarda una copia completa del archivo en tu Drive.\n\nPara continuar escribe: BORRAR', ui.ButtonSet.OK_CANCEL);
+  if (r.getSelectedButton() !== ui.Button.OK || String(r.getResponseText()).trim().toUpperCase() !== 'BORRAR') {
+    ui.alert('Cancelado. No se borró nada.');
+    return 'cancelado';
+  }
+  const msg = _limpiar(Session.getActiveUser().getEmail());
+  ui.alert('Listo', msg, ui.ButtonSet.OK);
+  return msg;
+}
+
+function _limpiar(quien) {
+  if (!_esAdmin(quien)) throw new Error('Solo un administrador puede limpiar.');
+  return _conCandado(function () {
+    const ss = _libro();
+    const nombreRespaldo = 'RESPALDO Traspasos antes de lanzamiento ' + _ahoraTxt();
+    const copia = DriveApp.getFileById(ss.getId()).makeCopy(nombreRespaldo);
+    const hojas = [TR.H.TRASPASOS, TR.H.MOV, TR.H.ESCANEOS, TR.H.ETIQUETAS, TR.H.SOLICITUDES, TR.H.AVISOS, TR.H.CAJAS, 'IMP_Recolecciones'];
+    const borradas = [];
+    hojas.forEach(function (h) {
+      const sh = ss.getSheetByName(h);
+      if (!sh) return;
+      const n = sh.getLastRow() - TR.FILA_ENC;
+      if (n > 0) { sh.getRange(TR.FILA_ENC + 1, 1, n, Math.max(1, sh.getLastColumn())).clearContent(); borradas.push(h + ' (' + n + ')'); }
+    });
+    const tf = _tb(TR.H.FOLIOS);
+    tf.filas().forEach(function (f) { tf.actualizar(f._fila, { 'Último número': 0, 'Actualizado': _ahoraTxt() }); });
+    let ops = '';
+    try {
+      const sh = SpreadsheetApp.openById(_idOperaciones()).getSheetByName(TR.OPS.HOJA);
+      const ult = sh ? sh.getLastRow() : 0;
+      const ta = _tb(TR.H.AJUSTES);
+      const f = ta.filas().filter(function (x) { return _norm(x['Parámetro']) === 'ops_ignorar_hasta_fila'; })[0];
+      if (f) ta.actualizar(f._fila, { 'Valor': ult }); else ta.agregar({ 'Parámetro': 'ops_ignorar_hasta_fila', 'Valor': ult, 'Qué hace': 'La revisión de Operaciones ignora las filas hasta este número.' });
+      __AJ = null;
+      ops = 'En "Operaciones" se ignorarán las filas 1 a ' + ult + ' (son de antes del lanzamiento).';
+    } catch (e) { ops = '⚠ No pude leer Operaciones: ' + e.message; }
+    __TB = {};
+    _adminLog(quien, 'LIMPIAR PARA LANZAMIENTO', 'Todo', borradas.join(', '), 'Folios en 0', 'Respaldo: ' + copia.getUrl());
+    return 'Respaldo guardado en tu Drive: "' + nombreRespaldo + '"\n' + copia.getUrl() + '\n\n' +
+      'Vaciado: ' + (borradas.join(', ') || 'ya estaba vacío') + '.\nFolios de todas las áreas regresan a 0001.\n' + ops +
+      '\n\nCatálogos, personas, impresoras y ajustes NO se tocaron.';
+  });
+}
+
 
 /** Activador "Al editar" en el archivo de Operaciones (solo uno). */
 function _crearActivadorEdicion() {
