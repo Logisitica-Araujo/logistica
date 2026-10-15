@@ -57,7 +57,9 @@ function apiRecepcion(token, d) {
         if (quien.tipo === 'GESTOR') {
           _actualizarT(t, { 'Estatus': 'RECOLECTADO', 'Gestor': quien.nombre, 'Fecha recolección': _ahoraTxt(), 'Ubicación actual': '' });
           movs.push(_movObj(t, 'RECOGIDO EN RECEPCIÓN POR GESTORÍA', antes, 'RECOLECTADO',
-            { donde: AREA_REC, persona: quien.nombre, cred: quien.via, medio: 'RECEPCIÓN', equipo: AREA_REC }));
+            { donde: AREA_REC, persona: quien.nombre, cred: quien.via, medio: 'RECEPCIÓN', equipo: AREA_REC,
+              detalle: antes === 'EN_RECEPCION' ? '' : 'Salida por Recepción (no se había registrado como dejado)' }));
+          if (t.origen !== t.destino) avisos.push(_avisoObj(t.origen, t.folio, 'Salió de Oficinas · lo lleva ' + quien.nombre));
           avisos.push(_avisoObj(t.destino, t.folio, 'Va en camino para ti · lo lleva ' + quien.nombre));
           resultados.push({ folio: t.folio, ok: true, msg: 'Se lo lleva ' + quien.nombre });
         } else {
@@ -93,9 +95,14 @@ function _areasOficinas(A) {
   });
 }
 
-/** ¿Este traspaso se puede imprimir desde Recepción? */
+/**
+ * ¿Este traspaso se puede imprimir desde Recepción?
+ * "Nuevo traspaso" de un área de Oficinas; también los que ya pasaron a "En Recepción Oficinas"
+ * al imprimirse aquí (para poder reimprimir).
+ */
 function _imprimibleEnRec(t, A) {
-  return !!t && t.estatus === 'NUEVO' && !t.solicitud && !!A[t.origen] && A[t.origen].tipo === 'OFICINAS' && t.origen !== AREA_REC;
+  if (!t || t.solicitud || !A[t.origen] || A[t.origen].tipo !== 'OFICINAS' || t.origen === AREA_REC) return false;
+  return t.estatus === 'NUEVO' || (t.estatus === 'EN_RECEPCION' && t.ubic === AREA_REC);
 }
 
 /** Cuántas veces se ha impreso cada folio en Recepción: { 'CONT-0006': 1, ... } */
@@ -138,7 +145,7 @@ function apiPendientesImpresion(token, area) {
       .map(function (t) {
         return { folio: t.folio, destino: t.destino, destinoNombre: R.nom(A, t.destino), fecha: t.fecha, hora: t.hora,
                  bultos: t.bultos, desc: t.desc, por: String(t.por || '').split(' · ')[0],
-                 impresoEnRec: impresos[R.limpio(t.folio)] ? true : false };
+                 impresoEnRec: impresos[R.limpio(t.folio)] ? true : false, enRecepcion: t.estatus === 'EN_RECEPCION' };
       });
   });
 }
@@ -163,7 +170,14 @@ function apiImprimirEnRecepcion(token, folios) {
       const bultos = [];
       for (let i = 1; i <= t.bultos; i++) bultos.push(i);
       etiquetas.push.apply(etiquetas, _etiquetasObj(t, bultos, 'RECEPCIÓN', c.email, 'Centro de Impresión'));
-      movs.push(_movObj(t, 'ETIQUETAS IMPRESAS EN RECEPCIÓN', '', '', { donde: AREA_REC, persona: c.email, equipo: AREA_REC, detalle: t.bultos + ' etiqueta(s)' }));
+      // Si se imprime aquí es porque el paquete está aquí: lo que sale con gestor queda "En Recepción Oficinas".
+      const aqui = t.estatus === 'NUEVO' && R.porSalirRec(t, A);
+      if (aqui) {
+        _actualizarT(t, { 'Estatus': 'EN_RECEPCION', 'Ubicación actual': AREA_REC });
+        t.estatus = 'EN_RECEPCION'; t.ubic = AREA_REC;
+      }
+      movs.push(_movObj(t, 'ETIQUETAS IMPRESAS EN RECEPCIÓN', aqui ? 'NUEVO' : '', aqui ? 'EN_RECEPCION' : '',
+        { donde: AREA_REC, persona: c.email, equipo: AREA_REC, detalle: t.bultos + ' etiqueta(s)' + (aqui ? ' · queda en Recepción para que se lo lleve un gestor' : '') }));
       const o = {};
       Object.keys(t).forEach(function (x) { if (x !== '_fila' && x !== 'cred') o[x] = t[x]; });
       o.por = String(o.por || '').split(' · ')[0];
@@ -172,5 +186,44 @@ function apiImprimirEnRecepcion(token, folios) {
     _tb(TR.H.ETIQUETAS).agregarVarias(etiquetas);
     _tb(TR.H.MOV).agregarVarias(movs);
     return listos;
+  });
+}
+
+
+/* ======================= AVISO: SIN SALIDA =======================
+ * Lo de Oficinas que va fuera y lleva más de N horas (CFG_Ajustes → horas_alerta_sin_salida,
+ * 36 por defecto) sin que un gestor le dé salida: aviso a Logística, al área que lo creó y a
+ * administración. Se avisa una sola vez por traspaso. Lo corre el activador de cada 10 minutos.
+ * ================================================================ */
+function _horasDesde(t) {
+  try {
+    const f = String(t.fecha || '').slice(0, 10), hh = String(t.hora || '').slice(-5);
+    const txt = /^\d{4}-\d{2}-\d{2}$/.test(f) ? f + ' ' + (/^\d{2}:\d{2}$/.test(hh) ? hh : '00:00') : String(t.act || '');
+    if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(txt)) return 0;
+    const h = (Date.now() - Utilities.parseDate(txt, TR.ZONA, 'yyyy-MM-dd HH:mm').getTime()) / 3600000;
+    return isFinite(h) ? h : 0;
+  } catch (e) { return 0; }
+}
+function alertarSinSalida() {
+  const lim = Number(_ajuste('horas_alerta_sin_salida', 36)) || 36;
+  const A = _areas();
+  const atrasados = _traspasos().filter(function (t) { return R.porSalirRec(t, A) && t.estatus !== 'EN_LOGISTICA' && _horasDesde(t) >= lim; });
+  if (!atrasados.length) return 0;
+  return _conCandado(function () {
+    const ya = {};
+    _tb(TR.H.MOV).filas().forEach(function (m) { if (String(m['Acción']).indexOf('ALERTA: SIN SALIDA') === 0) ya[R.limpio(m['Folio'])] = true; });
+    const nuevos = atrasados.filter(function (t) { return !ya[R.limpio(t.folio)]; });
+    if (!nuevos.length) return 0;
+    const movs = [], avisos = [];
+    nuevos.forEach(function (t) {
+      const h = Math.floor(_horasDesde(t));
+      const txt = 'Lleva ' + h + ' h sin salida registrada en Recepción (va para ' + R.nom(A, t.destino) + '). ¿Se lo llevó un gestor sin escanear?';
+      movs.push(_movObj(t, 'ALERTA: SIN SALIDA ' + lim + ' H', t.estatus, t.estatus, { donde: AREA_REC, medio: 'AUTOMÁTICO', detalle: txt }));
+      avisos.push(_avisoObj('LOG', t.folio, txt), _avisoObj(TR.AREA_ADMIN, t.folio, txt));
+      if (t.origen !== 'LOG') avisos.push(_avisoObj(t.origen, t.folio, txt));
+    });
+    _tb(TR.H.MOV).agregarVarias(movs);
+    _tb(TR.H.AVISOS).agregarVarias(avisos);
+    return nuevos.length;
   });
 }

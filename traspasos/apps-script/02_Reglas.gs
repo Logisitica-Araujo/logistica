@@ -48,8 +48,19 @@ function TR_REGLAS() {
   R.pasoLog = function (t) { return String(t.ruta || '') === 'VIA_LOGISTICA_OK'; };
 
   /** ¿Este traspaso aparece en "Entrantes" de esta área? */
+  /**
+   * ¿Está esperando salir por Recepción con un gestor? Todo lo de Oficinas que va FUERA de Oficinas
+   * sale por Recepción, aunque nadie lo haya registrado ahí ("Nuevo" de un área de Oficinas, o "En Logística"
+   * por distribuir). No cuenta: entregas internas de Oficinas (van en mano) ni lo de Morelia (va por Logística).
+   */
+  R.porSalirRec = function (t, A) {
+    if (!t || t.solicitud || R.esOf(A, t.destino) || R.esMor(A, t.destino) || R.esPausa(t.destino)) return false;
+    if (t.estatus === 'EN_RECEPCION' || t.estatus === 'EN_LOGISTICA') return true;
+    return t.estatus === 'NUEVO' && R.esOf(A, t.origen) && !R.esPausa(t.origen) && !R.viaLog(t);
+  };
+
   R.esEntrante = function (t, me, A) {
-    if (me === 'REC') return t.estatus === 'EN_RECEPCION';
+    if (me === 'REC') return t.estatus === 'EN_RECEPCION' || R.porSalirRec(t, A);
     if (R.mismaSuc(A, t.destino, me)) return true;
     return me === 'LOG' && R.viaLog(t) && (!R.pasoLog(t) || t.estatus === 'EN_LOGISTICA');
   };
@@ -126,6 +137,9 @@ function TR_REGLAS() {
    */
   R.recogible = function (t, A, E, quien) {
     if (!t) return { k: 'err', m: 'Ese folio no existe. Revisa que esté bien tecleado.' };
+    if (t.solicitud) return { k: 'err', m: t.folio + ' tiene una solicitud de eliminación pendiente. No se debe mover.' };
+    // El gestor da la salida de todo lo de Oficinas que va fuera, aunque nadie lo haya "dejado" aquí.
+    if (quien && quien.tipo === 'GESTOR' && R.porSalirRec(t, A)) return { k: 'ok', m: '' };
     if (t.estatus !== 'EN_RECEPCION') return { k: 'err', m: t.folio + ' no está en Recepción (está como "' + nomE(E, t.estatus) + '").' };
     if (quien && quien.tipo === 'PERSONA' && !R.mismaSuc(A, t.destino, quien.area)) {
       return { k: 'err', m: t.folio + ' es para ' + R.nom(A, t.destino) + '. Solo lo puede recoger esa área o un gestor.' };

@@ -76,6 +76,7 @@ function instalar() {
   const faltan = [
     ['revisar_avisos_cada_seg', 45, 'Cada cuántos segundos la página revisa si hay traspasos nuevos para el área.'],
     ['pin_administrador', '', 'PIN para entrar al Modo administrador. Vacío = sin PIN. Recomendado si tu cuenta está abierta en una computadora compartida.'],
+    ['horas_alerta_sin_salida', 36, 'Horas que puede estar un traspaso de Oficinas sin salida en Recepción antes de avisar a Logística, al área y a administración.'],
     ['ops_ignorar_hasta_fila', 0, 'La revisión de Operaciones ignora las filas hasta este número (lo llena solo "Limpiar para lanzamiento").'],
     ['ops_columna_folio', 'A', 'Hoja Operaciones: columna (letra) donde va el folio del traspaso o de la caja.'],
     ['ops_columna_paqueteria', 'K', 'Hoja Operaciones: columna (letra) de la paquetería (DHL, Estafeta…).'],

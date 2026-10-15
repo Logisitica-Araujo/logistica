@@ -209,7 +209,7 @@ function renderHeader() {
   if (esVistaAdmin()) {
     tabs = [['todos', 'Todos los traspasos'], ['buscar', 'Buscador'], ['sol', 'Solicitudes', S.data.solicitudes.length], ['hoja', 'Catálogos']];
   } else if (me() === 'REC') {
-    var enRec = S.data.traspasos.filter(function (t) { return t.estatus === 'EN_RECEPCION'; }).length;
+    var enRec = S.data.traspasos.filter(function (t) { return t.estatus === 'EN_RECEPCION' || R.porSalirRec(t, S.A); }).length;
     tabs = [['dejar', '📥 Dejar'], ['recoger', '📤 Recoger'], ['resguardo', 'En resguardo', enRec], ['imprimir', '🖨 Centro de Impresión', 0, 'destacado']];
   } else {
     tabs = [['bandeja', 'Mi bandeja'], ['nuevo', 'Nuevo traspaso'], ['escaner', 'Escáner']];
@@ -621,8 +621,7 @@ function vRecepcion() {
       '<button class="btn ghost" type="button" data-a="recquien" style="margin-left:auto">Cambiar de persona</button></div>' +
     '<div class="scanner"><div class="stack">' +
       '<label class="f">Escanea cada traspaso<input class="scaninput" id="recin" autocomplete="off" placeholder="NR-0001"></label>' + fb +
-      (dejar ? '' : '<div class="panel stack" style="padding:14px"><b>Disponibles para ' + (q.tipo === 'GESTOR' ? 'llevar' : 'ti') + ' (' + disp.length + ')</b>' +
-        (disp.length ? disp.map(function (t) { return '<button type="button" class="btn" style="justify-content:space-between" data-a="recadd" data-v="' + esc(t.folio) + '"><span class="num">' + esc(t.folio) + '</span><span class="muted">' + esc(nom(t.destino)) + '</span><span>＋</span></button>'; }).join('') : '<div class="muted">Nada pendiente.</div>') + '</div>') +
+      (dejar ? '' : disponiblesHTML(disp, q)) +
     '</div><div class="stack"><div class="row" style="justify-content:space-between"><h2 style="margin:0">' + (dejar ? 'Deja' : 'Se lleva') + ' · ' + r.lote.length + '</h2>' +
       '<button class="btn primary" type="button" data-a="recconfirmar"' + (r.lote.length && !r.enviando ? '' : ' disabled') + '>' + (r.enviando ? 'Guardando…' : (dejar ? 'Confirmar: dejar ' : 'Confirmar: me llevo ') + r.lote.length) + '</button></div>' +
       '<div class="queue">' + (r.lote.length ? r.lote.map(function (t) {
@@ -684,7 +683,7 @@ function vCentroImpresion() {
       '<button class="btn primary" type="button" data-a="impTodas"' + (im.ocupado ? ' disabled' : '') + '>🖨 Imprimir todas</button></div>' +
       '<div class="tablewrap"><table><thead><tr><th>Folio</th><th>Destino</th><th>Fecha</th><th>Bultos</th><th>Creó</th><th></th></tr></thead><tbody>' +
       im.lista.map(function (t) {
-        return '<tr><td class="num">' + esc(t.folio) + (t.impresoEnRec ? '<div class="muted" style="font-size:12px;font-weight:700">ya impreso aquí</div>' : '') + '</td>' +
+        return '<tr><td class="num">' + esc(t.folio) + (t.impresoEnRec ? '<div class="muted" style="font-size:12px;font-weight:700">ya impreso aquí' + (t.enRecepcion ? ' · en el stand' : '') + '</div>' : '') + '</td>' +
           '<td>' + areaTag(t.destino) + ' ' + esc(t.destinoNombre) + '<div class="muted" style="font-size:12.5px;white-space:normal">' + esc(t.desc) + '</div></td>' +
           '<td>' + esc(t.fecha + ' ' + t.hora) + '</td><td class="num">' + t.bultos + '</td><td>' + esc(t.por) + '</td>' +
           '<td><button class="btn' + (t.impresoEnRec ? '' : ' primary') + '" type="button" data-a="impUno" data-v="' + esc(t.folio) + '"' + (im.ocupado ? ' disabled' : '') + '>🖨 ' + (t.impresoEnRec ? 'Imprimir otra vez' : 'Imprimir etiqueta') + '</button></td></tr>';
@@ -694,17 +693,48 @@ function vCentroImpresion() {
     '<div class="row"><button class="btn ghost" type="button" data-a="impRecargar">↻ Actualizar</button></div></div>' + cuerpo;
 }
 
-function vResguardo() {
-  var lista = S.data.traspasos.filter(function (t) { return t.estatus === 'EN_RECEPCION'; });
+/** Horas desde que se creó el traspaso. */
+function horasDesde(t) {
+  var f = String(t.fecha || '').slice(0, 10), hh = String(t.hora || '').slice(-5);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) { f = String(t.act || '').slice(0, 10); hh = String(t.act || '').slice(11, 16); }
+  var d = new Date(f + 'T' + (/^\d{2}:\d{2}$/.test(hh) ? hh : '00:00') + ':00');
+  var h = (Date.now() - d.getTime()) / 3600000;
+  return isNaN(h) ? 0 : h;
+}
+function atrasado(t) { return t.estatus !== 'EN_LOGISTICA' && horasDesde(t) >= ((S.cat.ajustes && S.cat.ajustes.horasSinSalida) || 36); }
+function hTxt(t) { var h = Math.floor(horasDesde(t)); return h < 1 ? 'menos de 1 h' : h + ' h'; }
+/** Lo que el gestor (o la persona) puede llevarse, agrupado por destino. Lo atrasado sale en rojo. */
+function disponiblesHTML(disp, q) {
   var grupos = {};
-  lista.forEach(function (t) { (grupos[t.destino] = grupos[t.destino] || []).push(t); });
-  var horas = function (t) { var d = new Date(String(t.act).replace(' ', 'T')); var h = Math.floor((Date.now() - d.getTime()) / 3600000); return isNaN(h) ? '' : (h < 1 ? 'menos de 1 h' : h + ' h'); };
-  return '<h1>En resguardo</h1><p class="sub">Lo que está ahorita en el stand de Recepción Oficinas, por destino.</p>' +
-    (lista.length ? Object.keys(grupos).map(function (dst) {
-      return '<h2 style="margin-top:18px">' + esc(nom(dst)) + ' (' + grupos[dst].length + ')</h2><div class="list">' + grupos[dst].map(function (t) {
-        return '<button type="button" class="tcard" data-a="open" data-v="' + esc(t.folio) + '" style="color:' + colorDe(t) + '"><span class="stripe"></span><span class="body"><span class="top"><span class="folio">' + esc(t.folio) + '</span>' + badge(t) + '</span><span class="route">' + esc(nom(t.origen)) + '<span class="arrow">→</span>' + esc(nom(t.destino)) + '</span><span class="desc">' + esc(t.desc) + '</span></span><span class="side"><b>' + t.bultos + ' bulto(s)</b><span>Aquí desde hace ' + horas(t) + '</span></span></button>';
-      }).join('') + '</div>';
-    }).join('') : '<div class="empty">No hay nada en resguardo.</div>');
+  disp.forEach(function (t) { (grupos[t.destino] = grupos[t.destino] || []).push(t); });
+  return '<div class="panel stack" style="padding:14px"><b>Disponibles para ' + (q.tipo === 'GESTOR' ? 'llevar' : 'ti') + ' (' + disp.length + ')</b>' +
+    (disp.length ? Object.keys(grupos).sort(function (a, b) { return nom(a).localeCompare(nom(b)); }).map(function (dst) {
+      return '<div class="muted" style="font-size:12.5px;font-weight:900;letter-spacing:.06em;margin-top:4px">' + esc(nom(dst).toUpperCase()) + ' (' + grupos[dst].length + ')</div>' +
+        grupos[dst].map(function (t) {
+          return '<button type="button" class="btn' + (atrasado(t) ? ' tarde' : '') + '" style="justify-content:space-between" data-a="recadd" data-v="' + esc(t.folio) + '"><span class="num">' + esc(t.folio) + '</span><span class="muted">' + esc(nom(t.origen)) + (atrasado(t) ? ' · ' + hTxt(t) : '') + '</span><span>＋</span></button>';
+        }).join('');
+    }).join('') : '<div class="muted">Nada pendiente.</div>') + '</div>';
+}
+function vResguardo() {
+  var stand = S.data.traspasos.filter(function (t) { return t.estatus === 'EN_RECEPCION'; });
+  var porSalir = S.data.traspasos.filter(function (t) { return t.estatus !== 'EN_RECEPCION' && R.porSalirRec(t, S.A); });
+  var lim = (S.cat.ajustes && S.cat.ajustes.horasSinSalida) || 36;
+  var tarde = stand.concat(porSalir).filter(atrasado);
+  var tarjeta = function (t, lugar) {
+    return '<button type="button" class="tcard' + (atrasado(t) ? ' tarde' : '') + '" data-a="open" data-v="' + esc(t.folio) + '" style="color:' + (atrasado(t) ? 'var(--err)' : colorDe(t)) + '"><span class="stripe"></span><span class="body"><span class="top"><span class="folio">' + esc(t.folio) + '</span>' + badge(t) + (atrasado(t) ? '<span class="badge" style="color:var(--err);background:var(--err-bg)">Más de ' + lim + ' h sin salida</span>' : '') + '</span><span class="route">' + esc(nom(t.origen)) + '<span class="arrow">→</span>' + esc(nom(t.destino)) + '</span><span class="desc">' + esc(t.desc) + '</span></span><span class="side"><b>' + t.bultos + ' bulto(s)</b><span>' + lugar + ' hace ' + hTxt(t) + '</span></span></button>';
+  };
+  var seccion = function (titulo, sub, lista, lugar) {
+    var grupos = {};
+    lista.forEach(function (t) { (grupos[t.destino] = grupos[t.destino] || []).push(t); });
+    return '<h2 style="margin-top:22px">' + titulo + ' (' + lista.length + ')</h2><p class="muted" style="margin:-6px 0 10px;font-size:14px">' + sub + '</p>' +
+      (lista.length ? Object.keys(grupos).map(function (dst) {
+        return '<div class="muted" style="font-size:12.5px;font-weight:900;letter-spacing:.06em;margin:10px 0 6px">' + esc(nom(dst).toUpperCase()) + ' (' + grupos[dst].length + ')</div><div class="list">' + grupos[dst].map(function (t) { return tarjeta(t, lugar); }).join('') + '</div>';
+      }).join('') : '<div class="empty">Nada.</div>');
+  };
+  return '<h1>En resguardo</h1><p class="sub">Todo lo que debe salir de Oficinas con un gestor. El gestor le da salida en <b>📤 Recoger</b> con su credencial.</p>' +
+    (tarde.length ? '<div class="feedback err">⚠ ' + tarde.length + ' traspaso(s) llevan más de ' + lim + ' h sin salida. Si ya no están aquí, quizá un gestor se los llevó sin escanear: avisa a Logística.</div>' : '') +
+    seccion('En el stand', 'Registrados aquí (dejados o con etiqueta impresa en el Centro de Impresión).', stand, 'Creado') +
+    seccion('Por salir de Oficinas', 'Creados por un área de Oficinas (o por distribuir de Logística) que todavía no se registran aquí. Pueden estar en camino al stand.', porSalir, 'Creado');
 }
 function identificarRec(d) {
   var dejar = S.tab !== 'recoger';

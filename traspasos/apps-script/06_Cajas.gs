@@ -261,6 +261,8 @@ function sincronizarOperaciones(detalle) {
     _tb(TR.H.AVISOS).agregarVarias(avisos);
     return { n: n, omitidos: omitidos };
   });
+  // El mismo activador de 10 minutos revisa lo que lleva demasiado sin salir de Recepción.
+  try { alertarSinSalida(); } catch (e) { Logger.log('alertarSinSalida: ' + e); }
   return detalle === true ? r : r.n;
 }
 

@@ -102,6 +102,7 @@ function _catalogos() {
       revisarSeg: Number(_ajuste('revisar_avisos_cada_seg', 45)) || 45,
       etiquetaAncho: Number(_ajuste('etiqueta_ancho_mm', 50)) || 50,
       etiquetaAlto: Number(_ajuste('etiqueta_alto_mm', 20)) || 20,
+      horasSinSalida: Number(_ajuste('horas_alerta_sin_salida', 36)) || 36,
       logo: _logo(),
       urlHoja: _libro().getUrl()
     },

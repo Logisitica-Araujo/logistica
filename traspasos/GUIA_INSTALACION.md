@@ -272,3 +272,20 @@ En la hoja: menú **🔄 Traspasos → 🧹 Limpiar para lanzamiento (empezar de
 **No toca:** áreas, personas, gestores, administradores, impresoras, CAT_EnviosOf ni ajustes. Solo lo puede correr un administrador. Si no escribes BORRAR, no borra nada.
 
 > ⚠ Úsalo una sola vez, justo antes del lanzamiento. Después borraría traspasos reales.
+
+
+## 🚪 Salida de Oficinas por Recepción (gestores)
+
+Todo lo que un área de Oficinas manda **fuera de Oficinas** (a sucursales, Botican, etc.) **sale por Recepción con un gestor**. Oficinas **no hace ningún paso extra**: crea el traspaso y lo baja al stand.
+
+- **El gestor da la salida en Recepción:** **📤 Recoger** → escanea su credencial → ve todo lo que hay por llevar, **agrupado por destino**, aunque nadie lo haya registrado como "dejado" → escanea lo que se lleva → **Confirmar**. Queda *Recolectado por gestoría* con su nombre y al área que lo creó le llega el aviso *"Salió de Oficinas"*.
+- **Imprimir en el Centro de Impresión = está en Recepción:** si la etiqueta se imprime ahí, el traspaso pasa solo a **"En Recepción Oficinas"**.
+- **En resguardo** muestra dos listas:
+  - **En el stand:** lo registrado ahí.
+  - **Por salir de Oficinas:** lo creado que todavía no se registra.
+- **Aviso de 36 h:** si algo lleva más de **36 horas** sin salida, sale en **rojo** en Recepción. Además se manda un aviso a **Logística**, al **área que lo creó** y a **administración**, una sola vez. Las horas se cambian en CFG_Ajustes → `horas_alerta_sin_salida`.
+- **No pasan por Recepción:**
+  - Las entregas **entre áreas de Oficinas**: van **en mano**, y el área destino las recibe escaneando.
+  - Lo que va a **Morelia**: va a Logística.
+- **Lo que Logística distribuye** (llegó de Morelia y va a una sucursal) también puede salir por Recepción con el gestor.
+- Si un gestor se lo lleva sin escanear, el destino **lo puede recibir igual**, y queda anotado que se saltó la salida.
