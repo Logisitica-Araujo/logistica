@@ -50,6 +50,11 @@ function srv(fn) {
       .withSuccessHandler(function (r) {
         if (r && r.ok === false) {
           if (r.error === 'SESION_EXPIRADA') { cerrarSesion('Tu sesión terminó. Vuelve a entrar.'); }
+          if (/^AREA_NO_EXISTE:/.test(r.error)) {
+            var vieja = r.error.split(':')[1];
+            cerrarSesion('Esta computadora estaba en el área "' + vieja + '", que ya no existe (probablemente cambió su prefijo en CAT_Areas). Elige tu área otra vez.');
+            r.error = 'Elige tu área otra vez.';
+          }
           rej(new Error(r.error));
         } else res(r ? r.datos : null);
       })
@@ -67,7 +72,7 @@ function seguir() {
   var tk = leer('token');
   if (!tk) return pantallaEntrada();
   srv('apiReanudar', tk).then(function (d) { S.token = tk; aplicarSesion(d.ctx, d.cat); })
-    .catch(function () { borrar('token'); pantallaEntrada(); });
+    .catch(function (e) { if (/Elige tu área otra vez/.test(e.message)) return; borrar('token'); pantallaEntrada(); });
 }
 
 function pantallaEntrada(msg, pinPara) {

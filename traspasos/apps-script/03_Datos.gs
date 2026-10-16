@@ -271,6 +271,9 @@ function _ctx(token) {
   // Los poderes de administrador solo existen en el modo Administración.
   // Si un administrador entra como su área, trabaja como cualquier usuario.
   const admin = d[1] === TR.AREA_ADMIN && d[2] === '1' && _esAdmin(d[0]);
+  // Si el área guardada en esta computadora ya no existe (por ejemplo, se cambió su prefijo
+  // en CAT_Areas: NR → NR-PV), la computadora debe volver a elegir su área.
+  if (d[1] !== TR.AREA_ADMIN && !_areas()[d[1]]) throw new Error('AREA_NO_EXISTE:' + d[1]);
   return { email: d[0], area: d[1], admin: admin, exp: Number(d[3]), puedeAdmin: _esAdmin(d[0]) };
 }
 
