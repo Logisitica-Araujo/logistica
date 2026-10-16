@@ -98,13 +98,25 @@ function _hora() { return Utilities.formatDate(new Date(), TR.ZONA, 'HH:mm'); }
 function _ahoraTxt() { return Utilities.formatDate(new Date(), TR.ZONA, 'yyyy-MM-dd HH:mm'); }
 
 /** Sheets convierte textos como "2026-10-12" o "09:15" en fechas: aquí se regresan a texto. */
+/**
+ * Zona horaria del archivo de Sheets. Las fechas se escriben como texto en hora de México
+ * ("2026-10-16 15:39") y Sheets las guarda en SU zona. Para leerlas tal como se ven en la hoja
+ * hay que usar esa misma zona (si no, salen corridas: ej. "01:00" o una hora de diferencia).
+ */
+var __TZH = null;
+function _tzHoja() {
+  if (!__TZH) { try { __TZH = _libro().getSpreadsheetTimeZone() || TR.ZONA; } catch (e) { __TZH = TR.ZONA; } }
+  return __TZH;
+}
+
 function _txt(v) {
   if (v == null) return '';
   if (Object.prototype.toString.call(v) === '[object Date]') {
     if (isNaN(v.getTime())) return '';
-    if (v.getFullYear() < 1901) return Utilities.formatDate(v, TR.ZONA, 'HH:mm');
-    const h = Utilities.formatDate(v, TR.ZONA, 'HH:mm');
-    const d = Utilities.formatDate(v, TR.ZONA, 'yyyy-MM-dd');
+    const z = _tzHoja();
+    if (v.getFullYear() < 1901) return Utilities.formatDate(v, z, 'HH:mm');
+    const h = Utilities.formatDate(v, z, 'HH:mm');
+    const d = Utilities.formatDate(v, z, 'yyyy-MM-dd');
     return h === '00:00' ? d : d + ' ' + h;
   }
   return String(v);

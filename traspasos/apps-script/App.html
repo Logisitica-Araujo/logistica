@@ -20,6 +20,28 @@ function leer(k) { try { return localStorage.getItem('trasp_' + k); } catch (e) 
 function borrar(k) { try { localStorage.removeItem('trasp_' + k); } catch (e) { } }
 function horaAhora() { var d = new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
 function nom(id) { return R.nom(S.A, id); }
+
+/* ---------- Fechas para leer: "jue, 16 oct 26, 15:39" (en la hoja siguen como 2026-10-16 15:39) ---------- */
+var DIAS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+var MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+/** fh('2026-10-16', '15:39') · fh('2026-10-16 15:39') → "jue, 16 oct 26, 15:39" */
+function fh(fecha, hora) {
+  var s = String(fecha || '').trim(), m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}))?/);
+  var hm = String(hora || '').trim().match(/(\d{1,2}):(\d{2})/);
+  if (!m) return s + (hora ? ' ' + hora : '');
+  var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  var hh = hm ? hm[1] : m[4], mm = hm ? hm[2] : m[5];
+  return DIAS[d.getDay()] + ', ' + m[3] + ' ' + MESES[d.getMonth()] + ' ' + m[1].slice(2) + (hh != null ? ', ' + ('0' + hh).slice(-2) + ':' + mm : '');
+}
+/* ---------- Personas para leer: en la página no salen correos; en su lugar, el área ---------- */
+/** quien('jaraujo@fadermex.com', 'Oficinas · Logística') → 'Oficinas · Logística' */
+function quien(txt, area) {
+  var s = String(txt || ''), re = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+  if (!re.test(s)) return s;
+  var dentro = s.match(/\(([^)]*)\)/);                          // "correo (Oficinas · Logística)"
+  s = s.replace(re, '').replace(/\([^)]*\)/, '').replace(/^[\s·]+|[\s·]+$/g, '').replace(/\s*·\s*·\s*/g, ' · ');
+  return s || (dentro ? dentro[1] : '') || area || '';
+}
 function me() { return S.ctx ? S.ctx.area : ''; }
 function esVistaAdmin() { return me() === 'ADMIN'; }
 /** Oficinas trabaja con la cuenta abierta (sin credencial). Sucursales sí escanean credencial. */
@@ -234,7 +256,7 @@ function renderHeader() {
   var avisos = S.data.avisos || [];
   var bell = '<div class="bellwrap"><button type="button" class="bell" data-a="bell" aria-label="Avisos">🔔' + (S.noVistos ? '<span class="count">' + S.noVistos + '</span>' : '') + '</button>' +
     (S.bell ? '<div class="bellpanel"><b>Avisos</b>' + (avisos.length ? avisos.map(function (a) {
-      return '<button type="button" class="bellitem ' + (a.visto ? '' : 'unseen') + '" data-a="open" data-v="' + esc(a.folio) + '"><span class="num">' + esc(a.folio) + '</span><span>' + esc(a.msg) + '</span><span class="muted" style="font-size:12px">' + esc(a.fecha + ' ' + a.hora) + '</span></button>';
+      return '<button type="button" class="bellitem ' + (a.visto ? '' : 'unseen') + '" data-a="open" data-v="' + esc(a.folio) + '"><span class="num">' + esc(a.folio) + '</span><span>' + esc(a.msg) + '</span><span class="muted" style="font-size:12px">' + esc(fh(a.fecha, a.hora)) + '</span></button>';
     }).join('') : '<div class="muted">Sin avisos.</div>') + '</div>' : '') + '</div>';
   $('#header').innerHTML = '<div class="brand">' + logo + 'Traspasos</div>' +
     cambioModo() + '<div class="who"><span class="p">' + esc(S.ctx.areaNombre) + '</span><span class="u">' + esc(S.ctx.email) + (min < 60 * 24 * 30 ? ' · sesión: cierra en ' + Math.floor(min / 60) + ' h ' + ('0' + (min % 60)).slice(-2) + ' min' : '') + (me() === 'REC' ? ' · 🔒 equipo fijo' : ' · <a href="#" data-a="salir">Salir</a>') + '</span></div>' +
@@ -258,7 +280,7 @@ function tcard(t, desdeOrigen) {
   return '<button type="button" class="tcard" data-a="open" data-v="' + esc(t.folio) + '" style="color:' + colorDe(t) + '"><span class="stripe"></span>' +
     '<span class="body"><span class="top"><span class="folio">' + esc(t.folio) + '</span>' + badge(t) + areaTag(t.destino) + '</span>' +
     '<span class="route">' + ruta + '</span><span class="desc">' + esc(t.desc) + '</span></span>' +
-    '<span class="side"><b>' + t.bultos + ' ' + (t.bultos > 1 ? 'bultos' : 'bulto') + '</b><span>' + esc(t.fecha + ' ' + t.hora) + '</span><span>' + esc(t.act ? 'Act. ' + t.act : '') + '</span></span></button>';
+    '<span class="side"><b>' + t.bultos + ' ' + (t.bultos > 1 ? 'bultos' : 'bulto') + '</b><span>' + esc(fh(t.fecha, t.hora)) + '</span><span>' + esc(t.act ? 'Act. ' + fh(t.act) : '') + '</span></span></button>';
 }
 var ORD = { UBICADO: 0, EXTRAVIADO: 1, INCIDENCIA: 2, EN_RECEPCION: 3, ENTREGADO_GESTOR: 3, RECOLECTADO: 4, PAQUETERIA: 5, EN_LOGISTICA: 6, NUEVO: 7, ENTREGADO: 9 };
 function orden(a, b) { var x = (a.solicitud ? -1 : (ORD[a.estatus] != null ? ORD[a.estatus] : 5)), y = (b.solicitud ? -1 : (ORD[b.estatus] != null ? ORD[b.estatus] : 5)); return x - y || String(b.act).localeCompare(String(a.act)); }
@@ -406,7 +428,7 @@ function etiquetaHTML(t, b, rp, pantalla) {
     '<div class="fol">' + esc(t.folio) + '</div>' +
     '<svg class="bc" data-code="' + esc(t.folio) + '"></svg>' +
     '<div class="bul">BULTO ' + b + ' DE ' + t.bultos + '</div>' +
-    '<div class="pie">' + esc((t.fecha || '') + ' ' + (t.hora || '')) + '<br>Creó: ' + esc(String(t.por || '').split(' · ')[0]) + '</div></div>';
+    '<div class="pie">' + esc(fh(t.fecha, t.hora)) + '<br>Creó: ' + esc(quien(String(t.por || '').split(' · ')[0], nom(t.origen))) + '</div></div>';
 }
 function pintarCodigos(raiz) {
   if (!window.JsBarcode) return;
@@ -431,7 +453,7 @@ function vEscaner() {
   var cola = sc.lote.length ? sc.lote.slice().reverse().map(function (it) {
     var t = it.t;
     return '<div class="qrow"><span style="color:var(--ok);font-weight:900">✓</span><div style="min-width:0"><div class="row" style="gap:6px 10px">' + areaTag(t.destino) + '<span><span class="num">' + esc(t.folio) + '</span> · ' + esc(nom(t.origen)) + '<span class="arrow">→</span>' + esc(nom(t.destino)) + '</span></div>' +
-      '<div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + t.bultos + ' bulto(s) · ' + esc(t.desc) + ' · creó ' + esc(String(t.por).split(' · ')[0]) + '</div></div>' +
+      '<div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + t.bultos + ' bulto(s) · ' + esc(t.desc) + ' · creó ' + esc(quien(String(t.por).split(' · ')[0], nom(t.origen))) + '</div></div>' +
       (sc.modo === 'RECIBIR' ? '<label><input type="checkbox" data-a="faltan" data-v="' + esc(t.folio) + '"' + (it.faltan ? ' checked' : '') + '> Faltan / dañado</label>' : '<span></span>') + '</div>';
   }).join('') : '<div class="empty">Aún no hay traspasos en la lista. Escanea el primero.</div>';
   var pill = function (q, que, accion) {
@@ -545,7 +567,7 @@ function vPaqLogistica() {
   var fb = cj.fb ? '<div class="feedback ' + cj.fb.k + '">' + esc(cj.fb.m) + '</div>' : '';
   var cajaCard = function (c, botones) {
     return '<div class="panel stack" style="padding:14px"><div class="row" style="justify-content:space-between"><div><span class="num" style="font-size:18px">' + esc(c.folio) + '</span> · para <b>' + esc(c.destino) + '</b> · ' + c.traspasos.length + ' traspaso(s), ' + c.bultos + ' bulto(s)</div>' +
-      '<span class="muted">' + esc(c.fecha + ' ' + c.hora) + '</span></div><div class="muted" style="font-size:14px">' + esc(c.traspasos.join(', ')) + '</div>' +
+      '<span class="muted">' + esc(fh(c.fecha, c.hora)) + '</span></div><div class="muted" style="font-size:14px">' + esc(c.traspasos.join(', ')) + '</div>' +
       (c.guia ? '<div class="note">' + esc(c.paqueteria) + ' · guía <b>' + esc(c.guia) + '</b>' + (c.eta ? ' · llega ' + esc(c.eta) : '') + '</div>' : '') +
       '<div class="row">' + botones + '</div></div>';
   };
@@ -690,7 +712,7 @@ function vCentroImpresion() {
       im.lista.map(function (t) {
         return '<tr><td class="num">' + esc(t.folio) + (t.impresoEnRec ? '<div class="muted" style="font-size:12px;font-weight:700">ya impreso aquí' + (t.enRecepcion ? ' · en el stand' : '') + '</div>' : '') + '</td>' +
           '<td>' + areaTag(t.destino) + ' ' + esc(t.destinoNombre) + '<div class="muted" style="font-size:12.5px;white-space:normal">' + esc(t.desc) + '</div></td>' +
-          '<td>' + esc(t.fecha + ' ' + t.hora) + '</td><td class="num">' + t.bultos + '</td><td>' + esc(t.por) + '</td>' +
+          '<td>' + esc(fh(t.fecha, t.hora)) + '</td><td class="num">' + t.bultos + '</td><td>' + esc(quien(t.por, S.A[S.imp.area] ? S.A[S.imp.area].corto : '')) + '</td>' +
           '<td><button class="btn' + (t.impresoEnRec ? '' : ' primary') + '" type="button" data-a="impUno" data-v="' + esc(t.folio) + '"' + (im.ocupado ? ' disabled' : '') + '>🖨 ' + (t.impresoEnRec ? 'Imprimir otra vez' : 'Imprimir etiqueta') + '</button></td></tr>';
       }).join('') + '</tbody></table></div>';
   }
@@ -778,7 +800,7 @@ function vTodos() {
   return '<h1>Todos los traspasos</h1><p class="sub">En movimiento y entregados de los últimos 45 días. Para uno más viejo, búscalo por folio en el Buscador. Clic en un traspaso para editarlo, moverlo o eliminarlo.</p>' +
     chips(all, 'filtro', S.filtro) +
     '<div class="tablewrap"><table><thead><tr><th>Folio</th><th>Estatus</th><th>Origen</th><th>Destino</th><th>Bultos</th><th>Creado</th><th>Últ. actualización</th></tr></thead><tbody>' +
-    lista.map(function (t) { return '<tr class="click" data-a="open" data-v="' + esc(t.folio) + '"><td class="num">' + esc(t.folio) + '</td><td>' + badge(t) + '</td><td>' + esc(nom(t.origen)) + '</td><td>' + esc(nom(t.destino)) + '</td><td class="num">' + t.bultos + '</td><td>' + esc(t.fecha + ' ' + t.hora) + '</td><td>' + esc(t.act) + '</td></tr>'; }).join('') +
+    lista.map(function (t) { return '<tr class="click" data-a="open" data-v="' + esc(t.folio) + '"><td class="num">' + esc(t.folio) + '</td><td>' + badge(t) + '</td><td>' + esc(nom(t.origen)) + '</td><td>' + esc(nom(t.destino)) + '</td><td class="num">' + t.bultos + '</td><td>' + esc(fh(t.fecha, t.hora)) + '</td><td>' + esc(fh(t.act)) + '</td></tr>'; }).join('') +
     '</tbody></table></div>';
 }
 function vBuscar() {
@@ -794,7 +816,7 @@ function vSolicitudes() {
   var s = S.data.solicitudes;
   return '<h1>Solicitudes de eliminación</h1><p class="sub">Mientras esperan respuesta, el traspaso queda congelado: gestoría no lo puede recolectar.</p><div class="list">' +
     (s.length ? s.map(function (x) {
-      return '<div class="panel stack"><div class="row" style="justify-content:space-between"><span class="num" style="font-size:17px">' + esc(x.folio) + '</span><span class="muted">' + esc(x.fecha) + '</span></div>' +
+      return '<div class="panel stack"><div class="row" style="justify-content:space-between"><span class="num" style="font-size:17px">' + esc(x.folio) + '</span><span class="muted">' + esc(fh(x.fecha)) + '</span></div>' +
         '<div class="note"><b>' + esc(x.solicito) + '</b> · ' + esc(x.area) + '<br>"' + esc(x.motivo) + '"</div>' +
         '<label class="f">Comentario (opcional)<input class="t" id="cm-' + esc(x.id) + '" autocomplete="off"></label>' +
         '<div class="row"><button class="btn" type="button" data-a="open" data-v="' + esc(x.folio) + '">Ver historia</button><button class="btn" type="button" data-a="solno" data-v="' + esc(x.id) + '">Rechazar</button><button class="btn danger" type="button" data-a="solsi" data-v="' + esc(x.id) + '">Aprobar y eliminar</button></div></div>';
@@ -826,10 +848,10 @@ function renderModal() {
 }
 function detalleHTML(t, movs) {
   var m = S.modal, yo = me(), adm = S.ctx.admin;
-  var dl = [['Origen', nom(t.origen)], ['Destino', nom(t.destino)], ['Bultos', t.bultos], ['Creado', t.fecha + ' ' + t.hora], ['Creó', t.por]];
+  var dl = [['Origen', nom(t.origen)], ['Destino', nom(t.destino)], ['Bultos', t.bultos], ['Creado', fh(t.fecha, t.hora)], ['Creó', quien(t.por, nom(t.origen))]];
   if (t.gestor) dl.push(['Gestor', t.gestor]);
   if (t.guia) dl.push(['Paquetería / guía', t.paqueteria + ' · ' + t.guia]);
-  if (t.recibio) dl.push(['Recibido', t.recibio + ' · ' + t.fechaEnt]);
+  if (t.recibio) dl.push(['Recibido', quien(t.recibio, nom(t.destino)) + ' · ' + fh(t.fechaEnt)]);
   if (R.viaLog(t)) dl.push(['Ruta', 'Vía Logística + paquetería']);
   var acc = '';
   var puedeRe = adm || t.origen === yo;
@@ -867,7 +889,7 @@ function detalleHTML(t, movs) {
     '<dl class="dl">' + dl.map(function (x) { return '<div><dt>' + x[0] + '</dt><dd>' + esc(x[1]) + '</dd></div>'; }).join('') + '</dl>' +
     '<h2>Línea de tiempo</h2><ol class="timeline">' + (movs.length ? movs.map(function (e) {
       var c = (S.EC[e.nuevo] && S.EC[e.nuevo].color) || '#9AA7B3';
-      return '<li style="--tl:' + c + '"><div class="when">' + esc(e.fecha + ' ' + e.hora) + '</div><div class="what">' + esc(e.accion) + '</div><div class="detail">' + esc([e.persona, e.donde, e.medio, e.detalle].filter(Boolean).join(' · ')) + '</div></li>';
+      return '<li style="--tl:' + c + '"><div class="when">' + esc(fh(e.fecha, e.hora)) + '</div><div class="what">' + esc(e.accion) + '</div><div class="detail">' + esc([quien(e.persona, ''), e.donde, e.medio, e.detalle].filter(function (x, i, arr) { return x && arr.indexOf(x) === i; }).join(' · ')) + '</div></li>';
     }).join('') : '<li>Sin movimientos.</li>') + '</ol>' +
     '<details style="margin:8px 0 4px"><summary style="cursor:pointer;font-weight:800">Ver etiquetas (' + t.bultos + ')</summary><div class="labels" style="margin-top:12px">' + rango(t.bultos).map(function (b) { return etiquetaHTML(t, b, t.reimp || 0, true); }).join('') + '</div></details>' + acc;
 }
