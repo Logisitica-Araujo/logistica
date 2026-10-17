@@ -34,3 +34,23 @@ El PDF 4 lleva formato de procedimiento documentado:
 - [ ] ¿Las 4 filas solo guardan el link al PDF, o también quieres un botón **"Ayuda / Manuales"** en la página que abra el PDF de cada quien?
 - [ ] ¿Dónde se guardan los PDF? Por ejemplo, una carpeta de Drive compartida con @fadermex.com.
 - [ ] PDF 4: ¿la empresa tiene un formato oficial de procedimientos (código del documento, número de revisión, quién elabora, revisa y aprueba, logo)? ¿Para qué certificación es (ISO 9001, COFEPRIS, otra)?
+
+## 3. Lunes: "Recolección pedidos BOTICAN" (vista previa aprobada)
+Vista previa: `traspasos/VISTA_PREVIA_RECOLECCION_BOTICAN.html` (artifact https://claude.ai/artifact/Nczr2wfgq6M1fgPor9wkrs).
+
+- **Nombre de la pestaña y del título:** **"Recolección pedidos BOTICAN"**. Es el único cambio que pidió; todo lo demás se queda igual.
+- Pestaña nueva solo en la computadora de BOTICAN.
+- **El gestor escanea su credencial**, que funciona como firma: solo se muestra su nombre.
+- La lista sale de la hoja **Cat** del archivo de Operaciones, con los pedidos en estatus **ELABORADO**:
+  - Columnas: Identificador, Contacto entrega, Dirección y "Pedido listo para recolección".
+  - "EN ELABORACIÓN" se muestra en gris y no se puede marcar.
+- Se marcan con casillas o tecleando el número. El escaneo en ráfaga llega cuando la etiqueta tenga código de barras.
+- **Confirmar** genera el acuse digital **RB-0001** (gestor, fecha y hora, lista) en una hoja nueva `RES_RecoleccionesBotican` del archivo de Traspasos.
+- Cada pedido aparece en la línea de tiempo con la etiqueta **BOTICAN**: "Recolectado en BOTICAN".
+- Lo recolectado desaparece de la lista para que no se marque dos veces.
+- La hoja **Cat** solo se lee.
+
+**Preguntas que siguen abiertas** (no las contestó; confirmar el lunes):
+- [ ] ¿Escribir también en Cat quién y cuándo recogió?
+- [ ] Pedidos foráneos (Tijuana, Toluca DHL, Jalisco): ¿salen en la lista o van por paquetería?
+- [ ] Código de barras en la etiqueta de Botican: la imprimen desde un Sheets propio al que Logística no tiene acceso. Habría que darle la fórmula a quien lo administre.
