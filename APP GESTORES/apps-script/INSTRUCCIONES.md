@@ -20,7 +20,18 @@ Se reemplazan 5 archivos y se agrega 1. Los demás no se tocan.
 Abre **"Logística Operaciones" → Extensiones → Apps Script**. Para cada archivo de la tabla: ábrelo en GitHub → **Copy raw file** → en Apps Script ábrelo → Ctrl+A → pegar → Ctrl+S.
 
 ## Paso 2 — Publicar la versión nueva (sin esto no cambia nada)
-Botón azul **Implementar → Gestionar implementaciones → lápiz (editar) → Versión: "Versión nueva" → Implementar**. La dirección `/exec` sigue siendo la misma: no hay que tocar la app.
+En ese proyecto hay **dos implementaciones activas**. Solo se actualiza la de la app:
+
+| En la lista se llama | ID de implementación empieza con | Qué es |
+|---|---|---|
+| "Sin título" (o "APP GESTORES" si ya le pusiste descripción) | `AKfycbzCgGMMBhAIYGeuI0mj70n19110…` | **La app de los gestores.** Es la dirección que está en `config.js`. |
+| RASTREO | `AKfycbwDJCyz8-SSK1icfydL0XN2…` | La página de rastreo. **No se toca.** |
+
+1. Botón azul **Implementar → Gestionar implementaciones**.
+2. En la columna de la izquierda elige la de la app (revisa que el ID empiece con `AKfycbzCgGMM`).
+3. **Lápiz (editar)** → en **Versión** elige **"Versión nueva"**.
+4. En **Descripción** escribe `APP GESTORES` (así la próxima vez ya no sale "Sin título").
+5. **Implementar.** La dirección `/exec` sigue siendo la misma: no hay que tocar la app.
 
 ## Paso 3 — Comprobar
 - En el navegador abre `TU-URL/exec?api=ping`. Debe salir `{"ok":true, …}`.
