@@ -12,7 +12,7 @@
 // La URL vive en config.js, que se carga antes que este archivo.
 var API = (typeof window !== 'undefined' && window.FDX_API) ? window.FDX_API : '';
 
-var VERSION_APP = '1.7.0';
+var VERSION_APP = '1.8.0';
 var ESPERA_MS   = 45000;   // cuánto aguanta una subida antes de darse por vencida
 
 
@@ -128,9 +128,14 @@ function srv(accion, datos){
     redirect: 'follow'
   }).then(function(r){
     clearTimeout(corte);
-    if(!r.ok) throw new Error('El servidor respondió ' + r.status);
-    return r.json();
-  }).then(function(j){
+    if(!r.ok) throw errServidor('El servidor respondió ' + r.status + '. Intenta de nuevo en un momento.');
+    return r.text();
+  }).then(function(txt){
+    // Cuando Google está saturado contesta una página de error en vez de
+    // datos. No es culpa de la sesión ni de la señal: es pasajero.
+    var j;
+    try { j = JSON.parse(txt); }
+    catch(x){ throw errServidor('El servidor está ocupado. Intenta de nuevo en un momento.'); }
     if(j && j.ok === false){
       if(String(j.error).indexOf('SESION_EXPIRADA') >= 0){ salirPorExpiracion(); throw new Error('SESION_EXPIRADA'); }
       throw new Error(j.error);
@@ -139,13 +144,26 @@ function srv(accion, datos){
     return (j && j.datos !== undefined) ? j.datos : j;
   }).catch(function(e){
     clearTimeout(corte);
-    if(esErrorDeRed(e)) marcarRed(false);
+    // Se cortó por tiempo: casi siempre es el servidor lento, no la señal
+    if(e && e.name==='AbortError') e = errServidor('El servidor está tardando demasiado. Intenta de nuevo en un momento.');
+    if(esErrorDeRed(e) && !e.servidor) marcarRed(false);   // solo la red real pinta "Sin señal"
     throw e;
   });
 }
 
-/** ¿El error fue por falta de internet, o el servidor sí contestó y dijo que no? */
+/** Error pasajero del servidor (lento u ocupado). Se trata como falta de
+ *  red para guardar en la cola y usar lo guardado, pero el mensaje es honesto. */
+function errServidor(msg){ var e=new Error(msg); e.servidor=true; return e; }
+
+/** Mensaje para el gestor según el tipo de falla. */
+function msgFalla(e, sinSenal){
+  return (e && e.servidor) ? e.message : sinSenal;
+}
+
+/** ¿El error fue por falta de internet (o servidor caído un momento), o el
+ *  servidor sí contestó y dijo que no? */
 function esErrorDeRed(e){
+  if(e && e.servidor) return true;
   var m = String((e && e.message) || e).toLowerCase();
   return /failed to fetch|networkerror|load failed|network request failed|abort|the operation was aborted|respondió 5\d\d|timeout/.test(m);
 }
@@ -329,6 +347,13 @@ window.addEventListener('offline', function(){ srv('ping').catch(function(){}); 
 /* ===================================================================
  *  SESIÓN
  * =================================================================== */
+/** Guarda el estado en el celular y anota de qué día es. */
+function guardarEstadoLocal(st){
+  if(!st) return;
+  sinFallar(DB.set('estado', st), null);
+  guardar('estado_dia', ahoraTexto().substring(0,10));
+}
+
 function salirPorExpiracion(){
   quitarCargando(); pararScanner(); pararPoll();
   borrar('token'); S.token=null;
@@ -398,11 +423,19 @@ function hacerLogin(){
     S.token=d.token; S.gestor=d.gestor; S.vehiculo=d.vehiculo||'';
     guardar('token',d.token); guardar('nombre',d.gestor);
     beep();
-    vistaVehiculo(true);
+    // Servidor nuevo: el login ya trae estado y catálogos (un viaje menos)
+    if(d.arranque && d.arranque.estado){
+      S.estado=d.arranque.estado; S.vehiculo=S.estado.vehiculo||'';
+      guardarEstadoLocal(S.estado);
+      if(d.arranque.catalogos){ aplicarCatalogos(d.arranque.catalogos); sinFallar(DB.set('catalogos', d.arranque.catalogos), null); }
+      S.vista='vehiculo'; pintarVehiculo(true);
+    } else {
+      vistaVehiculo(true);
+    }
   }).catch(function(e){
     quitarCargando();
     if($('btnEntrar')) $('btnEntrar').disabled=false;
-    avisoLogin(esErrorDeRed(e) ? 'No hay conexión con el servidor. Revisa tu señal.' : e.message);
+    avisoLogin(esErrorDeRed(e) ? msgFalla(e,'No hay conexión con el servidor. Revisa tu señal.') : e.message);
     beep('malo');
   });
 }
@@ -480,7 +513,7 @@ function vistaVehiculo(esInicio){
   // una abría el libro (~5 s). Juntarlas es lo que corta la espera a la mitad.
   srv('arranque').then(function(d){
     quitarCargando();
-    if(d && d.estado){ S.estado=d.estado; S.vehiculo=d.estado.vehiculo||''; sinFallar(DB.set('estado', d.estado), null); }
+    if(d && d.estado){ S.estado=d.estado; S.vehiculo=d.estado.vehiculo||''; guardarEstadoLocal(d.estado); }
     if(d && d.catalogos){ aplicarCatalogos(d.catalogos); sinFallar(DB.set('catalogos', d.catalogos), null); }
     pintarVehiculo(esInicio);
   }).catch(function(e){
@@ -623,7 +656,7 @@ function confirmarChecklist(){
   // No bloqueamos al gestor si esto falla: es un registro, no un permiso
   srv('checklistOk', {vehiculo:v, tipo:tipo}).catch(function(){});
   beep();
-  vistaMenu();
+  vistaMenu(S.estadoListo);
 }
 
 
@@ -643,11 +676,14 @@ function guardarVehiculo(){
     quitarCargando();
     S.vehiculo=d.vehiculo; beep();
     toast('Vehículo: '+d.vehiculo,'ok');
-    if(!vistaChecklist(d.vehiculo)) vistaMenu();
+    // Servidor nuevo: ya trae el estado del menú y nos ahorramos otro viaje
+    S.estadoListo = null;
+    if(d.estado){ S.estado=d.estado; guardarEstadoLocal(d.estado); S.estadoListo=d.estado; }
+    if(!vistaChecklist(d.vehiculo)) vistaMenu(S.estadoListo);
   }).catch(function(e){
     quitarCargando();
     if(esErrorDeRed(e)){
-      toast('Sin señal: el vehículo se registra cuando vuelva la conexión.','err');
+      toast(msgFalla(e,'Sin señal: no se pudo registrar el vehículo. Intenta cuando tengas señal.'),'err');
     } else if(String(e.message).indexOf('OCUPADO')>=0){
       // Alguien lo tomó entre que se pintó la lista y le diste Continuar
       toast(e.message.replace('OCUPADO: ',''),'err');
@@ -662,15 +698,21 @@ function guardarVehiculo(){
 /* ===================================================================
  *  PANTALLA 3 — MENÚ
  * =================================================================== */
-function vistaMenu(){
+function vistaMenu(estadoListo){
   S.vista='menu';
   pararScanner();
+  S.estadoListo=null;
+  if(estadoListo && estadoListo.vehiculo){
+    S.estado=estadoListo; S.vehiculo=estadoListo.vehiculo; S.desdeCache=false;
+    cargarCatalogos(); pintarMenu(); iniciarPoll(); subirCola();
+    return;
+  }
   cargando('Cargando…');
 
   srv('estado').then(function(st){
     quitarCargando();
     S.estado=st; S.vehiculo=st.vehiculo||''; S.desdeCache=false;
-    sinFallar(DB.set('estado', st), null);
+    guardarEstadoLocal(st);
     if(!S.vehiculo){ vistaVehiculo(true); return; }
     cargarCatalogos();                 // en segundo plano, por si venía vacío
     pintarMenu(); iniciarPoll(); subirCola();
@@ -709,7 +751,9 @@ function pintarMenu(){
           (S.subiendo?'Subiendo…':S.cola.length+' registro(s) guardados en el celular')+'</button>';
   }
   if(S.desdeCache){
-    html+='<div class="aviso warn">Sin señal. Los números son de la última vez que tuviste conexión.</div>';
+    html+='<div class="aviso warn">'+(S.hayRed
+      ? 'El servidor no respondió. Los números son de la última vez que se actualizaron.'
+      : 'Sin señal. Los números son de la última vez que tuviste conexión.')+'</div>';
   }
   // Aviso si la misma cuenta está abierta en más de un dispositivo
   if((st.dispositivosActivos||1) > 1){
@@ -894,7 +938,7 @@ function iniciarPoll(){
     srv('estado').then(function(st){
       var antes=S.ultimoConteo, ahora=st.contadores||{pedidos:0,traspasos:0};
       S.estado=st; S.desdeCache=false;
-      sinFallar(DB.set('estado', st), null);
+      guardarEstadoLocal(st);
       if(ahora.pedidos>antes.pedidos || ahora.traspasos>antes.traspasos){
         beep();
         var n=(ahora.pedidos-antes.pedidos)+(ahora.traspasos-antes.traspasos);
@@ -2074,8 +2118,8 @@ function cargarHistorial(q){
   }).catch(function(e){
     var d=$('listaHist'); if(!d) return;
     d.innerHTML='<div class="vacio"><span class="ic">📡</span><b>'+
-      (esErrorDeRed(e)?'Sin conexión':'Error')+'</b><p>'+
-      (esErrorDeRed(e)?'El historial necesita señal para consultarse.':esc(e.message))+'</p></div>';
+      (esErrorDeRed(e)?(e.servidor?'El servidor no respondió':'Sin conexión'):'Error')+'</b><p>'+
+      (esErrorDeRed(e)?esc(msgFalla(e,'El historial necesita señal para consultarse.')):esc(e.message))+'</p></div>';
   });
 }
 
@@ -2612,29 +2656,71 @@ function arrancar(){
   if(!t){ vistaLogin(); setTimeout(avisarInstalacionIOS, 3000); return; }
 
   S.token=t; S.gestor=leer('nombre')||'';
-  cargando('Recuperando tu sesión…');
 
-  // UN SOLO VIAJE: estado + catálogos juntos (abre el libro una sola vez)
-  srv('arranque').then(function(d){
-    quitarCargando();
-    var st = (d && d.estado) || {};
-    S.estado=st; S.gestor=st.gestor||S.gestor; S.vehiculo=st.vehiculo||'';
-    sinFallar(DB.set('estado', st), null);
-    if(d && d.catalogos){ aplicarCatalogos(d.catalogos); sinFallar(DB.set('catalogos', d.catalogos), null); }
-    if(!S.vehiculo) vistaVehiculo(true);
-    else { pintarMenu(); iniciarPoll(); subirCola(); }
-    setTimeout(avisarInstalacionIOS, 3000);
-  }).catch(function(e){
-    quitarCargando();
-    if(esErrorDeRed(e)){
-      sinFallar(DB.get('estado'), null).then(function(st){
-        if(st){ S.estado=st; S.vehiculo=st.vehiculo||''; S.desdeCache=true; cargarCatalogos(); pintarMenu(); }
-        else { toast('Sin conexión. Conéctate una vez para empezar.','err'); vistaLogin(); }
-      });
-      return;
+  /* ABRIR AL INSTANTE
+     Si el celular tiene el estado de HOY guardado, pinta el menú ya y
+     pregunta al servidor por detrás. Antes el gestor veía "Recuperando tu
+     sesión…" hasta que el servidor contestaba (a veces más de un minuto).
+     Si es de otro día no: primero hay que elegir vehículo y hacer el checklist. */
+  Promise.all([sinFallar(DB.get('estado'),null), sinFallar(DB.get('catalogos'),null)]).then(function(g){
+    var guardado = g[0];
+    if(g[1]) aplicarCatalogos(g[1]);
+    var deHoy = !!(guardado && guardado.vehiculo && leer('estado_dia')===ahoraTexto().substring(0,10));
+    if(deHoy){
+      S.estado=guardado; S.gestor=guardado.gestor||S.gestor; S.vehiculo=guardado.vehiculo;
+      S.vista='menu'; pintarMenu();
+    } else {
+      cargando('Recuperando tu sesión…');
     }
-    borrar('token'); S.token=null; vistaLogin();
+
+    // UN SOLO VIAJE: estado + catálogos juntos (abre el libro una sola vez)
+    srv('arranque').then(function(d){
+      quitarCargando();
+      var st = (d && d.estado) || {};
+      S.estado=st; S.gestor=st.gestor||S.gestor; S.vehiculo=st.vehiculo||''; S.desdeCache=false;
+      guardarEstadoLocal(st);
+      if(d && d.catalogos){ aplicarCatalogos(d.catalogos); sinFallar(DB.set('catalogos', d.catalogos), null); }
+      if(!S.vehiculo){
+        // Día nuevo (o nunca eligió): elegir vehículo y hacer el checklist
+        S.vista='vehiculo'; pintarVehiculo(true);
+      } else {
+        if(!deHoy || S.vista==='menu'){ S.vista='menu'; pintarMenu(); }
+        iniciarPoll(); subirCola();
+      }
+      setTimeout(avisarInstalacionIOS, 3000);
+    }).catch(function(e){
+      quitarCargando();
+      // La sesión SOLO se cierra si el servidor dice que expiró (eso ya lo
+      // hizo srv → salirPorExpiracion). Cualquier otra falla es pasajera:
+      // antes aquí se borraba la sesión y el gestor tenía que volver a entrar.
+      if(String(e && e.message).indexOf('SESION_EXPIRADA')>=0) return;
+      if(deHoy){
+        S.desdeCache=true;
+        if(S.vista==='menu') pintarMenu();
+        iniciarPoll();
+        return;
+      }
+      if(guardado){
+        S.estado=guardado; S.vehiculo=guardado.vehiculo||''; S.desdeCache=true;
+        S.vista='menu'; pintarMenu();
+        return;
+      }
+      pantallaReintentar(e);
+    });
   });
+}
+
+/** No se pudo hablar con el servidor y no hay nada guardado: la sesión se
+ *  conserva, solo se ofrece reintentar. */
+function pantallaReintentar(e){
+  S.vista='reintentar';
+  $('app').innerHTML=
+  '<div class="login"><div class="caja">'+
+    '<div class="aviso warn"><b>No pude hablar con el servidor.</b><br>'+
+      esc(msgFalla(e,'Revisa tu señal.'))+'<br>Tu sesión sigue abierta.</div>'+
+    '<button class="btn" onclick="arrancar()">Reintentar</button>'+
+    '<button class="btn linea mt" onclick="borrar(\'token\');S.token=null;vistaLogin()">Entrar con otra cuenta</button>'+
+  '</div></div>';
 }
 
 /* Service worker: lo que hace que abra sin señal */
