@@ -50,7 +50,14 @@ Vista previa: `traspasos/VISTA_PREVIA_RECOLECCION_BOTICAN.html` (artifact https:
 - Lo recolectado desaparece de la lista para que no se marque dos veces.
 - La hoja **Cat** solo se lee.
 
-**Preguntas que siguen abiertas** (no las contestó; confirmar el lunes):
-- [ ] ¿Escribir también en Cat quién y cuándo recogió?
-- [ ] Pedidos foráneos (Tijuana, Toluca DHL, Jalisco): ¿salen en la lista o van por paquetería?
-- [ ] Código de barras en la etiqueta de Botican: la imprimen desde un Sheets propio al que Logística no tiene acceso. Habría que darle la fórmula a quien lo administre.
+**Decisiones (17 oct):**
+- ✅ **Foráneos también se recolectan.** Logística define después la forma de envío.
+- ✅ **Se marca en Cat al recolectar.** En la lista solo aparece lo ELABORADO (lo EN ELABORACIÓN, en gris). Lo recolectado ya no aparece.
+- ✅ **Dos formas de recolectar con el mismo resultado:**
+  - Computadora de Botican con la credencial del gestor.
+  - **App de gestores en el celular**, con escaneo en ráfaga. Es otro conector para la app, como `09_TRASPASOS_NUEVOS.gs`.
+- Recomendación: **columna nueva "Recolectado"** en Cat (gestor · fecha y hora), en lugar de escribir sobre "Estatus". Flujo: ELABORADO → RECOLECTADO → ENTREGADO.
+
+**Preguntas que siguen abiertas:**
+- [ ] ¿Cómo se llena hoy la columna **Estatus** de Cat: a mano, con un script, o con fórmula/IMPORTRANGE? Si es fórmula, **no** se escribe encima: se usa solo la columna "Recolectado".
+- [ ] Código de barras en la etiqueta de Botican: la imprimen desde un Sheets propio al que Logística no tiene acceso. Hay que darle la fórmula a quien lo administre. Mientras tanto: casillas o tecleando el número.
