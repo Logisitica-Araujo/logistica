@@ -23,6 +23,9 @@ function _json(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+/* Versión del código del servidor. Se ve abriendo  …/exec?api=ping  */
+var VERSION_SERVIDOR = '3.0';
+
 /* Consultas que tarden más que esto quedan anotadas en APP_Log. */
 var API_LENTO_MS = 8000;
 
@@ -58,7 +61,9 @@ function _despachar(accion, c) {
 
     /* --- salud y arranque --- */
     case 'ping':
-      return _ok({ version: String(_cfgHoja('VERSION', '?')), hora: _ahora() });
+      // "servidor" dice qué versión del CÓDIGO está publicada (para comprobar
+      // que la implementación nueva sí quedó); "version" es la de APP_Config.
+      return _ok({ servidor: VERSION_SERVIDOR, version: String(_cfgHoja('VERSION', '?')), hora: _ahora() });
 
     case 'login': {
       if (!_permitirIntentoLogin(c.nombre)) {

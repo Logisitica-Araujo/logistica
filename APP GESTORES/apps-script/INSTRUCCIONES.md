@@ -34,7 +34,10 @@ En ese proyecto hay **dos implementaciones activas**. Solo se actualiza la de la
 5. **Implementar.** La dirección `/exec` sigue siendo la misma: no hay que tocar la app.
 
 ## Paso 3 — Comprobar
-- En el navegador abre `TU-URL/exec?api=ping`. Debe salir `{"ok":true, …}`.
+- **Abrir la dirección `/exec` tal cual muestra la página de Rastreo. Es normal:** las dos implementaciones son del mismo proyecto y, cuando alguien abre la dirección en el navegador, el código manda al Rastreo. La app no "abre" esa dirección: le manda datos por detrás.
+- Para comprobar la app, abre la dirección **con `?api=ping` al final**:
+  `https://script.google.com/a/macros/fadermex.com/s/AKfycbzCgGMMBhAIYGeuI0mj70n19110-9n9EoxGYvQOEP3h9pHJKcrSqVJW9dMOwdCdzlLwuQ/exec?api=ping`
+  Debe salir algo como `{"ok":true,"datos":{"servidor":"3.0", …}}`. Si dice `"servidor":"3.0"`, la versión nueva quedó publicada. Si no aparece la palabra `servidor`, la implementación sigue con el código anterior.
 - Entra a la app con un gestor.
 - Al día siguiente revisa `APP_Log` filtrando la columna Accion por `LENTO`: ahí queda cada consulta que tardó más de 8 segundos.
 
