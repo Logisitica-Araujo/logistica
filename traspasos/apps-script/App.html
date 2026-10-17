@@ -222,12 +222,12 @@ function render() {
     v = S.tab === 'buscar' ? vBuscar() : S.tab === 'sol' ? vSolicitudes() : S.tab === 'hoja' ? vHoja() : vTodos();
   } else {
     v = me() === 'REC' ? vRecepcion()
-      : S.tab === 'nuevo' ? vNuevo() : S.tab === 'escaner' ? vEscaner() : S.tab === 'paq' ? vPaqueteria() : vBandeja();
+      : S.tab === 'botican' ? vBotican() : S.tab === 'nuevo' ? vNuevo() : S.tab === 'escaner' ? vEscaner() : S.tab === 'paq' ? vPaqueteria() : vBandeja();
   }
   $('#view').innerHTML = v;
   pintarCodigos($('#view'));
   renderModal();
-  var si = $('#scanin') || $('#crea-cod') || $('#gest-cod') || $('#recv-cod') || $('#rec-cod') || $('#recin') || $('#cajain');
+  var si = $('#scanin') || $('#crea-cod') || $('#gest-cod') || $('#recv-cod') || $('#rec-cod') || $('#recin') || $('#cajain') || $('#bgest-cod') || $('#botin');
   if (si && !S.modal && !S.bell) si.focus({ preventScroll: true });
 }
 
@@ -240,6 +240,7 @@ function renderHeader() {
     tabs = [['dejar', '📥 Dejar'], ['recoger', '📤 Recoger'], ['resguardo', 'En resguardo', enRec], ['imprimir', '🖨 Centro de Impresión', 0, 'destacado']];
   } else {
     tabs = [['bandeja', 'Mi bandeja'], ['nuevo', 'Nuevo traspaso'], ['escaner', 'Escáner']];
+    if (me() === 'BOT') tabs.push(['botican', '📦 Recolección pedidos BOTICAN', S.bot && S.bot.lista ? S.bot.lista.filter(function (p) { return p.estado === 'ELABORADO'; }).length : 0, 'destacado']);
     if (me() === 'LOG' || R.esMor(S.A, me())) {
       var enCaja = {};
       (S.data.cajas || []).forEach(function (c) { if (c.estatus === 'ARMADA' || c.estatus === 'ENVIADA') c.traspasos.forEach(function (f) { enCaja[f] = true; }); });
@@ -720,6 +721,95 @@ function vCentroImpresion() {
     '<div class="row"><button class="btn ghost" type="button" data-a="impRecargar">↻ Actualizar</button></div></div>' + cuerpo;
 }
 
+/* ---------- Recolección pedidos BOTICAN (sustituye la bitácora en papel) ---------- */
+function abrirBotican() {
+  S.bot = { gestor: null, gestorId: null, sel: {}, lista: (S.bot && S.bot.lista) || null, fb: null, err: null, acuse: null, enviando: false };
+  cargarBotican();
+}
+function cargarBotican() {
+  S.bot.err = null; render();
+  srv('apiBoticanPendientes', S.token).then(function (l) {
+    S.bot.lista = l;
+    Object.keys(S.bot.sel).forEach(function (k) { if (!botPedido(k) || botPedido(k).estado !== 'ELABORADO') delete S.bot.sel[k]; });
+    render();
+  }).catch(function (e) { S.bot.err = e.message; render(); });
+}
+function botNorm(v) { var s = String(v || '').replace(/\s+/g, '').toUpperCase(); return s ? (s.charAt(0) === '#' ? s : '#' + s) : ''; }
+function botPedido(v) { var k = botNorm(v); return ((S.bot && S.bot.lista) || []).filter(function (p) { return p.id === k; })[0] || null; }
+/** "16/10/2026 10:04:00" (como lo muestra Sheets) → "vie, 16 oct 26, 10:04" */
+function fhBot(s) {
+  var m = String(s || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  return m ? fh(m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2), m[4] ? m[4] + ':' + m[5] : '') : fh(s);
+}
+function botMarcar(k, on) {
+  var p = botPedido(k);
+  if (!S.bot.gestor || !p || p.estado !== 'ELABORADO') return;
+  if (on) S.bot.sel[p.id] = true; else delete S.bot.sel[p.id];
+  S.bot.fb = null;
+}
+function validarGestorBot(d) {
+  srv('apiGestor', S.token, d).then(function (g) { S.bot.gestor = g; S.bot.gestorId = d; S.idAbierto = null; S.bot.fb = { k: 'ok', m: 'Hola ' + g.nombre + '. Marca o escanea los pedidos que te llevas.' }; beep('ok'); render(); })
+    .catch(function (e) { S.bot.fb = { k: 'err', m: e.message }; beep('err'); render(); });
+}
+function botEscanear(v) {
+  var k = botNorm(v), p = botPedido(k);
+  if (!k) return;
+  if (!p) S.bot.fb = { k: 'err', m: k + ' no está en la lista (no existe, o ya se recolectó). Revisa el número.' };
+  else if (p.estado !== 'ELABORADO') S.bot.fb = { k: 'err', m: k + ' sigue en elaboración; todavía no se puede llevar.' };
+  else if (S.bot.sel[k]) S.bot.fb = { k: 'warn', m: k + ' ya está marcado.' };
+  else { S.bot.sel[k] = true; S.bot.fb = { k: 'ok', m: k + ' agregado · ' + p.contacto }; }
+  beep(S.bot.fb.k);
+  render();
+}
+function botConfirmar() {
+  var b = S.bot, ped = Object.keys(b.sel);
+  if (!b.gestor || !ped.length || b.enviando) return;
+  b.enviando = true; b.fb = null; render();
+  srv('apiBoticanRecolectar', S.token, { gestor: b.gestorId, pedidos: ped }).then(function (r) {
+    b.acuse = r; b.enviando = false; b.sel = {}; beep('ok');
+    b.lista = b.lista.filter(function (p) { return r.pedidos.indexOf(p.id) < 0; });
+    render();
+  }).catch(function (e) { b.enviando = false; b.fb = { k: 'err', m: e.message }; beep('err'); cargarBotican(); });
+}
+function vBotican() {
+  var b = S.bot || {};
+  var head = '<h1>Recolección pedidos BOTICAN</h1><p class="sub">Sustituye la bitácora en papel. El gestor escanea su credencial, se marcan (o escanean) los pedidos <b>Elaborados</b> que se lleva y confirma. Su credencial funciona como firma: queda su nombre, la hora y la lista.</p>';
+  var n = Object.keys(b.sel || {}).length, izq;
+  if (b.acuse) {
+    var a = b.acuse;
+    izq = '<div class="gestorpill"><div><b>' + esc(a.gestor) + '</b><div class="muted" style="font-size:13px">Gestor</div></div></div>' +
+      '<div class="feedback ok">✓ Recolección confirmada. Puede pasar el siguiente gestor.</div>' +
+      '<div class="acusebot"><div class="row" style="justify-content:space-between"><span class="num" style="font-size:24px">Acuse ' + esc(a.acuse) + '</span><span class="tagbot">BOTICAN</span></div>' +
+      '<dl class="dl"><div><dt>Gestor</dt><dd>' + esc(a.gestor) + '</dd></div><div><dt>Fecha</dt><dd>' + esc(fh(a.fecha, a.hora)) + '</dd></div><div><dt>Pedidos</dt><dd>' + a.pedidos.length + '</dd></div></dl>' +
+      '<div class="muted" style="font-size:14px">' + esc(a.pedidos.join(' · ')) + '</div></div>' +
+      '<button class="btn primary" type="button" data-a="bototra">Nueva recolección</button>';
+  } else if (!b.gestor) {
+    izq = '<div class="scanbox"><b style="font-size:17px">Gestor: escanea tu credencial</b><span class="muted" style="font-size:13px">Tu credencial es tu firma. En pantalla solo sale tu nombre.</span></div>' +
+      idHTML('bgest', 'Credencial del gestor') + (b.fb ? '<div class="feedback ' + b.fb.k + '">' + esc(b.fb.m) + '</div>' : '');
+  } else {
+    izq = '<div class="gestorpill"><div><b>' + esc(b.gestor.nombre) + '</b><div class="muted" style="font-size:13px">Gestor · se lleva</div></div><button class="btn" type="button" data-a="botcambiar" style="margin-left:auto">Cambiar</button></div>' +
+      '<label class="f">Escanea o teclea el pedido<input class="scaninput" id="botin" autocomplete="off" placeholder="#15975"></label>' +
+      (b.fb ? '<div class="feedback ' + b.fb.k + '">' + esc(b.fb.m) + '</div>' : '<div class="feedback idle">También puedes marcar los pedidos en la lista.</div>') +
+      '<div class="row" style="justify-content:space-between"><b style="font-size:16px">Se lleva ' + n + ' pedido(s)</b><button class="btn primary" type="button" data-a="botconf"' + (n && !b.enviando ? '' : ' disabled') + '>' + (b.enviando ? 'Guardando…' : 'Confirmar recolección') + '</button></div>';
+  }
+  var der;
+  if (b.err) der = '<div class="feedback err">' + esc(b.err) + '</div>';
+  else if (!b.lista) der = '<div class="cargando">Leyendo la bitácora de Botican…</div>';
+  else {
+    var elab = b.lista.filter(function (p) { return p.estado === 'ELABORADO'; }).length;
+    var bloq = !b.gestor || b.acuse;
+    der = (b.lista.length ? '<div class="list" style="gap:8px">' + b.lista.map(function (p) {
+      var gris = p.estado !== 'ELABORADO', on = !!(b.sel || {})[p.id];
+      return '<button type="button" class="ped' + (gris ? ' gris' : on ? ' sel' : '') + '" data-a="botsel" data-v="' + esc(p.id) + '"' + (gris || bloq ? ' disabled' : '') + ' aria-pressed="' + on + '">' +
+        '<span class="caja">' + (on ? '✓' : '') + '</span><span style="min-width:0"><span><span class="num" style="font-size:16px">' + esc(p.id) + '</span> <span class="est ' + (gris ? 'enel' : 'elab') + '">' + (gris ? 'En elaboración' : 'Elaborado') + '</span></span>' +
+        '<span class="d">' + esc([p.contacto, p.lugar].filter(Boolean).join(' · ')) + '</span></span>' +
+        '<span class="r">' + (gris ? 'Aún no<br>se puede' : 'Listo<br>' + esc(fhBot(p.listo))) + '</span></button>';
+    }).join('') + '</div>' : '<div class="empty">No hay pedidos pendientes de recolectar.</div>');
+    der = '<div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">Listos para recolección</h2><span class="row"><span class="muted" style="font-size:13px">' + elab + ' elaborado(s)</span><button class="btn ghost" type="button" data-a="botrecargar">↻ Actualizar</button></span></div>' + der;
+  }
+  return head + '<div class="grid2"><div class="stack">' + izq + '</div><div>' + der + '</div></div>';
+}
+
 /** Horas desde que se creó el traspaso. */
 function horasDesde(t) {
   var f = String(t.fecha || '').slice(0, 10), hh = String(t.hora || '').slice(-5);
@@ -808,7 +898,7 @@ function vBuscar() {
   var res = q ? S.data.traspasos.filter(function (t) {
     return (t.folio + ' ' + t.desc + ' ' + t.por + ' ' + t.guia + ' ' + t.gestor + ' ' + nom(t.origen) + ' ' + nom(t.destino)).toUpperCase().indexOf(q) >= 0;
   }).slice(0, 60) : [];
-  return '<h1>Buscador</h1><p class="sub">Escribe o escanea un folio y presiona Enter para ver su historia completa. También busca por guía, persona, gestor o descripción.</p>' +
+  return '<h1>Buscador</h1><p class="sub">Escribe o escanea un folio (o un pedido de Botican, ej. #15975) y presiona Enter para ver su historia completa. También busca por guía, persona, gestor o descripción.</p>' +
     '<form class="searchbar" data-form="buscar"><input id="busq" value="' + esc(S.q) + '" placeholder="NR-0041" autocomplete="off"><button class="btn gold" type="submit">Buscar</button></form>' +
     (q ? (res.length ? '<div class="list">' + res.map(function (t) { return tcard(t); }).join('') + '</div>' : '<div class="empty">Nada en los últimos 45 días. Si es un folio exacto, presiona Enter para buscarlo en todo el historial.</div>') : '');
 }
@@ -842,9 +932,16 @@ function renderModal() {
   var inner;
   if (m.err && !m.det) inner = '<div class="feedback err">' + esc(m.err) + '</div><div class="row" style="margin-top:12px"><button class="btn" type="button" data-a="cerrar">Cerrar</button></div>';
   else if (!m.det) inner = '<div class="cargando">Cargando historia…</div>';
-  else inner = detalleHTML(m.det.traspaso, m.det.movimientos);
+  else inner = m.det.pedido ? detalleBoticanHTML(m.det.pedido, m.det.movimientos) : detalleHTML(m.det.traspaso, m.det.movimientos);
   $('#modal').innerHTML = '<div class="modal" data-a="fondo"><div class="box" role="dialog" aria-modal="true">' + inner + '</div></div>';
   pintarCodigos($('#modal'));
+}
+/** Historia de un pedido de Botican (#15975): solo su línea de tiempo, con la etiqueta BOTICAN. */
+function detalleBoticanHTML(p, movs) {
+  return '<div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="num" style="font-size:28px">' + esc(p.folio) + '</div><div class="muted">Pedido de Botican (no es un traspaso interno)</div></div><div class="row"><span class="tagbot">BOTICAN · PEDIDO</span><button class="btn ghost" type="button" data-a="cerrar" aria-label="Cerrar">✕</button></div></div>' +
+    '<h2>Línea de tiempo</h2><ol class="timeline">' + movs.map(function (e) {
+      return '<li style="--tl:var(--bot)"><div class="when">' + esc(fh(e.fecha, e.hora)) + '</div><div class="what">' + esc(e.accion) + ' <span class="tagbot">BOTICAN</span></div><div class="detail">' + esc([e.persona, e.donde, e.detalle].filter(Boolean).join(' · ')) + '</div></li>';
+    }).join('') + '</ol>';
 }
 function detalleHTML(t, movs) {
   var m = S.modal, yo = me(), adm = S.ctx.admin;
@@ -909,10 +1006,16 @@ document.addEventListener('click', function (e) {
       if (me() === 'REC' && S.tab !== v) S.rec = { quien: null, quienId: null, lote: [], fb: null, enviando: false };
       S.tab = v; S.filtro = null; S.bell = false;
       if (v === 'imprimir') { abrirCentroImpresion(); return; }
+      if (v === 'botican') { abrirBotican(); return; }
       break;
     case 'impUno': return imprimirEnRecepcion([v]);
     case 'impTodas': return imprimirEnRecepcion(S.imp.lista.map(function (t) { return t.folio; }));
     case 'impRecargar': return abrirCentroImpresion();
+    case 'botsel': botMarcar(v, !S.bot.sel[v]); break;
+    case 'botcambiar': S.bot.gestor = null; S.bot.gestorId = null; S.bot.sel = {}; S.bot.fb = null; break;
+    case 'botconf': return botConfirmar();
+    case 'bototra': return abrirBotican();
+    case 'botrecargar': return cargarBotican();
     case 'dir': S.dir = v; S.filtro = null; break;
     case 'filtro': S.filtro = S.filtro === v ? null : v; break;
     case 'bell':
@@ -1025,6 +1128,7 @@ function procesarCampo(el) {
   if (id === 'scanin') alEscanear(v);
   else if (id === 'cajain') agregarACaja(v);
   else if (id === 'recin') recEscanear(v);
+  else if (id === 'botin') botEscanear(v);
   else if (id === 'pinin') entrar(S.pinPara || el.closest('.pinbox').querySelector('[data-a=entrarpin]').getAttribute('data-v'), v);
   else if (/-(cod|nip|usr)$/.test(id)) {
     var p = id.replace(/-(cod|nip|usr)$/, '');
@@ -1041,7 +1145,7 @@ function procesarCampo(el) {
  * Si la pistola además manda Enter, no se duplica.
  */
 var AUTO = { el: null, t: null, ult: 0, rapidas: 0, lentas: 0 };
-var CAMPOS_AUTO = /^(scanin|cajain|recin|[a-z]+-cod)$/;
+var CAMPOS_AUTO = /^(scanin|cajain|recin|botin|[a-z]+-cod)$/;
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape' && S.modal) { S.modal = null; render(); return; }
   var el = e.target;
@@ -1066,7 +1170,7 @@ document.addEventListener('input', function (e) {
   if (!v) return;
   var pistola = AUTO.el === el && AUTO.rapidas >= 3 && AUTO.rapidas > AUTO.lentas;
   var f = R.folioDe(v);
-  var completo = !/-cod$/.test(el.id) && (MAPA[f] || CAJAS[f]) && R.valido(v);
+  var completo = el.id === 'botin' ? !!botPedido(v) : !/-cod$/.test(el.id) && (MAPA[f] || CAJAS[f]) && R.valido(v);
   if (!pistola && !completo) return;
   AUTO.t = setTimeout(function () {
     if (!document.body.contains(el) || String(el.value || '').trim() !== v) return;
@@ -1080,6 +1184,7 @@ document.addEventListener('submit', function (e) {
   S.q = $('#busq').value;
   var f = R.folioDe(S.q);
   if (R.valido(S.q)) return abrir(f);
+  if (/^\s*#\s*\w+\s*$/.test(S.q)) return abrir(S.q.replace(/\s+/g, '').toUpperCase());
   render();
 });
 
@@ -1103,6 +1208,7 @@ function alIdentificar(p, d) {
   else if (p === 'gest') validarGestor(d);
   else if (p === 'recv') validarReceptor(d);
   else if (p === 'rec') identificarRec(d);
+  else if (p === 'bgest') validarGestorBot(d);
 }
 function validarCred(d) {
   srv('apiPersona', S.token, d).then(function (p) { S.wiz.persona = p; S.wiz.ident = d; S.wiz.err = null; S.wiz.step = 2; S.idAbierto = null; beep('ok'); render(); })

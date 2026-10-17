@@ -289,3 +289,18 @@ Todo lo que un área de Oficinas manda **fuera de Oficinas** (a sucursales, Boti
   - Lo que va a **Morelia**: va a Logística.
 - **Lo que Logística distribuye** (llegó de Morelia y va a una sucursal) también puede salir por Recepción con el gestor.
 - Si un gestor se lo lleva sin escanear, el destino **lo puede recibir igual**, y queda anotado que se saltó la salida.
+
+## 📦 Recolección pedidos BOTICAN (sin bitácora de papel)
+Pestaña nueva **solo en la computadora de Botican** (área BOT).
+1. El gestor escanea su credencial (o usuario + NIP). En pantalla solo sale su nombre.
+2. Se marcan en la lista, o se escanean/teclean (#15975 o 15975), los pedidos **Elaborados** que se lleva. Los "En elaboración" salen en gris y no se pueden marcar.
+3. **Confirmar recolección**:
+   - Escribe su nombre en **LOGISTICA BOTICAN 2026 → Envios → "Recolección de Gestor"** (columna AB). La fórmula de Estatus cambia sola a "🧍 RECOLECCIÓN DE GESTOR".
+   - Guarda el acuse **RB-0001** en la hoja `RES_RecoleccionesBotican` (un renglón por pedido).
+   - Cada pedido queda con su línea de tiempo marcada **BOTICAN**. En el Buscador del administrador escribe **#15975** y Enter.
+4. Lo recolectado desaparece de la lista; no se puede marcar dos veces.
+
+- El archivo de Botican se configura en `CFG_Ajustes → botican_archivo` (ya viene con el link).
+- La cuenta que publicó la app (dueño del script) debe poder **editar** "LOGISTICA BOTICAN 2026".
+- **No muevas ni borres la columna "Recolección de Gestor"**: el sistema la busca por su nombre en la fila 2.
+

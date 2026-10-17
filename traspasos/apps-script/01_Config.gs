@@ -39,7 +39,8 @@ const TR = {
     AVISOS:      'RES_Avisos',
     FOLIOS:      'SYS_Folios',
     IMPRESORAS:  'CAT_Impresoras',
-    CAJAS:       'RES_Cajas'
+    CAJAS:       'RES_Cajas',
+    BOTICAN:     'RES_RecoleccionesBotican'
   },
 
   // Archivo de la app de gestores, donde está la hoja "Operaciones".

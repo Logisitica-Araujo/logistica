@@ -169,6 +169,12 @@ function apiDatos(token) {
 function apiDetalle(token, folio) {
   return _api(function () {
     const c = _ctx(token);
+    // Pedido de Botican (#15975): no es traspaso, pero tiene su línea de tiempo de recolección.
+    if (/^#/.test(String(folio || '').trim())) {
+      const b = _detalleBotican(folio);
+      if (!b) throw new Error('El pedido ' + folio + ' todavía no tiene movimientos (aún no se recolecta).');
+      return b;
+    }
     const t = _buscarT(folio);
     if (!t || (t.estatus === 'ELIMINADO' && !c.admin)) throw new Error('No encontré el folio ' + folio + '.');
     const f = R.limpio(t.folio);

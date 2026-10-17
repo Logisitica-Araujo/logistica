@@ -76,6 +76,7 @@ function instalar() {
   const faltan = [
     ['revisar_avisos_cada_seg', 45, 'Cada cuántos segundos la página revisa si hay traspasos nuevos para el área.'],
     ['pin_administrador', '', 'PIN para entrar al Modo administrador. Vacío = sin PIN. Recomendado si tu cuenta está abierta en una computadora compartida.'],
+    ['botican_archivo', 'https://docs.google.com/spreadsheets/d/1a3n7z962Ik6c1YrcD7RxkJEAWWK6a9xuA5LDrr2sffc/edit', 'Archivo con la bitácora de pedidos Botican (hoja Envios). Ahí se escribe el gestor en "Recolección de Gestor".'],
     ['horas_alerta_sin_salida', 36, 'Horas que puede estar un traspaso de Oficinas sin salida en Recepción antes de avisar a Logística, al área y a administración.'],
     ['ops_ignorar_hasta_fila', 0, 'La revisión de Operaciones ignora las filas hasta este número (lo llena solo "Limpiar para lanzamiento").'],
     ['ops_columna_folio', 'A', 'Hoja Operaciones: columna (letra) donde va el folio del traspaso o de la caja.'],
@@ -107,6 +108,9 @@ function instalar() {
 
   // 5) Cajas para Morelia y revisión automática de guías en "Operaciones"
   if (_crearHojaCajas()) hechos.push('Se creó la hoja RES_Cajas (cajas para Morelia).');
+  if (_crearHojaRecolBotican()) hechos.push('Se creó la hoja RES_RecoleccionesBotican (acuses de recolección de pedidos Botican).');
+  try { const L = _leerEnvios(); hechos.push('Conexión con la bitácora de Botican (Envios): OK, ' + L.filas.length + ' pedidos recientes.'); }
+  catch (e) { hechos.push('⚠ No pude leer la bitácora de Botican: ' + e.message); }
   if (_crearActivador()) hechos.push('Activado: cada ' + TR.OPS.CADA_MIN + ' min se revisan las guías en "Operaciones".');
   try { if (_crearActivadorEdicion()) hechos.push('Activado: al escribir en "Operaciones" (columnas folio / paquetería / guía) el traspaso se actualiza al momento.'); }
   catch (e) { hechos.push('⚠ No pude crear el activador "al editar Operaciones": ' + e.message); }
@@ -191,6 +195,25 @@ function _crearHojaCajas() {
     sh.getRange(2, 1, 1, enc.length).setBackground('#1B7F38').setFontColor('#FFFFFF').setFontWeight('bold');
     sh.setFrozenRows(2);
     [12, 12, 8, 14, 40, 8, 26, 14, 22, 16, 12, 18].forEach(function (w, i) { sh.setColumnWidth(i + 1, w * 7); });
+  } catch (e) { }
+  __TB = {};
+  return true;
+}
+
+function _crearHojaRecolBotican() {
+  const ss = _libro();
+  if (ss.getSheetByName(TR.H.BOTICAN)) return false;
+  const sh = ss.insertSheet(TR.H.BOTICAN);
+  const enc = ['Acuse', 'Fecha', 'Hora', 'Pedido', 'Contacto entrega', 'Lugar', 'Área', 'Gestor', 'Credencial', 'Registró (cuenta)'];
+  sh.getRange(1, 1).setValue('RES_RecoleccionesBotican  —  RESULTADOS · La app ESCRIBE aquí sola · NO editar a mano.  ' +
+    'Acuse digital de cada recolección de pedidos en Botican (sustituye la bitácora en papel). Un renglón por pedido.');
+  sh.getRange(2, 1, 1, enc.length).setValues([enc]);
+  try {
+    sh.setTabColor('#7A3E9D');
+    sh.getRange(1, 1, 1, enc.length).merge().setBackground('#F1E6F8').setFontColor('#7A3E9D').setFontWeight('bold').setWrap(true);
+    sh.setRowHeight(1, 36);
+    sh.getRange(2, 1, 1, enc.length).setBackground('#7A3E9D').setFontColor('#FFFFFF').setFontWeight('bold');
+    sh.setFrozenRows(2);
   } catch (e) { }
   __TB = {};
   return true;

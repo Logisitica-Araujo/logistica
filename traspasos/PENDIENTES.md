@@ -35,29 +35,13 @@ El PDF 4 lleva formato de procedimiento documentado:
 - [ ] ¿Dónde se guardan los PDF? Por ejemplo, una carpeta de Drive compartida con @fadermex.com.
 - [ ] PDF 4: ¿la empresa tiene un formato oficial de procedimientos (código del documento, número de revisión, quién elabora, revisa y aprueba, logo)? ¿Para qué certificación es (ISO 9001, COFEPRIS, otra)?
 
-## 3. Lunes: "Recolección pedidos BOTICAN" (vista previa aprobada)
-Vista previa: `traspasos/VISTA_PREVIA_RECOLECCION_BOTICAN.html` (artifact https://claude.ai/artifact/Nczr2wfgq6M1fgPor9wkrs).
+## 3. ✅ "Recolección pedidos BOTICAN" — CONSTRUIDO (17 oct)
+Código en `apps-script/08_Botican.gs` + pestaña en `App.html`. Instrucciones en la GUIA_INSTALACION ("📦 Recolección pedidos BOTICAN").
+- Lee y escribe en **LOGISTICA BOTICAN 2026 → Envios** (la hoja Cat de Operaciones solo la importa).
+- Al confirmar escribe el nombre del gestor en **"Recolección de Gestor" (AB)** → la fórmula de Estatus pone "🧍 RECOLECCIÓN DE GESTOR" sola.
+- Acuse RB-0001 en `RES_RecoleccionesBotican` + línea de tiempo con etiqueta BOTICAN (Buscador: #15975).
+- Foráneos también se recolectan.
 
-- **Nombre de la pestaña y del título:** **"Recolección pedidos BOTICAN"**. Es el único cambio que pidió; todo lo demás se queda igual.
-- Pestaña nueva solo en la computadora de BOTICAN.
-- **El gestor escanea su credencial**, que funciona como firma: solo se muestra su nombre.
-- La lista sale de la hoja **Cat** del archivo de Operaciones, con los pedidos en estatus **ELABORADO**:
-  - Columnas: Identificador, Contacto entrega, Dirección y "Pedido listo para recolección".
-  - "EN ELABORACIÓN" se muestra en gris y no se puede marcar.
-- Se marcan con casillas o tecleando el número. El escaneo en ráfaga llega cuando la etiqueta tenga código de barras.
-- **Confirmar** genera el acuse digital **RB-0001** (gestor, fecha y hora, lista) en una hoja nueva `RES_RecoleccionesBotican` del archivo de Traspasos.
-- Cada pedido aparece en la línea de tiempo con la etiqueta **BOTICAN**: "Recolectado en BOTICAN".
-- Lo recolectado desaparece de la lista para que no se marque dos veces.
-- La hoja **Cat** solo se lee.
-
-**Decisiones (17 oct):**
-- ✅ **Foráneos también se recolectan.** Logística define después la forma de envío.
-- ✅ **Se marca en Cat al recolectar.** En la lista solo aparece lo ELABORADO (lo EN ELABORACIÓN, en gris). Lo recolectado ya no aparece.
-- ✅ **Dos formas de recolectar con el mismo resultado:**
-  - Computadora de Botican con la credencial del gestor.
-  - **App de gestores en el celular**, con escaneo en ráfaga. Es otro conector para la app, como `09_TRASPASOS_NUEVOS.gs`.
-- Recomendación: **columna nueva "Recolectado"** en Cat (gestor · fecha y hora), en lugar de escribir sobre "Estatus". Flujo: ELABORADO → RECOLECTADO → ENTREGADO.
-
-**Preguntas que siguen abiertas:**
-- [ ] ¿Cómo se llena hoy la columna **Estatus** de Cat: a mano, con un script, o con fórmula/IMPORTRANGE? Si es fórmula, **no** se escribe encima: se usa solo la columna "Recolectado".
+**Siguiente:**
+- [ ] App de gestores en el celular: mismo resultado (otro conector, como `09_TRASPASOS_NUEVOS.gs`).
 - [ ] Código de barras en la etiqueta de Botican: la imprimen desde un Sheets propio al que Logística no tiene acceso. Hay que darle la fórmula a quien lo administre. Mientras tanto: casillas o tecleando el número.

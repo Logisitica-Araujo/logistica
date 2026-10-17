@@ -6,6 +6,7 @@
   --admin-bg:#14181D; --admin-ink:#F3E3B5; --admin-gold:#E2AE3A;
   --ok:#1E8E3E; --ok-bg:#E2F4E7; --err:#C8232D; --err-bg:#FDE6E7; --warn:#A86A00; --warn-bg:#FFF2D2;
   --pv:#0E6E5C; --pv-bg:#D3F1E8; --rb:#A3195B; --rb-bg:#FBDDEB;
+  --bot:#7A3E9D; --bot-bg:#F1E6F8;
   --f:"Nunito",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --r:12px;
 }
@@ -215,6 +216,22 @@ details.sincred summary{cursor:pointer;font-weight:700;color:var(--muted);font-s
 .rec-id .scaninput{font-size:28px;padding:18px}
 .pinbox{border:2px solid var(--admin-gold)}
 #print{display:none}
+/* Recolección pedidos BOTICAN */
+.tagbot{display:inline-block;font-size:11.5px;font-weight:900;letter-spacing:.05em;padding:2px 8px;border-radius:7px;background:var(--bot-bg);color:var(--bot);vertical-align:1px}
+.ped{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;text-align:left;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface);cursor:pointer}
+.ped:hover:not(:disabled){border-color:var(--bot)}
+.ped.sel{border-color:var(--ok);background:var(--ok-bg)}
+.ped:disabled{cursor:default}
+.ped.gris{opacity:.55;background:var(--surface-2)}
+.ped .caja{width:22px;height:22px;border:2px solid var(--muted);border-radius:6px;display:grid;place-items:center;font-weight:900;color:#fff}
+.ped.sel .caja{background:var(--ok);border-color:var(--ok)}
+.ped .d{display:block;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ped .r{text-align:right;font-size:12.5px;color:var(--muted);white-space:nowrap}
+.est{display:inline-block;font-size:11.5px;font-weight:800;padding:1px 8px;border-radius:99px}
+.est.elab{background:var(--accent-soft);color:var(--accent)}
+.est.enel{background:var(--warn-bg);color:var(--warn)}
+.acusebot{border:2px solid var(--ok);border-radius:14px;padding:16px;background:var(--surface)}
+.acusebot .dl{margin:10px 0}
 /* Impresión: SOLO las etiquetas. Lo demás se quita (display:none) para que no
    ocupe espacio: antes quedaba invisible pero "estiraba" la hoja y salían páginas vacías. */
 @media print{
