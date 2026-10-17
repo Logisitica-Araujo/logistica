@@ -31,7 +31,9 @@ En ese proyecto hay **dos implementaciones activas**. Solo se actualiza la de la
 2. En la columna de la izquierda elige la de la app (revisa que el ID empiece con `AKfycbzCgGMM`).
 3. **Lápiz (editar)** → en **Versión** elige **"Versión nueva"**.
 4. En **Descripción** escribe `APP GESTORES` (así la próxima vez ya no sale "Sin título").
-5. **Implementar.** La dirección `/exec` sigue siendo la misma: no hay que tocar la app.
+5. **Revisa "Quién tiene acceso": debe decir "Cualquier persona".** Los celulares de los gestores no tienen sesión de Google; si dice "Cualquier persona de fadermex.com" o "Solo yo", la app se queda sin poder hablar con el servidor.
+   Si a tu cuenta no le aparece "Cualquier persona", es una restricción de Google Workspace de la empresa: que lo haga alguien con ese permiso, o que el administrador de Workspace se lo active a tu cuenta (Consola de administración → Apps → Google Workspace → Drive y Documentos → Opciones para compartir → permitir compartir fuera de fadermex.com).
+6. **Implementar.** La dirección `/exec` sigue siendo la misma: no hay que tocar la app.
 
 ## Paso 3 — Comprobar
 - **Abrir la dirección `/exec` tal cual muestra la página de Rastreo. Es normal:** las dos implementaciones son del mismo proyecto y, cuando alguien abre la dirección en el navegador, el código manda al Rastreo. La app no "abre" esa dirección: le manda datos por detrás.
