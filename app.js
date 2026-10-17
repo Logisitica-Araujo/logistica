@@ -902,7 +902,10 @@ function iniciarPoll(){
       }
       S.ultimoConteo=ahora;
       if(S.vista==='menu') pintarMenu();
-      sincronizarPendientes();
+      // Solo pedimos la lista si el número de pendientes ya no cuadra con
+      // lo que se ve en pantalla: así no cargamos al servidor de más.
+      if((S.vista==='pedidos'   && ahora.pedidos   !== S.pedidos.length) ||
+         (S.vista==='traspasos' && ahora.traspasos !== S.traspasos.length)) sincronizarPendientes();
     }).catch(function(){});
     subirCola();
   }, seg*1000);
@@ -918,7 +921,8 @@ function iniciarPoll(){
  *  servidor deja de mandarlo y aquí desaparece solo, sin que el gestor
  *  tenga que tocar ↻.
  *
- *  Se revisa:  - cada vez que corre la revisión periódica (iniciarPoll)
+ *  Se revisa:  - en la revisión periódica (iniciarPoll), solo si el número
+ *                de pendientes que da el servidor ya no cuadra con la lista
  *              - al volver a abrir la app (visibilitychange)
  *  No se toca la pantalla mientras el gestor está cerrando algo.
  * =================================================================== */
