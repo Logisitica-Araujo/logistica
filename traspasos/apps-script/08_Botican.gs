@@ -77,7 +77,13 @@ function _lugarCorto(dir) {
 /** Lee las filas recientes: [{fila, id, estado, contacto, lugar, area, listo, recolecto}] */
 function _leerEnvios() {
   const E = _envios(), sh = E.sh, C = E.C;
-  const ult = sh.getLastRow();
+  // getLastRow() cuenta filas con fórmulas aunque estén vacías: el último pedido real
+  // es la última fila con Identificador.
+  const fin = sh.getLastRow();
+  if (fin <= BOT.FILA_ENC) return { E: E, filas: [] };
+  const ids = sh.getRange(BOT.FILA_ENC + 1, C.id, fin - BOT.FILA_ENC, 1).getDisplayValues();
+  let ult = BOT.FILA_ENC;
+  for (let i = ids.length - 1; i >= 0; i--) if (String(ids[i][0]).trim()) { ult = BOT.FILA_ENC + 1 + i; break; }
   const desde = Math.max(BOT.FILA_ENC + 1, ult - BOT.REVISAR_FILAS + 1);
   if (ult < desde) return { E: E, filas: [] };
   const hasta = Math.max(C.estatus, C.id, C.contacto, C.dir, C.area, C.listo, C.recol);
@@ -85,7 +91,7 @@ function _leerEnvios() {
   const filas = [];
   v.forEach(function (f, i) {
     const id = _pedidoDe(f[C.id - 1]);
-    if (id === '#') return;
+    if (!id || id === '#') return;
     filas.push({ fila: desde + i, id: id, estado: _estadoBot(f[C.estatus - 1]),
       contacto: String(f[C.contacto - 1] || '').trim(), lugar: _lugarCorto(f[C.dir - 1]),
       area: String(f[C.area - 1] || '').trim(), listo: String(f[C.listo - 1] || '').trim(),

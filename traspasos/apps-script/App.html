@@ -475,7 +475,21 @@ function vEscaner() {
     (falta ? '' : '<label class="f">Folio<input class="scaninput" id="scanin" autocomplete="off" placeholder="' + esc(m) + '-0001"></label>') + fbh +
     '</div><div class="stack"><div class="row" style="justify-content:space-between"><h2 style="margin:0">' + (sc.modo === 'RECIBIR' ? 'Recibiendo' : 'Entregando a gestor') + ' · ' + sc.lote.length + '</h2>' +
     '<div class="row"><button class="btn ghost" type="button" data-a="vaciar"' + (sc.lote.length ? '' : ' disabled') + '>Vaciar</button><button class="btn primary" type="button" data-a="confirmar"' + (sc.lote.length && !sc.enviando ? '' : ' disabled') + '>' + (sc.enviando ? 'Guardando…' : 'Confirmar ' + (sc.modo === 'RECIBIR' ? 'recepción' : 'salida')) + '</button></div></div>' +
-    '<div class="queue">' + cola + '</div></div></div>';
+    '<div class="queue">' + cola + '</div></div></div>' + (sc.modo === 'ENTREGAR' ? porEntregarHTML(falta) : '');
+}
+/** Tercera opción para entregar: los traspasos que creó esta área y siguen en "Nuevo traspaso"; se tocan para agregarlos. */
+function porEntregarHTML(bloq) {
+  var m = me(), sc = S.scan;
+  var enLote = {};
+  sc.lote.forEach(function (it) { enLote[R.limpio(it.t.folio)] = true; });
+  var l = S.data.traspasos.filter(function (t) { return t.origen === m && t.estatus === 'NUEVO' && !t.solicitud && !enLote[R.limpio(t.folio)]; });
+  return '<div class="panel stack" style="margin-top:20px"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Creados aquí, por entregar (' + l.length + ')</h2>' +
+    '<span class="muted" style="font-size:13px">' + (bloq ? 'Primero escanea la credencial de quien se lo lleva.' : 'Toca un traspaso para agregarlo. Solo salen los que están en "Nuevo traspaso".') + '</span></div>' +
+    (l.length ? '<div class="list" style="gap:8px">' + l.map(function (t) {
+      return '<button type="button" class="ped" data-a="entsug" data-v="' + esc(t.folio) + '"' + (bloq ? ' disabled' : '') + '><span class="caja">＋</span>' +
+        '<span style="min-width:0"><span class="row" style="gap:6px 10px">' + areaTag(t.destino) + '<span><span class="num" style="font-size:16px">' + esc(t.folio) + '</span> → ' + esc(nom(t.destino)) + '</span></span>' +
+        '<span class="d">' + t.bultos + ' bulto(s) · ' + esc(t.desc) + '</span></span><span class="r">Creado<br>' + esc(fh(t.fecha, t.hora)) + '</span></button>';
+    }).join('') + '</div>' : '<div class="muted">No hay traspasos de esta área en "Nuevo traspaso".</div>') + '</div>';
 }
 function alEscanear(texto) {
   texto = String(texto || '').trim();
@@ -1011,6 +1025,7 @@ document.addEventListener('click', function (e) {
     case 'impUno': return imprimirEnRecepcion([v]);
     case 'impTodas': return imprimirEnRecepcion(S.imp.lista.map(function (t) { return t.folio; }));
     case 'impRecargar': return abrirCentroImpresion();
+    case 'entsug': return alEscanear(v);
     case 'botsel': botMarcar(v, !S.bot.sel[v]); break;
     case 'botcambiar': S.bot.gestor = null; S.bot.gestorId = null; S.bot.sel = {}; S.bot.fb = null; break;
     case 'botconf': return botConfirmar();
