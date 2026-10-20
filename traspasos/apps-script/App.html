@@ -54,36 +54,37 @@ function toast(msg) {
   clearTimeout(toast.t); toast.t = setTimeout(function () { $('#toast').innerHTML = ''; }, 3200);
 }
 /*
- * SONIDOS: notas suaves tipo marimba / campana (nada de zumbidos). Cada situación tiene su sonido:
- *   ok     escaneo correcto o credencial reconocida      · una nota corta y clara
- *   listo  se guardó (confirmar, crear, recolección)       · dos notas que suben
- *   warn   ojo: ya estaba en la lista, se saltó un paso    · dos toques suaves iguales
- *   err    error: no se puede                             · dos notas graves que bajan
- *   aviso  llegó una notificación nueva                     · campanita de tres notas
+ * SONIDOS OFICIALES (aprobados 20 oct; no cambiar sin preguntar). Todos son de campana:
+ *   ok     escaneo correcto o credencial reconocida   · dos notas rápidas que suben      (1C)
+ *   listo  se guardó (confirmar, crear, recolección)    · dos campanas en quinta que suben (2A)
+ *   warn   ojo: ya estaba en la lista, se saltó un paso · dos toques iguales               (3B)
+ *   err    error: no se puede                          · tres campanas que bajan          (4C)
+ *   aviso  llegó una notificación nueva                  · campanita de tres notas
+ * Cada nota: [frecuencia, inicio (s), duración (s), volumen]
  */
+var CAMPANA = [[1, 1], [2.76, .22], [5.4, .06]];
 var AC = null, SONIDOS = {
-  ok: { nombre: 'Escaneo correcto', notas: [[1318.5, 0, .16]], vol: .16 },
-  listo: { nombre: 'Guardado / confirmado', notas: [[1046.5, 0, .22], [1568, .1, .34]], vol: .16 },
-  warn: { nombre: 'Ojo (aviso)', notas: [[880, 0, .13], [880, .15, .16]], vol: .13, tipo: 'triangle' },
-  err: { nombre: 'Error', notas: [[329.6, 0, .24], [261.6, .17, .34]], vol: .24, tipo: 'triangle' },
-  // ✅ APROBADO (20 oct): no cambiar.
-  aviso: { nombre: 'Notificación nueva', notas: [[784, 0, .5], [1046.5, .12, .5], [1318.5, .24, .8]], vol: .1, campana: true }
+  ok: { nombre: 'Escaneo correcto', notas: [[1568, 0, .12, .13], [2093, .06, .3, .15]] },
+  listo: { nombre: 'Guardado / confirmado', notas: [[1046.5, 0, .5, .14], [1568, .14, .8, .14]] },
+  warn: { nombre: 'Ojo (aviso)', notas: [[784, 0, .3, .13], [784, .22, .45, .13]] },
+  err: { nombre: 'Error', notas: [[440, 0, .25, .15], [349.2, .15, .25, .15], [293.7, .3, .6, .16]] },
+  aviso: { nombre: 'Notificación nueva', notas: [[784, 0, .5, .1], [1046.5, .12, .5, .1], [1318.5, .24, .8, .1]], parciales: [[1, 1], [2.76, .22]], corto: .45 }
 };
 function beep(k) {
   try {
     var snd = SONIDOS[k] || SONIDOS.ok;
     AC = AC || new (window.AudioContext || window.webkitAudioContext)();
     if (AC.state === 'suspended') AC.resume();
-    var suave = AC.createBiquadFilter(); suave.type = 'lowpass'; suave.frequency.value = 3800; suave.connect(AC.destination);
+    var suave = AC.createBiquadFilter(); suave.type = 'lowpass'; suave.frequency.value = 3900; suave.connect(AC.destination);
     var t0 = AC.currentTime + .01;
     snd.notas.forEach(function (n) {
-      // Nota principal + un armónico tenue (madera en la marimba, brillo en la campana)
-      [[1, 1], [snd.campana ? 2.76 : 4, snd.campana ? .22 : .12]].forEach(function (p) {
-        var o = AC.createOscillator(), g = AC.createGain(), ini = t0 + n[1], dur = n[2] * (p[0] === 1 ? 1 : .45);
-        o.type = p[0] === 1 ? (snd.tipo || 'sine') : 'sine';
+      // Nota principal + armónicos tenues de campana (los agudos se apagan antes)
+      (snd.parciales || CAMPANA).forEach(function (p) {
+        var o = AC.createOscillator(), g = AC.createGain(), ini = t0 + n[1], dur = n[2] * (p[0] === 1 ? 1 : (snd.corto || .5));
+        o.type = 'sine';
         o.frequency.value = n[0] * p[0];
         g.gain.setValueAtTime(0, ini);
-        g.gain.linearRampToValueAtTime(snd.vol * p[1], ini + .008);
+        g.gain.linearRampToValueAtTime(n[3] * p[1], ini + .007);
         g.gain.exponentialRampToValueAtTime(.0001, ini + dur);
         o.connect(g); g.connect(suave); o.start(ini); o.stop(ini + dur + .02);
       });
