@@ -475,7 +475,39 @@ function vEscaner() {
     (falta ? '' : '<label class="f">Folio<input class="scaninput" id="scanin" autocomplete="off" placeholder="' + esc(m) + '-0001"></label>') + fbh +
     '</div><div class="stack"><div class="row" style="justify-content:space-between"><h2 style="margin:0">' + (sc.modo === 'RECIBIR' ? 'Recibiendo' : 'Entregando a gestor') + ' · ' + sc.lote.length + '</h2>' +
     '<div class="row"><button class="btn ghost" type="button" data-a="vaciar"' + (sc.lote.length ? '' : ' disabled') + '>Vaciar</button><button class="btn primary" type="button" data-a="confirmar"' + (sc.lote.length && !sc.enviando ? '' : ' disabled') + '>' + (sc.enviando ? 'Guardando…' : 'Confirmar ' + (sc.modo === 'RECIBIR' ? 'recepción' : 'salida')) + '</button></div></div>' +
-    '<div class="queue">' + cola + '</div></div></div>' + (sc.modo === 'ENTREGAR' ? porEntregarHTML(falta) : '');
+    '<div class="queue">' + cola + '</div></div></div>' + (sc.modo === 'ENTREGAR' ? porEntregarHTML(falta) : porRecibirHTML(falta));
+}
+/**
+ * Tercera opción para recibir: lo que viene para aquí y aún no se recibe.
+ * - En color: lo que trae el gestor cuya credencial se escaneó (Recolectado por él).
+ * - En gris (se ilumina al pasar el cursor): lo que sigue en "Nuevo traspaso" (se les olvidó darle salida)
+ *   o lo que trae otro gestor. Igual se puede tocar para agregarlo.
+ */
+function porRecibirHTML(bloq) {
+  var m = me(), sc = S.scan, g = sc.trae;
+  var enLote = {};
+  sc.lote.forEach(function (it) { enLote[R.limpio(it.t.folio)] = true; });
+  var norm = function (x) { return String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase(); };
+  var enRuta = function (t) { return t.estatus === 'RECOLECTADO' || t.estatus === 'ENTREGADO_GESTOR'; };
+  var suyo = function (t) { return !!g && enRuta(t) && norm(t.gestor) === norm(g.nombre); };
+  var l = S.data.traspasos.filter(function (t) {
+    return (t.estatus === 'NUEVO' || enRuta(t)) && !enLote[R.limpio(t.folio)] && R.recibir(t, m, S.A, S.E).k === 'ok';
+  }).sort(function (a, b) { return (suyo(b) - suyo(a)) || (enRuta(b) - enRuta(a)); });
+  var n = l.filter(suyo).length;
+  var gest = bloq ? '' : g ? '<div class="gestorpill"><div><b>' + esc(g.nombre) + '</b><div class="muted" style="font-size:13px">Lo trae · ' + n + ' traspaso(s) para aquí</div></div><button class="btn ghost" type="button" data-a="tclear" style="margin-left:auto">Cambiar</button></div>'
+    : '<div style="max-width:420px">' + idHTML('rgest', '¿Qué gestor lo trae? Escanea su credencial (opcional)', 'Credencial del gestor') + '</div>';
+  return '<div class="panel stack" style="margin-top:20px"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Vienen para aquí (' + l.length + ')</h2>' +
+    '<span class="muted" style="font-size:13px">' + (bloq ? 'Primero escanea tu credencial.' : 'Toca un traspaso para agregarlo. En color: los que trae el gestor. En gris: los demás.') + '</span></div>' + gest +
+    (l.length ? '<div class="list" style="gap:8px">' + l.map(function (t) {
+      var col = suyo(t);
+      return '<button type="button" class="ped' + (col ? ' trae' : ' tenue') + '" data-a="recsug" data-v="' + esc(t.folio) + '"' + (bloq ? ' disabled' : '') + '><span class="caja">＋</span>' +
+        '<span style="min-width:0"><span class="row" style="gap:6px 10px">' + areaTag(t.destino) + '<span><span class="num" style="font-size:16px">' + esc(t.folio) + '</span> · de ' + esc(nom(t.origen)) + '</span>' + badge(t) + '</span>' +
+        '<span class="d">' + t.bultos + ' bulto(s) · ' + esc(t.desc) + (enRuta(t) && t.gestor ? ' · lo lleva ' + esc(t.gestor) : '') + '</span></span><span class="r">Creado<br>' + esc(fh(t.fecha, t.hora)) + '</span></button>';
+    }).join('') + '</div>' : '<div class="muted">No hay traspasos en camino ni en "Nuevo traspaso" para aquí.</div>') + '</div>';
+}
+function validarTrae(d) {
+  srv('apiGestor', S.token, d).then(function (g) { S.scan.trae = g; S.idAbierto = null; beep('ok'); render(); })
+    .catch(function (e) { S.scan.fb = { k: 'err', m: e.message }; beep('err'); render(); });
 }
 /** Tercera opción para entregar: los traspasos que creó esta área y siguen en "Nuevo traspaso"; se tocan para agregarlos. */
 function porEntregarHTML(bloq) {
@@ -1025,7 +1057,8 @@ document.addEventListener('click', function (e) {
     case 'impUno': return imprimirEnRecepcion([v]);
     case 'impTodas': return imprimirEnRecepcion(S.imp.lista.map(function (t) { return t.folio; }));
     case 'impRecargar': return abrirCentroImpresion();
-    case 'entsug': return alEscanear(v);
+    case 'entsug': case 'recsug': return alEscanear(v);
+    case 'tclear': S.scan.trae = null; break;
     case 'botsel': botMarcar(v, !S.bot.sel[v]); break;
     case 'botcambiar': S.bot.gestor = null; S.bot.gestorId = null; S.bot.sel = {}; S.bot.fb = null; break;
     case 'botconf': return botConfirmar();
@@ -1224,6 +1257,7 @@ function alIdentificar(p, d) {
   else if (p === 'recv') validarReceptor(d);
   else if (p === 'rec') identificarRec(d);
   else if (p === 'bgest') validarGestorBot(d);
+  else if (p === 'rgest') validarTrae(d);
 }
 function validarCred(d) {
   srv('apiPersona', S.token, d).then(function (p) { S.wiz.persona = p; S.wiz.ident = d; S.wiz.err = null; S.wiz.step = 2; S.idAbierto = null; beep('ok'); render(); })
