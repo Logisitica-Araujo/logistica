@@ -46,7 +46,7 @@ function instalar() {
   }
 
   // 1c) Columnas nuevas: PIN de entrada por área, usuario y NIP para quien no tiene credencial
-  [[TR.H.TRASPASOS, 'Incidencia'], [TR.H.SOLICITUDES, 'Lado'], [TR.H.SOLICITUDES, 'Responsable (área)'], [TR.H.SOLICITUDES, 'Cuenta'],
+  [[TR.H.TRASPASOS, 'Incidencia'], [TR.H.TRASPASOS, 'Editado'], [TR.H.SOLICITUDES, 'Lado'], [TR.H.SOLICITUDES, 'Responsable (área)'], [TR.H.SOLICITUDES, 'Cuenta'],
    [TR.H.AREAS, 'PIN de entrada'], [TR.H.PERSONAS, 'Usuario'], [TR.H.PERSONAS, 'NIP'],
    [TR.H.GESTORES, 'Usuario'], [TR.H.GESTORES, 'NIP']].forEach(function (x) {
     if (_agregarColumna(x[0], x[1])) hechos.push('Columna "' + x[1] + '" agregada en ' + x[0] + '.');

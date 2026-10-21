@@ -489,6 +489,51 @@ function apiReimprimir(token, d) {
 }
 
 /**
+ * EDITAR CONTENIDO: qué se envía y (solo en "Nuevo traspaso") cuántos bultos.
+ * Lo puede hacer cualquier área que vea el traspaso, UNA sola vez. En sucursales con credencial;
+ * en Oficinas con la cuenta abierta. d = { folio, desc, bultos, quien }
+ * El destino solo lo cambia un administrador (apiAdminEditar).
+ */
+function apiEditarContenido(token, d) {
+  return _api(function () {
+    const c = _ctx(token);
+    d = d || {};
+    if (c.area === TR.AREA_ADMIN) throw new Error('En modo administrador usa las acciones de administrador.');
+    const desc = String(d.desc || '').trim();
+    if (!desc) throw new Error('Escribe qué se envía.');
+    let p;
+    if (_sinCredencial(c.area)) p = _personaDeCuenta(c);
+    else {
+      p = _personaPorCodigo(d.quien);
+      if (!p) throw new Error(d.quien && (d.quien.codigo || d.quien.usuario) ? _noReconocido(d.quien) : 'Escanea tu credencial: queda registrado quién editó.');
+    }
+    return _conCandado(function () {
+      const t = _buscarT(d.folio);
+      if (!t) throw new Error('No encontré el folio.');
+      if (t.editado) throw new Error('Este traspaso ya se editó una vez (' + t.editado + '). Para otro cambio pide ayuda a un administrador.');
+      if (!R.editable(t)) throw new Error('Ya no se puede editar: está terminado o tiene una solicitud de cancelación.');
+      let bultos = t.bultos;
+      if (d.bultos != null && String(d.bultos) !== '' && Number(d.bultos) !== t.bultos) {
+        if (!R.bultosEditables(t)) throw new Error('Los bultos solo se cambian antes de que se lo lleve el gestor.');
+        bultos = Math.floor(Number(d.bultos));
+        if (!(bultos >= 1 && bultos <= 99)) throw new Error('Los bultos deben ser de 1 a 99.');
+      }
+      if (desc === t.desc && bultos === t.bultos) throw new Error('No cambiaste nada.');
+      const firma = p.nombre + ' · ' + _nom(c.area) + ' · ' + _ahoraTxt();
+      _actualizarT(t, { 'Descripción': desc, 'Bultos': bultos, 'Editado': firma });
+      const det = [];
+      if (desc !== t.desc) det.push('Contenido: "' + t.desc + '" → "' + desc + '"');
+      if (bultos !== t.bultos) det.push('Bultos: ' + t.bultos + ' → ' + bultos + ' (hay que reimprimir las etiquetas)');
+      _mov(t, 'CONTENIDO EDITADO', t.estatus, t.estatus, { donde: c.area, persona: p.nombre, cred: p.via, detalle: det.join(' · ') });
+      [t.origen, t.destino].filter(function (a) { return a !== c.area; }).forEach(function (a) {
+        _aviso(a, t.folio, _nom(c.area) + ' editó el traspaso · ' + det.join(' · '));
+      });
+      return { folio: t.folio, bultosCambio: bultos !== t.bultos, origen: t.origen };
+    });
+  });
+}
+
+/**
  * Solicitud de CANCELACIÓN (la aprueba un administrador). La puede pedir:
  *  - el ORIGEN (quien lo creó), o
  *  - el DESTINO (quien lo pidió y ya no lo quiere).

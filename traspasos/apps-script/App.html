@@ -1110,6 +1110,13 @@ function detalleBoticanHTML(p, movs) {
       return '<li style="--tl:var(--bot)"><div class="when">' + esc(fh(e.fecha, e.hora)) + '</div><div class="what">' + esc(e.accion) + ' <span class="tagbot">BOTICAN</span></div><div class="detail">' + esc([e.persona, e.donde, e.detalle].filter(Boolean).join(' · ')) + '</div></li>';
     }).join('') + '</ol>';
 }
+/** En sucursales: credencial de quien hace la acción (cancelar, editar). En Oficinas no se pide. */
+function credModal(p, que, etiqueta) {
+  var m = S.modal;
+  if (sinCred()) return '';
+  return m[p] ? '<div class="gestorpill"><div><b>' + esc(m[p].nombre) + '</b><div class="muted" style="font-size:13px">' + que + '</div></div><button class="btn ghost" type="button" data-a="' + p + 'clear" style="margin-left:auto">Cambiar</button></div>'
+    : idHTML(p, etiqueta);
+}
 function detalleHTML(t, movs) {
   var m = S.modal, yo = me(), adm = S.ctx.admin;
   var dl = [['Origen', nom(t.origen)], ['Destino', nom(t.destino)], ['Bultos', t.bultos], ['Creado', fh(t.fecha, t.hora)], ['Creó', quien(t.por, nom(t.origen))]];
@@ -1117,6 +1124,7 @@ function detalleHTML(t, movs) {
   if (t.guia) dl.push(['Paquetería / guía', t.paqueteria + ' · ' + t.guia]);
   if (t.recibio) dl.push(['Recibido', quien(t.recibio, nom(t.destino)) + ' · ' + fh(t.fechaEnt)]);
   if (t.incidencia) dl.push(['Incidencia', t.incidencia]);
+  if (t.editado) dl.push(['Editado', t.editado.replace(/(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/, function (x, f, h) { return fh(f, h); })]);
   if (R.viaLog(t)) dl.push(['Ruta', 'Vía Logística + paquetería']);
   var acc = '';
   var puedeRe = adm || t.origen === yo;
@@ -1132,14 +1140,38 @@ function detalleHTML(t, movs) {
   if (m.form === 'del') {
     forms += '<div class="inline-form">' +
       (ladoDest ? '<div class="note"><b>Lo pides tú, que lo ibas a recibir.</b> La cancelación queda a nombre de <b>' + esc(nom(yo)) + '</b>, no de ' + esc(nom(t.origen)) + ', que lo creó.</div>' : '') +
-      (sinCred() ? '' : (m.canc ? '<div class="gestorpill"><div><b>' + esc(m.canc.nombre) + '</b><div class="muted" style="font-size:13px">Solicita la cancelación</div></div><button class="btn ghost" type="button" data-a="cancclear" style="margin-left:auto">Cambiar</button></div>'
-        : idHTML('canc', 'Tu credencial (quien solicita la cancelación)'))) +
+      credModal('canc', 'Solicita la cancelación', 'Tu credencial (quien solicita la cancelación)') +
       '<label class="f">¿Por qué se debe cancelar? (obligatorio)<textarea class="t" id="delm">' + esc(m.delm || '') + '</textarea></label><div class="muted" style="font-size:13px">No se cancela al momento: un administrador revisa la solicitud. Mientras tanto el traspaso queda congelado.</div>' +
       '<div class="row"><button class="btn danger" type="button" data-a="delgo" data-v="' + esc(t.folio) + '">Enviar solicitud</button><button class="btn ghost" type="button" data-a="form" data-v="">Cancelar</button></div></div>';
   }
+  if (m.form === 'edit') {
+    var bEd = R.bultosEditables(t);
+    forms += '<div class="inline-form"><div class="note"><b>Solo se puede editar una vez.</b> Queda registrado quién lo editó y se avisa a la otra área.</div>' +
+      credModal('edq', 'Edita el contenido', 'Tu credencial (quien edita)') +
+      '<label class="f">¿Qué se envía?<textarea class="t" id="edesc">' + esc(m.edesc != null ? m.edesc : t.desc) + '</textarea></label>' +
+      (bEd ? '<label class="f" style="max-width:220px">Bultos<input class="t" id="ebul" type="number" min="1" max="99" value="' + esc(m.ebul != null ? m.ebul : t.bultos) + '"></label>'
+           : '<div class="muted" style="font-size:13px">Los bultos ya no se pueden cambiar: el traspaso ya salió.</div>') +
+      '<div class="row"><button class="btn primary" type="button" data-a="edgo" data-v="' + esc(t.folio) + '">Guardar cambios</button><button class="btn ghost" type="button" data-a="form" data-v="">Cancelar</button></div></div>';
+  }
+  if (m.form === 'dest' && adm) {
+    forms += '<div class="inline-form"><label class="f">Nuevo destino<select class="t" id="ndest">' + S.cat.areas.map(function (a) { return '<option value="' + a.id + '"' + (t.destino === a.id ? ' selected' : '') + '>' + esc(a.nombre) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f">Motivo<input class="t" id="nmot" autocomplete="off" placeholder="Ej. se capturó con el destino equivocado"></label>' +
+      '<div class="muted" style="font-size:13px">Después reimprime las etiquetas: el destino viene impreso.</div>' +
+      '<div class="row"><button class="btn gold" type="button" data-a="destgo" data-v="' + esc(t.folio) + '">Cambiar destino</button><button class="btn ghost" type="button" data-a="form" data-v="">Cancelar</button></div></div>';
+  }
   var botones = [];
   if (puedeRe && t.estatus !== 'ELIMINADO' && m.form !== 'rp') botones.push('<button class="btn" type="button" data-a="form" data-v="rp">Reimprimir etiqueta</button>');
-  if (!adm && (R.eliminable(t, yo) || ladoDest) && m.form !== 'del') botones.push('<button class="btn" type="button" data-a="form" data-v="del">Solicitar cancelación</button>');
+  // Los 3 botones: Cancelar / eliminar (se solicita) · Editar (una vez) · Editar destino (solo administrador)
+  var vivo = t.estatus !== 'ELIMINADO';
+  if (!adm && vivo && m.form !== 'del') botones.push((R.eliminable(t, yo) || ladoDest)
+    ? '<button class="btn" type="button" data-a="form" data-v="del">🗑 Cancelar / eliminar</button>'
+    : '<button class="btn" type="button" disabled title="Solo mientras siga en Nuevo traspaso, desde el área que lo creó o la que lo recibe">🗑 Cancelar / eliminar</button>');
+  if (!adm && vivo && m.form !== 'edit') botones.push(R.editable(t)
+    ? '<button class="btn" type="button" data-a="form" data-v="edit">✏️ Editar</button>'
+    : '<button class="btn" type="button" disabled title="' + esc(t.editado ? 'Ya se editó una vez: ' + t.editado : 'Ya no se puede editar') + '">✏️ Editar' + (t.editado ? ' (ya se usó)' : '') + '</button>');
+  if (vivo && m.form !== 'dest') botones.push(adm
+    ? '<button class="btn gold" type="button" data-a="form" data-v="dest">📍 Editar destino</button>'
+    : '<button class="btn" type="button" disabled title="Solo un administrador, en Modo administrador">🔒 Editar destino</button>');
   if (botones.length || forms) acc += '<div class="actions"><div class="row">' + botones.join('') + '</div>' + forms + '</div>';
 
   if (adm) {
@@ -1204,7 +1236,7 @@ document.addEventListener('click', function (e) {
     case 'oir': beep(v); return;
     case 'open': return abrir(v);
     case 'cerrar': case 'fondo': S.modal = null; break;
-    case 'form': S.modal.form = v || null; S.modal.err = null; break;
+    case 'form': S.modal.form = v || null; S.modal.err = null; S.modal.edesc = null; S.modal.ebul = null; break;
 
     case 'idman': return alIdentificar(v, leerId(v, true));
     case 'entrarpin': return entrar(v, $('#pinin').value);
@@ -1271,6 +1303,25 @@ document.addEventListener('click', function (e) {
       return;
     }
     case 'cancclear': S.modal.canc = null; S.modal.cancId = null; break;
+    case 'edqclear': S.modal.edq = null; S.modal.edqId = null; break;
+    case 'edgo': {
+      S.modal.edesc = $('#edesc').value; S.modal.ebul = $('#ebul') ? $('#ebul').value : null;
+      if (!S.modal.edesc.trim()) { S.modal.err = 'Escribe qué se envía.'; break; }
+      if (!sinCred() && !S.modal.edqId) { S.modal.err = 'Escanea tu credencial: queda registrado quién editó.'; break; }
+      srv('apiEditarContenido', S.token, { folio: v, desc: S.modal.edesc, bultos: S.modal.ebul, quien: S.modal.edqId || null }).then(function (r) {
+        beep('listo');
+        if (r.bultosCambio && r.origen === me()) {
+          toast('Guardado. Imprimiendo las etiquetas nuevas…');
+          srv('apiReimprimir', S.token, { folio: v, bulto: 0, motivo: 'Se editó el número de bultos' }).then(function (x) { imprimir(x.traspaso, x.bultos, x.rp); });
+        } else toast(r.bultosCambio ? 'Guardado. Se avisó al área que lo creó para que reimprima las etiquetas.' : 'Cambios guardados');
+        abrir(v); refrescar(false);
+      }).catch(function (er) { S.modal.err = er.message; beep('err'); render(); });
+      return;
+    }
+    case 'destgo':
+      srv('apiAdminEditar', S.token, v, { destino: $('#ndest').value }, $('#nmot').value)
+        .then(function () { toast('Destino cambiado'); abrir(v); refrescar(false); }).catch(function (er) { S.modal.err = er.message; render(); });
+      return;
     case 'delgo': {
       var mt = $('#delm').value.trim(); S.modal.delm = mt;
       if (!mt) { S.modal.err = 'Escribe el motivo.'; break; }
@@ -1396,9 +1447,11 @@ function alIdentificar(p, d) {
   else if (p === 'rec') identificarRec(d);
   else if (p === 'bgest') validarGestorBot(d);
   else if (p === 'rgest') validarTrae(d);
-  else if (p === 'canc') {
+  else if (p === 'canc' || p === 'edq') {
+    // Guardar lo que ya escribieron antes de volver a pintar
     if (S.modal && $('#delm')) S.modal.delm = $('#delm').value;
-    srv('apiPersona', S.token, d).then(function (q) { if (!S.modal) return; S.modal.canc = q; S.modal.cancId = d; S.modal.err = null; S.idAbierto = null; beep('ok'); render(); })
+    if (S.modal && $('#edesc')) { S.modal.edesc = $('#edesc').value; S.modal.ebul = $('#ebul') ? $('#ebul').value : null; }
+    srv('apiPersona', S.token, d).then(function (q) { if (!S.modal) return; S.modal[p] = q; S.modal[p + 'Id'] = d; S.modal.err = null; S.idAbierto = null; beep('ok'); render(); })
       .catch(function (e) { if (S.modal) { S.modal.err = e.message; beep('err'); render(); } });
   }
 }

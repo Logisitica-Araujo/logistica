@@ -1,7 +1,7 @@
 import os
 D=os.path.dirname(os.path.abspath(__file__))
 IMG='file://'+D+'/img/'
-VER='Versión 1.1 · Octubre 2026'
+VER='Versión 1.2 · Octubre 2026'
 
 CSS='''
 @page{size:Letter;margin:18mm 16mm 18mm 16mm}
@@ -141,7 +141,8 @@ suc=[
  paso(2,'Escanea TU credencial','Es obligatorio en sucursales: queda registrado quién recibió.')+
  fig('s07_recibir','Antes de escanear etiquetas, se identifica quien recibe.')+
  paso(3,'Agrega los traspasos','Escanea las etiquetas (se agregan solas, sin Enter), teclea el folio o tócalo en la lista de abajo. Fíjate en <span class="tag pv">PARA PV</span> / <span class="tag rb">PARA REBOTICA</span> para entregarlo a quien corresponde.')+
- paso(4,'Si falta un bulto o llegó dañado','marca <span class="k">Faltan / dañado</span> en esa fila.')+
+ paso(4,'Si llegó roto o incompleto','marca <span class="k">Faltan / dañado</span> en esa fila y llena el recuadro: <b>qué pasó</b> (dañado / roto, incompleto o ambos), <b>cuántos bultos llegaron</b> si faltan, y <b>explica qué pasó</b>. Es obligatorio: sin explicación no deja confirmar.')+
+ fig('s08c_incidencia','Llegó dañado: qué pasó y la explicación. Se avisa al origen y a administración con el motivo.')+
  paso(5,'Confirmar recepción','Queda <span class="st" style="color:#1B7F38;background:#DFF3E5">● Entregado</span> (o <i>Recibido con incidencia</i>) y al origen le llega el aviso.')+
  fig('s08_recibir_fila','Traspasos en la lista, listos para confirmar.')+
  '<h3>Lista "Vienen para aquí"</h3><p>Abajo aparecen los traspasos que van para tu sucursal y todavía no se reciben: los que vienen <b>en ruta con un gestor</b> y los que siguen en <b>Nuevo traspaso</b> (a alguien se le olvidó darles salida).</p>'+
@@ -162,7 +163,8 @@ suc=[
   ['<b>"Ese folio no existe"</b>','Revisa que esté bien escrito o vuelve a escanear la etiqueta.'],
   ['<b>"Ya está en la lista"</b>','Ya lo escaneaste; no pasa nada.'],
   ['<b>"Ya fue recibido anteriormente"</b>','Ese traspaso ya se había recibido antes.'],
-  ['<b>"Tiene una solicitud de eliminación pendiente"</b>','No lo muevas hasta que responda un administrador.']],['70mm',''])),
+  ['<b>"Tiene una solicitud de eliminación pendiente"</b>','Alguien pidió cancelarlo. No lo muevas hasta que responda un administrador.'],
+  ['<b>"Marcaste Faltan / dañado…"</b>','Llena qué pasó y la explicación (y cuántos bultos llegaron, si faltan).']],['70mm',''])),
 ('Botican: Recolección pedidos BOTICAN','sin bitácora de papel',
  '<p>Solo en la computadora de <b>Botican</b>. Sustituye la bitácora en papel de los pedidos que se lleva el gestor. La lista sale de la bitácora de Botican (hoja <b>Envios</b>).</p>'+
  paso(1,'Pestaña dorada "📦 Recolección pedidos BOTICAN"','')+
@@ -172,13 +174,19 @@ suc=[
  paso(4,'Confirmar recolección','Se genera el acuse <b>RB-0001</b>. En la bitácora de Botican se escribe el gestor en <b>"Recolección de Gestor"</b> y el estatus cambia solo a <b>🧍 RECOLECCIÓN DE GESTOR</b>. Lo recolectado desaparece de la lista.')+
  fig('b02_acuse','Acuse de la recolección. Puede pasar el siguiente gestor.')+
  nota('info','Foráneos','También se recolectan. Logística decide después la forma de envío.')),
-('Detalle, reimprimir y eliminar','la historia de cada traspaso',
+('Detalle, editar y cancelar','la historia de cada traspaso',
  '<p>Haz clic en cualquier traspaso para ver su <b>línea de tiempo</b>: cada movimiento con fecha, hora, persona y lugar.</p>'+
  fig('s11_detalle','Detalle y línea de tiempo.','chico')+
  '<h3>Reimprimir una etiqueta</h3><p>Abre el traspaso → <span class="k">Reimprimir etiqueta</span> → elige qué bulto (o todos) y el motivo. La nueva sale marcada <b>R1</b>, R2… y queda registrado.</p>'+
  fig('s12_reimprimir','Reimprimir: bulto y motivo.','chico')+
- '<h3>Solicitar eliminación</h3><p>Solo desde el área que lo creó y <b>antes de entregarlo al gestor</b>. Escribe el motivo; un administrador lo aprueba o rechaza. Mientras tanto queda congelado.</p>'+
- fig('s13_eliminar','Solicitud de eliminación con motivo obligatorio.','chico')),
+ '<h3>Los 3 botones</h3>'+fig('s14_botones','Abajo del detalle: Cancelar / eliminar, Editar y Editar destino.','chico')+tabla(['Botón','Quién','Cómo funciona'],[
+  ['<b>🗑 Cancelar / eliminar</b>','El área que lo <b>creó</b> o la que lo va a <b>recibir</b>, mientras siga en <i>Nuevo traspaso</i>.','No se borra al momento: se <b>solicita</b> con el motivo y un administrador la aprueba o rechaza. Mientras tanto queda congelado. La cancelación queda <b>a nombre del área que la pide</b>.'],
+  ['<b>✏️ Editar</b>','Cualquier área que vea el traspaso, <b>una sola vez</b>.','Cambia <b>qué se envía</b> y, si todavía no se lo lleva el gestor, <b>cuántos bultos</b>. Si cambian los bultos se imprimen etiquetas nuevas. Queda quién lo editó y se avisa a la otra área.'],
+  ['<b>🔒 Editar destino</b>','Solo un <b>administrador</b>.','Si se capturó con el destino equivocado, pídeselo a un administrador. Para las demás áreas el botón sale bloqueado.']],['36mm','48mm',''])+
+ '<h3>Cancelar / eliminar</h3><p>Escanea <b>tu credencial</b> (queda quién lo pide) y escribe el motivo. Si lo pides tú, que lo ibas a recibir (por ejemplo, lo pediste por teléfono y ya no lo necesitas), la cancelación queda a nombre de <b>tu área</b>, no de la que lo creó.</p>'+
+ fig('s13_eliminar','Solicitud de cancelación con credencial y motivo.','chico')+
+ '<h3>Editar</h3><p>Escanea tu credencial, corrige lo que se envía o los bultos y <b>Guardar cambios</b>. Solo se puede una vez; después el botón sale como "ya se usó".</p>'+
+ fig('s15_editar','Editar: qué se envía y bultos.','chico')),
 ('Estatus y reglas','colores, sí y no, Morelia',
  estatus()+
  sino(['Una etiqueta en <b>cada</b> bulto','Escanear al entregar y al recibir','Revisar si es PARA PV o PARA REBOTICA','Marcar <b>Faltan / dañado</b> cuando aplique','Registrar dónde está un traspaso que llegó por error'],
@@ -208,8 +216,13 @@ ofi=[
  nota('warn','Las etiquetas se imprimen en Recepción','La etiquetadora está conectada a la computadora de Recepción Oficinas. Si tu computadora no tiene impresora de etiquetas, cancela la ventana de impresión y lleva tus bultos a Recepción: ahí imprimen tus etiquetas desde el <b>Centro de Impresión</b>.')+
  nota('ok','Lo que va fuera de Oficinas sale por Recepción','Si el destino es una sucursal (o cualquier lugar fuera de Oficinas), <b>baja el paquete al stand de Recepción y listo</b>: no tienes que registrar nada más. El gestor le da salida ahí con su credencial. Si pasan 36 horas sin salida, te llega un aviso.')+
  nota('info','Entre áreas de Oficinas','Si el destino es otra área de Oficinas, es una entrega interna: <b>se lleva en mano</b> (no pasa por Recepción) y el área destino lo recibe escaneándolo.')+
- nota('info','Reimprimir','Abre el traspaso → <span class="k">Reimprimir etiqueta</span>. Solo el área que lo creó.')),
+ nota('info','Reimprimir','Abre el traspaso → <span class="k">Reimprimir etiqueta</span>. Solo el área que lo creó.')+
+ '<h3>Cancelar, editar y cambiar destino</h3><p>Abajo del detalle de cada traspaso hay 3 botones. En Oficinas no piden credencial: queda tu cuenta.</p>'+tabla(['Botón','Quién','Cómo funciona'],[
+  ['<b>🗑 Cancelar / eliminar</b>','El área que lo <b>creó</b> o la que lo va a <b>recibir</b>, mientras siga en <i>Nuevo traspaso</i>.','No se borra al momento: se <b>solicita</b> con el motivo y un administrador la aprueba o rechaza. Mientras tanto queda congelado. La cancelación queda <b>a nombre del área que la pide</b>.'],
+  ['<b>✏️ Editar</b>','Cualquier área que vea el traspaso, <b>una sola vez</b>.','Cambia <b>qué se envía</b> y, si todavía no se lo lleva el gestor, <b>cuántos bultos</b>. Si cambian los bultos se imprimen etiquetas nuevas. Queda quién lo editó y se avisa a la otra área.'],
+  ['<b>🔒 Editar destino</b>','Solo un <b>administrador</b>.','Si se capturó con el destino equivocado, pídeselo a un administrador. Para las demás áreas el botón sale bloqueado.']],['36mm','48mm',''])),
 ('Recibir y entregar','escáner',
+ nota('warn','Si llegó roto o incompleto','Marca <b>Faltan / dañado</b> y llena qué pasó, cuántos bultos llegaron (si faltan) y la explicación. Es obligatorio.')+
  '<h3>Recibir</h3>'+paso(1,'Escáner → "Recibir traspasos"','Escanea las etiquetas (se agregan solas), teclea el folio o tócalo en la lista <b>"Vienen para aquí"</b> de abajo. No pide credencial.')+
  nota('info','Lista "Vienen para aquí"','Lo que va para tu área en ruta con un gestor o en <i>Nuevo traspaso</i>. Si escaneas la credencial del gestor que llega, lo que él trae sale en color; lo demás, en gris.')+paso(2,'Confirmar recepción','Queda <span class="st" style="color:#1B7F38;background:#DFF3E5">● Entregado</span>.')+
  fig('o03_recibir','Recibir en Oficinas: directo, sin credencial.')+
@@ -285,7 +298,9 @@ adm=[
   ['<b>Eliminar</b>','Pide confirmar. El traspaso queda como Eliminado y deja de verse en las bandejas.'],
   ['<b>Reimprimir</b>','Cualquier etiqueta, de cualquier área.']],['45mm',''])+
  fig('a02_detalle','Detalle con acciones de administrador.','chico')+
- '<h3>Solicitudes de eliminación</h3><p>Las áreas no borran: solicitan. En <b>Solicitudes</b> apruebas (se elimina) o rechazas (vuelve a moverse), con comentario opcional.</p>'+fig('a03_solicitudes','Solicitudes pendientes.')+
+ '<h3>Solicitudes de cancelación</h3><p>Las áreas no borran: solicitan. La puede pedir el área que lo <b>creó</b> o la que lo iba a <b>recibir</b>; cada solicitud dice el <b>lado</b> (ORIGEN o DESTINO) y la persona. En <b>Solicitudes</b> apruebas (se cancela) o rechazas (vuelve a moverse), con comentario opcional. La historia dice quién la solicitó.</p>'+
+ nota('info','¿Quién cancela más?','En <b>RES_Solicitudes</b> filtra por la columna <b>Responsable (área)</b>: es el área que pidió la cancelación, aunque no la haya creado.')+
+ '<h3>Editar destino</h3><p>En Modo administrador, dentro del traspaso: <b>📍 Editar destino</b> → elige el nuevo destino y el motivo. Después reimprime las etiquetas (el destino viene impreso). Las áreas solo pueden <b>✏️ Editar</b> el contenido, una vez.</p>'+fig('a03_solicitudes','Solicitudes pendientes.')+
  nota('err','Nunca borres filas en Sheets','Elimina siempre desde la página. Borrar la fila no deja registro, deja huérfanos su historial y avisos, y si alguien confirma en ese momento el cambio puede caer en la fila equivocada.')),
 ('Catálogos y ajustes','lo que se edita en la hoja',
  '<p>Todo se configura en el archivo <b>Traspasos_FADERMEX_BD</b>. La página toma los cambios sola. Para dar de baja algo pon <b>Activo = NO</b>; no borres filas.</p>'+fig('a04_catalogos','Catálogos: acceso directo a la hoja.')+
@@ -298,6 +313,8 @@ adm=[
   ['<b>CAT_EnviosOf</b>','Guía de qué se manda a cada área de Oficinas: <b>Documentos</b> | <b>Área</b>. El área se escribe igual que en CAT_Areas (ej. "Coordinación PV"). Sale como aviso al crear un traspaso hacia esa área. "Revisar configuración" avisa si un área no coincide.'],
   ['<b>CAT_Estatus</b>','Nombre en pantalla y colores de cada estatus.'],
   ['<b>CAT_Paqueterias / CAT_Motivos</b>','Listas de paqueterías y de motivos (reimpresión, eliminación, incidencia).'],
+  ['<b>RES_Traspasos (columnas nuevas)</b>','<b>Incidencia</b>: qué pasó al recibir roto o incompleto. <b>Editado</b>: quién lo editó y cuándo (solo una vez).'],
+  ['<b>RES_Solicitudes (columnas nuevas)</b>','<b>Lado</b> (ORIGEN o DESTINO), <b>Responsable (área)</b> y <b>Cuenta</b>.'],
   ['<b>CFG_Ajustes</b>','Duración de sesión (0 = no se cierra), <b>pin_administrador</b>, logo, tamaño general de etiqueta, columnas de Operaciones (A, K, M), cada cuánto revisar avisos, <b>botican_archivo</b> (bitácora de Botican) y los <b>manuales</b> (ver abajo).']],['48mm',''])+
  '<h3>Manuales (botón ❓ Ayuda)</h3><p>Los PDF viven en una carpeta de Drive (<b>carpeta_manuales</b>) y sus links en CFG_Ajustes: <b>manual_sucursales</b>, <b>manual_oficinas_recepcion</b>, <b>manual_administradores</b> y <b>manual_proceso</b>. Cada área ve el suyo; los administradores ven todos y la carpeta.</p>'+
  nota('ok','Actualizar un manual sin cambiar el link','En Drive: clic derecho en el PDF → <b>Información del archivo → Administrar versiones → Subir versión nueva</b>. El link no cambia y todas las áreas ven la nueva versión al instante.')+
@@ -325,7 +342,7 @@ adm=[
 
 docs=[('Manual_Sucursales','Manual de Sucursales','PV, Rebotica, Botican y Morelia','Cómo crear, entregar y recibir traspasos en la página de Traspasos, paso a paso y con las pantallas reales.',suc),
       ('Manual_Oficinas_y_Recepcion','Manual de Oficinas y Recepción','Áreas de Oficinas, Logística y Recepción Oficinas','Cómo trabajan las áreas de Oficinas sin credencial, cómo opera Logística con Morelia y cómo se usa el stand de Recepción Oficinas.',ofi),
-      ('Manual_Administradores','Manual de Administradores','jaraujo · Oramirez · sistemasfed','Modo administrador, corrección y eliminación de traspasos, catálogos en Sheets, seguridad y operación del sistema.',adm)]
+      ('Manual_Administradores','Manual de Administradores','jaraujo · Oramirez · sistemasfed','Modo administrador, corrección, edición y cancelación de traspasos, catálogos en Sheets, seguridad y operación del sistema.',adm)]
 for f,t,p,r,s in docs:
     open(os.path.join(D,f+'.html'),'w').write(doc(t,p,r,s))
 print('ok')

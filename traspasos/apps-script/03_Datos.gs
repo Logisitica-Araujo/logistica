@@ -315,6 +315,7 @@ function _tObj(f) {
     recibio: String(f['Recibido por'] || ''),
     bultosRec: String(f['Bultos recibidos'] || ''),
     incidencia: String(f['Incidencia'] || ''),
+    editado: String(f['Editado'] || ''),
     reimp: Number(f['Reimpresiones']) || 0,
     solicitud: _si(f['Eliminación solicitada']),
     act: _txt(f['Última actualización']),
