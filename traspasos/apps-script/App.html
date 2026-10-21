@@ -463,7 +463,16 @@ function mandarImprimir(html) {
   p.innerHTML = '<style>@page{size:' + pw + 'mm ' + ph + 'mm;margin:0}' +
     (tm.girar ? '#print .lbl{transform:rotate(90deg) translateY(-100%);transform-origin:top left}' : '') + '</style>' + html;
   pintarCodigos(p);
+  ajustarDestinos(p);
   setTimeout(function () { window.print(); }, 200);
+}
+/** Etiqueta chica: el destino va del tamaño del folio (11 pt); si no cabe en una línea, baja de medio en medio punto hasta 7 pt. */
+function ajustarDestinos(raiz) {
+  var p = raiz.style.display; raiz.style.display = 'block';          // para poder medir aunque esté oculto
+  raiz.querySelectorAll('.lbl.mini .dest').forEach(function (d) {
+    for (var pt = 11; pt > 7 && d.scrollWidth > d.clientWidth; pt -= 0.5) d.style.fontSize = (pt - 0.5) + 'pt';
+  });
+  raiz.style.display = p;
 }
 function etiquetaHTML(t, b, rp, pantalla) {
   var tm = tamEtiqueta();

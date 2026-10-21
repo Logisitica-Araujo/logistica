@@ -201,7 +201,8 @@ tr.click:hover td{background:var(--surface-2)}
 .lbl.mini .mrow{display:flex;justify-content:space-between;align-items:baseline;gap:2mm;line-height:1}
 .lbl.mini .fol{font-size:11pt}
 .lbl.mini .bul{font-size:9pt;font-weight:800;border:none;padding:0;white-space:nowrap}
-.lbl.mini .dest{font-size:7pt;font-weight:700;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+/* Destino del mismo tamaño que el folio; si el nombre es largo, ajustarDestinos() lo achica lo justo para que quepa. */
+.lbl.mini .dest{font-size:11pt;font-weight:800;line-height:1.1;white-space:nowrap;overflow:hidden;text-align:center}
 .lbl .rp{position:absolute;top:2mm;right:2mm;font-size:8pt;font-weight:900;border:1.5px solid #000;padding:0 1.5mm;border-radius:1mm}
 
 details.sincred summary{cursor:pointer;font-weight:700;color:var(--muted);font-size:14px}
