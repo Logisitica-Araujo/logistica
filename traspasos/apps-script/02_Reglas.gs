@@ -169,6 +169,11 @@ function TR_REGLAS() {
    *  Los bultos solo se cambian antes de que se lo lleve el gestor (las etiquetas dicen 1/3, 2/3…). */
   R.editable = function (t) { return !!t && !t.editado && !t.solicitud && R.FINALES.indexOf(t.estatus) < 0; };
   R.bultosEditables = function (t) { return !!t && t.estatus === 'NUEVO'; };
+  /** Solicitar cambio de destino: el área que lo creó o la que lo recibe, mientras no esté terminado.
+   *  No cambia nada hasta que un administrador lo aprueba. */
+  R.destinoSolicitable = function (t, me, A) {
+    return !!t && R.FINALES.indexOf(t.estatus) < 0 && (t.origen === me || R.mismaSuc(A, t.destino, me) || (A[me] && A[me].tipo === 'OFICINAS' && t.destino === me));
+  };
   /** Tipos de incidencia al recibir. Con INCOMPLETO o AMBOS se pide cuántos bultos llegaron. */
   R.INCIDENCIAS = { DANADO: 'Llegó dañado / roto', INCOMPLETO: 'Llegó incompleto (faltan bultos)', AMBOS: 'Dañado e incompleto' };
 

@@ -157,7 +157,8 @@ function apiDatos(token) {
         .filter(function (f) { return _norm(f['Estado']) === 'pendiente'; })
         .map(function (f) {
           return { id: String(f['ID']), fecha: _txt(f['Fecha']), folio: String(f['Folio']),
-                   solicito: String(f['Solicitó']), area: String(f['Área']), motivo: String(f['Motivo']), lado: String(f['Lado'] || '') };
+                   solicito: String(f['Solicitó']), area: String(f['Área']), motivo: String(f['Motivo']), lado: String(f['Lado'] || ''),
+                   tipo: _norm(f['Tipo']) === 'cambio de destino' ? 'DESTINO' : 'CANCELACION', destinoNuevo: String(f['Destino nuevo'] || '') };
         });
     }
 
@@ -534,6 +535,46 @@ function apiEditarContenido(token, d) {
 }
 
 /**
+ * Solicitud de CAMBIO DE DESTINO: el traspaso NO cambia hasta que un administrador la aprueba.
+ * La pide el área que lo creó o la que lo iba a recibir. En sucursales con credencial.
+ */
+function apiSolicitarCambioDestino(token, folio, destino, motivo, quien) {
+  return _api(function () {
+    const c = _ctx(token);
+    const A = _areas();
+    motivo = String(motivo || '').trim();
+    destino = String(destino || '').trim().toUpperCase();
+    if (!motivo) throw new Error('Escribe por qué se debe cambiar el destino.');
+    const t = _buscarT(folio);
+    if (!t) throw new Error('No encontré el folio.');
+    if (!A[destino] || R.esPausa(destino)) throw new Error('Elige un destino válido.');
+    if (destino === t.destino) throw new Error('Ese ya es el destino del traspaso.');
+    if (!R.destinoSolicitable(t, c.area, A)) throw new Error('Solo lo puede pedir el área que lo creó o la que lo va a recibir, y antes de que se entregue.');
+    const ts = _tb(TR.H.SOLICITUDES);
+    if (ts.filas().some(function (f) { return String(f['Folio']) === t.folio && _norm(f['Estado']) === 'pendiente' && _norm(f['Tipo']) === 'cambio de destino'; }))
+      throw new Error('Ya hay una solicitud de cambio de destino pendiente para ' + t.folio + '.');
+    let p;
+    if (_sinCredencial(c.area)) p = _personaDeCuenta(c);
+    else {
+      p = _personaPorCodigo(quien);
+      if (!p) throw new Error(quien && (quien.codigo || quien.usuario) ? _noReconocido(quien) : 'Escanea tu credencial: queda registrado quién solicita el cambio.');
+    }
+    ts.agregar({
+      'ID': _id('S'), 'Fecha': _ahoraTxt(), 'Folio': t.folio, 'Solicitó': p.nombre, 'Área': _nom(c.area),
+      'Motivo': motivo, 'Estado': 'PENDIENTE', 'Tipo': 'CAMBIO DE DESTINO', 'Destino nuevo': destino,
+      'Lado': t.origen === c.area ? 'ORIGEN (lo creó)' : 'DESTINO (lo pidió)', 'Responsable (área)': c.area, 'Cuenta': c.email
+    });
+    _mov(t, 'SOLICITUD DE CAMBIO DE DESTINO', t.estatus, t.estatus,
+      { donde: c.area, persona: p.nombre, cred: p.via, detalle: R.nom(A, t.destino) + ' → ' + R.nom(A, destino) + ' · ' + motivo });
+    _aviso(TR.AREA_ADMIN, t.folio, 'Solicitud de cambio de destino de ' + _nom(c.area) + ' · ' + p.nombre + ': ' + R.nom(A, t.destino) + ' → ' + R.nom(A, destino) + ' · ' + motivo);
+    [t.origen, t.destino].filter(function (a) { return a !== c.area; }).forEach(function (a) {
+      _aviso(a, t.folio, _nom(c.area) + ' solicitó cambiar el destino a ' + R.nom(A, destino) + ': ' + motivo);
+    });
+    return true;
+  });
+}
+
+/**
  * Solicitud de CANCELACIÓN (la aprueba un administrador). La puede pedir:
  *  - el ORIGEN (quien lo creó), o
  *  - el DESTINO (quien lo pidió y ya no lo quiere).
@@ -559,7 +600,7 @@ function apiSolicitarEliminacion(token, folio, motivo, quien) {
     _actualizarT(t, { 'Eliminación solicitada': 'SI' });
     _tb(TR.H.SOLICITUDES).agregar({
       'ID': _id('S'), 'Fecha': _ahoraTxt(), 'Folio': t.folio, 'Solicitó': p.nombre, 'Área': _nom(c.area),
-      'Motivo': motivo, 'Estado': 'PENDIENTE',
+      'Motivo': motivo, 'Estado': 'PENDIENTE', 'Tipo': 'CANCELACIÓN',
       'Lado': lado === 'ORIGEN' ? 'ORIGEN (lo creó)' : 'DESTINO (lo pidió)', 'Responsable (área)': c.area, 'Cuenta': c.email
     });
     _mov(t, 'SOLICITUD DE CANCELACIÓN · ' + (lado === 'ORIGEN' ? 'LA PIDE QUIEN LO CREÓ' : 'LA PIDE EL DESTINO'), t.estatus, t.estatus,
@@ -671,12 +712,34 @@ function apiAdminResolver(token, idSolicitud, aprobar, comentario) {
     const s = ts.filas().filter(function (f) { return String(f['ID']) === String(idSolicitud); })[0];
     if (!s) throw new Error('No encontré la solicitud.');
     if (_norm(s['Estado']) !== 'pendiente') throw new Error('Esa solicitud ya fue resuelta.');
+    if (aprobar && _norm(s['Tipo']) === 'cambio de destino') {             // validar ANTES de marcarla resuelta
+      const t0 = _buscarT(s['Folio']);
+      if (t0 && R.FINALES.indexOf(t0.estatus) >= 0) throw new Error(t0.folio + ' ya se entregó o se canceló: ya no se puede cambiar el destino. Rechaza la solicitud.');
+      if (!_areas()[String(s['Destino nuevo'] || '').toUpperCase()]) throw new Error('El destino solicitado ya no existe. Rechaza la solicitud.');
+    }
     ts.actualizar(s._fila, { 'Estado': aprobar ? 'APROBADA' : 'RECHAZADA', 'Administrador': c.email,
                              'Fecha respuesta': _ahoraTxt(), 'Comentario': String(comentario || '') });
     const t = _buscarT(s['Folio']);
     if (t) {
       const resp = String(s['Responsable (área)'] || '').trim() || t.origen;     // quien la pidió
       const quien = 'la solicitó ' + _nom(resp) + (s['Solicitó'] ? ' · ' + s['Solicitó'] : '');
+      if (_norm(s['Tipo']) === 'cambio de destino') {
+        const A = _areas(), nuevo = String(s['Destino nuevo'] || '').toUpperCase(), viejo = t.destino;
+        if (aprobar) {
+          if (!A[nuevo]) throw new Error('El destino solicitado ya no existe.');
+          if (R.FINALES.indexOf(t.estatus) >= 0) throw new Error(t.folio + ' ya está "' + t.estatus + '": ya no se puede cambiar el destino. Rechaza la solicitud.');
+          _actualizarT(t, { 'Destino (prefijo)': nuevo, 'Destino': R.nom(A, nuevo) });
+          _mov(t, 'DESTINO CAMBIADO (SOLICITUD APROBADA)', t.estatus, t.estatus, { persona: c.email, medio: 'ADMINISTRADOR',
+            detalle: R.nom(A, viejo) + ' → ' + R.nom(A, nuevo) + ' · ' + quien + (comentario ? ' · ' + comentario : '') });
+          _aviso(t.origen, t.folio, 'Se cambió el destino a ' + R.nom(A, nuevo) + ' (' + quien + '). Reimprime las etiquetas: el destino viene impreso.');
+          [viejo, nuevo].filter(function (a) { return a !== t.origen; }).forEach(function (a) { _aviso(a, t.folio, 'Cambio de destino: ' + R.nom(A, viejo) + ' → ' + R.nom(A, nuevo)); });
+        } else {
+          _mov(t, 'SOLICITUD DE CAMBIO DE DESTINO RECHAZADA', t.estatus, t.estatus, { persona: c.email, medio: 'ADMINISTRADOR', detalle: quien + (comentario ? ' · ' + comentario : '') });
+          _aviso(resp, t.folio, 'Se rechazó tu solicitud de cambio de destino' + (comentario ? ': ' + comentario : ''));
+        }
+        _adminLog(c.email, aprobar ? 'APROBAR CAMBIO DE DESTINO' : 'RECHAZAR CAMBIO DE DESTINO', String(s['Folio']), viejo, nuevo, comentario);
+        return true;
+      }
       if (aprobar) {
         _actualizarT(t, { 'Estatus': 'ELIMINADO', 'Eliminación solicitada': 'NO' });
         _mov(t, 'CANCELADO (SOLICITUD APROBADA)', t.estatus, 'ELIMINADO', { persona: c.email, medio: 'ADMINISTRADOR', detalle: quien + (comentario ? ' · ' + comentario : '') });

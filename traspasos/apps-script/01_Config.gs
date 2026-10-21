@@ -158,7 +158,7 @@ function _tb(nombre) {
   enc.forEach(function (h, i) { if (h) idx[_norm(h)] = i; });
 
   // Columnas que agrega "Instalar / reparar": si todavía no existen, se omiten en lugar de fallar.
-  const opcional = function (h) { return idx[_norm(h)] == null && ['incidencia', 'lado', 'responsable (area)', 'cuenta', 'editado'].indexOf(_norm(h)) >= 0; };
+  const opcional = function (h) { return idx[_norm(h)] == null && ['incidencia', 'lado', 'responsable (area)', 'cuenta', 'editado', 'tipo', 'destino nuevo'].indexOf(_norm(h)) >= 0; };
   const t = {
     sh: sh, enc: enc, _f: null,
     col: function (h) {

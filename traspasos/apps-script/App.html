@@ -1074,12 +1074,14 @@ function vBuscar() {
 }
 function vSolicitudes() {
   var s = S.data.solicitudes;
-  return '<h1>Solicitudes de cancelación</h1><p class="sub">Mientras esperan respuesta, el traspaso queda congelado: gestoría no lo puede recolectar. La cancelación queda a nombre del área que la solicita.</p><div class="list">' +
+  return '<h1>Solicitudes</h1><p class="sub"><b>Cancelación:</b> mientras espera respuesta, el traspaso queda congelado. <b>Cambio de destino:</b> el traspaso sigue igual hasta que lo apruebes. Las dos quedan a nombre del área que las pide.</p><div class="list">' +
     (s.length ? s.map(function (x) {
       return '<div class="panel stack"><div class="row" style="justify-content:space-between"><span class="num" style="font-size:17px">' + esc(x.folio) + '</span><span class="muted">' + esc(fh(x.fecha)) + '</span></div>' +
+        '<div class="row" style="gap:8px"><span class="badge" style="' + (x.tipo === 'DESTINO' ? 'color:#38559E;background:#E5EBF7' : 'color:#C8232D;background:#FDE6E7') + '">' + (x.tipo === 'DESTINO' ? '📍 Cambio de destino' : '🗑 Cancelación') + '</span>' +
+        (x.tipo === 'DESTINO' ? '<span>' + esc(MAPA[R.limpio(x.folio)] ? nom(MAPA[R.limpio(x.folio)].destino) : '') + ' <span class="arrow">→</span> <b>' + esc(nom(x.destinoNuevo)) + '</b></span>' : '') + '</div>' +
         '<div class="note"><b>' + esc(x.solicito) + '</b> · ' + esc(x.area) + (x.lado ? ' · <b>' + esc(x.lado) + '</b>' : '') + '<br>"' + esc(x.motivo) + '"</div>' +
         '<label class="f">Comentario (opcional)<input class="t" id="cm-' + esc(x.id) + '" autocomplete="off"></label>' +
-        '<div class="row"><button class="btn" type="button" data-a="open" data-v="' + esc(x.folio) + '">Ver historia</button><button class="btn" type="button" data-a="solno" data-v="' + esc(x.id) + '">Rechazar</button><button class="btn danger" type="button" data-a="solsi" data-v="' + esc(x.id) + '">Aprobar y cancelar</button></div></div>';
+        '<div class="row"><button class="btn" type="button" data-a="open" data-v="' + esc(x.folio) + '">Ver historia</button><button class="btn" type="button" data-a="solno" data-v="' + esc(x.id) + '">Rechazar</button><button class="btn ' + (x.tipo === 'DESTINO' ? 'gold' : 'danger') + '" type="button" data-a="solsi" data-v="' + esc(x.id) + '">' + (x.tipo === 'DESTINO' ? 'Aprobar y cambiar destino' : 'Aprobar y cancelar') + '</button></div></div>';
     }).join('') : '<div class="empty">No hay solicitudes pendientes.</div>') + '</div>';
 }
 function vHoja() {
@@ -1156,6 +1158,13 @@ function detalleHTML(t, movs) {
            : '<div class="muted" style="font-size:13px">Los bultos ya no se pueden cambiar: el traspaso ya salió.</div>') +
       '<div class="row"><button class="btn primary" type="button" data-a="edgo" data-v="' + esc(t.folio) + '">Guardar cambios</button><button class="btn ghost" type="button" data-a="form" data-v="">Cancelar</button></div></div>';
   }
+  if (m.form === 'dest' && !adm) {
+    forms += '<div class="inline-form"><div class="note"><b>Es una solicitud:</b> el destino no cambia hasta que un administrador la apruebe. Queda a nombre de tu área.</div>' +
+      credModal('dsq', 'Solicita el cambio de destino', 'Tu credencial (quien solicita el cambio)') +
+      '<label class="f">¿A dónde debe ir?<select class="t" id="ndest"><option value="">Elige el destino correcto…</option>' + S.cat.areas.filter(function (a) { return a.id !== t.destino && !R.esPausa(a.id); }).map(function (a) { return '<option value="' + a.id + '"' + (m.ndest === a.id ? ' selected' : '') + '>' + esc(a.nombre) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f">¿Por qué se debe cambiar? (obligatorio)<textarea class="t" id="nmot">' + esc(m.nmot || '') + '</textarea></label>' +
+      '<div class="row"><button class="btn primary" type="button" data-a="dsgo" data-v="' + esc(t.folio) + '">Enviar solicitud</button><button class="btn ghost" type="button" data-a="form" data-v="">Cancelar</button></div></div>';
+  }
   if (m.form === 'dest' && adm) {
     forms += '<div class="inline-form"><label class="f">Nuevo destino<select class="t" id="ndest">' + S.cat.areas.map(function (a) { return '<option value="' + a.id + '"' + (t.destino === a.id ? ' selected' : '') + '>' + esc(a.nombre) + '</option>'; }).join('') + '</select></label>' +
       '<label class="f">Motivo<input class="t" id="nmot" autocomplete="off" placeholder="Ej. se capturó con el destino equivocado"></label>' +
@@ -1174,7 +1183,9 @@ function detalleHTML(t, movs) {
     : '<button class="btn" type="button" disabled title="' + esc(t.editado ? 'Ya se editó una vez: ' + t.editado : 'Ya no se puede editar') + '">✏️ Editar' + (t.editado ? ' (ya se usó)' : '') + '</button>');
   if (vivo && m.form !== 'dest') botones.push(adm
     ? '<button class="btn gold" type="button" data-a="form" data-v="dest">📍 Editar destino</button>'
-    : '<button class="btn" type="button" disabled title="Solo un administrador, en Modo administrador">🔒 Editar destino</button>');
+    : R.destinoSolicitable(t, yo, S.A)
+      ? '<button class="btn" type="button" data-a="form" data-v="dest">📍 Editar destino</button>'
+      : '<button class="btn" type="button" disabled title="Solo el área que lo creó o la que lo recibe, antes de que se entregue">📍 Editar destino</button>');
   if (botones.length || forms) acc += '<div class="actions"><div class="row">' + botones.join('') + '</div>' + forms + '</div>';
 
   if (adm) {
@@ -1239,7 +1250,7 @@ document.addEventListener('click', function (e) {
     case 'oir': beep(v); return;
     case 'open': return abrir(v);
     case 'cerrar': case 'fondo': S.modal = null; break;
-    case 'form': S.modal.form = v || null; S.modal.err = null; S.modal.edesc = null; S.modal.ebul = null; break;
+    case 'form': S.modal.form = v || null; S.modal.err = null; S.modal.edesc = null; S.modal.ebul = null; S.modal.ndest = null; S.modal.nmot = null; break;
 
     case 'idman': return alIdentificar(v, leerId(v, true));
     case 'entrarpin': return entrar(v, $('#pinin').value);
@@ -1307,6 +1318,17 @@ document.addEventListener('click', function (e) {
     }
     case 'cancclear': S.modal.canc = null; S.modal.cancId = null; break;
     case 'edqclear': S.modal.edq = null; S.modal.edqId = null; break;
+    case 'dsqclear': S.modal.dsq = null; S.modal.dsqId = null; break;
+    case 'dsgo': {
+      S.modal.ndest = $('#ndest').value; S.modal.nmot = $('#nmot').value.trim();
+      if (!S.modal.ndest) { S.modal.err = 'Elige a dónde debe ir.'; break; }
+      if (!S.modal.nmot) { S.modal.err = 'Escribe por qué se debe cambiar el destino.'; break; }
+      if (!sinCred() && !S.modal.dsqId) { S.modal.err = 'Escanea tu credencial: queda registrado quién solicita el cambio.'; break; }
+      srv('apiSolicitarCambioDestino', S.token, v, S.modal.ndest, S.modal.nmot, S.modal.dsqId || null).then(function () {
+        beep('listo'); toast('Solicitud enviada a los administradores'); abrir(v); refrescar(false);
+      }).catch(function (er) { S.modal.err = er.message; beep('err'); render(); });
+      return;
+    }
     case 'edgo': {
       S.modal.edesc = $('#edesc').value; S.modal.ebul = $('#ebul') ? $('#ebul').value : null;
       if (!S.modal.edesc.trim()) { S.modal.err = 'Escribe qué se envía.'; break; }
@@ -1344,7 +1366,7 @@ document.addEventListener('click', function (e) {
         .catch(function (er) { S.modal.err = er.message; render(); });
       return;
     case 'solsi': case 'solno':
-      srv('apiAdminResolver', S.token, v, a === 'solsi', $('#cm-' + v).value).then(function () { toast(a === 'solsi' ? 'Aprobada: traspaso cancelado' : 'Solicitud rechazada'); refrescar(false); })
+      srv('apiAdminResolver', S.token, v, a === 'solsi', $('#cm-' + v).value).then(function () { toast(a === 'solsi' ? 'Solicitud aprobada' : 'Solicitud rechazada'); refrescar(false); })
         .catch(function (er) { toast(er.message); });
       return;
     default: return;
@@ -1450,9 +1472,10 @@ function alIdentificar(p, d) {
   else if (p === 'rec') identificarRec(d);
   else if (p === 'bgest') validarGestorBot(d);
   else if (p === 'rgest') validarTrae(d);
-  else if (p === 'canc' || p === 'edq') {
+  else if (p === 'canc' || p === 'edq' || p === 'dsq') {
     // Guardar lo que ya escribieron antes de volver a pintar
     if (S.modal && $('#delm')) S.modal.delm = $('#delm').value;
+    if (S.modal && $('#nmot')) { S.modal.nmot = $('#nmot').value; S.modal.ndest = $('#ndest').value; }
     if (S.modal && $('#edesc')) { S.modal.edesc = $('#edesc').value; S.modal.ebul = $('#ebul') ? $('#ebul').value : null; }
     srv('apiPersona', S.token, d).then(function (q) { if (!S.modal) return; S.modal[p] = q; S.modal[p + 'Id'] = d; S.modal.err = null; S.idAbierto = null; beep('ok'); render(); })
       .catch(function (e) { if (S.modal) { S.modal.err = e.message; beep('err'); render(); } });

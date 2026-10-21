@@ -1,7 +1,7 @@
 import os
 D=os.path.dirname(os.path.abspath(__file__))
 IMG='file://'+D+'/img/'
-VER='Versión 1.2 · Octubre 2026'
+VER='Versión 1.3 · Octubre 2026'
 
 CSS='''
 @page{size:Letter;margin:18mm 16mm 18mm 16mm}
@@ -182,11 +182,13 @@ suc=[
  '<h3>Los 3 botones</h3>'+fig('s14_botones','Abajo del detalle: Cancelar / eliminar, Editar y Editar destino.','chico')+tabla(['Botón','Quién','Cómo funciona'],[
   ['<b>🗑 Cancelar / eliminar</b>','El área que lo <b>creó</b> o la que lo va a <b>recibir</b>, mientras siga en <i>Nuevo traspaso</i>.','No se borra al momento: se <b>solicita</b> con el motivo y un administrador la aprueba o rechaza. Mientras tanto queda congelado. La cancelación queda <b>a nombre del área que la pide</b>.'],
   ['<b>✏️ Editar</b>','Cualquier área que vea el traspaso, <b>una sola vez</b>.','Cambia <b>qué se envía</b> y, si todavía no se lo lleva el gestor, <b>cuántos bultos</b>. Si cambian los bultos se imprimen etiquetas nuevas. Queda quién lo editó y se avisa a la otra área.'],
-  ['<b>🔒 Editar destino</b>','Solo un <b>administrador</b>.','Si se capturó con el destino equivocado, pídeselo a un administrador. Para las demás áreas el botón sale bloqueado.']],['36mm','48mm',''])+
+  ['<b>📍 Editar destino</b>','El área que lo <b>creó</b> o la que lo va a <b>recibir</b>, antes de que se entregue.','Es una <b>solicitud</b>: eliges el destino correcto y por qué. <b>No cambia</b> hasta que un administrador la aprueba. Después, el origen reimprime las etiquetas (el destino viene impreso).']],['36mm','48mm',''])+
  '<h3>Cancelar / eliminar</h3><p>Escanea <b>tu credencial</b> (queda quién lo pide) y escribe el motivo. Si lo pides tú, que lo ibas a recibir (por ejemplo, lo pediste por teléfono y ya no lo necesitas), la cancelación queda a nombre de <b>tu área</b>, no de la que lo creó.</p>'+
  fig('s13_eliminar','Solicitud de cancelación con credencial y motivo.','chico')+
  '<h3>Editar</h3><p>Escanea tu credencial, corrige lo que se envía o los bultos y <b>Guardar cambios</b>. Solo se puede una vez; después el botón sale como "ya se usó".</p>'+
- fig('s15_editar','Editar: qué se envía y bultos.','chico')),
+ fig('s15_editar','Editar: qué se envía y bultos.','chico')+
+ '<h3>Editar destino (solicitud)</h3><p>Escanea tu credencial, elige <b>a dónde debe ir</b> y escribe <b>por qué</b>. Se envía a los administradores; mientras no la aprueben, el traspaso sigue con su destino actual. Cuando la aprueben te llega el aviso.</p>'+
+ fig('s16_destino','Solicitud de cambio de destino.','chico')),
 ('Estatus y reglas','colores, sí y no, Morelia',
  estatus()+
  sino(['Una etiqueta en <b>cada</b> bulto','Escanear al entregar y al recibir','Revisar si es PARA PV o PARA REBOTICA','Marcar <b>Faltan / dañado</b> cuando aplique','Registrar dónde está un traspaso que llegó por error'],
@@ -220,7 +222,7 @@ ofi=[
  '<h3>Cancelar, editar y cambiar destino</h3><p>Abajo del detalle de cada traspaso hay 3 botones. En Oficinas no piden credencial: queda tu cuenta.</p>'+tabla(['Botón','Quién','Cómo funciona'],[
   ['<b>🗑 Cancelar / eliminar</b>','El área que lo <b>creó</b> o la que lo va a <b>recibir</b>, mientras siga en <i>Nuevo traspaso</i>.','No se borra al momento: se <b>solicita</b> con el motivo y un administrador la aprueba o rechaza. Mientras tanto queda congelado. La cancelación queda <b>a nombre del área que la pide</b>.'],
   ['<b>✏️ Editar</b>','Cualquier área que vea el traspaso, <b>una sola vez</b>.','Cambia <b>qué se envía</b> y, si todavía no se lo lleva el gestor, <b>cuántos bultos</b>. Si cambian los bultos se imprimen etiquetas nuevas. Queda quién lo editó y se avisa a la otra área.'],
-  ['<b>🔒 Editar destino</b>','Solo un <b>administrador</b>.','Si se capturó con el destino equivocado, pídeselo a un administrador. Para las demás áreas el botón sale bloqueado.']],['36mm','48mm',''])),
+  ['<b>📍 Editar destino</b>','El área que lo <b>creó</b> o la que lo va a <b>recibir</b>, antes de que se entregue.','Es una <b>solicitud</b>: eliges el destino correcto y por qué. <b>No cambia</b> hasta que un administrador la aprueba. Después, el origen reimprime las etiquetas (el destino viene impreso).']],['36mm','48mm',''])),
 ('Recibir y entregar','escáner',
  nota('warn','Si llegó roto o incompleto','Marca <b>Faltan / dañado</b> y llena qué pasó, cuántos bultos llegaron (si faltan) y la explicación. Es obligatorio.')+
  '<h3>Recibir</h3>'+paso(1,'Escáner → "Recibir traspasos"','Escanea las etiquetas (se agregan solas), teclea el folio o tócalo en la lista <b>"Vienen para aquí"</b> de abajo. No pide credencial.')+
@@ -374,9 +376,9 @@ adm=[
   ['<b>Eliminar</b>','Pide confirmar. El traspaso queda como Eliminado y deja de verse en las bandejas.'],
   ['<b>Reimprimir</b>','Cualquier etiqueta, de cualquier área.']],['45mm',''])+
  fig('a02_detalle','Detalle con acciones de administrador.','chico')+
- '<h3>Solicitudes de cancelación</h3><p>Las áreas no borran: solicitan. La puede pedir el área que lo <b>creó</b> o la que lo iba a <b>recibir</b>; cada solicitud dice el <b>lado</b> (ORIGEN o DESTINO) y la persona. En <b>Solicitudes</b> apruebas (se cancela) o rechazas (vuelve a moverse), con comentario opcional. La historia dice quién la solicitó.</p>'+
+ '<h3>Solicitudes de cancelación y de cambio de destino</h3><p>Cada solicitud dice su tipo: <b>🗑 Cancelación</b> o <b>📍 Cambio de destino</b> (con el destino actual → el nuevo). El cambio de destino se aplica solo al aprobarlo; si el traspaso ya se entregó, no deja aprobarlo: recházalo. Las áreas no borran: solicitan. La puede pedir el área que lo <b>creó</b> o la que lo iba a <b>recibir</b>; cada solicitud dice el <b>lado</b> (ORIGEN o DESTINO) y la persona. En <b>Solicitudes</b> apruebas (se cancela) o rechazas (vuelve a moverse), con comentario opcional. La historia dice quién la solicitó.</p>'+
  nota('info','¿Quién cancela más?','En <b>RES_Solicitudes</b> filtra por la columna <b>Responsable (área)</b>: es el área que pidió la cancelación, aunque no la haya creado.')+
- '<h3>Editar destino</h3><p>En Modo administrador, dentro del traspaso: <b>📍 Editar destino</b> → elige el nuevo destino y el motivo. Después reimprime las etiquetas (el destino viene impreso). Las áreas solo pueden <b>✏️ Editar</b> el contenido, una vez.</p>'+fig('a03_solicitudes','Solicitudes pendientes.')+
+ '<h3>Editar destino</h3><p>Las áreas lo <b>solicitan</b> (llega a Solicitudes). Tú, en Modo administrador, también puedes cambiarlo directo dentro del traspaso: <b>📍 Editar destino</b> → nuevo destino y motivo. Después el origen reimprime las etiquetas (el destino viene impreso).</p>'+fig('a03_solicitudes','Solicitudes pendientes.')+
  nota('err','Nunca borres filas en Sheets','Elimina siempre desde la página. Borrar la fila no deja registro, deja huérfanos su historial y avisos, y si alguien confirma en ese momento el cambio puede caer en la fila equivocada.')),
 ('Catálogos y ajustes','lo que se edita en la hoja',
  '<p>Todo se configura en el archivo <b>Traspasos_FADERMEX_BD</b>. La página toma los cambios sola. Para dar de baja algo pon <b>Activo = NO</b>; no borres filas.</p>'+fig('a04_catalogos','Catálogos: acceso directo a la hoja.')+
@@ -390,7 +392,7 @@ adm=[
   ['<b>CAT_Estatus</b>','Nombre en pantalla y colores de cada estatus.'],
   ['<b>CAT_Paqueterias / CAT_Motivos</b>','Listas de paqueterías y de motivos (reimpresión, eliminación, incidencia).'],
   ['<b>RES_Traspasos (columnas nuevas)</b>','<b>Incidencia</b>: qué pasó al recibir roto o incompleto. <b>Editado</b>: quién lo editó y cuándo (solo una vez).'],
-  ['<b>RES_Solicitudes (columnas nuevas)</b>','<b>Lado</b> (ORIGEN o DESTINO), <b>Responsable (área)</b> y <b>Cuenta</b>.'],
+  ['<b>RES_Solicitudes (columnas nuevas)</b>','<b>Tipo</b> (CANCELACIÓN o CAMBIO DE DESTINO), <b>Destino nuevo</b>, <b>Lado</b> (ORIGEN o DESTINO), <b>Responsable (área)</b> y <b>Cuenta</b>.'],
   ['<b>CFG_Ajustes</b>','Duración de sesión (0 = no se cierra), <b>pin_administrador</b>, logo, tamaño general de etiqueta, columnas de Operaciones (A, K, M), cada cuánto revisar avisos, <b>botican_archivo</b> (bitácora de Botican) y los <b>manuales</b> (ver abajo).']],['48mm',''])+
  '<h3>Manuales (botón ❓ Ayuda)</h3><p>Los PDF viven en una carpeta de Drive (<b>carpeta_manuales</b>) y sus links en CFG_Ajustes: <b>manual_sucursales</b>, <b>manual_oficinas_recepcion</b>, <b>manual_administradores</b> y <b>manual_proceso</b>. Cada área ve el suyo; los administradores ven todos y la carpeta.</p>'+
  nota('ok','Actualizar un manual sin cambiar el link','En Drive: clic derecho en el PDF → <b>Información del archivo → Administrar versiones → Subir versión nueva</b>. El link no cambia y todas las áreas ven la nueva versión al instante.')+
