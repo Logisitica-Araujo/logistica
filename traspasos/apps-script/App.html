@@ -259,6 +259,28 @@ function render() {
   if (si && !S.modal && !S.bell) si.focus({ preventScroll: true });
 }
 
+/** Botón ❓ Ayuda: los manuales en PDF que le tocan a esta computadora (links en CFG_Ajustes). */
+function manualesPara() {
+  var M = (S.cat.ajustes && S.cat.ajustes.manuales) || {}, l = [];
+  var ofi = me() === 'REC' || R.esOf(S.A, me());
+  if (S.ctx.puedeAdmin || !ofi) l.push(['📗', 'Manual de Sucursales', 'PV, Rebotica, Botican y Morelia', M.suc]);
+  if (S.ctx.puedeAdmin || ofi) l.push(['📘', 'Manual de Oficinas y Recepción', 'Áreas de Oficinas, Logística y Recepción', M.ofi]);
+  if (S.ctx.puedeAdmin) {
+    l.push(['📕', 'Manual de Administradores', 'Modo administrador, catálogos y operación', M.adm]);
+    if (M.proc) l.push(['📄', 'Proceso implementado', 'Documento oficial del proceso', M.proc]);
+  }
+  return l;
+}
+function ayudaHTML() {
+  var l = manualesPara(), M = (S.cat.ajustes && S.cat.ajustes.manuales) || {};
+  return '<div class="bellwrap"><button type="button" class="bell ayuda" data-a="ayuda" aria-label="Ayuda" aria-expanded="' + !!S.ayuda + '">❓</button>' +
+    (S.ayuda ? '<div class="bellpanel"><b>Ayuda · Manual de uso</b>' + l.map(function (x) {
+      return x[3] ? '<a class="bellitem manual" href="' + esc(x[3]) + '" target="_blank" rel="noopener"><span style="font-size:22px">' + x[0] + '</span><span><b>' + esc(x[1]) + '</b><br><span class="muted" style="font-size:12.5px">' + esc(x[2]) + ' · abrir PDF</span></span></a>'
+        : '<div class="bellitem manual" style="cursor:default;opacity:.6"><span style="font-size:22px">' + x[0] + '</span><span><b>' + esc(x[1]) + '</b><br><span class="muted" style="font-size:12.5px">Todavía no se carga. Avisa a Logística.</span></span></div>';
+    }).join('') +
+      (S.ctx.puedeAdmin && M.carpeta ? '<a class="btn ghost" style="justify-self:start;font-size:13px;padding:6px 10px" href="' + esc(M.carpeta) + '" target="_blank" rel="noopener">📁 Carpeta de manuales (actualizar)</a>' : '') +
+      '<div class="muted" style="font-size:12px">Siempre se abre la versión más reciente.</div></div>' : '') + '</div>';
+}
 function renderHeader() {
   var tabs = [];
   if (esVistaAdmin()) {
@@ -292,7 +314,7 @@ function renderHeader() {
       }).join('') + '</div>' : '') + '</div>' : '') + '</div>';
   $('#header').innerHTML = '<div class="brand">' + logo + 'Traspasos</div>' +
     cambioModo() + '<div class="who"><span class="p">' + esc(S.ctx.areaNombre) + '</span><span class="u">' + esc(S.ctx.email) + (min < 60 * 24 * 30 ? ' · sesión: cierra en ' + Math.floor(min / 60) + ' h ' + ('0' + (min % 60)).slice(-2) + ' min' : '') + (me() === 'REC' ? ' · 🔒 equipo fijo' : ' · <a href="#" data-a="salir">Salir</a>') + '</span></div>' +
-    bell + '<nav class="tabs">' + tabs.map(function (x) {
+    ayudaHTML() + bell + '<nav class="tabs">' + tabs.map(function (x) {
       return '<button type="button" data-a="tab" data-v="' + x[0] + '"' + (x[3] ? ' class="' + x[3] + '"' : '') + (S.tab === x[0] ? ' aria-current="page"' : '') + '>' + x[1] + (x[2] ? ' <span class="count">' + x[2] + '</span>' : '') + '</button>';
     }).join('') + '</nav>';
 }
@@ -1097,8 +1119,9 @@ document.addEventListener('click', function (e) {
     case 'botrecargar': return cargarBotican();
     case 'dir': S.dir = v; S.filtro = null; break;
     case 'filtro': S.filtro = S.filtro === v ? null : v; break;
+    case 'ayuda': S.ayuda = !S.ayuda; S.bell = false; break;
     case 'bell':
-      S.bell = !S.bell; S.sonidos = false;
+      S.bell = !S.bell; S.sonidos = false; S.ayuda = false;
       // Solo se muestran los nuevos; al abrir se marcan vistos y ya no vuelven a salir.
       S.bellLista = S.bell ? (S.data.avisos || []).filter(function (x) { return !x.visto; }) : null;
       if (S.bell && S.noVistos) { srv('apiAvisosVistos', S.token).catch(function () { }); S.data.avisos.forEach(function (x) { x.visto = true; }); S.noVistos = 0; document.title = 'Traspasos'; }
