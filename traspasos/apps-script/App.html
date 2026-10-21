@@ -182,7 +182,8 @@ function aplicarSesion(ctx, cat) {
   var css = cat.estatus.map(function (e) { return '.b-' + e.clave + '{color:' + e.color + ';background:' + e.fondo + '}'; }).join('');
   var st = document.getElementById('est-css') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'est-css' }));
   st.textContent = css;
-  S.tab = esVistaAdmin() ? 'todos' : (ctx.area === 'REC' ? 'dejar' : 'bandeja');
+  // Si entró al modo administrador con solicitudes pendientes, abre directo en Solicitudes.
+  S.tab = esVistaAdmin() ? (((S.data && S.data.solicitudes) || []).length ? 'sol' : 'todos') : (ctx.area === 'REC' ? 'dejar' : 'bandeja');
   S.rec = { quien: null, quienId: null, lote: [], fb: null, enviando: false };
   S.scan = { modo: 'RECIBIR', lote: [], fb: null, gestor: null, log: [], enviando: false };
   S.wiz = wizNuevo();
@@ -210,11 +211,25 @@ function refrescar(inicial) {
       beep('aviso'); toast('🔔 ' + (d.avisos[0] ? d.avisos[0].folio + ' · ' + d.avisos[0].msg : 'Tienes avisos nuevos'));
       document.title = '(' + S.noVistos + ') Traspasos';
     }
-    if (!S.noVistos) document.title = 'Traspasos';
+    avisarSolicitudes(d.solicitudes || [], inicial);
+    if (!S.noVistos && !(d.solicitudes || []).length) document.title = 'Traspasos';
     var ae = document.activeElement;
     if (!inicial && ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName) && ae.value) renderHeader();
     else render();
   }).catch(function (e) { if (inicial) toast(e.message); });
+}
+/** Administradores: suena y avisa cuando llega una solicitud nueva (cancelación o cambio de destino),
+ *  aunque estén trabajando como su área. El número sale en el botón "Modo administrador". */
+function avisarSolicitudes(sol, inicial) {
+  if (!S.ctx.puedeAdmin || me() === 'REC') return;
+  var antes = S.solIds || {}, nuevas = sol.filter(function (x) { return !antes[x.id]; });
+  S.solIds = {}; sol.forEach(function (x) { S.solIds[x.id] = true; });
+  if (sol.length) document.title = '(' + sol.length + ' solicitud' + (sol.length > 1 ? 'es' : '') + ') Traspasos';
+  if (inicial) { if (sol.length && !esVistaAdmin()) toast('📋 Hay ' + sol.length + ' solicitud(es) esperando a un administrador'); return; }
+  if (!nuevas.length) return;
+  var x = nuevas[0];
+  beep('aviso');
+  toast('📋 Solicitud para administradores · ' + (x.tipo === 'DESTINO' ? 'cambio de destino' : 'cancelación') + ' de ' + x.folio + ' · ' + x.area + (nuevas.length > 1 ? ' (y ' + (nuevas.length - 1) + ' más)' : ''));
 }
 function iniciarPoll() {
   pararPoll();
@@ -329,7 +344,8 @@ function cambioModo() {
     var ult = leer('ultimaArea');
     return '<button class="btn" type="button" data-a="' + (ult ? 'entrar' : 'cambiarArea') + '" data-v="' + esc(ult || '') + '" title="Volver a trabajar como usuario">← ' + (ult && S.A[ult] ? 'Volver a ' + esc(nom(ult)) : 'Elegir mi área') + '</button>';
   }
-  return '<button class="btn gold" type="button" data-a="entrar" data-v="ADMIN" title="Entrar al modo administrador">Modo administrador</button>';
+  var n = ((S.data && S.data.solicitudes) || []).length;
+  return '<button class="btn gold' + (n ? ' conpend' : '') + '" type="button" data-a="entrar" data-v="ADMIN" title="' + (n ? n + ' solicitud(es) esperando respuesta de un administrador' : 'Entrar al modo administrador') + '">Modo administrador' + (n ? ' <span class="count">' + n + '</span>' : '') + '</button>';
 }
 
 function tcard(t, desdeOrigen) {

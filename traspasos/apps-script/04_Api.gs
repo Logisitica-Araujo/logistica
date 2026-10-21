@@ -152,7 +152,9 @@ function apiDatos(token) {
       });
 
     let solicitudes = [];
-    if (c.admin) {
+    // También a quien PUEDE ser administrador aunque esté trabajando como su área (no en Recepción):
+    // así ve el numerito en "Modo administrador" y le suena cuando llega una solicitud.
+    if (c.admin || (c.puedeAdmin && c.area !== 'REC')) {
       solicitudes = _tb(TR.H.SOLICITUDES).filas()
         .filter(function (f) { return _norm(f['Estado']) === 'pendiente'; })
         .map(function (f) {

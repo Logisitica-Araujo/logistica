@@ -219,6 +219,11 @@ details.sincred summary{cursor:pointer;font-weight:700;color:var(--muted);font-s
 .rec-id .scaninput{font-size:28px;padding:18px}
 .pinbox{border:2px solid var(--admin-gold)}
 #print{display:none}
+/* Modo administrador con solicitudes pendientes: número rojo y un pulso suave */
+.btn.conpend{position:relative}
+.btn.conpend .count{background:var(--err);color:#fff;border-radius:99px;padding:0 7px;font-size:12px;margin-left:4px}
+@media (prefers-reduced-motion:no-preference){.btn.conpend{animation:pulso 2s ease-in-out infinite}}
+@keyframes pulso{0%,100%{box-shadow:0 0 0 0 rgba(200,35,45,.35)}50%{box-shadow:0 0 0 6px rgba(200,35,45,0)}}
 .incform label.f{color:var(--ink);white-space:normal;display:grid;gap:4px;font-size:13px}
 .incform{grid-column:1/-1;display:grid;gap:8px;background:var(--warn-bg);border-radius:10px;padding:10px 12px;margin-top:4px}
 /* Recolección pedidos BOTICAN */

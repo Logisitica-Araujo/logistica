@@ -361,6 +361,7 @@ adm=[
  paso(2,'Trabajar','Aparece la barra negra y dorada <b>MODO ADMINISTRADOR</b>.')+
  paso(3,'Regresar','Botón <b>← Volver a tu área</b>.')+
  fig('a00_entrada','Pantalla de entrada con el grupo Administración.')+
+ nota('ok','Solicitudes aunque trabajes como tu área','Si alguien pide una cancelación o un cambio de destino, el botón <b>Modo administrador</b> muestra un <b>número rojo</b> con las pendientes, suena la campanita y sale un aviso, aunque estés trabajando como Logística u otra área. Al entrar al modo administrador se abre directo en <b>Solicitudes</b>.')+
  nota('warn','Recepción Oficinas','En la computadora del patio no aparece el botón de administrador.')),
 ('Ver y buscar','todos los traspasos y su historia',
  '<h3>Todos los traspasos</h3><p>En movimiento y entregados de los últimos 45 días. Las fichas de estatus filtran la tabla; clic en una fila para abrirla.</p>'+fig('a01_todos','Todos los traspasos.')+
