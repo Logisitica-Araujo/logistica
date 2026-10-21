@@ -81,6 +81,7 @@ function instalar() {
     ['carpeta_manuales', 'https://drive.google.com/drive/folders/1ZGOY7huAekZEnC_B9i_AY4oL84pMS_hl', 'Carpeta de Drive con los manuales en PDF (solo la ven los administradores, para actualizarlos).'],
     ['manual_sucursales', '', 'Link de Drive del PDF "Manual de Sucursales" (PV, Rebotica, Botican, Morelia). Sale en el botón ❓ Ayuda.'],
     ['manual_oficinas_recepcion', '', 'Link de Drive del PDF "Manual de Oficinas y Recepción". Sale en el botón ❓ Ayuda de Oficinas, Logística y Recepción.'],
+    ['manual_recepcion', '', 'Link de Drive del PDF "Manual de Recepción Oficinas". Es el ÚNICO manual que ve la computadora de Recepción.'],
     ['manual_administradores', '', 'Link de Drive del PDF "Manual de Administradores". Solo lo ven los administradores.'],
     ['manual_proceso', '', 'Link de Drive del documento del proceso implementado (certificación). Solo administradores. Vacío = no se muestra.'],
     ['horas_alerta_sin_salida', 36, 'Horas que puede estar un traspaso de Oficinas sin salida en Recepción antes de avisar a Logística, al área y a administración.'],

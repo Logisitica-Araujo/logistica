@@ -109,6 +109,7 @@ function _catalogos() {
       manuales: {
         suc: String(_ajuste('manual_sucursales', '') || '').trim(),
         ofi: String(_ajuste('manual_oficinas_recepcion', '') || '').trim(),
+        rec: String(_ajuste('manual_recepcion', '') || '').trim(),
         adm: String(_ajuste('manual_administradores', '') || '').trim(),
         proc: String(_ajuste('manual_proceso', '') || '').trim(),
         carpeta: String(_ajuste('carpeta_manuales', '') || '').trim()

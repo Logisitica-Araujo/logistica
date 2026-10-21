@@ -242,7 +242,7 @@ ofi=[
  fig('l01_paqueteria','Paquetería de Logística: cajas, listos para Morelia y en camino.')+
  nota('info','Morelia recibe la caja completa','Morelia escanea la etiqueta de la caja una sola vez y se reciben todos los traspasos que trae.')),
 ('Recepción Oficinas','el stand del patio',
- '<p>Recepción Oficinas es un <b>punto de pausa</b>: los traspasos esperan ahí mientras los recoge su área o un gestor. No es un destino final y no se puede elegir como destino al crear un traspaso.</p>'+
+ '<p><i>La computadora del stand tiene su propio manual: <b>Manual de Recepción Oficinas</b>.</i></p><p>Recepción Oficinas es un <b>punto de pausa</b>: los traspasos esperan ahí mientras los recoge su área o un gestor. No es un destino final y no se puede elegir como destino al crear un traspaso.</p>'+
  nota('warn','Computadora fija','La computadora del patio está fija en Recepción Oficinas (dice 🔒 equipo fijo) y no tiene botón para salir. Si se traba, avisa a Logística: el administrador la saca abriendo la página con /SALIR al final de la dirección.')+
  '<h3>Dejar traspasos</h3>'+
  paso(1,'📥 Dejar → escanea tu credencial','Cualquier persona registrada: gestor o empleado.')+
@@ -273,6 +273,82 @@ ofi=[
   ['"Solo lo puede recoger esa área o un gestor"','Ese traspaso no es de tu área. Que lo recoja su área o un gestor.'],
   ['"La credencial no está registrada"','Usa usuario y NIP, y pide a un administrador que la registre.'],
   ['La computadora del patio cambió de área','Avisa a Logística para volver a fijarla en Recepción Oficinas.']],['70mm',''])),
+]
+
+
+# ===================== RECEPCIÓN OFICINAS (computadora del stand) =====================
+rec=[
+('Qué es Recepción Oficinas','para qué sirve esta computadora',
+ '<p class="lead">Recepción Oficinas es el <b>stand del patio</b> donde los traspasos <b>esperan</b> a que se los lleve un gestor o los recoja el área de Oficinas a la que van. Es un <b>punto de pausa</b>, no un destino: nadie le manda traspasos "a Recepción".</p>'+
+ tabla(['Qué se hace aquí','Quién'],[
+  ['<b>📥 Dejar</b> traspasos en el stand','Gestores y personal de Oficinas'],
+  ['<b>📤 Recoger</b> traspasos del stand','Gestores (cualquier traspaso) o personal de Oficinas (solo lo de su área)'],
+  ['<b>En resguardo</b>: ver qué hay en el stand y qué falta por salir','Quien atiende Recepción'],
+  ['<b>🖨 Centro de Impresión</b>: imprimir etiquetas de las áreas de Oficinas','Quien atiende Recepción']],['95mm',''])+
+ nota('warn','Computadora fija','Esta computadora está fija en Recepción Oficinas: arriba dice <b>🔒 equipo fijo</b> y no tiene botón de Salir. No la cambies de área. Si se traba, avisa a Logística.')+
+ nota('info','La credencial es la firma','Cada vez que alguien deja o recoge, primero escanea <b>su credencial</b>. En pantalla solo aparece su nombre. Si no trae credencial, abre "¿Sin credencial? Teclea usuario y NIP".')),
+('La pantalla','pestañas, campana y ayuda',
+ fig('r01_dejar','Pantalla de Recepción: arriba las 4 pestañas, la campana 🔔 y el botón ❓ Ayuda.')+
+ tabla(['Parte','Para qué'],[
+  ['<b>📥 Dejar</b>','Registrar lo que alguien deja en el stand.'],
+  ['<b>📤 Recoger</b>','Registrar lo que alguien se lleva del stand.'],
+  ['<b>En resguardo</b>','El número rojo dice cuántos traspasos hay por atender.'],
+  ['<b>🖨 Centro de Impresión</b>','Pestaña dorada para imprimir etiquetas de Oficinas.'],
+  ['<b>🔔 Campana</b>','Avisos nuevos. Al abrirla, los vistos desaparecen.'],
+  ['<b>❓ Ayuda</b>','Abre este manual. Para regresar a la página, cierra el PDF con <b>Ctrl + W</b>.']],['45mm',''])+
+ fig('h02_ayuda_rec','En esta computadora, ❓ Ayuda abre solo este manual.','mini')),
+('Dejar traspasos','alguien deja paquetes en el stand',
+ paso(1,'Toca 📥 Dejar','')+
+ paso(2,'Quien deja escanea su credencial','Gestor o empleado. En pantalla solo sale su nombre.')+
+ paso(3,'Escanea la etiqueta de cada traspaso','Se agregan solos, sin Enter. También se puede teclear el folio.')+
+ fig('r02_dejar_lista','Traspasos listos para dejar en el stand.')+
+ paso(4,'Confirma','Quedan <span class="st" style="color:#8A4B12;background:#F6E7D8">● En Recepción Oficinas</span> y al área destino le llega un aviso.')+
+ nota('ok','Coloca los paquetes juntos y con la etiqueta a la vista','Así el gestor o el área los encuentran rápido.')),
+('Recoger traspasos','alguien se lleva paquetes del stand',
+ paso(1,'Toca 📤 Recoger','')+
+ paso(2,'Quien se lo lleva escanea su credencial','La pantalla muestra lo que <b>puede llevarse</b>, agrupado por destino.')+
+ tabla(['Quién recoge','Qué puede llevarse','Cómo queda'],[
+  ['<b>Gestor</b>','Todo lo de Oficinas que va fuera (a sucursales o Botican), aunque nadie lo haya dejado registrado. Lo que lleva más de 36 h sale en <b style="color:#C8232D">rojo</b>: llévalo primero.','Recolectado por gestoría'],
+  ['<b>Persona de Oficinas</b>','Solo lo que va a <b>su</b> área. Si intenta llevarse algo de otra área, el sistema no la deja.','Entregado']],['36mm','','40mm'])+
+ fig('r03_recoger','Un gestor ve todo lo disponible, agrupado por destino.')+
+ fig('r03b_recoger_persona','Una persona de Contabilidad solo ve lo que va a Contabilidad.')+
+ paso(3,'Escanea cada traspaso o tócalo con ＋ en la lista','')+
+ paso(4,'Confirma','Al destino le llega el aviso de que va en camino (o de que ya lo recogió).')),
+('En resguardo','qué hay en el stand',
+ fig('r04_resguardo','En resguardo: lo que está en el stand y lo que falta por salir de Oficinas.')+
+ tabla(['Lista','Qué es'],[
+  ['<b>En el stand</b>','Lo que alguien dejó y registró aquí.'],
+  ['<b>Por salir de Oficinas</b>','Lo que las áreas crearon para fuera de Oficinas y todavía no sale (aunque nadie lo haya dejado registrado).']],['45mm',''])+
+ nota('err','Más de 36 horas','Lo que pasa de 36 horas sin salida sale en rojo y se avisa a Logística, al área y a administración. Revisa esa lista al empezar y al terminar el día.')),
+('Centro de Impresión','etiquetas de las áreas de Oficinas',
+ '<p>Esta es la única computadora con la etiquetadora conectada por cable. Aquí se imprimen las etiquetas de los traspasos que las áreas de Oficinas crearon en su computadora.</p>'+
+ paso(1,'Toca 🖨 Centro de Impresión','')+
+ paso(2,'Elige el área','Entre paréntesis sale cuántos traspasos tiene por imprimir.')+
+ paso(3,'Imprime','<b>🖨 Imprimir etiqueta</b> imprime las de ese folio (una por bulto). <b>Imprimir todas</b> imprime las de toda el área de una vez.')+
+ fig('r05_impresion','Centro de Impresión con los traspasos de Contabilidad.')+
+ paso(4,'Pega cada etiqueta en su bulto','')+
+ nota('info','Al imprimir','Lo que va fuera de Oficinas pasa a <b>En Recepción Oficinas</b>: el paquete ya está en el stand. En cuanto un gestor lo recoge, sale de la lista. Si una etiqueta sale mal, usa <b>Imprimir otra vez</b>.')+
+ nota('warn','Al imprimir en Chrome','Impresora <b>Argox</b>, <b>Márgenes: Ninguno</b>, <b>Escala: 100%</b>.')),
+('Sonidos y mensajes','',
+ '<p>Cada situación tiene su sonido. Con unos días de uso, el oído los reconoce sin mirar la pantalla.</p>'+tabla(['Sonido','Cuándo suena'],[
+  ['<b>Dos notas rápidas que suben</b>','Escaneo correcto o credencial reconocida.'],
+  ['<b>Dos campanas que suben y se quedan sonando</b>','Se guardó: traspasos dejados, recogidos o etiquetas enviadas.'],
+  ['<b>Dos toques iguales</b>','Ojo: ya estaba en la lista o solo se guardó una parte.'],
+  ['<b>Tres campanas que bajan</b>','Error: no se puede. Lee el mensaje en rojo.'],
+  ['<b>Campanita de tres notas</b>','Llegó un aviso nuevo a la campana 🔔.']],['70mm',''])+
+ tabla(['Mensaje','Qué hacer'],[
+  ['"Solo lo puede recoger esa área o un gestor"','Ese traspaso no es del área de quien recoge. Que lo recoja su área o un gestor.'],
+  ['"La credencial no está registrada"','Que teclee su usuario y NIP, y avisa a Logística para registrar la credencial.'],
+  ['"Ya está en la lista"','Ya se escaneó; no pasa nada.'],
+  ['"Ese folio no existe"','Revisa la etiqueta o tecléalo bien.']],['70mm',''])),
+('Reglas y problemas','',
+ sino(['Escanear todo lo que entra y sale del stand','Que cada quien use SU credencial','Revisar En resguardo al empezar y al terminar el día','Avisar a Logística lo que esté en rojo'],
+      ['Mover paquetes sin escanearlos','Prestar la credencial o el NIP','Entregar algo de un área a otra persona','Cambiar la computadora de área o cerrar Chrome'])+
+ tabla(['Problema','Solución'],[
+  ['La pantalla se trabó o no carga','Presiona <b>F5</b>. Si sigue, avisa a Logística.'],
+  ['Abrí el manual y no sé cómo regresar','Cierra el PDF con <b>Ctrl + W</b>.'],
+  ['La computadora cambió de área','Avisa a Logística: un administrador la vuelve a fijar en Recepción Oficinas.'],
+  ['No imprime la etiqueta','Revisa que la Argox esté encendida y con etiquetas; luego <b>Imprimir otra vez</b>.']],['70mm',''])),
 ]
 
 # ===================== ADMINISTRADORES =====================
@@ -342,6 +418,7 @@ adm=[
 
 docs=[('Manual_Sucursales','Manual de Sucursales','PV, Rebotica, Botican y Morelia','Cómo crear, entregar y recibir traspasos en la página de Traspasos, paso a paso y con las pantallas reales.',suc),
       ('Manual_Oficinas_y_Recepcion','Manual de Oficinas y Recepción','Áreas de Oficinas, Logística y Recepción Oficinas','Cómo trabajan las áreas de Oficinas sin credencial, cómo opera Logística con Morelia y cómo se usa el stand de Recepción Oficinas.',ofi),
+      ('Manual_Recepcion','Manual de Recepción Oficinas','La computadora del stand del patio','Cómo se usa la computadora de Recepción Oficinas: dejar y recoger traspasos, el resguardo y el Centro de Impresión.',rec),
       ('Manual_Administradores','Manual de Administradores','jaraujo · Oramirez · sistemasfed','Modo administrador, corrección, edición y cancelación de traspasos, catálogos en Sheets, seguridad y operación del sistema.',adm)]
 for f,t,p,r,s in docs:
     open(os.path.join(D,f+'.html'),'w').write(doc(t,p,r,s))

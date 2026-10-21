@@ -262,10 +262,13 @@ function render() {
 /** Botón ❓ Ayuda: los manuales en PDF que le tocan a esta computadora (links en CFG_Ajustes). */
 function manualesPara() {
   var M = (S.cat.ajustes && S.cat.ajustes.manuales) || {}, l = [];
-  var ofi = me() === 'REC' || R.esOf(S.A, me());
+  // La computadora de Recepción solo ve SU manual, aunque esté abierta con una cuenta de administrador.
+  if (me() === 'REC') return [['📙', 'Manual de Recepción Oficinas', 'Cómo usar esta computadora del stand', M.rec]];
+  var ofi = R.esOf(S.A, me());
   if (S.ctx.puedeAdmin || !ofi) l.push(['📗', 'Manual de Sucursales', 'PV, Rebotica, Botican y Morelia', M.suc]);
   if (S.ctx.puedeAdmin || ofi) l.push(['📘', 'Manual de Oficinas y Recepción', 'Áreas de Oficinas, Logística y Recepción', M.ofi]);
   if (S.ctx.puedeAdmin) {
+    l.push(['📙', 'Manual de Recepción Oficinas', 'La computadora del stand', M.rec]);
     l.push(['📕', 'Manual de Administradores', 'Modo administrador, catálogos y operación', M.adm]);
     if (M.proc) l.push(['📄', 'Proceso implementado', 'Documento oficial del proceso', M.proc]);
   }
@@ -278,8 +281,8 @@ function ayudaHTML() {
       return x[3] ? '<a class="bellitem manual" href="' + esc(x[3]) + '" target="_blank" rel="noopener"><span style="font-size:22px">' + x[0] + '</span><span><b>' + esc(x[1]) + '</b><br><span class="muted" style="font-size:12.5px">' + esc(x[2]) + ' · abrir PDF</span></span></a>'
         : '<div class="bellitem manual" style="cursor:default;opacity:.6"><span style="font-size:22px">' + x[0] + '</span><span><b>' + esc(x[1]) + '</b><br><span class="muted" style="font-size:12.5px">Todavía no se carga. Avisa a Logística.</span></span></div>';
     }).join('') +
-      (S.ctx.puedeAdmin && M.carpeta ? '<a class="btn ghost" style="justify-self:start;font-size:13px;padding:6px 10px" href="' + esc(M.carpeta) + '" target="_blank" rel="noopener">📁 Carpeta de manuales (actualizar)</a>' : '') +
-      '<div class="muted" style="font-size:12px">Siempre se abre la versión más reciente.</div></div>' : '') + '</div>';
+      (S.ctx.puedeAdmin && me() !== 'REC' && M.carpeta ? '<a class="btn ghost" style="justify-self:start;font-size:13px;padding:6px 10px" href="' + esc(M.carpeta) + '" target="_blank" rel="noopener">📁 Carpeta de manuales (actualizar)</a>' : '') +
+      '<div class="muted" style="font-size:12px">Siempre se abre la versión más reciente.' + (me() === 'REC' ? ' Para regresar a la página, cierra el PDF con <b>Ctrl + W</b>.' : '') + '</div></div>' : '') + '</div>';
 }
 function renderHeader() {
   var tabs = [];
