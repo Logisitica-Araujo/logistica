@@ -553,7 +553,8 @@ function vEscaner() {
     var t = it.t;
     return '<div class="qrow"><span style="color:var(--ok);font-weight:900">✓</span><div style="min-width:0"><div class="row" style="gap:6px 10px">' + areaTag(t.destino) + '<span><span class="num">' + esc(t.folio) + '</span> · ' + esc(nom(t.origen)) + '<span class="arrow">→</span>' + esc(nom(t.destino)) + '</span></div>' +
       '<div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + t.bultos + ' bulto(s) · ' + esc(t.desc) + ' · creó ' + esc(quien(String(t.por).split(' · ')[0], nom(t.origen))) + '</div></div>' +
-      (sc.modo === 'RECIBIR' ? '<label><input type="checkbox" data-a="faltan" data-v="' + esc(t.folio) + '"' + (it.faltan ? ' checked' : '') + '> Faltan / dañado</label>' : '<span></span>') + '</div>';
+      (sc.modo === 'RECIBIR' ? '<label><input type="checkbox" data-a="faltan" data-v="' + esc(t.folio) + '"' + (it.faltan ? ' checked' : '') + '> Faltan / dañado</label>' : '<span></span>') +
+      (sc.modo === 'RECIBIR' && it.faltan ? incidenciaHTML(it) : '') + '</div>';
   }).join('') : '<div class="empty">Aún no hay traspasos en la lista. Escanea el primero.</div>';
   var pill = function (q, que, accion) {
     return '<div class="gestorpill"><div><b>' + esc(q.nombre) + '</b><div class="muted" style="font-size:13px">' + que + ' · ' + esc(quienTxt(q)) + '</div></div><button class="btn ghost" type="button" data-a="' + accion + '" style="margin-left:auto">Cambiar</button></div>';
@@ -643,6 +644,17 @@ function alEscanear(texto) {
   beep(v.k);
   render();
 }
+/** Si llegó roto o incompleto: qué pasó (obligatorio) y, si faltan, cuántos bultos llegaron. */
+function incidenciaHTML(it) {
+  var t = it.t, inc = it.inc || (it.inc = { tipo: '', llegaron: '', detalle: '' }), f = esc(t.folio);
+  var falta = inc.tipo === 'INCOMPLETO' || inc.tipo === 'AMBOS';
+  return '<div class="incform"><div class="row" style="gap:10px">' +
+    '<label class="f" style="flex:1;min-width:190px">¿Qué pasó?<select class="t" data-inc="tipo" data-v="' + f + '"><option value="">Elige…</option>' +
+    Object.keys(R.INCIDENCIAS).map(function (k) { return '<option value="' + k + '"' + (inc.tipo === k ? ' selected' : '') + '>' + esc(R.INCIDENCIAS[k]) + '</option>'; }).join('') + '</select></label>' +
+    (falta ? '<label class="f" style="width:170px">¿Cuántos bultos llegaron?<span class="row" style="gap:6px;flex-wrap:nowrap"><input class="t" type="number" min="0" max="' + (t.bultos - 1) + '" data-inc="llegaron" data-v="' + f + '" value="' + esc(inc.llegaron) + '" style="width:80px"><span class="muted">de ' + t.bultos + '</span></span></label>' : '') +
+    '</div><label class="f">Explica qué pasó (obligatorio)<textarea class="t" data-inc="detalle" data-v="' + f + '" rows="2" placeholder="' +
+    (falta ? 'Ej. faltó la caja 2 de 3; llegó solo la de frascos' : 'Ej. la caja llegó aplastada y 2 frascos rotos') + '">' + esc(inc.detalle) + '</textarea></label></div>';
+}
 /** La etiqueta de una caja: se agregan todos los traspasos que trae. */
 function escanearCaja(texto, cj) {
   var sc = S.scan, m = me(), agregados = 0, malos = [];
@@ -663,13 +675,24 @@ function escanearCaja(texto, cj) {
   render();
 }
 
+function guardarInc(el) {
+  var f = el.getAttribute('data-v'), k = el.getAttribute('data-inc');
+  S.scan.lote.forEach(function (it) { if (it.t.folio === f) { it.inc = it.inc || {}; it.inc[k] = el.value; } });
+}
 function confirmarLote() {
   var sc = S.scan;
   if (!sc.lote.length || sc.enviando) return;
+  if (sc.modo === 'RECIBIR') {
+    var mal = sc.lote.filter(function (it) {
+      var inc = it.inc || {};
+      return it.faltan && (!inc.tipo || String(inc.detalle || '').trim().length < 3 || (inc.tipo !== 'DANADO' && String(inc.llegaron) === ''));
+    })[0];
+    if (mal) { sc.fb = { k: 'err', m: mal.t.folio + ': marcaste "Faltan / dañado". Elige qué pasó, explícalo' + ((mal.inc || {}).tipo && mal.inc.tipo !== 'DANADO' ? ' y escribe cuántos bultos llegaron' : '') + '.' }; beep('err'); return render(); }
+  }
   sc.enviando = true; S.ocupado = true; render();
   srv('apiConfirmarLote', S.token, {
     modo: sc.modo, gestor: sc.gestorId || null, receptor: sc.receptorId || null,
-    items: sc.lote.map(function (it) { return { folio: it.t.folio, faltan: !!it.faltan, caja: it.caja || '' }; }),
+    items: sc.lote.map(function (it) { return { folio: it.t.folio, faltan: !!it.faltan, inc: it.faltan ? it.inc : null, caja: it.caja || '' }; }),
     escaneos: sc.log
   }).then(function (d) {
     var ok = d.resultados.filter(function (r) { return r.ok; }).length;
@@ -1048,12 +1071,12 @@ function vBuscar() {
 }
 function vSolicitudes() {
   var s = S.data.solicitudes;
-  return '<h1>Solicitudes de eliminación</h1><p class="sub">Mientras esperan respuesta, el traspaso queda congelado: gestoría no lo puede recolectar.</p><div class="list">' +
+  return '<h1>Solicitudes de cancelación</h1><p class="sub">Mientras esperan respuesta, el traspaso queda congelado: gestoría no lo puede recolectar. La cancelación queda a nombre del área que la solicita.</p><div class="list">' +
     (s.length ? s.map(function (x) {
       return '<div class="panel stack"><div class="row" style="justify-content:space-between"><span class="num" style="font-size:17px">' + esc(x.folio) + '</span><span class="muted">' + esc(fh(x.fecha)) + '</span></div>' +
-        '<div class="note"><b>' + esc(x.solicito) + '</b> · ' + esc(x.area) + '<br>"' + esc(x.motivo) + '"</div>' +
+        '<div class="note"><b>' + esc(x.solicito) + '</b> · ' + esc(x.area) + (x.lado ? ' · <b>' + esc(x.lado) + '</b>' : '') + '<br>"' + esc(x.motivo) + '"</div>' +
         '<label class="f">Comentario (opcional)<input class="t" id="cm-' + esc(x.id) + '" autocomplete="off"></label>' +
-        '<div class="row"><button class="btn" type="button" data-a="open" data-v="' + esc(x.folio) + '">Ver historia</button><button class="btn" type="button" data-a="solno" data-v="' + esc(x.id) + '">Rechazar</button><button class="btn danger" type="button" data-a="solsi" data-v="' + esc(x.id) + '">Aprobar y eliminar</button></div></div>';
+        '<div class="row"><button class="btn" type="button" data-a="open" data-v="' + esc(x.folio) + '">Ver historia</button><button class="btn" type="button" data-a="solno" data-v="' + esc(x.id) + '">Rechazar</button><button class="btn danger" type="button" data-a="solsi" data-v="' + esc(x.id) + '">Aprobar y cancelar</button></div></div>';
     }).join('') : '<div class="empty">No hay solicitudes pendientes.</div>') + '</div>';
 }
 function vHoja() {
@@ -1093,6 +1116,7 @@ function detalleHTML(t, movs) {
   if (t.gestor) dl.push(['Gestor', t.gestor]);
   if (t.guia) dl.push(['Paquetería / guía', t.paqueteria + ' · ' + t.guia]);
   if (t.recibio) dl.push(['Recibido', quien(t.recibio, nom(t.destino)) + ' · ' + fh(t.fechaEnt)]);
+  if (t.incidencia) dl.push(['Incidencia', t.incidencia]);
   if (R.viaLog(t)) dl.push(['Ruta', 'Vía Logística + paquetería']);
   var acc = '';
   var puedeRe = adm || t.origen === yo;
@@ -1104,13 +1128,18 @@ function detalleHTML(t, movs) {
       '<div class="muted" style="font-size:13px">No pide credencial: queda registrado con la cuenta de esta computadora.</div>' +
       '<div class="row"><button class="btn primary" type="button" data-a="rpgo" data-v="' + esc(t.folio) + '">Reimprimir</button><button class="btn ghost" type="button" data-a="form" data-v="">Cancelar</button></div></div>';
   }
+  var ladoDest = !adm && !R.eliminable(t, yo) && R.cancelableDestino(t, yo, S.A);
   if (m.form === 'del') {
-    forms += '<div class="inline-form"><label class="f">¿Por qué se debe eliminar? (obligatorio)<textarea class="t" id="delm"></textarea></label><div class="muted" style="font-size:13px">No se borra al momento: un administrador revisa tu solicitud. Mientras tanto el traspaso queda congelado.</div>' +
+    forms += '<div class="inline-form">' +
+      (ladoDest ? '<div class="note"><b>Lo pides tú, que lo ibas a recibir.</b> La cancelación queda a nombre de <b>' + esc(nom(yo)) + '</b>, no de ' + esc(nom(t.origen)) + ', que lo creó.</div>' : '') +
+      (sinCred() ? '' : (m.canc ? '<div class="gestorpill"><div><b>' + esc(m.canc.nombre) + '</b><div class="muted" style="font-size:13px">Solicita la cancelación</div></div><button class="btn ghost" type="button" data-a="cancclear" style="margin-left:auto">Cambiar</button></div>'
+        : idHTML('canc', 'Tu credencial (quien solicita la cancelación)'))) +
+      '<label class="f">¿Por qué se debe cancelar? (obligatorio)<textarea class="t" id="delm">' + esc(m.delm || '') + '</textarea></label><div class="muted" style="font-size:13px">No se cancela al momento: un administrador revisa la solicitud. Mientras tanto el traspaso queda congelado.</div>' +
       '<div class="row"><button class="btn danger" type="button" data-a="delgo" data-v="' + esc(t.folio) + '">Enviar solicitud</button><button class="btn ghost" type="button" data-a="form" data-v="">Cancelar</button></div></div>';
   }
   var botones = [];
   if (puedeRe && t.estatus !== 'ELIMINADO' && m.form !== 'rp') botones.push('<button class="btn" type="button" data-a="form" data-v="rp">Reimprimir etiqueta</button>');
-  if (!adm && R.eliminable(t, yo) && m.form !== 'del') botones.push('<button class="btn" type="button" data-a="form" data-v="del">Solicitar eliminación</button>');
+  if (!adm && (R.eliminable(t, yo) || ladoDest) && m.form !== 'del') botones.push('<button class="btn" type="button" data-a="form" data-v="del">Solicitar cancelación</button>');
   if (botones.length || forms) acc += '<div class="actions"><div class="row">' + botones.join('') + '</div>' + forms + '</div>';
 
   if (adm) {
@@ -1241,9 +1270,12 @@ document.addEventListener('click', function (e) {
       }).catch(function (er) { S.modal.err = er.message; render(); });
       return;
     }
+    case 'cancclear': S.modal.canc = null; S.modal.cancId = null; break;
     case 'delgo': {
-      var mt = $('#delm').value.trim(); if (!mt) { S.modal.err = 'Escribe el motivo.'; break; }
-      srv('apiSolicitarEliminacion', S.token, v, mt).then(function () { toast('Solicitud enviada a los administradores'); S.modal = null; refrescar(false); })
+      var mt = $('#delm').value.trim(); S.modal.delm = mt;
+      if (!mt) { S.modal.err = 'Escribe el motivo.'; break; }
+      if (!sinCred() && !S.modal.cancId) { S.modal.err = 'Escanea tu credencial: queda registrado quién solicita la cancelación.'; break; }
+      srv('apiSolicitarEliminacion', S.token, v, mt, S.modal.cancId || null).then(function () { toast('Solicitud enviada a los administradores'); S.modal = null; refrescar(false); })
         .catch(function (er) { S.modal.err = er.message; render(); });
       return;
     }
@@ -1258,7 +1290,7 @@ document.addEventListener('click', function (e) {
         .catch(function (er) { S.modal.err = er.message; render(); });
       return;
     case 'solsi': case 'solno':
-      srv('apiAdminResolver', S.token, v, a === 'solsi', $('#cm-' + v).value).then(function () { toast(a === 'solsi' ? 'Aprobada: traspaso eliminado' : 'Solicitud rechazada'); refrescar(false); })
+      srv('apiAdminResolver', S.token, v, a === 'solsi', $('#cm-' + v).value).then(function () { toast(a === 'solsi' ? 'Aprobada: traspaso cancelado' : 'Solicitud rechazada'); refrescar(false); })
         .catch(function (er) { toast(er.message); });
       return;
     default: return;
@@ -1271,7 +1303,9 @@ document.addEventListener('change', function (e) {
   if (e.target.getAttribute('data-a') === 'faltan') {
     var f = e.target.getAttribute('data-v');
     S.scan.lote.forEach(function (it) { if (it.t.folio === f) it.faltan = e.target.checked; });
+    render();
   }
+  if (e.target.getAttribute('data-inc') === 'tipo') { guardarInc(e.target); render(); }
 });
 /** Lo que pasa cuando un campo "se envía" (Enter, o solo, al terminar de escanear). */
 function procesarCampo(el) {
@@ -1315,6 +1349,7 @@ document.addEventListener('keydown', function (e) {
 document.addEventListener('input', function (e) {
   var el = e.target;
   if (el.id === 'descin') { S.wiz.desc = el.value; return; }
+  if (el.getAttribute && el.getAttribute('data-inc')) { guardarInc(el); return; }
   if (!CAMPOS_AUTO.test(el.id || '')) return;
   clearTimeout(AUTO.t);
   var v = String(el.value || '').trim();
@@ -1361,6 +1396,11 @@ function alIdentificar(p, d) {
   else if (p === 'rec') identificarRec(d);
   else if (p === 'bgest') validarGestorBot(d);
   else if (p === 'rgest') validarTrae(d);
+  else if (p === 'canc') {
+    if (S.modal && $('#delm')) S.modal.delm = $('#delm').value;
+    srv('apiPersona', S.token, d).then(function (q) { if (!S.modal) return; S.modal.canc = q; S.modal.cancId = d; S.modal.err = null; S.idAbierto = null; beep('ok'); render(); })
+      .catch(function (e) { if (S.modal) { S.modal.err = e.message; beep('err'); render(); } });
+  }
 }
 function validarCred(d) {
   srv('apiPersona', S.token, d).then(function (p) { S.wiz.persona = p; S.wiz.ident = d; S.wiz.err = null; S.wiz.step = 2; S.idAbierto = null; beep('ok'); render(); })

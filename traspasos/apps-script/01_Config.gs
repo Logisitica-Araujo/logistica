@@ -157,6 +157,8 @@ function _tb(nombre) {
   const idx = {};
   enc.forEach(function (h, i) { if (h) idx[_norm(h)] = i; });
 
+  // Columnas que agrega "Instalar / reparar": si todavía no existen, se omiten en lugar de fallar.
+  const opcional = function (h) { return idx[_norm(h)] == null && ['incidencia', 'lado', 'responsable (area)', 'cuenta'].indexOf(_norm(h)) >= 0; };
   const t = {
     sh: sh, enc: enc, _f: null,
     col: function (h) {
@@ -184,7 +186,7 @@ function _tb(nombre) {
     },
     _fila: function (obj) {
       const self = this;
-      Object.keys(obj).forEach(function (k) { self.col(k); });   // valida nombres
+      Object.keys(obj).forEach(function (k) { if (!opcional(k)) self.col(k); });   // valida nombres
       return enc.map(function (h) { return (h && obj[h] != null) ? obj[h] : ''; });
     },
     agregar: function (obj) { this.agregarVarias([obj]); },
@@ -198,6 +200,7 @@ function _tb(nombre) {
     actualizar: function (fila, obj) {
       const self = this;
       Object.keys(obj).forEach(function (h) {
+        if (opcional(h)) return;
         sh.getRange(fila, self.col(h) + 1).setValue(obj[h]);
       });
       this._f = null;

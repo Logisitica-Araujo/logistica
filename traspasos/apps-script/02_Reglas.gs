@@ -160,6 +160,13 @@ function TR_REGLAS() {
   R.eliminable = function (t, me) {
     return t.origen === me && t.estatus === 'NUEVO' && !t.solicitud;
   };
+  /** El DESTINO (quien lo pidió) también puede solicitar la cancelación mientras siga en "Nuevo traspaso".
+   *  La responsabilidad queda en su área, no en la que lo creó. */
+  R.cancelableDestino = function (t, me, A) {
+    return !!t && t.estatus === 'NUEVO' && !t.solicitud && t.origen !== me && R.mismaSuc(A, t.destino, me);
+  };
+  /** Tipos de incidencia al recibir. Con INCOMPLETO o AMBOS se pide cuántos bultos llegaron. */
+  R.INCIDENCIAS = { DANADO: 'Llegó dañado / roto', INCOMPLETO: 'Llegó incompleto (faltan bultos)', AMBOS: 'Dañado e incompleto' };
 
   return R;
 }

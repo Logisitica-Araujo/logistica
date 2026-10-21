@@ -157,7 +157,7 @@ function apiDatos(token) {
         .filter(function (f) { return _norm(f['Estado']) === 'pendiente'; })
         .map(function (f) {
           return { id: String(f['ID']), fecha: _txt(f['Fecha']), folio: String(f['Folio']),
-                   solicito: String(f['Solicitó']), area: String(f['Área']), motivo: String(f['Motivo']) };
+                   solicito: String(f['Solicitó']), area: String(f['Área']), motivo: String(f['Motivo']), lado: String(f['Lado'] || '') };
         });
     }
 
@@ -315,7 +315,8 @@ function _buscarFila(folio) {
 /* ======================= ESCÁNER: CONFIRMAR LOTE ======================= */
 
 /**
- * d = { modo: 'RECIBIR'|'ENTREGAR', gestorCodigo, items:[{folio, faltan}], escaneos:[{texto,resultado,mensaje}] }
+ * d = { modo: 'RECIBIR'|'ENTREGAR', gestorCodigo, items:[{folio, faltan, inc:{tipo, llegaron, detalle}}], escaneos:[{texto,resultado,mensaje}] }
+ * Si llegó con incidencia (faltan) es obligatorio explicar qué pasó; si llegó incompleto, cuántos bultos llegaron.
  * El servidor vuelve a validar cada folio (la página ya lo hizo, pero aquí manda la verdad).
  */
 function apiConfirmarLote(token, d) {
@@ -340,6 +341,14 @@ function apiConfirmarLote(token, d) {
       receptor = _personaPorCodigo(d.receptor);
       if (!receptor) throw new Error(d.receptor ? _noReconocido(d.receptor) : 'Escanea la credencial de quien recibe.');
     }
+
+    if (modo === 'RECIBIR') (d.items || []).forEach(function (it) {
+      if (!it.faltan) return;
+      const inc = it.inc || {};
+      if (!R.INCIDENCIAS[inc.tipo]) throw new Error(it.folio + ': elige qué pasó (llegó dañado, incompleto o ambos).');
+      if (String(inc.detalle || '').trim().length < 3) throw new Error(it.folio + ': explica qué pasó (es obligatorio).');
+      if (inc.tipo !== 'DANADO' && !(String(inc.llegaron) !== '' && Number(inc.llegaron) >= 0)) throw new Error(it.folio + ': escribe cuántos bultos llegaron.');
+    });
 
     const res = _conCandado(function () {
       const mapa = {};
@@ -386,14 +395,25 @@ function apiConfirmarLote(token, d) {
         }
 
         const nuevo = it.faltan ? 'INCIDENCIA' : 'ENTREGADO';
+        let recibidos = t.bultos + ' de ' + t.bultos, incTxt = '';
+        if (it.faltan) {
+          const inc = it.inc || {};
+          if (inc.tipo !== 'DANADO') {
+            const n = Math.floor(Number(inc.llegaron));
+            if (!(n >= 0 && n < t.bultos)) { resultados.push({ folio: t.folio, ok: false, msg: 'Llegaron ' + inc.llegaron + ' bultos, pero el traspaso es de ' + t.bultos + '. Revisa el número.' }); return; }
+            recibidos = n + ' de ' + t.bultos;
+          }
+          incTxt = R.INCIDENCIAS[inc.tipo] + (inc.tipo !== 'DANADO' ? ' · llegaron ' + recibidos : '') + ' · ' + String(inc.detalle).trim();
+        }
         _actualizarT(t, {
           'Estatus': nuevo, 'Fecha entrega': _ahoraTxt(), 'Recibido por': receptor.nombre + ' (' + R.nom(A, me) + ')',
-          'Bultos recibidos': it.faltan ? 'INCOMPLETO' : (t.bultos + ' de ' + t.bultos), 'Ubicación actual': ''
+          'Bultos recibidos': recibidos, 'Incidencia': incTxt, 'Ubicación actual': ''
         });
         movs.push(_movObj(t, it.faltan ? 'RECIBIDO CON INCIDENCIA' : 'ENTREGADO', antes, nuevo,
           { donde: me, medio: 'ESCÁNER', equipo: me, persona: receptor.nombre, cred: receptor.via,
-            detalle: nota + (it.faltan ? 'Faltan bultos o llegó dañado' : (t.bultos + ' bulto(s)')) }));
-        avisos.push(_avisoObj(t.origen, t.folio, (it.faltan ? 'Recibido CON INCIDENCIA en ' : 'Entregado en ') + R.nom(A, me) + ' · recibió ' + receptor.nombre));
+            detalle: nota + (it.faltan ? incTxt : (t.bultos + ' bulto(s)')) }));
+        avisos.push(_avisoObj(t.origen, t.folio, (it.faltan ? 'Recibido CON INCIDENCIA en ' + R.nom(A, me) + ' · ' + incTxt : 'Entregado en ' + R.nom(A, me)) + ' · recibió ' + receptor.nombre));
+        if (it.faltan) avisos.push(_avisoObj(TR.AREA_ADMIN, t.folio, 'Incidencia al recibir en ' + R.nom(A, me) + ' · ' + incTxt));
         resultados.push({ folio: t.folio, ok: true, msg: it.faltan ? 'Recibido con incidencia' : 'Entregado' });
       });
 
@@ -468,21 +488,40 @@ function apiReimprimir(token, d) {
   });
 }
 
-function apiSolicitarEliminacion(token, folio, motivo) {
+/**
+ * Solicitud de CANCELACIÓN (la aprueba un administrador). La puede pedir:
+ *  - el ORIGEN (quien lo creó), o
+ *  - el DESTINO (quien lo pidió y ya no lo quiere).
+ * La responsabilidad queda en el área que la solicita. En sucursales se escanea la credencial
+ * de quien la pide; en Oficinas queda la cuenta abierta.
+ */
+function apiSolicitarEliminacion(token, folio, motivo, quien) {
   return _api(function () {
     const c = _ctx(token);
+    const A = _areas();
     motivo = String(motivo || '').trim();
-    if (!motivo) throw new Error('Escribe por qué se debe eliminar.');
+    if (!motivo) throw new Error('Escribe por qué se debe cancelar.');
     const t = _buscarT(folio);
     if (!t) throw new Error('No encontré el folio.');
-    if (!R.eliminable(t, c.area)) throw new Error('Solo se puede solicitar desde el área que lo creó y antes de que se recolecte.');
+    const lado = R.eliminable(t, c.area) ? 'ORIGEN' : R.cancelableDestino(t, c.area, A) ? 'DESTINO' : '';
+    if (!lado) throw new Error('Solo la puede solicitar el área que lo creó o la que lo va a recibir, y solo mientras siga en "Nuevo traspaso" (antes de que se lo lleve el gestor).');
+    let p;
+    if (_sinCredencial(c.area)) p = _personaDeCuenta(c);
+    else {
+      p = _personaPorCodigo(quien);
+      if (!p) throw new Error(quien && (quien.codigo || quien.usuario) ? _noReconocido(quien) : 'Escanea tu credencial: queda registrado quién solicita la cancelación.');
+    }
     _actualizarT(t, { 'Eliminación solicitada': 'SI' });
     _tb(TR.H.SOLICITUDES).agregar({
-      'ID': _id('S'), 'Fecha': _ahoraTxt(), 'Folio': t.folio, 'Solicitó': c.email, 'Área': _nom(c.area),
-      'Motivo': motivo, 'Estado': 'PENDIENTE'
+      'ID': _id('S'), 'Fecha': _ahoraTxt(), 'Folio': t.folio, 'Solicitó': p.nombre, 'Área': _nom(c.area),
+      'Motivo': motivo, 'Estado': 'PENDIENTE',
+      'Lado': lado === 'ORIGEN' ? 'ORIGEN (lo creó)' : 'DESTINO (lo pidió)', 'Responsable (área)': c.area, 'Cuenta': c.email
     });
-    _mov(t, 'SOLICITUD DE ELIMINACIÓN', t.estatus, t.estatus, { donde: c.area, persona: c.email, detalle: motivo });
-    _aviso(TR.AREA_ADMIN, t.folio, 'Solicitud de eliminación desde ' + _nom(c.area) + ': ' + motivo);
+    _mov(t, 'SOLICITUD DE CANCELACIÓN · ' + (lado === 'ORIGEN' ? 'LA PIDE QUIEN LO CREÓ' : 'LA PIDE EL DESTINO'), t.estatus, t.estatus,
+      { donde: c.area, persona: p.nombre, cred: p.via, detalle: motivo });
+    const otro = lado === 'ORIGEN' ? t.destino : t.origen;
+    _aviso(TR.AREA_ADMIN, t.folio, 'Solicitud de cancelación de ' + _nom(c.area) + ' (' + (lado === 'ORIGEN' ? 'lo creó' : 'lo pidió') + ') · ' + p.nombre + ': ' + motivo);
+    _aviso(otro, t.folio, _nom(c.area) + ' solicitó cancelar este traspaso: ' + motivo);
     return true;
   });
 }
@@ -591,14 +630,16 @@ function apiAdminResolver(token, idSolicitud, aprobar, comentario) {
                              'Fecha respuesta': _ahoraTxt(), 'Comentario': String(comentario || '') });
     const t = _buscarT(s['Folio']);
     if (t) {
+      const resp = String(s['Responsable (área)'] || '').trim() || t.origen;     // quien la pidió
+      const quien = 'la solicitó ' + _nom(resp) + (s['Solicitó'] ? ' · ' + s['Solicitó'] : '');
       if (aprobar) {
         _actualizarT(t, { 'Estatus': 'ELIMINADO', 'Eliminación solicitada': 'NO' });
-        _mov(t, 'ELIMINADO (SOLICITUD APROBADA)', t.estatus, 'ELIMINADO', { persona: c.email, medio: 'ADMINISTRADOR', detalle: comentario || '' });
-        _aviso(t.origen, t.folio, 'Se aprobó tu solicitud: el traspaso fue eliminado');
+        _mov(t, 'CANCELADO (SOLICITUD APROBADA)', t.estatus, 'ELIMINADO', { persona: c.email, medio: 'ADMINISTRADOR', detalle: quien + (comentario ? ' · ' + comentario : '') });
+        [t.origen, t.destino].forEach(function (a) { _aviso(a, t.folio, 'Traspaso cancelado (' + quien + ')'); });
       } else {
         _actualizarT(t, { 'Eliminación solicitada': 'NO' });
-        _mov(t, 'SOLICITUD RECHAZADA', t.estatus, t.estatus, { persona: c.email, medio: 'ADMINISTRADOR', detalle: comentario || '' });
-        _aviso(t.origen, t.folio, 'Se rechazó tu solicitud de eliminación' + (comentario ? ': ' + comentario : ''));
+        _mov(t, 'SOLICITUD RECHAZADA', t.estatus, t.estatus, { persona: c.email, medio: 'ADMINISTRADOR', detalle: quien + (comentario ? ' · ' + comentario : '') });
+        _aviso(resp, t.folio, 'Se rechazó tu solicitud de cancelación' + (comentario ? ': ' + comentario : ''));
       }
     }
     _adminLog(c.email, aprobar ? 'APROBAR SOLICITUD' : 'RECHAZAR SOLICITUD', String(s['Folio']), '', '', comentario);
