@@ -472,7 +472,7 @@ function etiquetaHTML(t, b, rp, pantalla) {
   if (tm.formato === 'MINI') {
     return '<div class="' + (pantalla ? 'label ' : '') + 'lbl mini" style="' + tam + '">' +
       '<div class="mrow"><span class="fol">' + esc(t.folio) + '</span><span class="bul">' + (rp ? 'R' + rp + ' · ' : '') + b + '/' + t.bultos + '</span></div>' +
-      '<svg class="bc" data-code="' + esc(t.folio) + '"></svg>' +
+      bcHTML(t.folio, tm.w - 0.4 - 3, 7) +
       '<div class="dest">→ ' + esc(t.destino ? nom(t.destino) : '—') + '</div></div>';
   }
   var chica = tm.formato === 'CHICA' ? ' chica' : '';   // etiquetas chicas (ej. 62 × 29 mm): solo lo esencial
@@ -480,14 +480,50 @@ function etiquetaHTML(t, b, rp, pantalla) {
     '<div><div class="k">DESTINO</div><div class="dest">' + esc(t.destino ? nom(t.destino) : '—') + '</div></div>' +
     '<div><div class="k">ORIGEN</div><div class="orig">' + esc(nom(t.origen)) + '</div></div>' +
     '<div class="fol">' + esc(t.folio) + '</div>' +
-    '<svg class="bc" data-code="' + esc(t.folio) + '"></svg>' +
+    bcHTML(t.folio, tm.w - 0.4 - (chica ? 3 : 6), chica ? 8 : 12) +
     '<div class="bul">BULTO ' + b + ' DE ' + t.bultos + '</div>' +
     '<div class="pie">' + esc(fh(t.fecha, t.hora)) + '<br>Creó: ' + esc(quien(String(t.por || '').split(' · ')[0], nom(t.origen))) + '</div></div>';
+}
+/*
+ * CÓDIGO DE BARRAS PARA IMPRESORA TÉRMICA (203 dpi: 1 punto = 0.125 mm)
+ * - Cada barra mide un número EXACTO de puntos (nada de estirar el código al ancho de la etiqueta):
+ *   así la impresora no redondea y todas las barras del mismo tipo salen iguales.
+ * - Barras de 3 puntos (0.375 mm) si caben; si el folio es largo (ej. NR-RB-0001), de 2 puntos.
+ * - Con barras de 3 puntos se imprimen 1 punto más delgadas: la tinta que se corre las deja del tamaño justo.
+ * - Margen blanco de 2.5 mm a cada lado (sin él la pistola no sabe dónde empieza el código).
+ * - Altura corta (7 mm en 50 × 20): menos tinta y menos calor.
+ */
+var PUNTO = 0.125;
+function bcHTML(code, anchoMm, altoMm) {
+  return '<div class="bcw"><svg class="bc" data-code="' + esc(code) + '" data-w="' + anchoMm + '" data-h="' + altoMm + '"></svg></div>';
 }
 function pintarCodigos(raiz) {
   if (!window.JsBarcode) return;
   raiz.querySelectorAll('svg.bc').forEach(function (s) {
-    try { JsBarcode(s, s.getAttribute('data-code'), { format: 'CODE128', displayValue: false, height: 60, margin: 0, width: 2 }); s.setAttribute('preserveAspectRatio', 'none'); } catch (e) { }
+    try {
+      var o = {};
+      JsBarcode(o, s.getAttribute('data-code'), { format: 'CODE128' });
+      var bits = o.encodings.map(function (e) { return e.data; }).join('');
+      var ancho = Number(s.getAttribute('data-w')) || 45, alto = Number(s.getAttribute('data-h')) || 7;
+      var quiet = 2.5, puntos = 3;
+      if (bits.length * puntos * PUNTO + 2 * quiet > ancho) puntos = 2;
+      if (bits.length * puntos * PUNTO + 2 * quiet > ancho) quiet = 2;
+      var mod = puntos * PUNTO, red = puntos >= 3 ? PUNTO : 0;
+      var w = bits.length * mod + 2 * quiet, r = '';
+      for (var i = 0; i < bits.length;) {
+        if (bits[i] !== '1') { i++; continue; }
+        var j = i; while (j < bits.length && bits[j] === '1') j++;
+        r += '<rect x="' + (quiet + i * mod) + '" y="0" width="' + ((j - i) * mod - red) + '" height="' + alto + '"/>';
+        i = j;
+      }
+      // Centrado, pero cayendo justo en un punto de la impresora
+      var izq = Math.max(0, Math.floor((ancho - w) / 2 / PUNTO) * PUNTO);
+      s.setAttribute('viewBox', '0 0 ' + w + ' ' + alto);
+      s.setAttribute('width', w + 'mm'); s.setAttribute('height', alto + 'mm');
+      s.setAttribute('shape-rendering', 'crispEdges');
+      s.style.marginLeft = izq + 'mm';
+      s.innerHTML = r;
+    } catch (e) { }
   });
 }
 function imprimir(t, bultos, rp) {

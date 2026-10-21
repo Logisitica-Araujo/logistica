@@ -183,25 +183,25 @@ tr.click:hover td{background:var(--surface-2)}
 
 /* Etiqueta (la misma para pantalla e impresión) */
 .lbl{font-family:var(--f);color:#000;background:#fff;display:flex;flex-direction:column;gap:1.2mm;padding:3mm;overflow:hidden;position:relative}
-.lbl .k{font-size:7pt;font-weight:900;letter-spacing:.08em;color:#333}
-.lbl .dest{font-size:15pt;font-weight:900;line-height:1.05}
+/* Poca tinta: letras 700-800 (no 900), sin recuadros gruesos; el código no se estira (ver pintarCodigos). */
+.lbl .k{font-size:7pt;font-weight:800;letter-spacing:.08em;color:#333}
+.lbl .dest{font-size:14pt;font-weight:800;line-height:1.05}
 .lbl .orig{font-size:9pt;font-weight:700;line-height:1.1}
-.lbl .fol{font-size:20pt;font-weight:900;letter-spacing:.02em;font-variant-numeric:tabular-nums;line-height:1}
-.lbl svg.bc{width:100%;height:16mm;display:block}
-.lbl .bul{font-size:16pt;font-weight:900;border:2px solid #000;border-radius:2mm;text-align:center;padding:.5mm 0}
-.lbl .pie{font-size:7.5pt;line-height:1.25}
+.lbl .fol{font-size:19pt;font-weight:800;letter-spacing:.02em;font-variant-numeric:tabular-nums;line-height:1}
+.lbl .bcw{line-height:0}
+.lbl svg.bc{display:block;fill:#000}
+.lbl .bul{font-size:14pt;font-weight:800;border:.25mm solid #000;border-radius:1.5mm;text-align:center;padding:.4mm 0}
+.lbl .pie{font-size:7.5pt;font-weight:600;line-height:1.25}
 .lbl.chica{gap:.6mm;padding:1.5mm}
 .lbl.chica .k,.lbl.chica .orig,.lbl.chica .pie{display:none}
 .lbl.chica .dest{font-size:8pt}
 .lbl.chica .fol{font-size:12pt}
-.lbl.chica svg.bc{height:8mm}
-.lbl.chica .bul{font-size:8pt;border-width:1px;padding:0}
-.lbl.mini{gap:.3mm;padding:1mm 1.5mm}
+.lbl.chica .bul{font-size:8pt;border-width:.2mm;padding:0}
+.lbl.mini{gap:.6mm;padding:1mm 1.5mm;justify-content:space-between}
 .lbl.mini .mrow{display:flex;justify-content:space-between;align-items:baseline;gap:2mm;line-height:1}
-.lbl.mini .fol{font-size:10pt}
-.lbl.mini .bul{font-size:8pt;font-weight:900;border:none;padding:0;white-space:nowrap}
-.lbl.mini svg.bc{flex:1;height:auto;min-height:7mm}
-.lbl.mini .dest{font-size:6.5pt;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lbl.mini .fol{font-size:11pt}
+.lbl.mini .bul{font-size:9pt;font-weight:800;border:none;padding:0;white-space:nowrap}
+.lbl.mini .dest{font-size:7pt;font-weight:700;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
 .lbl .rp{position:absolute;top:2mm;right:2mm;font-size:8pt;font-weight:900;border:1.5px solid #000;padding:0 1.5mm;border-radius:1mm}
 
 details.sincred summary{cursor:pointer;font-weight:700;color:var(--muted);font-size:14px}
