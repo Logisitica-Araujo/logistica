@@ -145,7 +145,7 @@ suc=[
  fig('s08c_incidencia','Llegó dañado: qué pasó y la explicación. Se avisa al origen y a administración con el motivo.')+
  paso(5,'Confirmar recepción','Queda <span class="st" style="color:#1B7F38;background:#DFF3E5">● Entregado</span> (o <i>Recibido con incidencia</i>) y al origen le llega el aviso.')+
  fig('s08_recibir_fila','Traspasos en la lista, listos para confirmar.')+
- '<h3>Lista "Vienen para aquí"</h3><p>Abajo aparecen los traspasos que van para tu sucursal y todavía no se reciben: los que vienen <b>en ruta con un gestor</b> y los que siguen en <b>Nuevo traspaso</b> (a alguien se le olvidó darles salida).</p>'+
+ '<h3>Lista "Vienen para aquí"</h3><p>Abajo aparecen los traspasos que van para tu sucursal y todavía no se reciben: <b>todo</b> lo que viene para tu sucursal: en ruta con un gestor, por paquetería, en Logística, y lo que sigue en <b>Nuevo traspaso</b> (a alguien se le olvidó darle salida).</p>'+
  paso('★','Escanea la credencial del gestor que llega (opcional)','Lo que <b>trae ese gestor</b> sale <b>en color</b>: hay certeza de que viene con él. Lo demás sale <b>en gris</b> y se ilumina al pasar el cursor. Cualquiera se puede tocar para agregarlo.')+
  fig('s08b_vienen','En color, lo que trae José Luis; en gris, uno que nadie registró al salir.')+
  nota('warn','Llegó y nadie registró la recolección','Si el gestor olvidó registrar la salida, igual se recibe. La fila sale en amarillo con el aviso y queda anotado en la historia.')),
@@ -226,7 +226,7 @@ ofi=[
 ('Recibir y entregar','escáner',
  nota('warn','Si llegó roto o incompleto','Marca <b>Faltan / dañado</b> y llena qué pasó, cuántos bultos llegaron (si faltan) y la explicación. Es obligatorio.')+
  '<h3>Recibir</h3>'+paso(1,'Escáner → "Recibir traspasos"','Escanea las etiquetas (se agregan solas), teclea el folio o tócalo en la lista <b>"Vienen para aquí"</b> de abajo. No pide credencial.')+
- nota('info','Lista "Vienen para aquí"','Lo que va para tu área en ruta con un gestor o en <i>Nuevo traspaso</i>. Si escaneas la credencial del gestor que llega, lo que él trae sale en color; lo demás, en gris.')+paso(2,'Confirmar recepción','Queda <span class="st" style="color:#1B7F38;background:#DFF3E5">● Entregado</span>.')+
+ nota('info','Lista "Vienen para aquí"','<b>Todo</b> lo que va para tu área: en ruta con un gestor, en Recepción Oficinas, en Logística, por paquetería o en <i>Nuevo traspaso</i>. Se toca para agregarlo, se teclea o se escanea. Si escaneas la credencial del gestor que llega, lo que él trae sale en color; lo demás, en gris.')+paso(2,'Confirmar recepción','Queda <span class="st" style="color:#1B7F38;background:#DFF3E5">● Entregado</span>.')+
  fig('o03_recibir','Recibir en Oficinas: directo, sin credencial.')+
  '<h3>Entregar al gestor</h3>'+paso(1,'Escáner → "Entregar a gestor"','Escanea la credencial de quien se lo lleva; luego escanea, teclea o toca en la lista <b>"Creados aquí, por entregar"</b>, y <b>Confirmar salida</b>.')+
  '<h3>Sonidos</h3>'+tabla(['Sonido','Cuándo suena'],[

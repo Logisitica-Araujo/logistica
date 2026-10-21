@@ -608,9 +608,10 @@ function porRecibirHTML(bloq) {
   var norm = function (x) { return String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase(); };
   var enRuta = function (t) { return t.estatus === 'RECOLECTADO' || t.estatus === 'ENTREGADO_GESTOR'; };
   var suyo = function (t) { return !!g && enRuta(t) && norm(t.gestor) === norm(g.nombre); };
+  // TODO lo que esta área puede recibir: nuevo, en ruta con gestor, en Recepción Oficinas, en Logística, por paquetería…
   var l = S.data.traspasos.filter(function (t) {
-    return (t.estatus === 'NUEVO' || enRuta(t)) && !enLote[R.limpio(t.folio)] && R.recibir(t, m, S.A, S.E).k === 'ok';
-  }).sort(function (a, b) { return (suyo(b) - suyo(a)) || (enRuta(b) - enRuta(a)); });
+    return !enLote[R.limpio(t.folio)] && R.recibir(t, m, S.A, S.E).k === 'ok';
+  }).sort(function (a, b) { return (suyo(b) - suyo(a)) || ((b.estatus !== 'NUEVO') - (a.estatus !== 'NUEVO')); });
   var n = l.filter(suyo).length;
   var gest = bloq ? '' : g ? '<div class="gestorpill"><div><b>' + esc(g.nombre) + '</b><div class="muted" style="font-size:13px">Lo trae · ' + n + ' traspaso(s) para aquí</div></div><button class="btn ghost" type="button" data-a="tclear" style="margin-left:auto">Cambiar</button></div>'
     : '<div style="max-width:420px">' + idHTML('rgest', '¿Qué gestor lo trae? Escanea su credencial (opcional)', 'Credencial del gestor') + '</div>';
@@ -621,7 +622,7 @@ function porRecibirHTML(bloq) {
       return '<button type="button" class="ped' + (col ? ' trae' : ' tenue') + '" data-a="recsug" data-v="' + esc(t.folio) + '"' + (bloq ? ' disabled' : '') + '><span class="caja">＋</span>' +
         '<span style="min-width:0"><span class="row" style="gap:6px 10px">' + areaTag(t.destino) + '<span><span class="num" style="font-size:16px">' + esc(t.folio) + '</span> · de ' + esc(nom(t.origen)) + '</span>' + badge(t) + '</span>' +
         '<span class="d">' + t.bultos + ' bulto(s) · ' + esc(t.desc) + (enRuta(t) && t.gestor ? ' · lo lleva ' + esc(t.gestor) : '') + '</span></span><span class="r">Creado<br>' + esc(fh(t.fecha, t.hora)) + '</span></button>';
-    }).join('') + '</div>' : '<div class="muted">No hay traspasos en camino ni en "Nuevo traspaso" para aquí.</div>') + '</div>';
+    }).join('') + '</div>' : '<div class="muted">No hay traspasos pendientes de recibir aquí.</div>') + '</div>';
 }
 function validarTrae(d) {
   srv('apiGestor', S.token, d).then(function (g) { S.scan.trae = g; S.idAbierto = null; beep('ok'); render(); })
