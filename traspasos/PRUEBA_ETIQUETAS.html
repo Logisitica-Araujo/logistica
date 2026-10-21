@@ -1,0 +1,56 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Prueba de etiquetas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+<style>
+body{margin:0;background:#fff;font-family:Nunito,sans-serif}
+@page{size:50mm 20mm;margin:0}
+.aviso{font:14px/1.5 Nunito,sans-serif;max-width:640px;margin:16px;padding:12px 14px;border:2px solid #0E7C66;border-radius:10px}
+.lab::after{content:attr(data-n);position:absolute;right:1mm;bottom:.3mm;font-size:5pt;font-weight:800}
+@media print{.aviso{display:none}.lab{margin:0;break-after:page}.lab:last-child{break-after:auto}}
+.lab{width:50mm;height:20mm;background:#fff;color:#000;overflow:hidden;position:relative;box-sizing:border-box;margin:4mm}
+/* ACTUAL (igual que la app hoy) */
+.act{display:flex;flex-direction:column;gap:.3mm;padding:1mm 1.5mm}
+.act .mrow{display:flex;justify-content:space-between;align-items:baseline;line-height:1;font-weight:900}
+.act .fol{font-size:10pt}.act .bul{font-size:8pt}
+.act svg{flex:1;width:100%;height:auto;min-height:7mm;display:block}
+.act .dest{font-size:6.5pt;font-weight:900;line-height:1.1;white-space:nowrap;overflow:hidden}
+/* A: barras nítidas */
+.a{padding:1mm 2mm 0}
+.a .top{display:flex;justify-content:space-between;align-items:baseline;line-height:1;font-weight:900}
+.a .fol{font-size:12pt;letter-spacing:.02em}.a .bul{font-size:10pt}
+.a .bc{display:block;margin:.8mm auto .6mm}
+.a .dest{font-size:7pt;font-weight:900;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* B: QR */
+.b{display:flex;gap:2mm;align-items:center;padding:1mm 2mm 1mm 1mm}
+.b .txt{min-width:0;display:flex;flex-direction:column;gap:.8mm;line-height:1}
+.b .fol{font-size:14pt;font-weight:900;letter-spacing:.01em}
+.b .bul{font-size:10pt;font-weight:900;border:.35mm solid #000;border-radius:1mm;padding:.4mm 1.2mm;align-self:flex-start}
+.b .dest{font-size:7pt;font-weight:900;line-height:1.15}
+svg.px{shape-rendering:crispEdges;display:block;flex:none}
+</style></head><body>
+<div class="aviso"><b>Prueba de etiquetas · 50 × 20 mm</b><br>
+1. Ctrl + P → impresora <b>Argox</b> → Más opciones: <b>Márgenes: Ninguno</b>, <b>Escala: Predeterminada (100%)</b>, sin encabezados.<br>
+2. Salen 4 etiquetas (número abajo a la derecha): <b>0</b> actual · <b>1</b> barras gruesas · <b>2</b> barras folio largo · <b>3</b> QR.<br>
+3. Escanea cada una con la pistola en el Bloc de notas y anota cuál lee <b>a la primera</b>.</div>
+<div id="r"></div>
+<script>
+var P={"c128": [1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1], "c128rb": [1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1], "qr": [[1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1], [1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1], [1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1], [1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1], [1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1], [1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1], [1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0], [1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1], [0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1], [1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1], [0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1], [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0], [1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0], [1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1], [1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1], [1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0], [1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1], [1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1], [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1]]};
+// Barras en múltiplos exactos de un punto de la impresora (203 dpi = 0.125 mm)
+function barras(mods, modMm, altoMm, quietMm, red){ red=red||0;
+  var w=mods.length*modMm+2*quietMm, s='';
+  for(var i=0;i<mods.length;){ if(!mods[i]){i++;continue;} var j=i; while(j<mods.length&&mods[j]) j++; s+='<rect x="'+(quietMm+i*modMm)+'" y="0" width="'+((j-i)*modMm-red)+'" height="'+altoMm+'"/>'; i=j; }
+  return '<svg class="px bc" width="'+w+'mm" height="'+altoMm+'mm" viewBox="0 0 '+w+' '+altoMm+'">'+s+'</svg>';
+}
+function matriz(m, modMm, quietMod){
+  var n=m.length, w=(n+2*quietMod)*modMm, s='';
+  m.forEach(function(row,y){ row.forEach(function(v,x){ if(v) s+='<rect x="'+((x+quietMod)*modMm)+'" y="'+((y+quietMod)*modMm)+'" width="'+modMm+'" height="'+modMm+'"/>'; }); });
+  return '<svg class="px" width="'+w+'mm" height="'+w+'mm" viewBox="0 0 '+w+' '+w+'">'+s+'</svg>';
+}
+var D='Oficinas · Coordinación PV';
+document.getElementById('r').innerHTML=
+ '<div class="lab act" id="o0" data-n="0"><div class="mrow"><span class="fol">NR-0001</span><span class="bul">1/3</span></div><svg id="jb"></svg><div class="dest">→ '+D+'</div></div>'+
+ '<div class="lab a" id="o1" data-n="1"><div class="top"><span class="fol">NR-0001</span><span class="bul">1/3</span></div>'+barras(P.c128,0.375,9.5,2.5,0.125)+'<div class="dest">→ '+D+'</div></div>'+
+ '<div class="lab a" id="o3" data-n="2"><div class="top"><span class="fol">NR-RB-0001</span><span class="bul">1/3</span></div>'+barras(P.c128rb,0.25,9.5,2.5)+'<div class="dest">→ '+D+'</div></div>'+
+ '<div class="lab b" id="o2" data-n="3">'+matriz(P.qr,0.625,2)+'<div class="txt"><span class="fol">NR-0001</span><span class="bul">Bulto 1/3</span><span class="dest">→ '+D+'</span></div></div>';
+JsBarcode('#jb','NR-0001',{format:'CODE128',displayValue:false,height:60,margin:0,width:2}); document.getElementById('jb').setAttribute('preserveAspectRatio','none');
+</script></body></html>
