@@ -77,7 +77,7 @@ function instalar() {
     ['revisar_avisos_cada_seg', 45, 'Cada cuántos segundos la página revisa si hay traspasos nuevos para el área.'],
     ['pin_administrador', '', 'PIN para entrar al Modo administrador. Vacío = sin PIN. Recomendado si tu cuenta está abierta en una computadora compartida.'],
     ['botican_archivo', 'https://docs.google.com/spreadsheets/d/1a3n7z962Ik6c1YrcD7RxkJEAWWK6a9xuA5LDrr2sffc/edit', 'Archivo con la bitácora de pedidos Botican (hoja Envios). Ahí se escribe el gestor en "Recolección de Gestor".'],
-    ['carpeta_manuales', '', 'Carpeta de Drive con los manuales en PDF (solo la ven los administradores, para actualizarlos).'],
+    ['carpeta_manuales', 'https://drive.google.com/drive/folders/1ZGOY7huAekZEnC_B9i_AY4oL84pMS_hl', 'Carpeta de Drive con los manuales en PDF (solo la ven los administradores, para actualizarlos).'],
     ['manual_sucursales', '', 'Link de Drive del PDF "Manual de Sucursales" (PV, Rebotica, Botican, Morelia). Sale en el botón ❓ Ayuda.'],
     ['manual_oficinas_recepcion', '', 'Link de Drive del PDF "Manual de Oficinas y Recepción". Sale en el botón ❓ Ayuda de Oficinas, Logística y Recepción.'],
     ['manual_administradores', '', 'Link de Drive del PDF "Manual de Administradores". Solo lo ven los administradores.'],
