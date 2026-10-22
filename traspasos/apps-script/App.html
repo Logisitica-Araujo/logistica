@@ -332,6 +332,7 @@ function renderHeader() {
       }).join('') + '</div>' : '') + '</div>' : '') + '</div>';
   $('#header').innerHTML = '<div class="brand">' + logo + 'Traspasos</div>' +
     cambioModo() + '<div class="who"><span class="p">' + esc(S.ctx.areaNombre) + '</span><span class="u">' + esc(S.ctx.email) + (min < 60 * 24 * 30 ? ' · sesión: cierra en ' + Math.floor(min / 60) + ' h ' + ('0' + (min % 60)).slice(-2) + ' min' : '') + (me() === 'REC' ? ' · 🔒 equipo fijo' : ' · <a href="#" data-a="salir">Salir</a>') + '</span></div>' +
+    (esVistaAdmin() ? '' : '<form class="hsearch" data-form="hbuscar" role="search"><input id="hbusq" autocomplete="off" placeholder="🔎 Buscar folio" aria-label="Buscar folio"></form>') +
     ayudaHTML() + bell + '<nav class="tabs">' + tabs.map(function (x) {
       return '<button type="button" data-a="tab" data-v="' + x[0] + '"' + (x[3] ? ' class="' + x[3] + '"' : '') + (S.tab === x[0] ? ' aria-current="page"' : '') + '>' + x[1] + (x[2] ? ' <span class="count">' + x[2] + '</span>' : '') + '</button>';
     }).join('') + '</nav>';
@@ -827,9 +828,8 @@ function vRecepcion() {
       idHTML('rec', 'Credencial', 'Escanea tu credencial') + fb + '</div>';
   }
   var q = r.quien;
-  var disp = dejar ? [] : S.data.traspasos.filter(function (t) {
-    return R.recogible(t, S.A, S.E, q).k === 'ok' && !r.lote.some(function (x) { return x.folio === t.folio; });
-  });
+  if (!dejar) return vRecoger(r, q, fb);
+  var disp = [];
   return '<h1>' + titulo + '</h1>' +
     '<div class="gestorpill" style="margin-bottom:16px"><div><b style="font-size:18px">' + esc(q.nombre) + '</b><div class="muted" style="font-size:13px">' +
       esc(quienTxt(q)) + '</div></div>' +
@@ -842,6 +842,53 @@ function vRecepcion() {
       '<div class="queue">' + (r.lote.length ? r.lote.map(function (t) {
         return '<div class="qrow"><span style="color:var(--ok);font-weight:900">✓</span><div style="min-width:0"><div class="row" style="gap:6px 10px">' + areaTag(t.destino) + '<span><span class="num">' + esc(t.folio) + '</span> · ' + esc(nom(t.origen)) + '<span class="arrow">→</span>' + esc(nom(t.destino)) + '</span></div><div class="muted" style="font-size:13px">' + t.bultos + ' bulto(s) · ' + esc(t.desc) + '</div></div><button class="btn ghost" type="button" data-a="recquitar" data-v="' + esc(t.folio) + '">Quitar</button></div>';
       }).join('') : '<div class="empty">Escanea el primer traspaso.</div>') + '</div></div></div>';
+}
+/*
+ * RECOGER, pensado para quien no usa computadora:
+ *  1) ya se identificó  2) toca las tarjetas de lo que se lleva (o escanea)  3) confirma.
+ * Arriba, grande, solo lo que YA está en el stand para él, agrupado por destino.
+ * Lo que todavía no llega al stand queda guardado en "Ver más".
+ */
+function vRecoger(r, q, fb) {
+  var gestor = q.tipo === 'GESTOR', sel = {};
+  r.lote.forEach(function (t) { sel[t.folio] = true; });
+  var todos = S.data.traspasos.filter(function (t) { return R.recogible(t, S.A, S.E, q).k === 'ok' || sel[t.folio]; });
+  var stand = todos.filter(function (t) { return t.estatus === 'EN_RECEPCION' || sel[t.folio]; });
+  var fuera = todos.filter(function (t) { return t.estatus !== 'EN_RECEPCION' && !sel[t.folio]; });
+  var bultos = r.lote.reduce(function (s, t) { return s + (Number(t.bultos) || 1); }, 0);
+  var grupos = {};
+  stand.forEach(function (t) { (grupos[t.destino] = grupos[t.destino] || []).push(t); });
+  var orden = Object.keys(grupos).sort(function (a, b) {
+    var ta = grupos[a].some(atrasado), tb = grupos[b].some(atrasado);
+    return (tb - ta) || nom(a).localeCompare(nom(b));
+  });
+  var tarjeta = function (t) {
+    var on = !!sel[t.folio], tarde = atrasado(t);
+    return '<button type="button" class="rcard' + (on ? ' on' : '') + (tarde ? ' tarde' : '') + '" data-a="rectog" data-v="' + esc(t.folio) + '" aria-pressed="' + on + '">' +
+      '<span class="chk">' + (on ? '✓' : '') + '</span>' +
+      '<span class="fol">' + esc(t.folio) + '</span>' +
+      '<span class="bul">' + t.bultos + ' bulto' + (t.bultos > 1 ? 's' : '') + '</span>' +
+      '<span class="de">de ' + esc(nom(t.origen)) + (tarde ? ' · <b>lleva ' + hTxt(t) + '</b>' : '') + '</span></button>';
+  };
+  var cuerpo = orden.length ? orden.map(function (d) {
+    var l = grupos[d], faltan = l.filter(function (t) { return !sel[t.folio]; }).length;
+    return '<section class="rgrupo"><div class="rgh"><div class="rdest">' + esc(nom(d)) + '</div>' + areaTag(d) + '</div>' +
+      '<div class="rcol">' + l.map(tarjeta).join('') + '</div>' +
+      (faltan > 1 ? '<button class="btn rtodos" type="button" data-a="rectodos" data-v="' + esc(d) + '">＋ Llevar los ' + faltan + '</button>' : '') + '</section>';
+  }).join('') : '<div class="empty" style="font-size:18px">' + (gestor ? 'No hay nada en el stand para llevar.' : 'No hay nada en el stand para ' + esc(q.areaNombre || 'tu área') + '.') + '</div>';
+  var mas = fuera.length ? '<details class="rmas"><summary>Ver ' + fuera.length + ' más que todavía <b>no llegan al stand</b> (siguen en su área)</summary>' +
+    '<p class="muted" style="margin:6px 0 10px">Solo llévatelos si te los dan en la mano.</p><div class="rcards">' + fuera.map(tarjeta).join('') + '</div></details>' : '';
+  return '<div class="rpasos"><div class="rp ok"><span>1</span><div><b>' + esc(q.nombre) + '</b><small>' + (gestor ? 'Gestor' : esc(q.areaNombre || 'Persona')) + ' · <a href="#" data-a="recquien">Cambiar</a></small></div></div>' +
+      '<div class="rp' + (r.lote.length ? ' ok' : ' act') + '"><span>2</span><div><b>Toca lo que te llevas</b><small>o escanea la etiqueta</small></div></div>' +
+      '<div class="rp' + (r.lote.length ? ' act' : '') + '"><span>3</span><div><b>Confirma</b><small>al final, abajo</small></div></div></div>' +
+    '<div class="rgrid"><div>' +
+      '<h1 style="margin:0 0 4px">' + (gestor ? 'En el stand para llevar' : 'Te esperan en el stand') + '</h1>' +
+      '<label class="rscan"><span>📷 ¿Traes la etiqueta en la mano? Escanéala aquí</span><input class="scaninput" id="recin" autocomplete="off" placeholder="NR-0001"></label>' + (r.fb && r.fb.k !== 'ok' ? fb : '') +
+      '<div class="rgrupos">' + cuerpo + '</div>' + mas +
+    '</div><aside class="rlleva"><div class="muted" style="font-weight:800;letter-spacing:.06em;font-size:12px">TE LLEVAS</div>' +
+      '<div class="rnum">' + r.lote.length + '<small> traspaso(s)</small></div><div class="muted" style="font-weight:700">' + bultos + ' bulto(s)</div>' +
+      (r.lote.length ? '<div class="rsel">' + r.lote.map(function (t) { return '<span>' + esc(t.folio) + ' <button type="button" data-a="recquitar" data-v="' + esc(t.folio) + '" aria-label="Quitar">✕</button></span>'; }).join('') + '</div>' : '<div class="muted" style="margin:10px 0">Toca las tarjetas de lo que te llevas.</div>') +
+      '<button class="btn primary rconf" type="button" data-a="recconfirmar"' + (r.lote.length && !r.enviando ? '' : ' disabled') + '>' + (r.enviando ? 'Guardando…' : 'Confirmar: me llevo ' + r.lote.length) + '</button></aside></div>';
 }
 /* ---------- Centro de Impresión (Recepción) ----------
  * La etiquetadora está conectada solo a esta computadora. Las áreas de Oficinas
@@ -1203,6 +1250,7 @@ function detalleHTML(t, movs) {
     : R.destinoSolicitable(t, yo, S.A)
       ? '<button class="btn" type="button" data-a="form" data-v="dest">📍 Editar destino</button>'
       : '<button class="btn" type="button" disabled title="Solo el área que lo creó o la que lo recibe, antes de que se entregue">📍 Editar destino</button>');
+  if (yo === 'REC') { botones = []; forms = ''; }      // Recepción solo consulta la historia
   if (botones.length || forms) acc += '<div class="actions"><div class="row">' + botones.join('') + '</div>' + forms + '</div>';
 
   if (adm) {
@@ -1272,8 +1320,16 @@ document.addEventListener('click', function (e) {
     case 'idman': return alIdentificar(v, leerId(v, true));
     case 'entrarpin': return entrar(v, $('#pinin').value);
     case 'pincancel': return leer('token') ? arrancar() : dibujarEntrada();
-    case 'recquien': S.rec = { quien: null, quienId: null, lote: [], fb: null, enviando: false }; break;
+    case 'recquien': e.preventDefault(); S.rec = { quien: null, quienId: null, lote: [], fb: null, enviando: false }; break;
     case 'recadd': return recEscanear(v);
+    case 'rectog':
+      if (S.rec.lote.some(function (t) { return t.folio === v; })) S.rec.lote = S.rec.lote.filter(function (t) { return t.folio !== v; });
+      else return recEscanear(v);
+      break;
+    case 'rectodos':
+      S.data.traspasos.filter(function (t) { return t.destino === v && t.estatus === 'EN_RECEPCION' && R.recogible(t, S.A, S.E, S.rec.quien).k === 'ok' && !S.rec.lote.some(function (x) { return x.folio === t.folio; }); })
+        .forEach(function (t) { S.rec.lote.push(t); });
+      beep('ok'); break;
     case 'recquitar': S.rec.lote = S.rec.lote.filter(function (t) { return t.folio !== v; }); break;
     case 'recconfirmar': return recConfirmar();
     case 'atras': w.step--; w.err = null; break;
@@ -1407,6 +1463,7 @@ function procesarCampo(el) {
   else if (id === 'cajain') agregarACaja(v);
   else if (id === 'recin') recEscanear(v);
   else if (id === 'botin') botEscanear(v);
+  else if (id === 'hbusq') { var fm = el.closest('form'); if (fm) fm.requestSubmit ? fm.requestSubmit() : fm.dispatchEvent(new Event('submit', { cancelable: true })); }
   else if (id === 'pinin') entrar(S.pinPara || el.closest('.pinbox').querySelector('[data-a=entrarpin]').getAttribute('data-v'), v);
   else if (/-(cod|nip|usr)$/.test(id)) {
     var p = id.replace(/-(cod|nip|usr)$/, '');
@@ -1423,7 +1480,7 @@ function procesarCampo(el) {
  * Si la pistola además manda Enter, no se duplica.
  */
 var AUTO = { el: null, t: null, ult: 0, rapidas: 0, lentas: 0 };
-var CAMPOS_AUTO = /^(scanin|cajain|recin|botin|[a-z]+-cod)$/;
+var CAMPOS_AUTO = /^(scanin|cajain|recin|botin|hbusq|[a-z]+-cod)$/;
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape' && S.modal) { S.modal = null; render(); return; }
   var el = e.target;
@@ -1458,6 +1515,13 @@ document.addEventListener('input', function (e) {
   }, pistola ? 120 : 900);
 });
 document.addEventListener('submit', function (e) {
+  if (e.target.getAttribute('data-form') === 'hbuscar') {
+    e.preventDefault();
+    var q = String($('#hbusq').value || '').trim();
+    if (!q) return;
+    $('#hbusq').value = '';
+    return abrir(/^#/.test(q) ? q.replace(/\s+/g, '').toUpperCase() : (R.folioDe(q) || q.toUpperCase()));
+  }
   if (e.target.getAttribute('data-form') !== 'buscar') return;
   e.preventDefault();
   S.q = $('#busq').value;

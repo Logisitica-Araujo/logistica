@@ -140,6 +140,9 @@ function TR_REGLAS() {
     if (t.solicitud) return { k: 'err', m: t.folio + ' tiene una solicitud de eliminación pendiente. No se debe mover.' };
     // El gestor da la salida de todo lo de Oficinas que va fuera, aunque nadie lo haya "dejado" aquí.
     if (quien && quien.tipo === 'GESTOR' && R.porSalirRec(t, A)) return { k: 'ok', m: '' };
+    // Lo que va a un área de Oficinas NO se lo lleva un gestor: lo recoge esa área aquí en Recepción.
+    if (quien && quien.tipo === 'GESTOR' && t.estatus === 'EN_RECEPCION' && R.esOf(A, t.destino))
+      return { k: 'err', m: t.folio + ' es para ' + R.nom(A, t.destino) + ' (aquí en Oficinas): lo recoge esa área en Recepción, no un gestor.' };
     if (t.estatus !== 'EN_RECEPCION') return { k: 'err', m: t.folio + ' no está en Recepción (está como "' + nomE(E, t.estatus) + '").' };
     if (quien && quien.tipo === 'PERSONA' && !R.mismaSuc(A, t.destino, quien.area)) {
       return { k: 'err', m: t.folio + ' es para ' + R.nom(A, t.destino) + '. Solo lo puede recoger esa área o un gestor.' };

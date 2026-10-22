@@ -1,7 +1,7 @@
 import os
 D=os.path.dirname(os.path.abspath(__file__))
 IMG='file://'+D+'/img/'
-VER='Versión 1.3 · Octubre 2026'
+VER='Versión 1.4 · Octubre 2026'
 
 CSS='''
 @page{size:Letter;margin:18mm 16mm 18mm 16mm}
@@ -112,6 +112,7 @@ suc=[
  fig('s01_entrada','Pantalla de entrada: tus áreas están activas; las de otras sucursales, bloqueadas.')+
  nota('info','La campana 🔔','avisa cuando algo nuevo viene para tu sucursal: un traspaso nuevo, uno en camino o uno que quedó en otro lugar. El número rojo indica los avisos sin ver. Al abrirla solo salen los <b>avisos nuevos</b>; ya vistos, desaparecen.')+
  nota('info','Botón ❓ Ayuda','Arriba, junto a la campana. Abre este manual en PDF, siempre en su versión más reciente.')+fig('h01_ayuda','El botón ❓ Ayuda abre el manual de tu área.','mini')+
+ nota('info','🔎 Buscar folio','Arriba, junto a ❓ y 🔔. Escribe o <b>escanea</b> un folio y Enter: se abre su <b>línea de tiempo</b> completa (dónde está, quién lo creó, quién lo llevó y quién lo recibió). También sirve con pedidos de Botican (#15996).')+fig('s17_buscador_campo','El buscador está arriba, en el encabezado.')+fig('s17_buscador','Resultado: la historia completa del traspaso.','chico')+
  nota('warn','Salir','Usa <b>Salir</b> solo si Logística te lo pide. Si sales, tendrás que volver a elegir tu área.')),
 ('Mi bandeja','lo que entra y lo que sale',
  '<p><b>Entrantes</b>: todo lo que llega a tu sucursal, para PV o para Rebotica. Cualquiera de la sucursal lo puede recibir; cada traspaso trae su etiqueta <span class="tag pv">PARA PV</span> o <span class="tag rb">PARA REBOTICA</span> para saber a quién entregarlo.</p><p><b>Salientes</b>: lo que sale de tu área. Las fichas de colores de arriba filtran por estatus. Haz clic en un traspaso para ver su detalle.</p>'+
@@ -208,6 +209,7 @@ ofi=[
 ('Qué es y cómo entrar','Oficinas trabaja con la cuenta abierta', INTRO_COMUN+
  paso(1,'Abre la página y elige tu área','Contabilidad, Compras, Logística… Solo están activas las áreas de tu cuenta.')+
  nota('info','Campana 🔔 y ❓ Ayuda','La campana solo muestra los <b>avisos nuevos</b>; al verlos desaparecen. El botón ❓ abre este manual en PDF, siempre en su versión más reciente.')+
+ nota('info','🔎 Buscar folio','Arriba, junto a ❓ y 🔔. Escribe o <b>escanea</b> un folio y Enter: se abre su <b>línea de tiempo</b> completa (dónde está, quién lo creó, quién lo llevó y quién lo recibió). También sirve con pedidos de Botican (#15996).')+
  nota('ok','En Oficinas no se escanea credencial','Para crear y para recibir se usa la cuenta abierta en tu computadora: queda registrado con tu correo. La credencial solo se escanea para identificar a quien se lleva los traspasos (gestor).')+
  fig('o01_bandeja','Mi bandeja de un área de Oficinas.')),
 ('Crear un traspaso','sin credencial',
@@ -297,7 +299,8 @@ rec=[
   ['<b>En resguardo</b>','El número rojo dice cuántos traspasos hay por atender.'],
   ['<b>🖨 Centro de Impresión</b>','Pestaña dorada para imprimir etiquetas de Oficinas.'],
   ['<b>🔔 Campana</b>','Avisos nuevos. Al abrirla, los vistos desaparecen.'],
-  ['<b>❓ Ayuda</b>','Abre este manual. Para regresar a la página, cierra el PDF con <b>Ctrl + W</b>.']],['45mm',''])+
+  ['<b>❓ Ayuda</b>','Abre este manual. Para regresar a la página, cierra el PDF con <b>Ctrl + W</b>.'],
+  ['<b>🔎 Buscar folio</b>','Escribe o escanea un folio y Enter: sale su historia (dónde está y qué le pasó). Aquí solo se consulta.']],['45mm',''])+
  fig('h02_ayuda_rec','En esta computadora, ❓ Ayuda abre solo este manual.','mini')),
 ('Dejar traspasos','alguien deja paquetes en el stand',
  paso(1,'Toca 📥 Dejar','')+
@@ -307,15 +310,17 @@ rec=[
  paso(4,'Confirma','Quedan <span class="st" style="color:#8A4B12;background:#F6E7D8">● En Recepción Oficinas</span> y al área destino le llega un aviso.')+
  nota('ok','Coloca los paquetes juntos y con la etiqueta a la vista','Así el gestor o el área los encuentran rápido.')),
 ('Recoger traspasos','alguien se lleva paquetes del stand',
- paso(1,'Toca 📤 Recoger','')+
- paso(2,'Quien se lo lleva escanea su credencial','La pantalla muestra lo que <b>puede llevarse</b>, agrupado por destino.')+
- tabla(['Quién recoge','Qué puede llevarse','Cómo queda'],[
-  ['<b>Gestor</b>','Todo lo de Oficinas que va fuera (a sucursales o Botican), aunque nadie lo haya dejado registrado. Lo que lleva más de 36 h sale en <b style="color:#C8232D">rojo</b>: llévalo primero.','Recolectado por gestoría'],
-  ['<b>Persona de Oficinas</b>','Solo lo que va a <b>su</b> área. Si intenta llevarse algo de otra área, el sistema no la deja.','Entregado']],['36mm','','40mm'])+
- fig('r03_recoger','Un gestor ve todo lo disponible, agrupado por destino.')+
- fig('r03b_recoger_persona','Una persona de Contabilidad solo ve lo que va a Contabilidad.')+
- paso(3,'Escanea cada traspaso o tócalo con ＋ en la lista','')+
- paso(4,'Confirma','Al destino le llega el aviso de que va en camino (o de que ya lo recogió).')),
+ '<p>La pantalla va en <b>3 pasos</b> que se marcan arriba: <b>① tu nombre ✓ → ② toca lo que te llevas → ③ confirma</b>.</p>'+
+ paso(1,'Toca 📤 Recoger y escanea tu credencial','Gestor o persona de Oficinas. En pantalla solo sale su nombre.')+
+ paso(2,'Toca las tarjetas de lo que te llevas','Salen en <b>cajitas por destino</b>. Al tocar una se pone <b>verde con ✓</b>; si la tocas otra vez, se quita. Si hay varias para el mismo lugar, usa <b>＋ Llevar los N</b>. También puedes escanear la etiqueta.')+
+ fig('r03_recoger','Gestor: lo que va fuera de Oficinas, por destino. A la derecha, "Te llevas".')+
+ paso(3,'Confirma','A la derecha dice cuántos traspasos y bultos te llevas. Toca <b>Confirmar: me llevo N</b>.')+
+ tabla(['Quién recoge','Qué le sale','Cómo queda'],[
+  ['<b>Gestor</b>','Solo lo que va <b>fuera de Oficinas</b> (sucursales, Botican) y ya está en el stand. Lo que va a un área de Oficinas <b>no</b>: lo recoge esa área aquí.','Recolectado por gestoría'],
+  ['<b>Persona de Oficinas</b>','Solo lo que va a <b>su</b> área: "Te esperan en el stand".','Entregado']],['36mm','','40mm'])+
+ fig('r03b_recoger_persona','Una persona de Contabilidad solo ve lo de Contabilidad.')+
+ nota('err','Borde rojo','Lleva más de 36 horas en el stand: llévalo primero.')+
+ nota('info','"Ver más que todavía no llegan al stand"','Abajo, escondido: lo que un área creó pero todavía no trae al stand. Solo llévalo si te lo dan en la mano.')),
 ('En resguardo','qué hay en el stand',
  fig('r04_resguardo','En resguardo: lo que está en el stand y lo que falta por salir de Oficinas.')+
  tabla(['Lista','Qué es'],[
@@ -340,6 +345,7 @@ rec=[
   ['<b>Campanita de tres notas</b>','Llegó un aviso nuevo a la campana 🔔.']],['70mm',''])+
  tabla(['Mensaje','Qué hacer'],[
   ['"Solo lo puede recoger esa área o un gestor"','Ese traspaso no es del área de quien recoge. Que lo recoja su área o un gestor.'],
+  ['"Es para … (aquí en Oficinas): lo recoge esa área"','Un gestor escaneó algo de un área de Oficinas. Se queda en el stand para esa área.'],
   ['"La credencial no está registrada"','Que teclee su usuario y NIP, y avisa a Logística para registrar la credencial.'],
   ['"Ya está en la lista"','Ya se escaneó; no pasa nada.'],
   ['"Ese folio no existe"','Revisa la etiqueta o tecléalo bien.']],['70mm',''])),

@@ -219,6 +219,46 @@ details.sincred summary{cursor:pointer;font-weight:700;color:var(--muted);font-s
 .rec-id .scaninput{font-size:28px;padding:18px}
 .pinbox{border:2px solid var(--admin-gold)}
 #print{display:none}
+/* Buscador en el encabezado */
+.hsearch input{border:1px solid var(--line);background:var(--surface-2);border-radius:12px;height:42px;padding:0 14px;width:190px;font-weight:700}
+.hsearch input:focus{background:var(--surface);border-color:var(--accent);width:240px}
+@media (prefers-reduced-motion:no-preference){.hsearch input{transition:width .15s}}
+/* Recoger en Recepción: pasos, tarjetas grandes, panel "Te llevas" */
+.rpasos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:18px}
+.rp{display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 14px;opacity:.6}
+.rp span{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:900;background:var(--surface-2)}
+.rp b{display:block}.rp small{color:var(--muted)}
+.rp.ok{opacity:1}.rp.ok span{background:var(--ok);color:#fff}
+.rp.act{opacity:1;border:2px solid var(--accent)}.rp.act span{background:var(--accent);color:#fff}
+.rgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start}
+@media (max-width:860px){.rgrid{grid-template-columns:1fr}.rpasos{grid-template-columns:1fr}}
+.rscan{display:grid;gap:4px;margin:10px 0 16px;font-weight:700;color:var(--muted);font-size:14px}
+.rscan .scaninput{font-size:18px;padding:10px 12px;max-width:340px}
+.rgrupos{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;align-items:start}
+.rgrupo{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px;display:grid;gap:8px}
+.rgh{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rdest{font-size:18px;font-weight:900;line-height:1.15}
+.rcol{display:grid;gap:8px}
+.rtodos{width:100%}
+.rcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.rcard .de{display:block}
+.rcard{position:relative;display:grid;gap:1px;text-align:left;border:2px solid var(--line);border-radius:12px;padding:10px 10px 10px 46px;background:var(--surface);cursor:pointer;width:100%}
+.rcard:hover{border-color:var(--accent)}
+.rcard .chk{position:absolute;left:12px;top:14px;width:26px;height:26px;border:2px solid var(--muted);border-radius:8px;display:grid;place-items:center;font-weight:900;color:#fff}
+.rcard .fol{font-size:20px;font-weight:900;font-variant-numeric:tabular-nums}
+.rcard .bul{font-weight:800}
+.rcard .de{font-size:13px;color:var(--muted)}
+.rcard.on{border-color:var(--ok);background:var(--ok-bg)}
+.rcard.on .chk{background:var(--ok);border-color:var(--ok)}
+.rcard.tarde{border-color:var(--err)}.rcard.tarde .de b{color:var(--err)}
+.rmas{margin-top:8px;border-top:1px dashed var(--line);padding-top:10px}
+.rmas summary{cursor:pointer;font-weight:700;color:var(--muted)}
+.rlleva{position:sticky;top:12px;background:var(--surface);border:2px solid var(--accent);border-radius:16px;padding:16px;display:grid;gap:6px}
+.rnum{font-size:44px;font-weight:900;line-height:1}.rnum small{font-size:16px;font-weight:700;color:var(--muted)}
+.rsel{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.rsel span{background:var(--ok-bg);border-radius:8px;padding:3px 4px 3px 8px;font-weight:800;font-size:13px;display:flex;gap:2px;align-items:center}
+.rsel button{border:none;background:none;cursor:pointer;color:var(--muted);font-weight:900}
+.rconf{font-size:18px;padding:14px;margin-top:6px}
 /* Modo administrador con solicitudes pendientes: número rojo y un pulso suave */
 .btn.conpend{position:relative}
 .btn.conpend .count{background:var(--err);color:#fff;border-radius:99px;padding:0 7px;font-size:12px;margin-left:4px}
