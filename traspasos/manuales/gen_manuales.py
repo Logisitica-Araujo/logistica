@@ -240,7 +240,7 @@ ofi=[
 ('Logística','recibir, distribuir y paquetería a Morelia',
  '<p>Logística recibe lo que va a Morelia y lo que viene de Morelia, y distribuye a las demás áreas.</p>'+
  paso(1,'Recibir en Logística','Escáner → Recibir. Lo que va a Morelia (PV o Rebotica) queda <span class="st" style="color:#38559E;background:#E5EBF7">● En Logística</span>. Si el gestor lo dejó en el stand de Recepción, recógelo ahí con tu credencial (📤 Recoger): sale en "Te esperan en el stand".')+
- paso(2,'Armar caja para Morelia','<b>Paquetería → Armar caja</b>: escanea los traspasos que van dentro → <b>Crear caja e imprimir etiqueta</b>. Sale un folio de caja <b>CJ-0001</b>.')+
+ paso(2,'Armar caja para Morelia','<b>Paquetería → Armar caja</b>: escanea los traspasos que van dentro → <b>Crear caja e imprimir etiqueta</b>. Sale un folio de caja <b>CJ-0001</b>. Si tu computadora no tiene etiquetadora, la etiqueta de la caja se imprime en Recepción → 🖨 Centro de Impresión → <b>Cajas para Morelia</b>.')+
  paso(3,'Registrar el envío en "Operaciones"','Columna <b>A</b>: folio de la caja (o del traspaso suelto). Columna <b>K</b>: paquetería. Columna <b>M</b>: número de guía.')+
  paso(4,'Automático','Al escribir la guía, los traspasos pasan solos a <span class="st" style="color:#0B6C80;background:#DAF2F7">● Enviado por paquetería</span>. También se revisa cada 10 minutos. Para forzarlo: <b>Revisar Operaciones ahora</b>.')+
  fig('l01_paqueteria','Paquetería de Logística: cajas, listos para Morelia y en camino.')+
@@ -335,6 +335,7 @@ rec=[
  paso(3,'Imprime','<b>🖨 Imprimir etiqueta</b> imprime las de ese folio (una por bulto). <b>Imprimir todas</b> imprime las de toda el área de una vez.')+
  fig('r05_impresion','Centro de Impresión con los traspasos de Contabilidad.')+
  paso(4,'Pega cada etiqueta en su bulto','')+
+ nota('info','📦 Cajas para Morelia','Arriba salen las cajas que armó Logística y esperan su guía. Toca <b>🖨 Imprimir etiqueta de caja</b> y pégala en la caja. El número en la pestaña dice cuántas hay.')+
  nota('info','Al imprimir','Lo que va fuera de Oficinas pasa a <b>En Recepción Oficinas</b>: el paquete ya está en el stand. En cuanto un gestor lo recoge, sale de la lista. Si una etiqueta sale mal, usa <b>Imprimir otra vez</b>.')+
  nota('warn','Al imprimir en Chrome','Impresora <b>Argox</b>, <b>Márgenes: Ninguno</b>, <b>Escala: 100%</b>.')),
 ('Sonidos y mensajes','',

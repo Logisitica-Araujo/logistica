@@ -305,7 +305,7 @@ function renderHeader() {
     tabs = [['todos', 'Todos los traspasos'], ['buscar', 'Buscador'], ['sol', 'Solicitudes', S.data.solicitudes.length], ['hoja', 'Catálogos']];
   } else if (me() === 'REC') {
     var enRec = S.data.traspasos.filter(function (t) { return t.estatus === 'EN_RECEPCION' || R.porSalirRec(t, S.A); }).length;
-    tabs = [['dejar', '📥 Dejar'], ['recoger', '📤 Recoger'], ['resguardo', 'En resguardo', enRec], ['imprimir', '🖨 Centro de Impresión', 0, 'destacado']];
+    tabs = [['dejar', '📥 Dejar'], ['recoger', '📤 Recoger'], ['resguardo', 'En resguardo', enRec], ['imprimir', '🖨 Centro de Impresión', (S.data.cajas || []).filter(function (c) { return c.estatus === 'ARMADA'; }).length, 'destacado']];
   } else {
     tabs = [['bandeja', 'Mi bandeja'], ['nuevo', 'Nuevo traspaso'], ['escaner', 'Escáner']];
     if (me() === 'BOT') tabs.push(['botican', '📦 Recolección pedidos BOTICAN', S.bot && S.bot.lista ? S.bot.lista.filter(function (p) { return p.estado === 'ELABORADO'; }).length : 0, 'destacado']);
@@ -798,13 +798,13 @@ function cajaHTML(c, pantalla) {
   if (tm.formato === 'MINI') {
     return '<div class="' + (pantalla ? 'label ' : '') + 'lbl mini" style="' + tam + '">' +
       '<div class="mrow"><span class="fol">' + esc(c.folio) + '</span><span class="bul">' + c.traspasos.length + ' trasp.</span></div>' +
-      '<svg class="bc" data-code="' + esc(c.folio) + '"></svg>' +
+      bcHTML(c.folio, tm.w - 0.4 - 3, 7) +
       '<div class="dest">CAJA → ' + esc(String(c.destino).toUpperCase()) + ' · ' + c.bultos + ' bultos</div></div>';
   }
   var chica = tm.formato === 'CHICA';
   return '<div class="' + (pantalla ? 'label ' : '') + 'lbl' + (chica ? ' chica' : '') + '" style="' + tam + '">' +
     '<div><div class="k">CAJA PARA</div><div class="dest">' + esc(String(c.destino).toUpperCase()) + '</div></div>' +
-    '<div class="fol">' + esc(c.folio) + '</div><svg class="bc" data-code="' + esc(c.folio) + '"></svg>' +
+    '<div class="fol">' + esc(c.folio) + '</div>' + bcHTML(c.folio, tm.w - 0.4 - (chica ? 3 : 6), chica ? 8 : 12) +
     '<div class="bul">' + c.traspasos.length + ' TRASPASOS · ' + c.bultos + ' BULTOS</div>' +
     (chica ? '' : '<div class="pie">' + det.map(function (x) { return esc(x.folio) + (x.destino ? ' → ' + esc(S.A[x.destino] ? S.A[x.destino].corto : x.destino) : '') + (x.bultos ? ' (' + x.bultos + ')' : ''); }).join('<br>') + '</div>') +
     '</div>';
@@ -951,7 +951,16 @@ function vCentroImpresion() {
           '<td><button class="btn' + (t.impresoEnRec ? '' : ' primary') + '" type="button" data-a="impUno" data-v="' + esc(t.folio) + '"' + (im.ocupado ? ' disabled' : '') + '>🖨 ' + (t.impresoEnRec ? 'Imprimir otra vez' : 'Imprimir etiqueta') + '</button></td></tr>';
       }).join('') + '</tbody></table></div>';
   }
-  return head + '<div class="panel stack" style="margin-bottom:16px;max-width:520px"><label class="f">Área de Oficinas<select class="t" id="impArea">' + opts + '</select></label>' +
+  // Cajas para Morelia que armó Logística (esperando guía): su etiqueta se imprime aquí.
+  var cajas = (S.data.cajas || []).filter(function (c) { return c.estatus === 'ARMADA'; });
+  var cajasH = cajas.length ? '<div class="panel stack" style="margin-bottom:16px"><b style="font-size:17px">📦 Cajas para Morelia (' + cajas.length + ')</b>' +
+    '<div class="muted" style="font-size:13px;margin-top:-6px">Las armó Logística y esperan su guía. Imprime la etiqueta y pégala en la caja.</div>' +
+    cajas.map(function (c) {
+      return '<div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding-top:10px"><div><span class="num" style="font-size:17px">' + esc(c.folio) + '</span> · para <b>' + esc(c.destino) + '</b> · ' + c.traspasos.length + ' traspaso(s), ' + c.bultos + ' bulto(s)' +
+        '<div class="muted" style="font-size:12.5px">' + esc(c.traspasos.join(', ')) + '</div></div>' +
+        '<button class="btn primary" type="button" data-a="cajaprint" data-v="' + esc(c.folio) + '">🖨 Imprimir etiqueta de caja</button></div>';
+    }).join('') + '</div>' : '';
+  return head + cajasH + '<div class="panel stack" style="margin-bottom:16px;max-width:520px"><label class="f">Área de Oficinas<select class="t" id="impArea">' + opts + '</select></label>' +
     '<div class="row"><button class="btn ghost" type="button" data-a="impRecargar">↻ Actualizar</button></div></div>' + cuerpo;
 }
 
@@ -1361,7 +1370,7 @@ document.addEventListener('click', function (e) {
     case 'cajacrear':
       S.caja.enviando = true; S.ocupado = true; render();
       srv('apiArmarCaja', S.token, S.caja.lista.map(function (t) { return t.folio; })).then(function (c) {
-        S.caja = { lista: [], fb: { k: 'ok', m: 'Caja ' + c.folio + ' creada. Pégale su etiqueta y registra ' + c.folio + ' en Operaciones con su guía.' }, enviando: false };
+        S.caja = { lista: [], fb: { k: 'ok', m: 'Caja ' + c.folio + ' creada. Si esta computadora no tiene etiquetadora, imprímela en Recepción → 🖨 Centro de Impresión → Cajas para Morelia. Luego registra ' + c.folio + ' en Operaciones con su guía.' }, enviando: false };
         imprimirCaja(c); S.ocupado = false; refrescar(false);
       }).catch(function (er) { S.caja.enviando = false; S.ocupado = false; S.caja.fb = { k: 'err', m: er.message }; render(); });
       return;
