@@ -239,7 +239,7 @@ ofi=[
   ['<b>Campanita de tres notas</b>','Llegó un aviso nuevo a la campana 🔔.']],['70mm',''])),
 ('Logística','recibir, distribuir y paquetería a Morelia',
  '<p>Logística recibe lo que va a Morelia y lo que viene de Morelia, y distribuye a las demás áreas.</p>'+
- paso(1,'Recibir en Logística','Escáner → Recibir. Lo que va a Morelia queda <span class="st" style="color:#38559E;background:#E5EBF7">● En Logística</span>.')+
+ paso(1,'Recibir en Logística','Escáner → Recibir. Lo que va a Morelia (PV o Rebotica) queda <span class="st" style="color:#38559E;background:#E5EBF7">● En Logística</span>. Si el gestor lo dejó en el stand de Recepción, recógelo ahí con tu credencial (📤 Recoger): sale en "Te esperan en el stand".')+
  paso(2,'Armar caja para Morelia','<b>Paquetería → Armar caja</b>: escanea los traspasos que van dentro → <b>Crear caja e imprimir etiqueta</b>. Sale un folio de caja <b>CJ-0001</b>.')+
  paso(3,'Registrar el envío en "Operaciones"','Columna <b>A</b>: folio de la caja (o del traspaso suelto). Columna <b>K</b>: paquetería. Columna <b>M</b>: número de guía.')+
  paso(4,'Automático','Al escribir la guía, los traspasos pasan solos a <span class="st" style="color:#0B6C80;background:#DAF2F7">● Enviado por paquetería</span>. También se revisa cada 10 minutos. Para forzarlo: <b>Revisar Operaciones ahora</b>.')+
@@ -317,7 +317,8 @@ rec=[
  paso(3,'Confirma','A la derecha dice cuántos traspasos y bultos te llevas. Toca <b>Confirmar: me llevo N</b>.')+
  tabla(['Quién recoge','Qué le sale','Cómo queda'],[
   ['<b>Gestor</b>','Solo lo que va <b>fuera de Oficinas</b> (sucursales, Botican) y ya está en el stand. Lo que va a un área de Oficinas <b>no</b>: lo recoge esa área aquí.','Recolectado por gestoría'],
-  ['<b>Persona de Oficinas</b>','Solo lo que va a <b>su</b> área: "Te esperan en el stand".','Entregado']],['36mm','','40mm'])+
+  ['<b>Persona de Oficinas</b>','Solo lo que va a <b>su</b> área: "Te esperan en el stand".','Entregado'],
+  ['<b>Persona de Logística</b>','Lo de su área y <b>todo lo que va a Morelia</b> (PV y Rebotica), para mandarlo por paquetería. Un gestor no se lo lleva.','En Logística']],['36mm','','40mm'])+
  fig('r03b_recoger_persona','Una persona de Contabilidad solo ve lo de Contabilidad.')+
  nota('err','Borde rojo','Lleva más de 36 horas en el stand: llévalo primero.')+
  nota('info','"Ver más que todavía no llegan al stand"','Abajo, escondido: lo que un área creó pero todavía no trae al stand. Solo llévalo si te lo dan en la mano.')),
@@ -346,6 +347,7 @@ rec=[
  tabla(['Mensaje','Qué hacer'],[
   ['"Solo lo puede recoger esa área o un gestor"','Ese traspaso no es del área de quien recoge. Que lo recoja su área o un gestor.'],
   ['"Es para … (aquí en Oficinas): lo recoge esa área"','Un gestor escaneó algo de un área de Oficinas. Se queda en el stand para esa área.'],
+  ['"Va a Morelia por paquetería: lo recoge Logística"','Se queda en el stand hasta que Logística lo recoja.'],
   ['"La credencial no está registrada"','Que teclee su usuario y NIP, y avisa a Logística para registrar la credencial.'],
   ['"Ya está en la lista"','Ya se escaneó; no pasa nada.'],
   ['"Ese folio no existe"','Revisa la etiqueta o tecléalo bien.']],['70mm',''])),

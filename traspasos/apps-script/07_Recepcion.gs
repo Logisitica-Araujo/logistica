@@ -62,6 +62,14 @@ function apiRecepcion(token, d) {
           if (t.origen !== t.destino) avisos.push(_avisoObj(t.origen, t.folio, 'Salió de Oficinas · lo lleva ' + quien.nombre));
           avisos.push(_avisoObj(t.destino, t.folio, 'Va en camino para ti · lo lleva ' + quien.nombre));
           resultados.push({ folio: t.folio, ok: true, msg: 'Se lo lleva ' + quien.nombre });
+        } else if (v.log) {
+          // Logística recoge del stand lo que va a Morelia: queda "En Logística", listo para la caja/paquetería.
+          _actualizarT(t, { 'Estatus': 'EN_LOGISTICA', 'Ruta': 'VIA_LOGISTICA_OK', 'Ubicación actual': '' });
+          movs.push(_movObj(t, 'RECIBIDO EN LOGÍSTICA (RECOGIDO EN RECEPCIÓN)', antes, 'EN_LOGISTICA',
+            { donde: 'LOG', persona: quien.nombre, cred: quien.via, medio: 'RECEPCIÓN', equipo: AREA_REC,
+              detalle: R.esMor(A, t.destino) ? 'Por enviar a Morelia por paquetería' : 'Por distribuir' }));
+          avisos.push(_avisoObj(t.destino, t.folio, 'Llegó a Logística (Oficinas) · ' + (R.esMor(A, t.destino) ? 'se enviará por paquetería' : 'en camino a ti')));
+          resultados.push({ folio: t.folio, ok: true, msg: 'Recibido en Logística' });
         } else {
           _actualizarT(t, {
             'Estatus': 'ENTREGADO', 'Fecha entrega': _ahoraTxt(), 'Ubicación actual': '',

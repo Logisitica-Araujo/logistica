@@ -46,6 +46,8 @@ function TR_REGLAS() {
 
   R.viaLog  = function (t) { return String(t.ruta || '').indexOf('VIA_LOGISTICA') === 0; };
   R.pasoLog = function (t) { return String(t.ruta || '') === 'VIA_LOGISTICA_OK'; };
+  /** Va a (o viene de) Morelia y todavía no pasa por Logística: Logística lo tiene que recibir. */
+  R.paraLog = function (t) { return R.viaLog(t) && !R.pasoLog(t); };
 
   /** ¿Este traspaso aparece en "Entrantes" de esta área? */
   /**
@@ -144,6 +146,11 @@ function TR_REGLAS() {
     if (quien && quien.tipo === 'GESTOR' && t.estatus === 'EN_RECEPCION' && R.esOf(A, t.destino))
       return { k: 'err', m: t.folio + ' es para ' + R.nom(A, t.destino) + ' (aquí en Oficinas): lo recoge esa área en Recepción, no un gestor.' };
     if (t.estatus !== 'EN_RECEPCION') return { k: 'err', m: t.folio + ' no está en Recepción (está como "' + nomE(E, t.estatus) + '").' };
+    // Lo que va a Morelia (PV o Rebotica) lo recoge Logística para mandarlo por paquetería; un gestor no.
+    if (R.paraLog(t)) {
+      if (quien && quien.tipo === 'PERSONA' && quien.area === 'LOG') return { k: 'ok', m: '', log: true };
+      return { k: 'err', m: t.folio + ' va a ' + R.nom(A, t.destino) + ' por paquetería: lo recoge Logística aquí en Recepción.' };
+    }
     if (quien && quien.tipo === 'PERSONA' && !R.mismaSuc(A, t.destino, quien.area)) {
       return { k: 'err', m: t.folio + ' es para ' + R.nom(A, t.destino) + '. Solo lo puede recoger esa área o un gestor.' };
     }
