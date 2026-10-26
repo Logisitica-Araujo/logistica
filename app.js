@@ -12,7 +12,7 @@
 // La URL vive en config.js, que se carga antes que este archivo.
 var API = (typeof window !== 'undefined' && window.FDX_API) ? window.FDX_API : '';
 
-var VERSION_APP = '1.8.0';
+var VERSION_APP = '1.8.1';
 var ESPERA_MS   = 45000;   // cuánto aguanta una subida antes de darse por vencida
 
 
@@ -777,6 +777,7 @@ function pintarMenu(){
   html+='</div></div>';
   $('app').innerHTML=html;
   pintarBarraRed();
+  setTimeout(ofrecerBorrador, 300);
 }
 
 function sombrear(hex){
@@ -1266,9 +1267,10 @@ function preservarCierre(){
   // sin esto, escribir quién recibió y luego tomar la foto borraba el nombre
   if($('inRecibio')) S.cierre.recibio=$('inRecibio').value;
   if($('selDestino')) S.cierre.destino=$('selDestino').value;
+  guardarBorrador();
 }
 function quitarFoto(){ preservarCierre(); S.cierre.foto=null; pintarCierrePedido(); }
-function cerrarModal(){ var m=$('modal'); if(m) m.remove(); S.cierre=null; }
+function cerrarModal(){ var m=$('modal'); if(m) m.remove(); if(S.cierre) borrarBorrador(); S.cierre=null; }
 
 function enviarCierrePedido(){
   var c=S.cierre, p=c.p, r=(S.estado&&S.estado.reglas)||{};
@@ -1335,7 +1337,93 @@ function enviarCierrePedido(){
 
 
 /* ---------- Cámara ---------- */
+/* La foto de evidencia se toma DENTRO de la app. Antes se abría la cámara
+   del celular: en celulares con poca memoria Android cerraba el navegador
+   mientras tanto ("Memoria insuficiente…") y el cierre se perdía.
+   La cámara del celular queda como plan B (botón de abajo). */
+var camFoto=null;
 function tomarFoto(){
+  preservarCierre();
+  pararScanner();
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ fotoConCamaraDelCelular(); return; }
+  cerrarCamFoto();
+  document.body.insertAdjacentHTML('beforeend',
+    '<div class="cam-foto" id="camFoto">'+
+      '<video playsinline muted autoplay></video>'+
+      '<div class="cam-aviso" id="camAviso">Abriendo cámara…</div>'+
+      '<div class="cam-barra">'+
+        '<button class="cam-lado" onclick="cerrarCamFoto()">Cancelar</button>'+
+        '<button class="cam-disparo" id="camDisparo" onclick="dispararFoto()" aria-label="Tomar foto" disabled></button>'+
+        '<button class="cam-lado" id="camLuz" onclick="luzCamFoto()" style="visibility:hidden">🔦 Luz</button>'+
+      '</div>'+
+      '<button class="cam-alterna" onclick="cerrarCamFoto();fotoConCamaraDelCelular()">Usar la cámara del celular o la galería</button>'+
+    '</div>');
+  var cam = camFoto = {stream:null, track:null, luz:false};
+  var video=$('camFoto').querySelector('video');
+  navigator.mediaDevices.getUserMedia({ audio:false, video:{
+    facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:960}
+  }}).then(function(stream){
+    if(camFoto!==cam){ stream.getTracks().forEach(function(t){ t.stop(); }); return; }
+    cam.stream=stream; cam.track=stream.getVideoTracks()[0];
+    try{ cam.track.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(function(){}); }catch(e){}
+    video.srcObject=stream;
+    return Promise.resolve(video.play()).catch(function(){}).then(function(){
+      if(camFoto!==cam) return;
+      $('camAviso').style.display='none';
+      $('camDisparo').disabled=false;
+      var cap = cam.track.getCapabilities ? cam.track.getCapabilities() : {};
+      if(cap && cap.torch) $('camLuz').style.visibility='visible';
+    });
+  }).catch(function(e){
+    if(camFoto!==cam) return;
+    var m=String((e && (e.name||e.message)) || e);
+    $('camAviso').innerHTML = (/NotAllowed|Permission/i.test(m)
+      ? 'Sin permiso para usar la cámara.<br>Actívalo en los ajustes del navegador'
+      : 'No pude abrir la cámara') + ' o usa el botón de abajo.';
+  });
+}
+
+function dispararFoto(){
+  var cf=$('camFoto'); if(!cf || !camFoto) return;
+  var video=cf.querySelector('video');
+  var w=video.videoWidth, h=video.videoHeight;
+  if(!w || !h) return;
+  var k=Math.min(1, 1280/Math.max(w,h));
+  var cv=document.createElement('canvas');
+  cv.width=Math.round(w*k); cv.height=Math.round(h*k);
+  cv.getContext('2d').drawImage(video,0,0,cv.width,cv.height);
+  var foto=cv.toDataURL('image/jpeg',0.72);
+  cv.width=cv.height=0;
+  cerrarCamFoto();
+  ponerFoto(foto);
+}
+
+function luzCamFoto(){
+  if(!camFoto || !camFoto.track) return;
+  var prender=!camFoto.luz;
+  camFoto.track.applyConstraints({advanced:[{torch:prender}]}).then(function(){
+    camFoto.luz=prender;
+    var b=$('camLuz'); if(b) b.textContent = prender ? '🔦 Apagar' : '🔦 Luz';
+  }).catch(function(){ toast('No pude prender la luz.','err'); });
+}
+
+function cerrarCamFoto(){
+  if(camFoto && camFoto.stream) camFoto.stream.getTracks().forEach(function(t){ try{ t.stop(); }catch(e){} });
+  camFoto=null;
+  var cf=$('camFoto'); if(cf) cf.remove();
+}
+
+function ponerFoto(dataUrl){
+  if(!S.cierre) return;
+  S.cierre.foto=dataUrl;
+  if(S.cierre.tipo==='TRASPASO') pintarCierreTraspaso(); else pintarCierrePedido();
+  guardarBorrador();
+  beep();
+}
+
+/** Plan B: la cámara del celular o la galería. El borrador ya quedó
+ *  guardado, así que si Android cierra el navegador no se pierde nada. */
+function fotoConCamaraDelCelular(){
   preservarCierre();
   var inp=$('inputCamara');
   inp.value='';
@@ -1345,32 +1433,70 @@ function tomarFoto(){
     cargando('Procesando foto…');
     comprimirImagen(f, function(dataUrl){
       quitarCargando();
-      if(S.cierre){ S.cierre.foto=dataUrl;
-        if(S.cierre.tipo==='TRASPASO') pintarCierreTraspaso(); else pintarCierrePedido();
-      }
-      beep();
+      ponerFoto(dataUrl);
     });
   };
   inp.click();
 }
 
+/* Sin FileReader: leer la foto como texto (dataURL) ocupaba varias veces su
+   tamaño en memoria antes de reducirla. */
 function comprimirImagen(file, cb){
-  var fr=new FileReader();
-  fr.onload=function(e){
-    var img=new Image();
-    img.onload=function(){
-      var max=1280, w=img.width, h=img.height;
-      if(w>h && w>max){ h=Math.round(h*max/w); w=max; }
-      else if(h>=w && h>max){ w=Math.round(w*max/h); h=max; }
-      var cv=document.createElement('canvas'); cv.width=w; cv.height=h;
-      cv.getContext('2d').drawImage(img,0,0,w,h);
-      cb(cv.toDataURL('image/jpeg',0.72));
-    };
-    img.onerror=function(){ quitarCargando(); toast('No pude leer la imagen.','err'); };
-    img.src=e.target.result;
-  };
-  fr.readAsDataURL(file);
+  reducirFoto(file, 1280).then(function(cv){
+    var dataUrl=cv.toDataURL('image/jpeg',0.72);
+    cv.width=cv.height=0;
+    cb(dataUrl);
+  }).catch(function(){ quitarCargando(); toast('No pude leer la imagen.','err'); });
 }
+
+
+/* ---------- Borrador del cierre ----------
+   Lo que lleva el gestor (foto, firma, motivo, quién recibió) se guarda en
+   el celular a cada paso. Si el celular cierra la app a la mitad, al volver
+   a abrirla se ofrece continuar donde se quedó.                          */
+function guardarBorrador(){
+  if(!S.cierre) return;
+  sinFallar(DB.set('borrador_cierre', {c:S.cierre, t:Date.now()}), null);
+}
+function borrarBorrador(){ sinFallar(DB.del('borrador_cierre'), null); }
+
+var borradorRevisado=false;
+function ofrecerBorrador(){
+  if(borradorRevisado) return;
+  borradorRevisado=true;
+  sinFallar(DB.get('borrador_cierre'), null).then(function(b){
+    if(!b || !b.c || !b.c.p) return;
+    if(Date.now()-b.t > 12*3600*1000){ borrarBorrador(); return; }
+    if(S.cierre || $('modal')) return;
+    var c=b.c, ped=(c.tipo==='PEDIDO');
+    var hecho=[];
+    if(c.foto) hecho.push('📷 foto');
+    if(c.firma) hecho.push('✍️ firma');
+    if(c.recibio) hecho.push('👤 '+c.recibio);
+    if(c.motivo) hecho.push(c.motivo);
+    S.borrador=c;
+    document.body.insertAdjacentHTML('beforeend',
+      '<div class="modal" id="modal"><div class="hoja"><div class="agarre"></div>'+
+        '<h2>Tienes un cierre a medias</h2>'+
+        '<p class="sub">'+(ped?'Pedido <b>'+esc(c.p.id)+'</b>':'Traspaso <b>'+esc(c.p.folio)+'</b>')+
+          (ped && c.p.cliente?' · '+esc(c.p.cliente):'')+'</p>'+
+        '<div class="aviso">El celular cerró la app antes de terminar. Lo que llevabas quedó guardado'+
+          (hecho.length?': <b>'+esc(hecho.join(' · '))+'</b>':'')+'.</div>'+
+        '<div class="fila-btn mt">'+
+          '<button class="btn gris" onclick="descartarBorrador()">Descartar</button>'+
+          '<button class="btn verde" onclick="retomarBorrador()">Continuar</button>'+
+        '</div>'+
+      '</div></div>');
+  });
+}
+function retomarBorrador(){
+  var c=S.borrador; S.borrador=null;
+  var m=$('modal'); if(m) m.remove();
+  if(!c) return;
+  S.cierre=c;
+  if(c.tipo==='TRASPASO') pintarCierreTraspaso(); else pintarCierrePedido();
+}
+function descartarBorrador(){ S.borrador=null; borrarBorrador(); cerrarModal(); }
 
 
 /* ---------- Firma ---------- */

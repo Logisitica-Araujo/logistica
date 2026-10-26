@@ -412,3 +412,18 @@ body.con-barra-red .barra{margin-top:34px}
 .ctrl-camara:not(:empty){margin-top:10px}
 .ctrl-zoom{display:flex;align-items:center;gap:10px;margin:0;font-size:13px;color:var(--gris)}
 .ctrl-zoom input{flex:1;accent-color:var(--azul2);height:28px}
+
+/* Cámara para la foto de evidencia (dentro de la app) */
+.cam-foto{position:fixed;inset:0;z-index:250;background:#000;display:flex;flex-direction:column}
+.cam-foto video{flex:1;min-height:0;width:100%;object-fit:cover;display:block}
+.cam-aviso{position:absolute;left:16px;right:16px;top:40%;color:#fff;text-align:center;font-size:15px;line-height:1.45}
+.cam-barra{display:flex;align-items:center;justify-content:space-between;padding:18px 18px 10px;background:#000}
+.cam-lado{flex:1;background:none;border:0;color:#fff;font:inherit;font-size:15px;font-weight:600;padding:12px 4px}
+.cam-lado:last-child{text-align:right}
+.cam-lado:first-child{text-align:left}
+.cam-disparo{width:76px;height:76px;flex:none;border-radius:50%;background:#fff;border:5px solid #000;
+  box-shadow:0 0 0 4px #fff;cursor:pointer}
+.cam-disparo:active{transform:scale(.92)}
+.cam-disparo:disabled{opacity:.4}
+.cam-alterna{background:none;border:0;color:#cfd6e2;font:inherit;font-size:13px;text-decoration:underline;
+  padding:6px 16px calc(16px + env(safe-area-inset-bottom))}
