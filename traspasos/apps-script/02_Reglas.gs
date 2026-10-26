@@ -83,6 +83,12 @@ function TR_REGLAS() {
   R.recibir = function (t, me, A, E) {
     if (!t) return { k: 'err', m: 'Ese folio no existe. Revisa que esté bien tecleado.' };
     if (t.solicitud) return { k: 'err', m: t.folio + ' tiene una solicitud de eliminación pendiente. No se debe mover hasta que responda un administrador.' };
+    // Logística vuelve a escanear algo de Morelia que YA recibió: no es error, solo avisar qué sigue.
+    if (me === 'LOG' && R.viaLog(t) && R.pasoLog(t)) {
+      if (t.estatus === 'EN_LOGISTICA') return { k: 'warn', m: t.folio + ' ya está en Logística: no hay que recibirlo otra vez.' +
+        (R.esMor(A, t.destino) ? ' Para mandarlo a ' + R.nom(A, t.destino) + ': Paquetería → Armar caja.' : ' Falta entregarlo a ' + R.nom(A, t.destino) + '.') };
+      if (t.estatus === 'PAQUETERIA') return { k: 'warn', m: t.folio + ' ya va en camino a ' + R.nom(A, t.destino) + ' por paquetería' + (t.guia ? ' (guía ' + t.guia + ')' : '') + '.' };
+    }
     var esLog = me === 'LOG' && R.viaLog(t) && !R.pasoLog(t);
     if (!R.mismaSuc(A, t.destino, me) && !esLog) {
       var aqui = (A[me] && (A[me].tipo === 'SUCURSAL' || A[me].tipo === 'FORANEA')) ? A[me].sucNombre : R.nom(A, me);
