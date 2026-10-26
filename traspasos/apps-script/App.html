@@ -297,7 +297,7 @@ function ayudaHTML() {
         : '<div class="bellitem manual" style="cursor:default;opacity:.6"><span style="font-size:22px">' + x[0] + '</span><span><b>' + esc(x[1]) + '</b><br><span class="muted" style="font-size:12.5px">Todavía no se carga. Avisa a Logística.</span></span></div>';
     }).join('') +
       (S.ctx.puedeAdmin && me() !== 'REC' && M.carpeta ? '<a class="btn ghost" style="justify-self:start;font-size:13px;padding:6px 10px" href="' + esc(M.carpeta) + '" target="_blank" rel="noopener">📁 Carpeta de manuales (actualizar)</a>' : '') +
-      '<div class="muted" style="font-size:12px">Siempre se abre la versión más reciente.' + (me() === 'REC' ? ' Para regresar a la página, cierra el PDF con <b>Ctrl + W</b>.' : '') + '</div></div>' : '') + '</div>';
+      '<div class="muted" style="font-size:12px">Versión de la página: <b>' + VERSION_PAGINA + '</b>. Siempre se abre el manual más reciente.' + (me() === 'REC' ? ' Para regresar a la página, cierra el PDF con <b>Ctrl + W</b>.' : '') + '</div></div>' : '') + '</div>';
 }
 function renderHeader() {
   var tabs = [];
@@ -523,6 +523,8 @@ function etiquetaHTML(t, b, rp, pantalla) {
  * - Altura corta (7 mm en 50 × 20): menos tinta y menos calor.
  */
 var PUNTO = 0.125;
+/** Versión de la página (sale en ❓ Ayuda). Sirve para saber si ya se publicó lo último. */
+var VERSION_PAGINA = '2026-10-26 · cajas';
 function bcHTML(code, anchoMm, altoMm) {
   return '<div class="bcw"><svg class="bc" data-code="' + esc(code) + '" data-w="' + anchoMm + '" data-h="' + altoMm + '"></svg></div>';
 }
@@ -808,6 +810,19 @@ function cajaHTML(c, pantalla) {
     '<div class="bul">' + c.traspasos.length + ' TRASPASOS · ' + c.bultos + ' BULTOS</div>' +
     (chica ? '' : '<div class="pie">' + det.map(function (x) { return esc(x.folio) + (x.destino ? ' → ' + esc(S.A[x.destino] ? S.A[x.destino].corto : x.destino) : '') + (x.bultos ? ' (' + x.bultos + ')' : ''); }).join('<br>') + '</div>') +
     '</div>';
+}
+/** Detalle de una caja (desde el buscador): qué trae, guía y botón para imprimir su etiqueta. */
+function cajaDetalleHTML(c) {
+  var est = { ARMADA: 'Esperando guía', ENVIADA: 'En camino por paquetería', RECIBIDA: 'Recibida en Morelia' }[c.estatus] || c.estatus;
+  return '<div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="num" style="font-size:28px">' + esc(c.folio) + '</div><div class="muted">Caja para ' + esc(c.destino) + '</div></div>' +
+    '<div class="row"><span class="badge" style="color:#0B6C80;background:#DAF2F7">' + esc(est) + '</span><button class="btn ghost" type="button" data-a="cerrar" aria-label="Cerrar">✕</button></div></div>' +
+    '<dl class="dl"><div><dt>Traspasos</dt><dd>' + c.traspasos.length + '</dd></div><div><dt>Bultos</dt><dd>' + c.bultos + '</dd></div>' +
+    '<div><dt>Armada</dt><dd>' + esc(fh(c.fecha, c.hora)) + '</dd></div>' + (c.guia ? '<div><dt>Guía</dt><dd>' + esc((c.paqueteria ? c.paqueteria + ' · ' : '') + c.guia) + '</dd></div>' : '') + '</dl>' +
+    '<h2>Lo que trae</h2><div class="list" style="gap:6px">' + c.traspasos.map(function (f) {
+      var t = MAPA[R.limpio(f)];
+      return '<button type="button" class="btn" style="justify-content:space-between" data-a="open" data-v="' + esc(f) + '"><span class="num">' + esc(f) + '</span><span class="muted">' + (t ? esc(nom(t.destino)) : '') + '</span></button>';
+    }).join('') + '</div>' +
+    '<div class="actions"><div class="row"><button class="btn primary" type="button" data-a="cajaprint" data-v="' + esc(c.folio) + '">🖨 Imprimir etiqueta de caja</button></div></div>';
 }
 function imprimirCaja(c) {
   mandarImprimir(cajaHTML(c, false));
@@ -1170,7 +1185,7 @@ function abrir(folio) {
   S.bell = false;
   S.modal = { folio: folio, det: null, form: null, err: null };
   render();
-  srv('apiDetalle', S.token, folio).then(function (d) { if (S.modal && S.modal.folio === folio) { S.modal.det = d; render(); } })
+  srv('apiDetalle', S.token, folio).then(function (d) { if (S.modal && S.modal.folio === folio) { if (d.caja) S.modal = { caja: d.caja }; else S.modal.det = d; render(); } })
     .catch(function (e) { if (S.modal) { S.modal.err = e.message; render(); } });
 }
 function renderModal() {
@@ -1178,6 +1193,7 @@ function renderModal() {
   if (!m) { $('#modal').innerHTML = ''; return; }
   var inner;
   if (m.err && !m.det) inner = '<div class="feedback err">' + esc(m.err) + '</div><div class="row" style="margin-top:12px"><button class="btn" type="button" data-a="cerrar">Cerrar</button></div>';
+  else if (m.caja) inner = cajaDetalleHTML(m.caja);
   else if (!m.det) inner = '<div class="cargando">Cargando historia…</div>';
   else inner = m.det.pedido ? detalleBoticanHTML(m.det.pedido, m.det.movimientos) : detalleHTML(m.det.traspaso, m.det.movimientos);
   $('#modal').innerHTML = '<div class="modal" data-a="fondo"><div class="box" role="dialog" aria-modal="true">' + inner + '</div></div>';
@@ -1531,6 +1547,8 @@ document.addEventListener('submit', function (e) {
     var q = String($('#hbusq').value || '').trim();
     if (!q) return;
     $('#hbusq').value = '';
+    var cj = CAJAS[R.limpio(q)];
+    if (cj) { S.bell = false; S.modal = { caja: cj }; return render(); }
     return abrir(/^#/.test(q) ? q.replace(/\s+/g, '').toUpperCase() : (R.folioDe(q) || q.toUpperCase()));
   }
   if (e.target.getAttribute('data-form') !== 'buscar') return;

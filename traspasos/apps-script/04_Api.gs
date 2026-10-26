@@ -178,6 +178,13 @@ function apiDetalle(token, folio) {
       if (!b) throw new Error('El pedido ' + folio + ' todavía no tiene movimientos (aún no se recolecta).');
       return b;
     }
+    // Caja para Morelia (CJ-0001): sus traspasos, guía y estatus.
+    if (/^CJ-\d+$/.test(R.limpio(folio))) {
+      const cj = _cajas().filter(function (x) { return R.limpio(x.folio) === R.limpio(folio); })[0];
+      if (!cj) throw new Error('No encontré la caja ' + folio + '.');
+      const o = {}; Object.keys(cj).forEach(function (k) { if (k !== '_fila') o[k] = cj[k]; });
+      return { caja: o };
+    }
     const t = _buscarT(folio);
     if (!t || (t.estatus === 'ELIMINADO' && !c.admin)) throw new Error('No encontré el folio ' + folio + '.');
     const f = R.limpio(t.folio);
