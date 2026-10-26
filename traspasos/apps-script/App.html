@@ -952,11 +952,13 @@ function vCentroImpresion() {
       }).join('') + '</tbody></table></div>';
   }
   // Cajas para Morelia que armó Logística (esperando guía): su etiqueta se imprime aquí.
-  var cajas = (S.data.cajas || []).filter(function (c) { return c.estatus === 'ARMADA'; });
+  // También las que ya tienen guía (en camino) hasta que Morelia las reciba: a veces se registra la guía antes de imprimir.
+  var cajas = (S.data.cajas || []).filter(function (c) { return c.estatus === 'ARMADA' || c.estatus === 'ENVIADA'; });
   var cajasH = cajas.length ? '<div class="panel stack" style="margin-bottom:16px"><b style="font-size:17px">📦 Cajas para Morelia (' + cajas.length + ')</b>' +
-    '<div class="muted" style="font-size:13px;margin-top:-6px">Las armó Logística y esperan su guía. Imprime la etiqueta y pégala en la caja.</div>' +
+    '<div class="muted" style="font-size:13px;margin-top:-6px">Las armó Logística. Imprime la etiqueta y pégala en la caja antes de que salga.</div>' +
     cajas.map(function (c) {
       return '<div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding-top:10px"><div><span class="num" style="font-size:17px">' + esc(c.folio) + '</span> · para <b>' + esc(c.destino) + '</b> · ' + c.traspasos.length + ' traspaso(s), ' + c.bultos + ' bulto(s)' +
+        (c.estatus === 'ENVIADA' ? ' <span class="badge" style="color:#0B6C80;background:#DAF2F7">ya tiene guía' + (c.guia ? ' ' + esc(c.guia) : '') + '</span>' : ' <span class="badge" style="color:#8A5A00;background:#FFF2D2">esperando guía</span>') +
         '<div class="muted" style="font-size:12.5px">' + esc(c.traspasos.join(', ')) + '</div></div>' +
         '<button class="btn primary" type="button" data-a="cajaprint" data-v="' + esc(c.folio) + '">🖨 Imprimir etiqueta de caja</button></div>';
     }).join('') + '</div>' : '';
