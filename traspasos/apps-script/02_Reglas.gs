@@ -84,6 +84,8 @@ function TR_REGLAS() {
     if (!t) return { k: 'err', m: 'Ese folio no existe. Revisa que esté bien tecleado.' };
     if (t.solicitud) return { k: 'err', m: t.folio + ' tiene una solicitud de eliminación pendiente. No se debe mover hasta que responda un administrador.' };
     // Logística vuelve a escanear algo de Morelia que YA recibió: no es error, solo avisar qué sigue.
+    // Si lo registraron como "El traspaso está en… Logística", se recibe normal y queda En Logística.
+    if (me === 'LOG' && R.viaLog(t) && t.estatus === 'UBICADO' && t.ubic === 'LOG') return { k: 'ok', m: '', accion: 'EN_LOGISTICA', salto: false };
     if (me === 'LOG' && R.viaLog(t) && R.pasoLog(t)) {
       if (t.estatus === 'EN_LOGISTICA') return { k: 'warn', m: t.folio + ' ya está en Logística: no hay que recibirlo otra vez.' +
         (R.esMor(A, t.destino) ? ' Para mandarlo a ' + R.nom(A, t.destino) + ': Paquetería → Armar caja.' : ' Falta entregarlo a ' + R.nom(A, t.destino) + '.') };
@@ -169,7 +171,8 @@ function TR_REGLAS() {
    */
   R.empacable = function (t, A) {
     if (!t || t.solicitud || !R.esMor(A, t.destino)) return false;
-    return t.estatus === 'EN_LOGISTICA' || (t.origen === 'LOG' && t.estatus === 'NUEVO');
+    return t.estatus === 'EN_LOGISTICA' || (t.origen === 'LOG' && t.estatus === 'NUEVO') ||
+      (t.estatus === 'UBICADO' && t.ubic === 'LOG');            // alguien lo registró "aquí" en Logística: también vale
   };
 
   /** ¿Se puede solicitar eliminarlo? Solo el origen, y solo antes de que se mueva. */
