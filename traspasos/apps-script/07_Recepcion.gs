@@ -7,7 +7,7 @@
  *
  *  DEJAR   → un gestor (o cualquier persona registrada) deja traspasos en el stand.
  *            Estatus: "En Recepción Oficinas". Al destino le llega aviso.
- *  RECOGER → • un GESTOR se los lleva a su destino (sucursal, etc.)
+ *  RECOGER → • un GESTOR (o alguien de Logística) se los lleva a su destino (sucursal, etc.)
  *              → "Recolectado por gestoría"
  *            • una PERSONA de Oficinas recoge lo de su área
  *              → "Entregado" (recibido por esa persona)
@@ -58,7 +58,7 @@ function apiRecepcion(token, d) {
           return;
         }
 
-        if (quien.tipo === 'GESTOR') {
+        if (quien.tipo === 'GESTOR' || v.transp) {
           const it = { lleva: (d.lleva || {})[t.folio], motivo: (d.motivos || {})[t.folio] };
           const sb = _salidaBultos(t, it, v, AREA_REC);
           const cam = Object.assign({ 'Gestor': quien.nombre, 'Fecha recolección': _ahoraTxt(), 'Ubicación actual': '' }, sb.cambios);

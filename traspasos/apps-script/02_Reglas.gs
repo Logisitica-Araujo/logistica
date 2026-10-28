@@ -150,6 +150,9 @@ function TR_REGLAS() {
     return { k: 'ok', m: '' };
   };
 
+  /** ¿Se lo lleva para entregarlo en otro lado? El gestor, y también la gente de Logística (reparte). */
+  R.transporta = function (quien) { return !!quien && (quien.tipo === 'GESTOR' || (quien.tipo === 'PERSONA' && quien.area === 'LOG')); };
+
   /**
    * ¿Lo puede RECOGER esta persona o gestor? quien = {tipo:'PERSONA'|'GESTOR', area}
    * GESTOR: se lo lleva a donde vaya (transporta para otros). PERSONA: solo lo de su área / sucursal.
@@ -157,10 +160,14 @@ function TR_REGLAS() {
   R.recogible = function (t, A, E, quien) {
     if (!t) return { k: 'err', m: 'Ese folio no existe. Revisa que esté bien tecleado.' };
     if (t.solicitud) return { k: 'err', m: t.folio + ' tiene una solicitud de eliminación pendiente. No se debe mover.' };
-    // El gestor da la salida de todo lo de Oficinas que va fuera, aunque nadie lo haya "dejado" aquí.
-    if (quien && quien.tipo === 'GESTOR' && R.porSalirRec(t, A)) return { k: 'ok', m: '' };
+    var lg = !!quien && quien.tipo === 'PERSONA' && quien.area === 'LOG';
+    // Lo que va a Morelia y sigue en su área de Oficinas: Logística también lo puede recoger (en la mano).
+    if (lg && R.paraLog(t) && t.estatus === 'NUEVO' && R.esOf(A, t.origen)) return { k: 'ok', m: '', log: true };
+    // El gestor (o alguien de Logística, que también reparte) da la salida de todo lo de Oficinas que va fuera,
+    // aunque nadie lo haya "dejado" aquí.
+    if (R.transporta(quien) && R.porSalirRec(t, A)) return { k: 'ok', m: '', transp: true };
     // Bultos que se quedaron en el stand la vez pasada: el gestor se lleva el resto.
-    if (quien && quien.tipo === 'GESTOR' && t.pend > 0 && t.pendEn === 'REC' && R.FINALES.indexOf(t.estatus) < 0 && !R.esOf(A, t.destino)) return { k: 'ok', m: '', resto: true };
+    if (R.transporta(quien) && t.pend > 0 && t.pendEn === 'REC' && R.FINALES.indexOf(t.estatus) < 0 && !R.esOf(A, t.destino)) return { k: 'ok', m: '', resto: true, transp: true };
     // Lo que va a un área de Oficinas NO se lo lleva un gestor: lo recoge esa área aquí en Recepción.
     if (quien && quien.tipo === 'GESTOR' && t.estatus === 'EN_RECEPCION' && R.esOf(A, t.destino))
       return { k: 'err', m: t.folio + ' es para ' + R.nom(A, t.destino) + ' (aquí en Oficinas): lo recoge esa área en Recepción, no un gestor.' };

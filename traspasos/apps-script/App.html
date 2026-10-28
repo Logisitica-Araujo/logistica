@@ -525,7 +525,7 @@ function etiquetaHTML(t, b, rp, pantalla) {
  */
 var PUNTO = 0.125;
 /** Versión de la página (sale en ❓ Ayuda). Sirve para saber si ya se publicó lo último. */
-var VERSION_PAGINA = '2026-10-28 · bultos';
+var VERSION_PAGINA = '2026-10-28 · logística recoge';
 function bcHTML(code, anchoMm, altoMm) {
   return '<div class="bcw"><svg class="bc" data-code="' + esc(code) + '" data-w="' + anchoMm + '" data-h="' + altoMm + '"></svg></div>';
 }
@@ -924,7 +924,7 @@ function vRecoger(r, q, fb) {
       (r.lote.length ? '<div class="rsel">' + r.lote.map(function (t) {
         var mx = t.pend > 0 && t.pendEn === 'REC' ? t.pend : t.bultos, k = (r.lleva || {})[t.folio] || mx;
         return '<div class="rchip"><div class="row" style="justify-content:space-between;gap:6px"><b class="num">' + esc(t.folio) + '</b><button type="button" data-a="recquitar" data-v="' + esc(t.folio) + '" aria-label="Quitar">✕</button></div>' +
-          (gestor && mx > 1 ? llevaHTML(t.folio, k, mx, (r.mot || {})[t.folio], t.pend > 0) : '') + '</div>';
+          (R.transporta(q) && mx > 1 ? llevaHTML(t.folio, k, mx, (r.mot || {})[t.folio], t.pend > 0) : '') + '</div>';
       }).join('') + '</div>' : '<div class="muted" style="margin:10px 0">Toca las tarjetas de lo que te llevas.</div>') +
       '<button class="btn primary rconf" type="button" data-a="recconfirmar"' + (r.lote.length && !r.enviando ? '' : ' disabled') + '>' + (r.enviando ? 'Guardando…' : 'Confirmar: me llevo ' + r.lote.length) + '</button></aside></div>';
 }
