@@ -884,7 +884,7 @@ function vRecepcion() {
  * Lo que todavía no llega al stand queda guardado en "Ver más".
  */
 function vRecoger(r, q, fb) {
-  var gestor = q.tipo === 'GESTOR', sel = {};
+  var gestor = q.tipo === 'GESTOR', lleva = R.transporta(q), sel = {};
   r.lote.forEach(function (t) { sel[t.folio] = true; });
   var todos = S.data.traspasos.filter(function (t) { return R.recogible(t, S.A, S.E, q).k === 'ok' || sel[t.folio]; });
   var stand = todos.filter(function (t) { return t.estatus === 'EN_RECEPCION' || sel[t.folio]; });
@@ -909,14 +909,14 @@ function vRecoger(r, q, fb) {
     return '<section class="rgrupo"><div class="rgh"><div class="rdest">' + esc(nom(d)) + '</div>' + areaTag(d) + '</div>' +
       '<div class="rcol">' + l.map(tarjeta).join('') + '</div>' +
       (faltan > 1 ? '<button class="btn rtodos" type="button" data-a="rectodos" data-v="' + esc(d) + '">＋ Llevar los ' + faltan + '</button>' : '') + '</section>';
-  }).join('') : '<div class="empty" style="font-size:18px">' + (gestor ? 'No hay nada en el stand para llevar.' : 'No hay nada en el stand para ' + esc(q.areaNombre || 'tu área') + '.') + '</div>';
+  }).join('') : '<div class="empty" style="font-size:18px">' + (lleva ? 'No hay nada en el stand para llevar.' : 'No hay nada en el stand para ' + esc(q.areaNombre || 'tu área') + '.') + '</div>';
   var mas = fuera.length ? '<details class="rmas"><summary>Ver ' + fuera.length + ' más que todavía <b>no llegan al stand</b> (siguen en su área)</summary>' +
     '<p class="muted" style="margin:6px 0 10px">Solo llévatelos si te los dan en la mano.</p><div class="rcards">' + fuera.map(tarjeta).join('') + '</div></details>' : '';
   return '<div class="rpasos"><div class="rp ok"><span>1</span><div><b>' + esc(q.nombre) + '</b><small>' + (gestor ? 'Gestor' : esc(q.areaNombre || 'Persona')) + ' · <a href="#" data-a="recquien">Cambiar</a></small></div></div>' +
       '<div class="rp' + (r.lote.length ? ' ok' : ' act') + '"><span>2</span><div><b>Toca lo que te llevas</b><small>o escanea la etiqueta</small></div></div>' +
       '<div class="rp' + (r.lote.length ? ' act' : '') + '"><span>3</span><div><b>Confirma</b><small>al final, abajo</small></div></div></div>' +
     '<div class="rgrid"><div>' +
-      '<h1 style="margin:0 0 4px">' + (gestor ? 'En el stand para llevar' : 'Te esperan en el stand') + '</h1>' +
+      '<h1 style="margin:0 0 4px">' + (lleva ? 'En el stand para llevar' : 'Te esperan en el stand') + '</h1>' +
       '<label class="rscan"><span>📷 ¿Traes la etiqueta en la mano? Escanéala aquí</span><input class="scaninput" id="recin" autocomplete="off" placeholder="NR-0001"></label>' + (r.fb && r.fb.k !== 'ok' ? fb : '') +
       '<div class="rgrupos">' + cuerpo + '</div>' + mas +
     '</div><aside class="rlleva"><div class="muted" style="font-weight:800;letter-spacing:.06em;font-size:12px">TE LLEVAS</div>' +
@@ -924,7 +924,7 @@ function vRecoger(r, q, fb) {
       (r.lote.length ? '<div class="rsel">' + r.lote.map(function (t) {
         var mx = t.pend > 0 && t.pendEn === 'REC' ? t.pend : t.bultos, k = (r.lleva || {})[t.folio] || mx;
         return '<div class="rchip"><div class="row" style="justify-content:space-between;gap:6px"><b class="num">' + esc(t.folio) + '</b><button type="button" data-a="recquitar" data-v="' + esc(t.folio) + '" aria-label="Quitar">✕</button></div>' +
-          (R.transporta(q) && mx > 1 ? llevaHTML(t.folio, k, mx, (r.mot || {})[t.folio], t.pend > 0) : '') + '</div>';
+          (lleva && mx > 1 ? llevaHTML(t.folio, k, mx, (r.mot || {})[t.folio], t.pend > 0) : '') + '</div>';
       }).join('') + '</div>' : '<div class="muted" style="margin:10px 0">Toca las tarjetas de lo que te llevas.</div>') +
       '<button class="btn primary rconf" type="button" data-a="recconfirmar"' + (r.lote.length && !r.enviando ? '' : ' disabled') + '>' + (r.enviando ? 'Guardando…' : 'Confirmar: me llevo ' + r.lote.length) + '</button></aside></div>';
 }
