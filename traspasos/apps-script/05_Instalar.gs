@@ -34,6 +34,17 @@ function instalar() {
     hechos.push('Se agregó el estatus ENTREGADO_GESTOR a CAT_Estatus.');
   }
 
+  // 1a) Estatus nuevo: "Entregado parcial" (llegó una parte; el resto todavía no sale del origen)
+  if (claves.indexOf('ENTREGADO_PARCIAL') < 0) {
+    te.agregar({
+      'Clave': 'ENTREGADO_PARCIAL', 'Nombre en pantalla': 'Entregado parcial',
+      'Significado': 'El destino recibió una parte de los bultos; el resto todavía no sale (se quedó en el origen o en Recepción). No es incidencia.',
+      'Quién lo provoca': 'El destino al recibir, cuando el gestor se llevó solo una parte', 'Color texto (hex)': '9A5B00', 'Color fondo (hex)': 'FFE9C7',
+      'Orden': 6, 'Muestra': 'Entregado parcial', 'Estado en app de gestores': ''
+    });
+    hechos.push('Se agregó el estatus ENTREGADO_PARCIAL a CAT_Estatus.');
+  }
+
   // 1b) Estatus nuevo: "En Recepción Oficinas"
   if (claves.indexOf('EN_RECEPCION') < 0) {
     te.agregar({
@@ -46,7 +57,7 @@ function instalar() {
   }
 
   // 1c) Columnas nuevas: PIN de entrada por área, usuario y NIP para quien no tiene credencial
-  [[TR.H.TRASPASOS, 'Incidencia'], [TR.H.TRASPASOS, 'Editado'], [TR.H.SOLICITUDES, 'Lado'], [TR.H.SOLICITUDES, 'Responsable (área)'], [TR.H.SOLICITUDES, 'Cuenta'], [TR.H.SOLICITUDES, 'Tipo'], [TR.H.SOLICITUDES, 'Destino nuevo'],
+  [[TR.H.TRASPASOS, 'Incidencia'], [TR.H.TRASPASOS, 'Bultos pendientes'], [TR.H.TRASPASOS, 'Pendientes en'], [TR.H.TRASPASOS, 'Editado'], [TR.H.SOLICITUDES, 'Lado'], [TR.H.SOLICITUDES, 'Responsable (área)'], [TR.H.SOLICITUDES, 'Cuenta'], [TR.H.SOLICITUDES, 'Tipo'], [TR.H.SOLICITUDES, 'Destino nuevo'],
    [TR.H.AREAS, 'PIN de entrada'], [TR.H.PERSONAS, 'Usuario'], [TR.H.PERSONAS, 'NIP'],
    [TR.H.GESTORES, 'Usuario'], [TR.H.GESTORES, 'NIP']].forEach(function (x) {
     if (_agregarColumna(x[0], x[1])) hechos.push('Columna "' + x[1] + '" agregada en ' + x[0] + '.');

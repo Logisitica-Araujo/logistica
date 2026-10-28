@@ -245,6 +245,7 @@ function pararPoll() { if (S.timer) { clearInterval(S.timer); S.timer = null; } 
 function badge(t) {
   var h = '<span class="badge b-' + esc(t.estatus) + '">' + esc(S.E[t.estatus] || t.estatus) + (t.estatus === 'UBICADO' && t.ubic ? ': ' + esc(nom(t.ubic)) : '') + '</span>';
   if (t.solicitud) h += ' <span class="badge b-ELIMINACION_SOLICITADA">Eliminación solicitada</span>';
+  if (t.pend > 0) h += ' <span class="badge pendb">⚠ ' + esc(R.txtPend(t, S.A)) + '</span>';
   return h;
 }
 function areaTag(id) {
@@ -524,7 +525,7 @@ function etiquetaHTML(t, b, rp, pantalla) {
  */
 var PUNTO = 0.125;
 /** Versión de la página (sale en ❓ Ayuda). Sirve para saber si ya se publicó lo último. */
-var VERSION_PAGINA = '2026-10-26 · cajas';
+var VERSION_PAGINA = '2026-10-28 · bultos';
 function bcHTML(code, anchoMm, altoMm) {
   return '<div class="bcw"><svg class="bc" data-code="' + esc(code) + '" data-w="' + anchoMm + '" data-h="' + altoMm + '"></svg></div>';
 }
@@ -576,7 +577,9 @@ function vEscaner() {
     return '<div class="qrow"><span style="color:var(--ok);font-weight:900">✓</span><div style="min-width:0"><div class="row" style="gap:6px 10px">' + areaTag(t.destino) + '<span><span class="num">' + esc(t.folio) + '</span> · ' + esc(nom(t.origen)) + '<span class="arrow">→</span>' + esc(nom(t.destino)) + '</span></div>' +
       '<div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + t.bultos + ' bulto(s) · ' + esc(t.desc) + ' · creó ' + esc(quien(String(t.por).split(' · ')[0], nom(t.origen))) + '</div></div>' +
       (sc.modo === 'RECIBIR' ? '<label><input type="checkbox" data-a="faltan" data-v="' + esc(t.folio) + '"' + (it.faltan ? ' checked' : '') + '> Faltan / dañado</label>' : '<span></span>') +
-      (sc.modo === 'RECIBIR' && it.faltan ? incidenciaHTML(it) : '') + '</div>';
+      (sc.modo === 'RECIBIR' && it.faltan ? incidenciaHTML(it) : '') +
+      (sc.modo === 'ENTREGAR' && it.max > 1 ? llevaHTML(it.t.folio, it.lleva, it.max, it.motivo, it.resto) : '') +
+      (sc.modo === 'RECIBIR' && (t.pend > 0 || t.recib > 0) ? '<div class="vienen">📦 Vienen <b>' + R.enCamino(t) + ' de ' + t.bultos + '</b>' + (t.pend ? ' · ' + esc(R.txtPend(t, S.A)) : (t.recib ? ' · ya habían llegado ' + t.recib : '')) + '</div>' : '') + '</div>';
   }).join('') : '<div class="empty">Aún no hay traspasos en la lista. Escanea el primero.</div>';
   var pill = function (q, que, accion) {
     return '<div class="gestorpill"><div><b>' + esc(q.nombre) + '</b><div class="muted" style="font-size:13px">' + que + ' · ' + esc(quienTxt(q)) + '</div></div><button class="btn ghost" type="button" data-a="' + accion + '" style="margin-left:auto">Cambiar</button></div>';
@@ -624,7 +627,7 @@ function porRecibirHTML(bloq) {
       var col = suyo(t);
       return '<button type="button" class="ped' + (col ? ' trae' : ' tenue') + '" data-a="recsug" data-v="' + esc(t.folio) + '"' + (bloq ? ' disabled' : '') + '><span class="caja">＋</span>' +
         '<span style="min-width:0"><span class="row" style="gap:6px 10px">' + areaTag(t.destino) + '<span><span class="num" style="font-size:16px">' + esc(t.folio) + '</span> · de ' + esc(nom(t.origen)) + '</span>' + badge(t) + '</span>' +
-        '<span class="d">' + t.bultos + ' bulto(s) · ' + esc(t.desc) + (enRuta(t) && t.gestor ? ' · lo lleva ' + esc(t.gestor) : '') + '</span></span><span class="r">Creado<br>' + esc(fh(t.fecha, t.hora)) + '</span></button>';
+        '<span class="d">' + (t.pend > 0 || t.recib > 0 ? 'vienen ' + R.enCamino(t) + ' de ' + t.bultos : t.bultos + ' bulto(s)') + ' · ' + esc(t.desc) + (enRuta(t) && t.gestor ? ' · lo lleva ' + esc(t.gestor) : '') + '</span></span><span class="r">Creado<br>' + esc(fh(t.fecha, t.hora)) + '</span></button>';
     }).join('') + '</div>' : '<div class="muted">No hay traspasos pendientes de recibir aquí.</div>') + '</div>';
 }
 function validarTrae(d) {
@@ -636,13 +639,13 @@ function porEntregarHTML(bloq) {
   var m = me(), sc = S.scan;
   var enLote = {};
   sc.lote.forEach(function (it) { enLote[R.limpio(it.t.folio)] = true; });
-  var l = S.data.traspasos.filter(function (t) { return t.origen === m && t.estatus === 'NUEVO' && !t.solicitud && !enLote[R.limpio(t.folio)]; });
+  var l = S.data.traspasos.filter(function (t) { return ((t.origen === m && t.estatus === 'NUEVO') || (t.pend > 0 && t.pendEn === m)) && !t.solicitud && !enLote[R.limpio(t.folio)]; });
   return '<div class="panel stack" style="margin-top:20px"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Creados aquí, por entregar (' + l.length + ')</h2>' +
-    '<span class="muted" style="font-size:13px">' + (bloq ? 'Primero escanea la credencial de quien se lo lleva.' : 'Toca un traspaso para agregarlo. Solo salen los que están en "Nuevo traspaso".') + '</span></div>' +
+    '<span class="muted" style="font-size:13px">' + (bloq ? 'Primero escanea la credencial de quien se lo lleva.' : 'Toca un traspaso para agregarlo. Salen los que están en "Nuevo traspaso" y los bultos que se quedaron aquí.') + '</span></div>' +
     (l.length ? '<div class="list" style="gap:8px">' + l.map(function (t) {
       return '<button type="button" class="ped" data-a="entsug" data-v="' + esc(t.folio) + '"' + (bloq ? ' disabled' : '') + '><span class="caja">＋</span>' +
         '<span style="min-width:0"><span class="row" style="gap:6px 10px">' + areaTag(t.destino) + '<span><span class="num" style="font-size:16px">' + esc(t.folio) + '</span> → ' + esc(nom(t.destino)) + '</span></span>' +
-        '<span class="d">' + t.bultos + ' bulto(s) · ' + esc(t.desc) + '</span></span><span class="r">Creado<br>' + esc(fh(t.fecha, t.hora)) + '</span></button>';
+        '<span class="d">' + (t.pend > 0 ? '<b style="color:#9A5B00">⚠ ' + (t.pend > 1 ? 'faltan ' : 'falta ') + t.pend + ' de ' + t.bultos + ' por salir</b>' : t.bultos + ' bulto(s)') + ' · ' + esc(t.desc) + '</span></span><span class="r">Creado<br>' + esc(fh(t.fecha, t.hora)) + '</span></button>';
     }).join('') + '</div>' : '<div class="muted">No hay traspasos de esta área en "Nuevo traspaso".</div>') + '</div>';
 }
 function alEscanear(texto) {
@@ -657,7 +660,8 @@ function alEscanear(texto) {
   else v = sc.modo === 'RECIBIR' ? R.recibir(t, m, S.A, S.E) : R.salir(t, m, S.A, S.E, 'ENTREGAR');
   if (v.k === 'ok' && sc.lote.some(function (it) { return R.limpio(it.t.folio) === folio; })) v = { k: 'warn', m: t.folio + ' ya está en la lista.' };
   if (v.k === 'ok') {
-    sc.lote.push({ t: t, faltan: false });
+    var mx = sc.modo === 'ENTREGAR' ? (v.resto ? t.pend : t.bultos) : 0;
+    sc.lote.push({ t: t, faltan: false, resto: !!v.resto, max: mx, lleva: mx });
     v = { k: v.salto ? 'warn' : 'ok', m: t.folio + ' · ' + t.bultos + ' bulto(s) · ' + nom(t.origen) + ' → ' + nom(t.destino) +
       (v.salto ? ' · Agregado. Ojo: nadie registró la recolección; queda anotado.' : '') };
   }
@@ -677,6 +681,17 @@ function incidenciaHTML(it) {
     (falta ? '<label class="f" style="width:170px">¿Cuántos bultos llegaron?<span class="row" style="gap:6px;flex-wrap:nowrap"><input class="t" type="number" min="0" max="' + (t.bultos - 1) + '" data-inc="llegaron" data-v="' + f + '" value="' + esc(inc.llegaron) + '" style="width:80px"><span class="muted">de ' + t.bultos + '</span></span></label>' : '') +
     '</div><label class="f">Explica qué pasó (obligatorio)<textarea class="t" data-inc="detalle" data-v="' + f + '" rows="2" placeholder="' +
     (falta ? 'Ej. faltó la caja 2 de 3; llegó solo la de frascos' : 'Ej. la caja llegó aplastada y 2 frascos rotos') + '">' + esc(inc.detalle) + '</textarea></label></div>';
+}
+/** "Se lleva [k] de N" con − y +; si se lleva menos, por qué se quedan los demás. */
+var MOTIVOS_QUEDAN = ['No cabe en el vehículo', 'Pesa demasiado', 'Se le olvidó', 'Otro'];
+function llevaHTML(folio, k, max, motivo, resto) {
+  var f = esc(folio);
+  return '<div class="lleva' + (k < max ? ' menos' : '') + '"><span>' + (resto ? 'Faltaban ' + max + ' · se lleva' : 'Se lleva') + '</span>' +
+    '<button type="button" class="btn" data-a="llevamenos" data-v="' + f + '"' + (k <= 1 ? ' disabled' : '') + ' aria-label="Uno menos">−</button>' +
+    '<b class="num">' + k + '</b><span>de ' + max + ' bulto' + (max > 1 ? 's' : '') + '</span>' +
+    '<button type="button" class="btn" data-a="llevamas" data-v="' + f + '"' + (k >= max ? ' disabled' : '') + ' aria-label="Uno más">+</button>' +
+    (k < max ? '<label class="f">¿Por qué se queda' + (max - k > 1 ? 'n ' + (max - k) : ' 1') + '?<select class="t" data-mot="1" data-v="' + f + '"><option value="">Elige…</option>' +
+      MOTIVOS_QUEDAN.map(function (x) { return '<option' + (motivo === x ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></label>' : '') + '</div>';
 }
 /** La etiqueta de una caja: se agregan todos los traspasos que trae. */
 function escanearCaja(texto, cj) {
@@ -705,6 +720,10 @@ function guardarInc(el) {
 function confirmarLote() {
   var sc = S.scan;
   if (!sc.lote.length || sc.enviando) return;
+  if (sc.modo === 'ENTREGAR') {
+    var sinMot = sc.lote.filter(function (it) { return it.lleva < it.max && !it.motivo; })[0];
+    if (sinMot) { sc.fb = { k: 'err', m: sinMot.t.folio + ': se lleva ' + sinMot.lleva + ' de ' + sinMot.max + '. Elige por qué se quedan los demás.' }; beep('err'); return render(); }
+  }
   if (sc.modo === 'RECIBIR') {
     var mal = sc.lote.filter(function (it) {
       var inc = it.inc || {};
@@ -715,7 +734,7 @@ function confirmarLote() {
   sc.enviando = true; S.ocupado = true; render();
   srv('apiConfirmarLote', S.token, {
     modo: sc.modo, gestor: sc.gestorId || null, receptor: sc.receptorId || null,
-    items: sc.lote.map(function (it) { return { folio: it.t.folio, faltan: !!it.faltan, inc: it.faltan ? it.inc : null, caja: it.caja || '' }; }),
+    items: sc.lote.map(function (it) { return { folio: it.t.folio, faltan: !!it.faltan, inc: it.faltan ? it.inc : null, caja: it.caja || '', lleva: it.max ? it.lleva : null, max: it.max || null, motivo: it.motivo || '' }; }),
     escaneos: sc.log
   }).then(function (d) {
     var ok = d.resultados.filter(function (r) { return r.ok; }).length;
@@ -870,7 +889,7 @@ function vRecoger(r, q, fb) {
   var todos = S.data.traspasos.filter(function (t) { return R.recogible(t, S.A, S.E, q).k === 'ok' || sel[t.folio]; });
   var stand = todos.filter(function (t) { return t.estatus === 'EN_RECEPCION' || sel[t.folio]; });
   var fuera = todos.filter(function (t) { return t.estatus !== 'EN_RECEPCION' && !sel[t.folio]; });
-  var bultos = r.lote.reduce(function (s, t) { return s + (Number(t.bultos) || 1); }, 0);
+  var bultos = r.lote.reduce(function (s, t) { var mx = t.pend > 0 && t.pendEn === 'REC' ? t.pend : t.bultos; return s + ((r.lleva || {})[t.folio] || mx); }, 0);
   var grupos = {};
   stand.forEach(function (t) { (grupos[t.destino] = grupos[t.destino] || []).push(t); });
   var orden = Object.keys(grupos).sort(function (a, b) {
@@ -882,7 +901,7 @@ function vRecoger(r, q, fb) {
     return '<button type="button" class="rcard' + (on ? ' on' : '') + (tarde ? ' tarde' : '') + '" data-a="rectog" data-v="' + esc(t.folio) + '" aria-pressed="' + on + '">' +
       '<span class="chk">' + (on ? '✓' : '') + '</span>' +
       '<span class="fol">' + esc(t.folio) + '</span>' +
-      '<span class="bul">' + t.bultos + ' bulto' + (t.bultos > 1 ? 's' : '') + '</span>' +
+      '<span class="bul">' + (t.pend > 0 && t.pendEn === 'REC' ? 'falta' + (t.pend > 1 ? 'n ' : ' ') + t.pend + ' de ' + t.bultos : t.bultos + ' bulto' + (t.bultos > 1 ? 's' : '')) + '</span>' +
       '<span class="de">de ' + esc(nom(t.origen)) + (tarde ? ' · <b>lleva ' + hTxt(t) + '</b>' : '') + '</span></button>';
   };
   var cuerpo = orden.length ? orden.map(function (d) {
@@ -902,7 +921,11 @@ function vRecoger(r, q, fb) {
       '<div class="rgrupos">' + cuerpo + '</div>' + mas +
     '</div><aside class="rlleva"><div class="muted" style="font-weight:800;letter-spacing:.06em;font-size:12px">TE LLEVAS</div>' +
       '<div class="rnum">' + r.lote.length + '<small> traspaso(s)</small></div><div class="muted" style="font-weight:700">' + bultos + ' bulto(s)</div>' +
-      (r.lote.length ? '<div class="rsel">' + r.lote.map(function (t) { return '<span>' + esc(t.folio) + ' <button type="button" data-a="recquitar" data-v="' + esc(t.folio) + '" aria-label="Quitar">✕</button></span>'; }).join('') + '</div>' : '<div class="muted" style="margin:10px 0">Toca las tarjetas de lo que te llevas.</div>') +
+      (r.lote.length ? '<div class="rsel">' + r.lote.map(function (t) {
+        var mx = t.pend > 0 && t.pendEn === 'REC' ? t.pend : t.bultos, k = (r.lleva || {})[t.folio] || mx;
+        return '<div class="rchip"><div class="row" style="justify-content:space-between;gap:6px"><b class="num">' + esc(t.folio) + '</b><button type="button" data-a="recquitar" data-v="' + esc(t.folio) + '" aria-label="Quitar">✕</button></div>' +
+          (gestor && mx > 1 ? llevaHTML(t.folio, k, mx, (r.mot || {})[t.folio], t.pend > 0) : '') + '</div>';
+      }).join('') + '</div>' : '<div class="muted" style="margin:10px 0">Toca las tarjetas de lo que te llevas.</div>') +
       '<button class="btn primary rconf" type="button" data-a="recconfirmar"' + (r.lote.length && !r.enviando ? '' : ' disabled') + '>' + (r.enviando ? 'Guardando…' : 'Confirmar: me llevo ' + r.lote.length) + '</button></aside></div>';
 }
 /* ---------- Centro de Impresión (Recepción) ----------
@@ -1133,7 +1156,14 @@ function recConfirmar() {
   var r = S.rec, dejar = S.tab !== 'recoger';
   if (!r.lote.length || r.enviando) return;
   r.enviando = true; S.ocupado = true; render();
-  srv('apiRecepcion', S.token, { modo: dejar ? 'DEJAR' : 'RECOGER', quien: r.quienId, folios: r.lote.map(function (t) { return t.folio; }) })
+  var lleva = {}, max = {}, motivos = {};
+  if (!dejar) r.lote.forEach(function (t) {
+    var mx = t.pend > 0 && t.pendEn === 'REC' ? t.pend : t.bultos;
+    lleva[t.folio] = (r.lleva || {})[t.folio] || mx; max[t.folio] = mx; motivos[t.folio] = (r.mot || {})[t.folio] || '';
+  });
+  var sinM = Object.keys(lleva).filter(function (f) { return lleva[f] < max[f] && !motivos[f]; })[0];
+  if (sinM) { r.enviando = false; S.ocupado = false; r.fb = { k: 'err', m: sinM + ': se lleva ' + lleva[sinM] + ' de ' + max[sinM] + '. Elige por qué se quedan los demás.' }; beep('err'); return render(); }
+  srv('apiRecepcion', S.token, { modo: dejar ? 'DEJAR' : 'RECOGER', quien: r.quienId, folios: r.lote.map(function (t) { return t.folio; }), lleva: lleva, max: max, motivos: motivos })
     .then(function (d) {
       var ok = d.resultados.filter(function (x) { return x.ok; }).length;
       var mal = d.resultados.filter(function (x) { return !x.ok; });
@@ -1308,6 +1338,12 @@ document.addEventListener('click', function (e) {
   var a = el.getAttribute('data-a'), v = el.getAttribute('data-v');
   if (a === 'fondo' && e.target !== el) return;
   if (a === 'faltan') return;
+  if (a === 'llevamenos' || a === 'llevamas') {
+    var d1 = a === 'llevamas' ? 1 : -1;
+    if (S.tab === 'recoger' && me() === 'REC') { var rl = S.rec.lleva || (S.rec.lleva = {}); var tt = S.rec.lote.filter(function (x) { return x.folio === v; })[0]; var mx2 = tt ? (tt.pend > 0 && tt.pendEn === 'REC' ? tt.pend : tt.bultos) : 1; rl[v] = Math.max(1, Math.min(mx2, (rl[v] || mx2) + d1)); }
+    else S.scan.lote.forEach(function (it) { if (it.t.folio === v) it.lleva = Math.max(1, Math.min(it.max, it.lleva + d1)); });
+    return render();
+  }
   var w = S.wiz;
   switch (a) {
     case 'entrar': return entrar(v);
@@ -1482,6 +1518,11 @@ document.addEventListener('change', function (e) {
     render();
   }
   if (e.target.getAttribute('data-inc') === 'tipo') { guardarInc(e.target); render(); }
+  if (e.target.getAttribute('data-mot')) {
+    var fm = e.target.getAttribute('data-v');
+    if (S.tab === 'recoger' && me() === 'REC') (S.rec.mot || (S.rec.mot = {}))[fm] = e.target.value;
+    else S.scan.lote.forEach(function (it) { if (it.t.folio === fm) it.motivo = e.target.value; });
+  }
 });
 /** Lo que pasa cuando un campo "se envía" (Enter, o solo, al terminar de escanear). */
 function procesarCampo(el) {

@@ -315,6 +315,10 @@ function _tObj(f) {
     fechaEnt: _txt(f['Fecha entrega']),
     recibio: String(f['Recibido por'] || ''),
     bultosRec: String(f['Bultos recibidos'] || ''),
+    // Bultos que se quedaron (el gestor se llevó solo una parte) y dónde: área de origen o REC (stand).
+    pend: Number(f['Bultos pendientes']) || 0,
+    pendEn: String(f['Pendientes en'] || '').trim().toUpperCase(),
+    recib: (String(f['Bultos recibidos'] || '').match(/^(\d+)\s+de/) || [0, 0])[1] * 1,
     incidencia: String(f['Incidencia'] || ''),
     editado: String(f['Editado'] || ''),
     reimp: Number(f['Reimpresiones']) || 0,
@@ -322,6 +326,23 @@ function _tObj(f) {
     act: _txt(f['Última actualización']),
     _fila: f._fila
   };
+}
+
+/**
+ * Cuántos bultos se lleva el gestor y qué se queda. it = { lleva, motivo }, v = resultado de la regla (v.resto
+ * = se lleva lo que faltaba). 'donde' = área donde se quedan los que no se lleva (origen o REC).
+ * Regresa { cambios, lleva, quedan, detalle } para guardar y para la línea de tiempo.
+ */
+function _salidaBultos(t, it, v, donde) {
+  const max = v && v.resto ? t.pend : t.bultos;
+  let lleva = Math.floor(Number(it && it.lleva));
+  if (!(lleva >= 1 && lleva <= max)) lleva = max;
+  const quedan = max - lleva;
+  const cambios = { 'Bultos pendientes': quedan, 'Pendientes en': quedan ? donde : '' };
+  const motivo = String((it && it.motivo) || '').trim();
+  const detalle = (v && v.resto ? 'Se lleva ' + lleva + ' bulto(s) que faltaba(n)' : (quedan ? 'Se lleva ' + lleva + ' de ' + t.bultos : '')) +
+    (quedan ? ' · se queda(n) ' + quedan + ' en ' + _nom(donde) + (motivo ? ' (' + motivo + ')' : '') : '');
+  return { cambios: cambios, lleva: lleva, quedan: quedan, detalle: detalle };
 }
 
 function _traspasos() {

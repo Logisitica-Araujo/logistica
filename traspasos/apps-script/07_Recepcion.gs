@@ -31,6 +31,10 @@ function apiRecepcion(token, d) {
     const A = _areas();
     const E = _mapaEstatus();
 
+    // Si el gestor se lleva solo una parte, tiene que decir por qué se quedan los demás.
+    Object.keys(d.lleva || {}).forEach(function (f) {
+      if ((Number(d.lleva[f]) < Number((d.max || {})[f] || 0)) && !String((d.motivos || {})[f] || '').trim()) throw new Error(f + ': elige por qué se quedan los demás bultos.');
+    });
     return _conCandado(function () {
       const mapa = {};
       _traspasos().forEach(function (t) { mapa[R.limpio(t.folio)] = t; });
@@ -55,13 +59,18 @@ function apiRecepcion(token, d) {
         }
 
         if (quien.tipo === 'GESTOR') {
-          _actualizarT(t, { 'Estatus': 'RECOLECTADO', 'Gestor': quien.nombre, 'Fecha recolección': _ahoraTxt(), 'Ubicación actual': '' });
-          movs.push(_movObj(t, 'RECOGIDO EN RECEPCIÓN POR GESTORÍA', antes, 'RECOLECTADO',
+          const it = { lleva: (d.lleva || {})[t.folio], motivo: (d.motivos || {})[t.folio] };
+          const sb = _salidaBultos(t, it, v, AREA_REC);
+          const cam = Object.assign({ 'Gestor': quien.nombre, 'Fecha recolección': _ahoraTxt(), 'Ubicación actual': '' }, sb.cambios);
+          if (!v.resto) cam['Estatus'] = 'RECOLECTADO';
+          _actualizarT(t, cam);
+          movs.push(_movObj(t, v.resto ? 'RECOGIDO EN RECEPCIÓN: BULTO(S) QUE FALTABAN' : (sb.quedan ? 'RECOGIDO EN RECEPCIÓN PARCIAL (' + sb.lleva + ' DE ' + t.bultos + ')' : 'RECOGIDO EN RECEPCIÓN POR GESTORÍA'),
+            antes, v.resto ? antes : 'RECOLECTADO',
             { donde: AREA_REC, persona: quien.nombre, cred: quien.via, medio: 'RECEPCIÓN', equipo: AREA_REC,
-              detalle: antes === 'EN_RECEPCION' ? '' : 'Salida por Recepción (no se había registrado como dejado)' }));
+              detalle: [antes === 'EN_RECEPCION' || v.resto ? '' : 'Salida por Recepción (no se había registrado como dejado)', sb.detalle].filter(String).join(' · ') }));
           if (t.origen !== t.destino) avisos.push(_avisoObj(t.origen, t.folio, 'Salió de Oficinas · lo lleva ' + quien.nombre));
-          avisos.push(_avisoObj(t.destino, t.folio, 'Va en camino para ti · lo lleva ' + quien.nombre));
-          resultados.push({ folio: t.folio, ok: true, msg: 'Se lo lleva ' + quien.nombre });
+          avisos.push(_avisoObj(t.destino, t.folio, 'Va en camino para ti · lo lleva ' + quien.nombre + (sb.quedan ? ' · vienen ' + sb.lleva + ' de ' + t.bultos + ' (se quedó ' + sb.quedan + ' en Recepción Oficinas)' : v.resto ? ' · son los bultos que faltaban' : '')));
+          resultados.push({ folio: t.folio, ok: true, msg: 'Se lo lleva ' + quien.nombre + (sb.quedan ? ' (' + sb.lleva + ' de ' + t.bultos + ')' : '') });
         } else if (v.log) {
           // Logística recoge del stand lo que va a Morelia: queda "En Logística", listo para la caja/paquetería.
           _actualizarT(t, { 'Estatus': 'EN_LOGISTICA', 'Ruta': 'VIA_LOGISTICA_OK', 'Ubicación actual': '' });

@@ -352,6 +352,10 @@ function apiConfirmarLote(token, d) {
       if (!receptor) throw new Error(d.receptor ? _noReconocido(d.receptor) : 'Escanea la credencial de quien recibe.');
     }
 
+    if (modo === 'ENTREGAR') (d.items || []).forEach(function (it) {
+      if (it.lleva != null && it.max != null && Number(it.lleva) < Number(it.max) && !String(it.motivo || '').trim())
+        throw new Error(it.folio + ': se lleva ' + it.lleva + ' de ' + it.max + '. Elige por qué se quedan los demás.');
+    });
     if (modo === 'RECIBIR') (d.items || []).forEach(function (it) {
       if (!it.faltan) return;
       const inc = it.inc || {};
@@ -384,11 +388,16 @@ function apiConfirmarLote(token, d) {
         const antes = t.estatus;
 
         if (modo === 'ENTREGAR') {
-          _actualizarT(t, { 'Estatus': 'RECOLECTADO', 'Gestor': gestor.nombre, 'Fecha recolección': _ahoraTxt(), 'Ubicación actual': '' });
-          movs.push(_movObj(t, 'RECOLECTADO POR GESTORÍA', antes, 'RECOLECTADO',
-            { donde: me, persona: gestor.nombre, cred: gestor.via, medio: gestor.codigo ? 'CREDENCIAL DEL GESTOR' : 'USUARIO Y NIP DEL GESTOR', equipo: me }));
-          avisos.push(_avisoObj(t.destino, t.folio, 'Va en camino para ti · lo lleva ' + gestor.nombre));
-          resultados.push({ folio: t.folio, ok: true, msg: 'Entregado a ' + gestor.nombre });
+          const sb = _salidaBultos(t, it, v, me);
+          const cam = Object.assign({ 'Gestor': gestor.nombre, 'Fecha recolección': _ahoraTxt(), 'Ubicación actual': '' }, sb.cambios);
+          if (!v.resto) cam['Estatus'] = 'RECOLECTADO';
+          _actualizarT(t, cam);
+          movs.push(_movObj(t, v.resto ? 'RECOLECTADO: BULTO(S) QUE FALTABAN' : (sb.quedan ? 'RECOLECTADO PARCIAL (' + sb.lleva + ' DE ' + t.bultos + ')' : 'RECOLECTADO POR GESTORÍA'),
+            antes, v.resto ? antes : 'RECOLECTADO',
+            { donde: me, persona: gestor.nombre, cred: gestor.via, medio: gestor.codigo ? 'CREDENCIAL DEL GESTOR' : 'USUARIO Y NIP DEL GESTOR', equipo: me, detalle: sb.detalle }));
+          avisos.push(_avisoObj(t.destino, t.folio, 'Va en camino para ti · lo lleva ' + gestor.nombre +
+            (v.resto ? ' · son los ' + sb.lleva + ' bulto(s) que faltaban' : sb.quedan ? ' · vienen ' + sb.lleva + ' de ' + t.bultos + ' (se quedó ' + sb.quedan + ' en ' + R.nom(A, me) + ')' : '')));
+          resultados.push({ folio: t.folio, ok: true, msg: 'Entregado a ' + gestor.nombre + (sb.quedan ? ' (' + sb.lleva + ' de ' + (v.resto ? sb.lleva + sb.quedan : t.bultos) + ')' : '') });
           return;
         }
 
@@ -404,14 +413,17 @@ function apiConfirmarLote(token, d) {
           return;
         }
 
-        const nuevo = it.faltan ? 'INCIDENCIA' : 'ENTREGADO';
-        let recibidos = t.bultos + ' de ' + t.bultos, incTxt = '';
+        // Si el gestor se llevó solo una parte, aquí llegan los que vienen en camino; el resto sigue en el origen.
+        const vienen = (t.pend || t.recib) ? R.enCamino(t) : t.bultos;
+        const parcial = !it.faltan && (t.pend > 0);
+        const nuevo = it.faltan ? 'INCIDENCIA' : (parcial ? 'ENTREGADO_PARCIAL' : 'ENTREGADO');
+        let recibidos = ((t.recib || 0) + vienen) + ' de ' + t.bultos, incTxt = '';
         if (it.faltan) {
           const inc = it.inc || {};
           if (inc.tipo !== 'DANADO') {
             const n = Math.floor(Number(inc.llegaron));
-            if (!(n >= 0 && n < t.bultos)) { resultados.push({ folio: t.folio, ok: false, msg: 'Llegaron ' + inc.llegaron + ' bultos, pero el traspaso es de ' + t.bultos + '. Revisa el número.' }); return; }
-            recibidos = n + ' de ' + t.bultos;
+            if (!(n >= 0 && n < vienen)) { resultados.push({ folio: t.folio, ok: false, msg: 'Llegaron ' + inc.llegaron + ' bultos, pero venían ' + vienen + '. Revisa el número.' }); return; }
+            recibidos = ((t.recib || 0) + n) + ' de ' + t.bultos;
           }
           incTxt = R.INCIDENCIAS[inc.tipo] + (inc.tipo !== 'DANADO' ? ' · llegaron ' + recibidos : '') + ' · ' + String(inc.detalle).trim();
         }
@@ -419,9 +431,9 @@ function apiConfirmarLote(token, d) {
           'Estatus': nuevo, 'Fecha entrega': _ahoraTxt(), 'Recibido por': receptor.nombre + ' (' + R.nom(A, me) + ')',
           'Bultos recibidos': recibidos, 'Incidencia': incTxt, 'Ubicación actual': ''
         });
-        movs.push(_movObj(t, it.faltan ? 'RECIBIDO CON INCIDENCIA' : 'ENTREGADO', antes, nuevo,
+        movs.push(_movObj(t, it.faltan ? 'RECIBIDO CON INCIDENCIA' : (parcial ? 'ENTREGADO PARCIAL' : 'ENTREGADO'), antes, nuevo,
           { donde: me, medio: 'ESCÁNER', equipo: me, persona: receptor.nombre, cred: receptor.via,
-            detalle: nota + (it.faltan ? incTxt : (t.bultos + ' bulto(s)')) }));
+            detalle: nota + (it.faltan ? incTxt : (parcial ? 'Llegaron ' + recibidos + ' · ' + R.txtPend(t, A) : (vienen < t.bultos ? 'Llegaron los ' + vienen + ' que faltaban · completo (' + t.bultos + ' de ' + t.bultos + ')' : t.bultos + ' bulto(s)'))) }));
         avisos.push(_avisoObj(t.origen, t.folio, (it.faltan ? 'Recibido CON INCIDENCIA en ' + R.nom(A, me) + ' · ' + incTxt : 'Entregado en ' + R.nom(A, me)) + ' · recibió ' + receptor.nombre));
         if (it.faltan) avisos.push(_avisoObj(TR.AREA_ADMIN, t.folio, 'Incidencia al recibir en ' + R.nom(A, me) + ' · ' + incTxt));
         resultados.push({ folio: t.folio, ok: true, msg: it.faltan ? 'Recibido con incidencia' : 'Entregado' });

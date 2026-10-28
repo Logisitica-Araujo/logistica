@@ -97,6 +97,8 @@ function TR_REGLAS() {
       return { k: 'err', m: 'Este traspaso NO es para ' + aqui + '. Va para: ' + R.nom(A, t.destino) + '.', ubicable: true };
     }
     if (t.estatus === 'ENTREGADO') return { k: 'warn', m: t.folio + ' ya fue recibido anteriormente.' };
+    if (t.estatus === 'ENTREGADO_PARCIAL' && R.enCamino(t) <= 0)
+      return { k: 'warn', m: t.folio + ': ya recibiste ' + t.recib + ' de ' + t.bultos + '. ' + R.txtPend(t, A) + ': todavía no sale.' };
     if (R.FINALES.indexOf(t.estatus) >= 0) return { k: 'err', m: t.folio + ' está como "' + nomE(E, t.estatus) + '". No se puede recibir.' };
     if (esLog && t.estatus === 'EN_LOGISTICA') return { k: 'warn', m: t.folio + ' ya está en Logística.' };
     // Lo normal es que llegue recolectado / en paquetería. Si viene "Nuevo" es que se saltó la
@@ -106,9 +108,16 @@ function TR_REGLAS() {
   };
 
   /** ¿Se le puede entregar al gestor? modo 'ENTREGAR' (desde un área) o 'GESTOR' (celular del gestor). */
+  /** Bultos que ya salieron y todavía no se reciben (cuando se llevaron solo una parte). */
+  R.enCamino = function (t) { return Math.max(0, (t.bultos || 1) - (t.pend || 0) - (t.recib || 0)); };
+  /** Texto corto para la marca naranja: "Falta 1 de 3 por salir · en Nueva Roma · PV" */
+  R.txtPend = function (t, A) { return t.pend ? 'Falta' + (t.pend > 1 ? 'n ' : ' ') + t.pend + ' de ' + t.bultos + ' por salir · en ' + R.nom(A, t.pendEn) : ''; };
+
   R.salir = function (t, me, A, E, modo) {
     if (!t) return { k: 'err', m: 'Ese folio no existe. Revisa que esté bien tecleado.' };
     if (t.solicitud) return { k: 'err', m: t.folio + ' tiene una solicitud de eliminación pendiente. No se debe mover.' };
+    // Se quedaron bultos aquí (el gestor se llevó solo una parte): ahora sale el resto.
+    if (t.pend > 0 && t.pendEn === me && R.FINALES.indexOf(t.estatus) < 0) return { k: 'ok', m: '', resto: true };
     if (t.estatus === 'RECOLECTADO') return { k: 'warn', m: t.folio + ' ya fue recolectado' + (t.gestor ? ' por ' + t.gestor : '') + '.' };
     if (modo === 'ENTREGAR' && t.origen !== me && !(me === 'LOG' && t.estatus === 'EN_LOGISTICA')) {
       return { k: 'err', m: t.folio + ' no sale de aquí. Sale de: ' + R.nom(A, t.origen) + '.' };
@@ -150,6 +159,8 @@ function TR_REGLAS() {
     if (t.solicitud) return { k: 'err', m: t.folio + ' tiene una solicitud de eliminación pendiente. No se debe mover.' };
     // El gestor da la salida de todo lo de Oficinas que va fuera, aunque nadie lo haya "dejado" aquí.
     if (quien && quien.tipo === 'GESTOR' && R.porSalirRec(t, A)) return { k: 'ok', m: '' };
+    // Bultos que se quedaron en el stand la vez pasada: el gestor se lleva el resto.
+    if (quien && quien.tipo === 'GESTOR' && t.pend > 0 && t.pendEn === 'REC' && R.FINALES.indexOf(t.estatus) < 0 && !R.esOf(A, t.destino)) return { k: 'ok', m: '', resto: true };
     // Lo que va a un área de Oficinas NO se lo lleva un gestor: lo recoge esa área aquí en Recepción.
     if (quien && quien.tipo === 'GESTOR' && t.estatus === 'EN_RECEPCION' && R.esOf(A, t.destino))
       return { k: 'err', m: t.folio + ' es para ' + R.nom(A, t.destino) + ' (aquí en Oficinas): lo recoge esa área en Recepción, no un gestor.' };

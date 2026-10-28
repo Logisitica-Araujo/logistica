@@ -219,6 +219,20 @@ details.sincred summary{cursor:pointer;font-weight:700;color:var(--muted);font-s
 .rec-id .scaninput{font-size:28px;padding:18px}
 .pinbox{border:2px solid var(--admin-gold)}
 #print{display:none}
+/* Bultos: cuántos se lleva el gestor */
+.badge.pendb{color:#9A5B00;background:#FFE9C7}
+.lleva{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--surface-2);border-radius:10px;padding:8px 10px;font-weight:700;margin-top:4px}
+.lleva .btn{padding:4px 12px;font-size:18px;line-height:1}
+.lleva .num{font-size:20px;min-width:22px;text-align:center}
+.lleva.menos{background:#FFE9C7}
+.lleva label.f{flex-basis:100%;display:grid;gap:4px;font-size:13px;color:var(--ink);white-space:normal}
+.vienen{grid-column:1/-1;font-size:13px;background:#FFE9C7;color:#6B4000;border-radius:8px;padding:6px 10px;margin-top:4px}
+.rsel{display:grid;gap:8px}
+.rchip{background:var(--ok-bg);border-radius:10px;padding:8px}
+.rchip button[data-a="recquitar"]{border:none;background:none;cursor:pointer;color:var(--muted);font-weight:900}
+.rchip .lleva{margin-top:6px;background:var(--surface);gap:5px;font-size:13.5px;padding:6px 8px}
+.rchip .lleva .btn{padding:2px 9px;font-size:16px}
+.rchip .lleva .num{font-size:17px;min-width:16px}
 /* Buscador en el encabezado */
 .hsearch input{border:1px solid var(--line);background:var(--surface-2);border-radius:12px;height:42px;padding:0 14px;width:190px;font-weight:700}
 .hsearch input:focus{background:var(--surface);border-color:var(--accent);width:240px}
@@ -255,9 +269,6 @@ details.sincred summary{cursor:pointer;font-weight:700;color:var(--muted);font-s
 .rmas summary{cursor:pointer;font-weight:700;color:var(--muted)}
 .rlleva{position:sticky;top:12px;background:var(--surface);border:2px solid var(--accent);border-radius:16px;padding:16px;display:grid;gap:6px}
 .rnum{font-size:44px;font-weight:900;line-height:1}.rnum small{font-size:16px;font-weight:700;color:var(--muted)}
-.rsel{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
-.rsel span{background:var(--ok-bg);border-radius:8px;padding:3px 4px 3px 8px;font-weight:800;font-size:13px;display:flex;gap:2px;align-items:center}
-.rsel button{border:none;background:none;cursor:pointer;color:var(--muted);font-weight:900}
 .rconf{font-size:18px;padding:14px;margin-top:6px}
 /* Modo administrador con solicitudes pendientes: número rojo y un pulso suave */
 .btn.conpend{position:relative}

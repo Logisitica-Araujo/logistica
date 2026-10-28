@@ -1,7 +1,7 @@
 import os
 D=os.path.dirname(os.path.abspath(__file__))
 IMG='file://'+D+'/img/'
-VER='Versión 1.4 · Octubre 2026'
+VER='Versión 1.5 · Octubre 2026'
 
 CSS='''
 @page{size:Letter;margin:18mm 16mm 18mm 16mm}
@@ -69,6 +69,7 @@ EST=[('Nuevo traspaso','#1F63D6','#E2ECFF','Creado y etiquetado. Espera a que pa
  ('En Logística','#38559E','#E5EBF7','Llegó a Logística: por enviar a Morelia o por distribuir.'),
  ('Enviado por paquetería','#0B6C80','#DAF2F7','Va o viene de Morelia con número de guía.'),
  ('Entregado','#1B7F38','#DFF3E5','El destino lo escaneó y llegaron todos los bultos.'),
+ ('Entregado parcial','#9A5B00','#FFE9C7','Llegó una parte; el resto todavía no sale del origen (el gestor se llevó solo algunos bultos). No es incidencia.'),
  ('Recibido con incidencia','#C4440B','#FFE8DA','Llegó, pero faltan bultos o llegó dañado.'),
  ('El traspaso está en…','#7036B8','#EFE5FB','Se escaneó en un lugar que no es su destino.'),
  ('Extraviado','#C8232D','#FDE6E7','No aparece. Lo marca un administrador.'),
@@ -135,6 +136,10 @@ suc=[
  fig('s09a_entregar','Primero se identifica quién se lo lleva.')+
  paso(3,'Agrega los traspasos','<b>Tres formas, mismo resultado:</b> escanea la etiqueta, teclea el folio, o <b>tócalo en la lista de abajo</b> "Creados aquí, por entregar" (solo salen los que creó tu área y siguen en <i>Nuevo traspaso</i>).')+
  fig('s09b_por_entregar','Abajo: lo que creó tu área y falta entregar. Toca uno para agregarlo.')+
+ '<h3>Si el gestor no se lleva todos los bultos</h3><p>En traspasos de más de 1 bulto aparece <b>"Se lleva [−] 3 [+] de 3"</b>. Si no cabe todo, baja el número y elige <b>por qué se quedan</b> los demás (no cabe, pesa demasiado, se le olvidó…). Es obligatorio.</p>'+
+ fig('p1_entregar_parcial','Se lleva 2 de 3; el que se queda pide motivo.')+
+ '<p>El traspaso queda con la marca naranja <b>"⚠ Falta 1 de 3 por salir · en tu sucursal"</b> y el bulto que se quedó vuelve a salir abajo en <b>"Creados aquí, por entregar"</b>: el siguiente gestor lo toca y se lleva el que falta.</p>'+
+ fig('p2_falta_por_salir','El bulto que se quedó, listo para el siguiente gestor.')+
  paso(4,'Confirmar salida','Quedan como <span class="st" style="color:#9A6400;background:#FFF0CC">● Recolectado por gestoría</span> y al destino le llega el aviso.')+
  fig('s09_entregar','Lista de traspasos que se lleva el gestor.')),
 ('Recibir traspasos','entrada a tu sucursal',
@@ -149,6 +154,8 @@ suc=[
  '<h3>Lista "Vienen para aquí"</h3><p>Abajo aparecen los traspasos que van para tu sucursal y todavía no se reciben: <b>todo</b> lo que viene para tu sucursal: en ruta con un gestor, por paquetería, en Logística, y lo que sigue en <b>Nuevo traspaso</b> (a alguien se le olvidó darle salida).</p>'+
  paso('★','Escanea la credencial del gestor que llega (opcional)','Lo que <b>trae ese gestor</b> sale <b>en color</b>: hay certeza de que viene con él. Lo demás sale <b>en gris</b> y se ilumina al pasar el cursor. Cualquiera se puede tocar para agregarlo.')+
  fig('s08b_vienen','En color, lo que trae José Luis; en gris, uno que nadie registró al salir.')+
+ '<h3>Si vienen solo algunos bultos</h3><p>Si el gestor se llevó solo una parte, al recibir dice <b>"📦 Vienen 2 de 3 · falta 1 por salir de …"</b>. Recibe los que llegaron: queda <b>Entregado parcial</b> (no es incidencia). Cuando llegue el que falta, escanéalo y queda <b>Entregado</b> completo.</p>'+
+ fig('p3_recibir_vienen','Vienen 2 de 3: el tercero sigue en Nueva Roma.')+fig('p4_entregado_parcial','Entregado parcial, con su historia.','chico')+
  nota('warn','Llegó y nadie registró la recolección','Si el gestor olvidó registrar la salida, igual se recibe. La fila sale en amarillo con el aviso y queda anotado en la historia.')),
 ('Alertas del escáner','qué hacer cuando sale rojo',
  '<p>La página revisa cada escaneo al momento y <b>cada situación tiene su sonido</b>. Con unos días de uso, el oído los reconoce sin mirar la pantalla.</p>'+tabla(['Sonido','Cuándo suena'],[
@@ -228,6 +235,7 @@ ofi=[
 ('Recibir y entregar','escáner',
  nota('warn','Si llegó roto o incompleto','Marca <b>Faltan / dañado</b> y llena qué pasó, cuántos bultos llegaron (si faltan) y la explicación. Es obligatorio.')+
  '<h3>Recibir</h3>'+paso(1,'Escáner → "Recibir traspasos"','Escanea las etiquetas (se agregan solas), teclea el folio o tócalo en la lista <b>"Vienen para aquí"</b> de abajo. No pide credencial.')+
+ nota('info','Bultos que no llegaron juntos','Si el gestor se llevó solo una parte, al recibir dice "Vienen 2 de 3". Queda <b>Entregado parcial</b> hasta que llegue el resto. Al entregar al gestor, si no cabe todo, baja el número en "Se lleva [−] N [+]" y elige el motivo.')+
  nota('info','Lista "Vienen para aquí"','<b>Todo</b> lo que va para tu área: en ruta con un gestor, en Recepción Oficinas, en Logística, por paquetería o en <i>Nuevo traspaso</i>. Se toca para agregarlo, se teclea o se escanea. Si escaneas la credencial del gestor que llega, lo que él trae sale en color; lo demás, en gris.')+paso(2,'Confirmar recepción','Queda <span class="st" style="color:#1B7F38;background:#DFF3E5">● Entregado</span>.')+
  fig('o03_recibir','Recibir en Oficinas: directo, sin credencial.')+
  '<h3>Entregar al gestor</h3>'+paso(1,'Escáner → "Entregar a gestor"','Escanea la credencial de quien se lo lleva; luego escanea, teclea o toca en la lista <b>"Creados aquí, por entregar"</b>, y <b>Confirmar salida</b>.')+
@@ -321,6 +329,8 @@ rec=[
   ['<b>Persona de Logística</b>','Lo de su área y <b>todo lo que va a Morelia</b> (PV y Rebotica), para mandarlo por paquetería. Un gestor no se lo lleva.','En Logística']],['36mm','','40mm'])+
  fig('r03b_recoger_persona','Una persona de Contabilidad solo ve lo de Contabilidad.')+
  nota('err','Borde rojo','Lleva más de 36 horas en el stand: llévalo primero.')+
+ '<h3>Si el gestor no se lleva todos los bultos</h3><p>En "Te llevas", los traspasos de más de 1 bulto tienen <b>"Se lleva [−] 4 [+] de 4"</b>. Si no cabe todo, baja el número y elige por qué se quedan los demás. Los que no se lleva <b>se quedan en el stand</b> con la marca "falta 1 de 4" y el siguiente gestor los ve en su lista.</p>'+
+ fig('p5_recepcion_parcial','Se lleva 3 de 4; 1 se queda en el stand.')+
  nota('info','"Ver más que todavía no llegan al stand"','Abajo, escondido: lo que un área creó pero todavía no trae al stand. Solo llévalo si te lo dan en la mano.')),
 ('En resguardo','qué hay en el stand',
  fig('r04_resguardo','En resguardo: lo que está en el stand y lo que falta por salir de Oficinas.')+
@@ -401,7 +411,7 @@ adm=[
   ['<b>CAT_EnviosOf</b>','Guía de qué se manda a cada área de Oficinas: <b>Documentos</b> | <b>Área</b>. El área se escribe igual que en CAT_Areas (ej. "Coordinación PV"). Sale como aviso al crear un traspaso hacia esa área. "Revisar configuración" avisa si un área no coincide.'],
   ['<b>CAT_Estatus</b>','Nombre en pantalla y colores de cada estatus.'],
   ['<b>CAT_Paqueterias / CAT_Motivos</b>','Listas de paqueterías y de motivos (reimpresión, eliminación, incidencia).'],
-  ['<b>RES_Traspasos (columnas nuevas)</b>','<b>Incidencia</b>: qué pasó al recibir roto o incompleto. <b>Editado</b>: quién lo editó y cuándo (solo una vez).'],
+  ['<b>RES_Traspasos (columnas nuevas)</b>','<b>Incidencia</b>: qué pasó al recibir roto o incompleto. <b>Editado</b>: quién lo editó y cuándo (solo una vez). <b>Bultos pendientes</b> y <b>Pendientes en</b>: cuántos bultos se quedaron (el gestor se llevó una parte) y dónde (sucursal o REC).'],
   ['<b>RES_Solicitudes (columnas nuevas)</b>','<b>Tipo</b> (CANCELACIÓN o CAMBIO DE DESTINO), <b>Destino nuevo</b>, <b>Lado</b> (ORIGEN o DESTINO), <b>Responsable (área)</b> y <b>Cuenta</b>.'],
   ['<b>CFG_Ajustes</b>','Duración de sesión (0 = no se cierra), <b>pin_administrador</b>, logo, tamaño general de etiqueta, columnas de Operaciones (A, K, M), cada cuánto revisar avisos, <b>botican_archivo</b> (bitácora de Botican) y los <b>manuales</b> (ver abajo).']],['48mm',''])+
  '<h3>Manuales (botón ❓ Ayuda)</h3><p>Los PDF viven en una carpeta de Drive (<b>carpeta_manuales</b>) y sus links en CFG_Ajustes: <b>manual_sucursales</b>, <b>manual_oficinas_recepcion</b>, <b>manual_administradores</b> y <b>manual_proceso</b>. Cada área ve el suyo; los administradores ven todos y la carpeta.</p>'+
