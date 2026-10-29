@@ -133,9 +133,10 @@ function _api(fn) {
   catch (e) { return { ok: false, error: String(e && e.message ? e.message : e) }; }
 }
 
-function _conCandado(fn) {
+const TR_OCUPADO = 'El sistema está ocupado guardando otro movimiento. Espera unos segundos y vuelve a intentarlo: no se guardó nada.';
+function _conCandado(fn, espera) {
   const lock = LockService.getScriptLock();
-  lock.waitLock(25000);
+  if (!lock.tryLock(espera || 28000)) throw new Error(TR_OCUPADO);
   try { return fn(); }
   finally { try { lock.releaseLock(); } catch (e) { } }
 }

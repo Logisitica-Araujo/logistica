@@ -226,11 +226,12 @@ function alertarSinSalida() {
   const A = _areas();
   const atrasados = _traspasos().filter(function (t) { return R.porSalirRec(t, A) && t.estatus !== 'EN_LOGISTICA' && _horasDesde(t) >= lim; });
   if (!atrasados.length) return 0;
+  // El historial es grande: se revisa FUERA del candado; solo se aparta para escribir.
+  const ya = {};
+  _tb(TR.H.MOV).filas().forEach(function (m) { if (String(m['Acción']).indexOf('ALERTA: SIN SALIDA') === 0) ya[R.limpio(m['Folio'])] = true; });
+  const nuevos = atrasados.filter(function (t) { return !ya[R.limpio(t.folio)]; });
+  if (!nuevos.length) return 0;
   return _conCandado(function () {
-    const ya = {};
-    _tb(TR.H.MOV).filas().forEach(function (m) { if (String(m['Acción']).indexOf('ALERTA: SIN SALIDA') === 0) ya[R.limpio(m['Folio'])] = true; });
-    const nuevos = atrasados.filter(function (t) { return !ya[R.limpio(t.folio)]; });
-    if (!nuevos.length) return 0;
     const movs = [], avisos = [];
     nuevos.forEach(function (t) {
       const h = Math.floor(_horasDesde(t));

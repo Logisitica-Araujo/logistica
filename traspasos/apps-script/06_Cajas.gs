@@ -213,8 +213,33 @@ const OPS_ANTES_DE_ENVIAR = ['NUEVO', 'RECOLECTADO', 'ENTREGADO_GESTOR', 'EN_LOG
  * Regresa cuántos traspasos actualizó. Con detalle = true regresa {n, omitidos:[{folio, motivo}]}.
  */
 function sincronizarOperaciones(detalle) {
-  const r = _conCandado(function () {
-    const guias = _guiasOperaciones();
+  const manual = detalle === true;
+  // Operaciones es otro archivo y tarda en leerse: se lee FUERA del candado para no detener a nadie.
+  const guias = _guiasOperaciones();
+  let r = { n: 0, omitidos: [] };
+  if (manual || _hayGuiasPorAplicar(guias)) {
+    __TB = {};                                   // dentro del candado se vuelve a leer todo, fresco
+    try { r = _conCandado(function () { return _aplicarGuias(guias); }, manual ? 28000 : 5000); }
+    catch (e) { if (manual) throw e; Logger.log('sincronizarOperaciones: ' + e.message); }   // automático: lo intenta en la siguiente vuelta
+  }
+  // El mismo activador de 10 minutos revisa lo que lleva demasiado sin salir de Recepción.
+  try { alertarSinSalida(); } catch (e) { Logger.log('alertarSinSalida: ' + e); }
+  return manual ? r : r.n;
+}
+
+/** ¿Hay alguna guía de Operaciones que todavía no se haya aplicado? (sin candado, solo lectura) */
+function _hayGuiasPorAplicar(guias) {
+  const A = _areas();
+  const mapa = {};
+  _traspasos().forEach(function (t) { mapa[R.limpio(t.folio)] = t; });
+  const caja = _cajas().some(function (cj) { return cj.estatus === 'ARMADA' && guias[R.limpio(cj.folio)]; });
+  return caja || Object.keys(guias).some(function (id) {
+    const t = mapa[id];
+    return t && !t.solicitud && OPS_ANTES_DE_ENVIAR.indexOf(t.estatus) >= 0 && (R.esMor(A, t.destino) || R.esMor(A, t.origen));
+  });
+}
+
+function _aplicarGuias(guias) {
     const A = _areas();
     const E = _mapaEstatus();
     const mapa = {};
@@ -260,10 +285,6 @@ function sincronizarOperaciones(detalle) {
     _tb(TR.H.MOV).agregarVarias(movs);
     _tb(TR.H.AVISOS).agregarVarias(avisos);
     return { n: n, omitidos: omitidos };
-  });
-  // El mismo activador de 10 minutos revisa lo que lleva demasiado sin salir de Recepción.
-  try { alertarSinSalida(); } catch (e) { Logger.log('alertarSinSalida: ' + e); }
-  return detalle === true ? r : r.n;
 }
 
 /**
