@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asistente de configuración</title>
+<style>
+  :root { --c:#1f5f8b; --c2:#e8f1f8; --tx:#1d2733; --mu:#66737f; --ln:#dde3e8; --ok:#1f7a4d; --bg:#f4f6f8; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--tx); background:var(--bg); }
+  header { display:flex; align-items:center; gap:14px; padding:14px 24px; background:#fff; border-bottom:1px solid var(--ln); }
+  .logo { width:38px; height:38px; border-radius:9px; background:var(--c); color:#fff; display:grid; place-items:center; font-weight:800; }
+  header b { font-size:18px; } header small { color:var(--mu); display:block; }
+  .wrap { display:grid; grid-template-columns:250px 1fr; gap:22px; max-width:1180px; margin:22px auto; padding:0 16px; }
+  nav ol { list-style:none; margin:0; padding:0; background:#fff; border:1px solid var(--ln); border-radius:12px; overflow:hidden; }
+  nav li { display:flex; gap:10px; align-items:center; padding:12px 14px; border-bottom:1px solid var(--ln); cursor:pointer; }
+  nav li:last-child { border-bottom:0; }
+  nav li span { width:26px; height:26px; border-radius:50%; display:grid; place-items:center; background:var(--bg); font-weight:700; font-size:13px; flex:none; }
+  nav li.ok span { background:var(--ok); color:#fff; }
+  nav li.act { background:var(--c2); font-weight:700; } nav li.act span { background:var(--c); color:#fff; }
+  main { background:#fff; border:1px solid var(--ln); border-radius:12px; padding:24px 28px; min-height:560px; }
+  h1 { margin:0 0 4px; font-size:24px; } .sub { color:var(--mu); margin:0 0 20px; }
+  .paso { display:none; } .paso.act { display:block; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px 18px; }
+  label.f { display:block; font-weight:600; font-size:13px; }
+  label.f input, label.f select { display:block; width:100%; margin-top:5px; padding:9px 11px; border:1px solid var(--ln); border-radius:8px; font:inherit; }
+  .hint { color:var(--mu); font-size:12.5px; font-weight:400; }
+  .mods { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .mod { border:1px solid var(--ln); border-radius:10px; padding:14px; display:flex; gap:12px; }
+  .mod.on { border-color:var(--c); background:var(--c2); }
+  .mod.nucleo { background:#f6faf7; border-color:#cfe6d8; }
+  .mod h3 { margin:0 0 3px; font-size:15px; } .mod p { margin:0; color:var(--mu); font-size:13px; }
+  .sw { flex:none; width:42px; height:24px; border-radius:12px; background:#c6ced5; position:relative; margin-top:2px; }
+  .sw::after { content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:.15s; }
+  .on .sw { background:var(--c); } .on .sw::after { left:21px; }
+  .lock { flex:none; font-size:12px; color:var(--ok); font-weight:700; margin-top:3px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--ln); }
+  th { font-size:12px; color:var(--mu); text-transform:uppercase; letter-spacing:.04em; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:20px; font-size:12px; background:var(--bg); }
+  .tag.r { background:#fff3dc; color:#8a5a00; } .tag.e { background:#eae6fb; color:#4b3a9a; }
+  .pie { display:flex; justify-content:space-between; align-items:center; margin-top:26px; padding-top:16px; border-top:1px solid var(--ln); }
+  .btn { padding:10px 18px; border-radius:9px; border:1px solid var(--ln); background:#fff; font:inherit; font-weight:600; cursor:pointer; }
+  .btn.p { background:var(--c); color:#fff; border-color:var(--c); }
+  .palabras { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .seg { display:grid; grid-template-columns:1fr 1fr; gap:14px 18px; }
+  .caja { border:1px dashed var(--ln); border-radius:10px; padding:14px; color:var(--mu); text-align:center; }
+  .resumen li { margin:6px 0; }
+  .prev { border:1px solid var(--ln); border-radius:10px; padding:12px; width:260px; font-family:Arial, sans-serif; }
+  .prev .fo { font-size:26px; font-weight:800; } .prev .de { font-size:20px; font-weight:800; }
+  @media (max-width:820px){ .wrap{grid-template-columns:1fr} .grid2,.mods,.seg,.palabras{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">GE</div>
+  <div><b>Grupo Ejemplo</b><small>Configuración inicial · [PRODUCTO]</small></div>
+</header>
+<div class="wrap">
+  <nav><ol id="nav">
+    <li class="ok" data-p="1"><span>✓</span>Empresa</li>
+    <li class="ok" data-p="2"><span>✓</span>Ubicaciones</li>
+    <li class="ok" data-p="3"><span>✓</span>Personas e identificación</li>
+    <li class="act" data-p="4"><span>4</span>Módulos</li>
+    <li data-p="5"><span>5</span>Reglas</li>
+    <li data-p="6"><span>6</span>Seguridad</li>
+    <li data-p="7"><span>7</span>Etiquetas</li>
+    <li data-p="8"><span>8</span>Listo</li>
+  </ol></nav>
+  <main>
+    <section class="paso" data-p="1">
+      <h1>Tu empresa</h1><p class="sub">Así se verá la plataforma para tu gente.</p>
+      <div class="grid2">
+        <label class="f">Nombre de la empresa<input value="Grupo Ejemplo"></label>
+        <label class="f">Zona horaria<select><option>Centro de México (CDMX)</option></select></label>
+        <label class="f">Logo<div class="caja">Arrastra tu logo aquí (PNG o JPG)</div></label>
+        <label class="f">Color principal<input type="color" value="#1f5f8b" style="height:42px"></label>
+      </div>
+      <h3 style="margin:22px 0 6px">¿Cómo le dicen ustedes?</h3>
+      <p class="hint" style="margin:0 0 10px">Estas palabras se usan en pantallas, avisos, etiquetas y manuales.</p>
+      <div class="palabras">
+        <label class="f">A lo que se envía<input value="Traslado"></label>
+        <label class="f">A cada paquete<input value="Pieza"></label>
+        <label class="f">A quien lo lleva<input value="Mensajero"></label>
+        <label class="f">A cada lugar<input value="Sucursal"></label>
+      </div>
+    </section>
+
+    <section class="paso" data-p="2">
+      <h1>Ubicaciones</h1><p class="sub">Los lugares que envían o reciben. Puedes subirlas desde Excel.</p>
+      <table>
+        <tr><th>Nombre</th><th>Prefijo de folio</th><th>Grupo</th><th>Tipo</th></tr>
+        <tr><td>Corporativo · Recepción</td><td>REC</td><td>Corporativo</td><td><span class="tag r">Punto de resguardo</span></td></tr>
+        <tr><td>Corporativo · Contabilidad</td><td>CONT</td><td>Corporativo</td><td><span class="tag">Normal</span></td></tr>
+        <tr><td>Corporativo · Compras</td><td>COM</td><td>Corporativo</td><td><span class="tag">Normal</span></td></tr>
+        <tr><td>Sucursal Centro</td><td>CEN</td><td>Sucursales</td><td><span class="tag">Normal</span></td></tr>
+        <tr><td>Sucursal Norte</td><td>NOR</td><td>Sucursales</td><td><span class="tag">Normal</span></td></tr>
+        <tr><td>Sucursal Guadalajara</td><td>GDL</td><td>Foráneas</td><td><span class="tag e">Externa (paquetería)</span></td></tr>
+      </table>
+      <div class="pie" style="border:0;margin-top:12px"><button class="btn">＋ Agregar ubicación</button><button class="btn">⬆ Subir Excel</button></div>
+    </section>
+
+    <section class="paso" data-p="3">
+      <h1>Personas e identificación</h1><p class="sub">Quién puede entregar, llevar y recibir.</p>
+      <div class="grid2">
+        <label class="f">¿Cómo se identifican?<select><option>Credencial con código de barras</option><option>No. de empleado + NIP</option><option>Ambas (la que tengan a la mano)</option></select></label>
+        <label class="f">Importar personas<div class="caja">⬆ Subir Excel (nombre, No. empleado, sucursal, puesto)</div></label>
+      </div>
+      <table style="margin-top:16px">
+        <tr><th>Nombre</th><th>No. empleado</th><th>Sucursal</th><th>Papeles</th><th>Credencial</th></tr>
+        <tr><td>Ana López</td><td>1021</td><td>Sucursal Centro</td><td>—</td><td>●●●●●●a7Q</td></tr>
+        <tr><td>Luis Pérez</td><td>1044</td><td>Corporativo · Compras</td><td><span class="tag">Mensajero</span></td><td>●●●●●●K2m</td></tr>
+        <tr><td>María Ruiz</td><td>1002</td><td>Corporativo · Contabilidad</td><td><span class="tag">Administradora</span></td><td>●●●●●●9xT</td></tr>
+      </table>
+      <p class="hint">🔒 Las credenciales y NIP se guardan cifrados. Ni el administrador puede verlos completos.</p>
+    </section>
+
+    <section class="paso act" data-p="4">
+      <h1>Módulos</h1><p class="sub">Prende solo lo que tu empresa usa. Puedes cambiarlo después.</p>
+      <div class="mods">
+        <div class="mod nucleo"><div class="lock">INCLUIDO</div><div><h3>Núcleo</h3><p>Traslados, folios y etiquetas, entregar y recibir con identificación, bitácora, incidencias, avisos, búsqueda y reportes básicos.</p></div></div>
+        <div class="mod on"><div class="sw"></div><div><h3>Punto de resguardo</h3><p>Una recepción o caseta donde se dejan y recogen traslados. Pantalla tipo kiosco y centro de impresión.</p></div></div>
+        <div class="mod on"><div class="sw"></div><div><h3>Envío externo</h3><p>Para sucursales foráneas: captura paquetería y guía; el destino recibe al llegar.</p></div></div>
+        <div class="mod"><div class="sw"></div><div><h3>Consolidados</h3><p>Junta varios traslados en una caja con una sola guía.</p></div></div>
+        <div class="mod on"><div class="sw"></div><div><h3>Piezas parciales</h3><p>El mensajero puede llevarse solo una parte; las demás quedan pendientes con motivo.</p></div></div>
+        <div class="mod on"><div class="sw"></div><div><h3>Alertas por tiempo</h3><p>Avisa cuando algo lleva demasiadas horas sin moverse.</p></div></div>
+        <div class="mod"><div class="sw"></div><div><h3>Evidencia</h3><p>Foto o firma en pantalla al recibir o al reportar una incidencia.</p></div></div>
+        <div class="mod"><div class="sw"></div><div><h3>Reportes avanzados</h3><p>Tablero para dirección: tiempos, incidencias por sucursal, comparativos, exportación.</p></div></div>
+      </div>
+    </section>
+
+    <section class="paso" data-p="5">
+      <h1>Reglas</h1><p class="sub">Cómo trabaja tu empresa.</p>
+      <div class="seg">
+        <label class="f">¿Quién puede recibir?<select><option>Solo la sucursal destino</option><option>Cualquier ubicación del mismo grupo</option></select></label>
+        <label class="f">Dentro del mismo grupo, ¿se puede entregar en mano sin mensajero?<select><option>Sí</option><option>No</option></select></label>
+        <label class="f">Alertar si algo lleva sin moverse más de<select><option>36 horas</option><option>24 horas</option><option>48 horas</option></select></label>
+        <label class="f">Cancelar o cambiar destino<select><option>Lo pide origen o destino; lo aprueba un administrador</option><option>Sin aprobación</option></select></label>
+        <label class="f">Tipos de incidencia<input value="Dañado, Incompleto, Dañado e incompleto"></label>
+        <label class="f">Motivos de piezas que se quedan<input value="No cabe, Pesa demasiado, No estaba lista"></label>
+      </div>
+    </section>
+
+    <section class="paso" data-p="6">
+      <h1>Seguridad</h1><p class="sub">Valores recomendados ya seleccionados.</p>
+      <div class="seg">
+        <label class="f">Las sesiones de sucursal se cierran solas a las<select><option>12 horas</option><option>8 horas</option><option>24 horas</option></select></label>
+        <label class="f">Pedir NIP además de la credencial<select><option>Nunca</option><option>Siempre</option><option>Solo en ubicaciones marcadas</option></select></label>
+        <label class="f">Intentos fallidos antes de bloquear<select><option>5 (bloqueo 15 min)</option><option>3 (bloqueo 30 min)</option></select></label>
+        <label class="f">Conservar los registros<select><option>5 años</option><option>3 años</option><option>10 años</option></select></label>
+        <label class="f">Respaldo automático semanal<select><option>Sí, en la carpeta "Respaldos"</option></select></label>
+        <label class="f">Liga a su aviso de privacidad para empleados<input placeholder="https://..."><span class="hint">Se muestra en la pantalla de identificación. Te damos una plantilla.</span></label>
+      </div>
+    </section>
+
+    <section class="paso" data-p="7">
+      <h1>Etiquetas</h1><p class="sub">Una etiqueta por pieza.</p>
+      <div class="grid2">
+        <label class="f">Tamaño<select><option>62 × 29 mm</option><option>50 × 25 mm</option><option>100 × 50 mm</option></select></label>
+        <label class="f">Mostrar logo<select><option>No (menos tinta)</option><option>Sí</option></select></label>
+      </div>
+      <p class="hint" style="margin-top:16px">Vista previa</p>
+      <div class="prev"><div class="fo">CEN-0001</div><div style="height:34px;background:repeating-linear-gradient(90deg,#000 0 2px,#fff 2px 4px,#000 4px 5px,#fff 5px 8px);margin:4px 0"></div><div class="de">→ Corporativo · Compras</div><div style="font-size:12px">Pieza 1 de 2 · 01/11/2026</div></div>
+    </section>
+
+    <section class="paso" data-p="8">
+      <h1>¡Listo!</h1><p class="sub">Grupo Ejemplo ya puede trabajar.</p>
+      <ul class="resumen">
+        <li>✅ 6 ubicaciones · 1 punto de resguardo · 1 externa</li>
+        <li>✅ 48 personas importadas · 5 mensajeros · 2 administradores</li>
+        <li>✅ Módulos: Punto de resguardo, Envío externo, Piezas parciales, Alertas</li>
+        <li>✅ Seguridad: sesiones de 12 h, bloqueo a 5 intentos, respaldo semanal</li>
+      </ul>
+      <div class="pie" style="border:0"><button class="btn">🖨 Imprimir etiqueta de prueba</button><button class="btn">📄 Descargar manuales</button><button class="btn p">Abrir la plataforma</button></div>
+    </section>
+
+    <div class="pie"><button class="btn" id="atras">← Atrás</button><span class="hint" id="cuenta">Paso 4 de 8</span><button class="btn p" id="sig">Siguiente →</button></div>
+  </main>
+</div>
+<script>
+  var p = Number((location.hash || '#4').slice(1)) || 4;
+  function ir(n) {
+    p = Math.max(1, Math.min(8, n));
+    document.querySelectorAll('.paso').forEach(function (s) { s.classList.toggle('act', Number(s.dataset.p) === p); });
+    document.querySelectorAll('#nav li').forEach(function (l) {
+      var k = Number(l.dataset.p);
+      l.className = k === p ? 'act' : (k < p ? 'ok' : '');
+      l.querySelector('span').textContent = k < p ? '✓' : k;
+    });
+    document.getElementById('cuenta').textContent = 'Paso ' + p + ' de 8';
+  }
+  document.getElementById('nav').onclick = function (e) { var l = e.target.closest('li'); if (l) ir(Number(l.dataset.p)); };
+  document.getElementById('sig').onclick = function () { ir(p + 1); };
+  document.getElementById('atras').onclick = function () { ir(p - 1); };
+  document.querySelectorAll('.mod:not(.nucleo)').forEach(function (m) { m.onclick = function () { m.classList.toggle('on'); }; });
+  window.onhashchange = function () { ir(Number(location.hash.slice(1)) || 1); };
+  ir(p);
+</script>
+</body>
+</html>
