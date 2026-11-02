@@ -66,3 +66,30 @@ Equipo (computadora, lector de código de barras, impresora de etiquetas, creden
 | Cadena de 5 tiendas + oficina | Esencial | $1,790 | $6,900 |
 | Pyme con 8 sucursales, 1 en Puebla, y almacén | Profesional | $3,490 | $12,900 |
 | Pyme con 14 ubicaciones | Profesional + 2 | $3,990 | $12,900 |
+
+## 9. Opción B: compra única (licencia permanente, sin mensualidad)
+Para el negocio que no quiere pagar cada mes. **Compra el derecho de usar Custodia para siempre** en su empresa; **no compra el código** ni puede revenderlo (ver `../legal/15_CONTRATO_LICENCIA_PERMANENTE.md`).
+
+| | **Arranque** | **Esencial** | **Profesional** |
+|---|---|---|---|
+| Ubicaciones | 3 | 6 | 12 |
+| **Pago único** | **$24,900** | **$39,900** | **$69,900** |
+| Ubicación adicional (pago único) | $2,900 | $2,500 | $2,500 |
+| Incluye | Instalación, configuración, capacitación del plan y **12 meses** de soporte y actualizaciones | ← | ← |
+| Mantenimiento anual opcional desde el 2.º año | $4,900 / año | $7,900 / año | $13,900 / año |
+
+- **Sin mantenimiento**, el sistema sigue funcionando tal como quedó; solo deja de recibir soporte, correcciones y mejoras. Reactivarlo después cuesta el mantenimiento de los años que no se pagaron (máx. 2).
+- **Formas de pago:** 50 % al firmar y 50 % al entregar; o 3 pagos mensuales sin intereses.
+- **Por qué este precio:** equivale a **año y medio** de mensualidad más el arranque. Al cliente le conviene si piensa usarlo más de 2 años; a ti te da efectivo de inmediato.
+- Fundadores: **15 % de descuento** sobre el pago único (no se suma al 50 % del arranque).
+
+### Lo que NO se vende
+- **El código fuente ni la propiedad del sistema.** Si algún día alguien quiere comprar "el sistema completo" para revenderlo o hacerlo suyo, es otra negociación (cesión de derechos) y su precio sería de **cientos de miles de pesos**; no se ofrece.
+
+### ¿Cuál conviene más a AARX?
+| Si vendes 10 clientes Esencial | Ingreso año 1 | Año 2 | Año 3 | Total 3 años |
+|---|---|---|---|---|
+| Mensualidad (arranque $6,900 + $1,790 × 12) | $283,800 | $214,800 | $214,800 | **$713,400** |
+| Compra única ($39,900 + mantenimiento $7,900 a partir del año 2, si 70 % renueva) | $399,000 | $55,300 | $55,300 | **$509,600** |
+
+La mensualidad gana a largo plazo; la compra única da más dinero al inicio. **Ofrece primero la mensualidad** y la compra única como alternativa cuando el cliente la pida.

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Custodia — video 30 s</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Roboto:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing:border-box; margin:0; }
+  html,body { width:1080px; height:1920px; overflow:hidden; background:#0A1A2F; font-family:Roboto,sans-serif; color:#fff; }
+  #st { position:relative; width:1080px; height:1920px; overflow:hidden; background:radial-gradient(circle at 80% 110%,#0b3a66 0,#0A1A2F 60%); }
+  .esc { position:absolute; inset:0; opacity:0; }
+  .red { position:absolute; inset:-40px; background-image:radial-gradient(#00D4FF 1.6px, transparent 1.8px); background-size:36px 36px; opacity:.09; }
+  .m { font-family:Montserrat,sans-serif; } .cy { color:#00D4FF; }
+  /* escena 1: chat */
+  #e1 { background:#e9e4dc; }
+  #e1 .top { height:200px; background:#075e54; display:flex; align-items:flex-end; padding:0 50px 36px; font:600 44px Roboto; color:#fff; }
+  #e1 .top small { display:block; font-size:28px; opacity:.8; font-weight:400; }
+  .b { position:absolute; left:60px; max-width:760px; background:#fff; color:#111; border-radius:26px; padding:22px 30px; font-size:40px; box-shadow:0 6px 14px rgba(0,0,0,.15); }
+  .b.d { left:auto; right:60px; background:#dcf8c6; }
+  .b small { display:block; font-size:24px; color:#0B6FB3; font-weight:700; margin-bottom:4px; }
+  #grito { position:absolute; left:0; right:0; top:760px; text-align:center; font:800 150px/1 Montserrat; color:#fff; text-shadow:0 10px 40px rgba(0,0,0,.6); opacity:0; }
+  #velo { position:absolute; inset:0; background:#0A1A2F; opacity:0; }
+  /* escena 2 */
+  #e2 .lbl { position:absolute; left:90px; top:520px; font:500 40px Roboto; color:#94A3B8; }
+  #folio { position:absolute; left:90px; top:600px; font:600 150px "IBM Plex Mono",monospace; letter-spacing:.02em; }
+  #barras { position:absolute; left:90px; top:820px; height:200px; width:900px; display:flex; gap:0; align-items:flex-start; }
+  #barras i { display:block; background:#fff; height:0; margin-right:6px; }
+  #e2 .sub { position:absolute; left:90px; top:1110px; font:700 56px/1.2 Montserrat; opacity:0; }
+  /* escena 3 */
+  svg { position:absolute; left:0; top:0; }
+  .nodo { position:absolute; width:140px; height:140px; margin:-70px 0 0 -70px; border-radius:50%; border:6px solid #0B6FB3; background:#0A1A2F; box-shadow:0 0 0 0 rgba(0,212,255,.6); }
+  .nodo::after { content:''; position:absolute; inset:36px; border-radius:50%; background:#0B6FB3; }
+  .nodo.on { border-color:#00D4FF; } .nodo.on::after { background:#00D4FF; }
+  .nl { position:absolute; font:700 40px Montserrat; }
+  .card { position:absolute; left:470px; width:540px; padding:22px 28px; border-left:8px solid #00D4FF; background:rgba(255,255,255,.07); border-radius:0 22px 22px 0; opacity:0; }
+  .card b { font:800 42px Montserrat; display:block; } .card span { font-size:30px; color:#b8c7d8; display:block; margin-top:4px; }
+  .card .ok { color:#00D4FF; font-weight:700; }
+  #punto { position:absolute; width:56px; height:56px; margin:-28px 0 0 -28px; border-radius:50%; background:#00D4FF; box-shadow:0 0 40px 18px rgba(0,212,255,.55); opacity:0; }
+  #e3 .t { position:absolute; left:90px; top:200px; font:800 64px/1.1 Montserrat; }
+  #e3 .fol { position:absolute; left:90px; top:290px; font:600 46px "IBM Plex Mono",monospace; color:#94A3B8; }
+  #fin3 { position:absolute; left:90px; right:90px; top:1640px; font:700 46px Montserrat; opacity:0; }
+  /* escena 4 */
+  .k { position:absolute; left:90px; font:800 140px/1 Montserrat; opacity:0; }
+  #k3 { font:500 54px/1.3 Roboto; color:#dbe6f2; }
+  /* escena 5 */
+  #ins { position:absolute; left:50%; top:560px; width:520px; margin-left:-260px; opacity:0; }
+  #nom { position:absolute; left:0; right:0; top:1150px; text-align:center; font:800 120px Montserrat; opacity:0; }
+  #nom small { font:600 54px Montserrat; color:#00D4FF; display:block; margin-top:6px; }
+  #cta { position:absolute; left:0; right:0; top:1420px; text-align:center; font:500 46px Roboto; opacity:0; }
+  #cta b { display:inline-block; margin-top:20px; border:3px solid #00D4FF; border-radius:60px; padding:16px 40px; font:700 44px Montserrat; }
+  #aarx { position:absolute; left:50%; bottom:150px; height:90px; transform:translateX(-50%); opacity:0; }
+</style>
+</head>
+<body>
+<div id="st"><div class="red"></div>
+
+  <div class="esc" id="e1">
+    <div class="top"><div>Sucursales 🏪<small>Centro, Norte, Oficina, Mensajero…</small></div></div>
+    <div class="b" style="top:260px"><small>Contabilidad</small>¿Alguien vio el corte de ayer?</div>
+    <div class="b d" style="top:420px"><small>Sucursal Centro</small>Yo se lo di al mensajero</div>
+    <div class="b" style="top:580px"><small>Mensajero</small>Lo dejé en recepción</div>
+    <div class="b d" style="top:740px"><small>Recepción</small>Aquí no hay nada 🤷</div>
+    <div class="b" style="top:900px"><small>Contabilidad</small>¿Quién lo firmó?</div>
+    <div class="b d" style="top:1060px"><small>Sucursal Centro</small>Nadie firma, siempre es así</div>
+    <div class="b" style="top:1220px"><small>Dirección</small>Necesito ese dinero HOY</div>
+    <div class="b d" style="top:1380px"><small>Mensajero</small>Yo sí lo entregué 😤</div>
+    <div id="velo"></div>
+    <div id="grito">¿Quién lo<br>tiene?</div>
+  </div>
+
+  <div class="esc" id="e2"><div class="red"></div>
+    <div class="lbl">Ahora imagina que cada envío tiene folio</div>
+    <div id="folio"></div>
+    <div id="barras"></div>
+    <div class="sub">…y cada persona que lo toca<br><span class="cy">deja su huella.</span></div>
+  </div>
+
+  <div class="esc" id="e3"><div class="red"></div>
+    <div class="t">El viaje del sobre</div>
+    <div class="fol">CEN-0142 · 2 piezas</div>
+    <svg width="1080" height="1920"><path id="hilo" d="M 300 560 C 120 760, 480 900, 300 1030 S 120 1340, 300 1500" fill="none" stroke="#00D4FF" stroke-width="10" stroke-linecap="round" stroke-dasharray="2000" stroke-dashoffset="2000" style="filter:drop-shadow(0 0 12px #00D4FF)"/></svg>
+    <div class="nodo" id="n1" style="left:300px;top:560px"></div>
+    <div class="nodo" id="n2" style="left:300px;top:1030px"></div>
+    <div class="nodo" id="n3" style="left:300px;top:1500px"></div>
+    <div class="card" id="c1" style="top:480px"><b>Entregó · Ana L.</b><span>Sucursal Centro · 09:12</span><span class="ok">Credencial ✓</span></div>
+    <div class="card" id="c2" style="top:950px"><b>Lleva · Luis P.</b><span>Mensajero · 09:15</span><span class="ok">Credencial ✓</span></div>
+    <div class="card" id="c3" style="top:1420px"><b>Recibió · María R.</b><span>Contabilidad · 10:03</span><span class="ok">Credencial ✓ · 2 de 2 piezas</span></div>
+    <div id="punto"></div>
+    <div id="fin3">Todo queda registrado. <span class="cy">Nadie puede decir "yo no fui".</span></div>
+  </div>
+
+  <div class="esc" id="e4"><div class="red"></div>
+    <div class="k" id="k1" style="top:640px">Cada mano,</div>
+    <div class="k cy" id="k2" style="top:800px">identificada.</div>
+    <div class="k" id="k3" style="top:1040px;right:90px">Si algo falta, sabes en qué manos estaba.</div>
+  </div>
+
+  <div class="esc" id="e5"><div class="red"></div>
+    <img id="ins" src="../../marca/aarx_insignia_transparente.png">
+    <div id="nom">Custodia<small>by AARX</small></div>
+    <div id="cta">Pruébalo 30 días en tu negocio<br><b>WhatsApp [WHATSAPP]</b></div>
+    <img id="aarx" src="../../marca/aarx_logo_transparente.png">
+  </div>
+</div>
+
+<script>
+const E = { e1:[0,6.8], e2:[6.4,10.6], e3:[10.2,21.4], e4:[21,26.2], e5:[25.8,32] };
+const cl = (x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const io = x=>x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;              // ease in-out
+const out = x=>1-Math.pow(1-x,3);                               // ease out
+const p = (t,a,b)=>cl((t-a)/(b-a));                              // progreso 0..1 en [a,b]
+const $ = id=>document.getElementById(id);
+const bars = $('barras');
+const W = [3,1,2,1,4,1,1,3,2,1,3,1,1,2,4,1,2,3,1,1,2,1,3,2,1,4,1,2,1,3,1,2,2,1,3,1,4,1,2,1,3,2];
+W.forEach(w=>{ const i=document.createElement('i'); i.style.width=(w*6)+'px'; bars.appendChild(i); });
+const hilo = $('hilo'), L = hilo.getTotalLength();
+hilo.setAttribute('stroke-dasharray', L); hilo.setAttribute('stroke-dashoffset', L);
+
+function render(t){
+  for (const k in E){ const [a,b]=E[k]; $(k).style.opacity = cl(Math.min(p(t,a,a+.4), 1-p(t,b-.4,b))); }
+  // 1 · chat que se sale de control
+  document.querySelectorAll('#e1 .b').forEach((el,i)=>{
+    const a=.25+i*.55, q=out(p(t,a,a+.3));
+    const sh = t>2.5 ? Math.sin(t*40+i)*cl((t-2.5)*3,0,9) : 0;
+    el.style.opacity=q; el.style.transform=`translate(${sh}px,${(1-q)*40}px) scale(${.9+.1*q})`;
+  });
+  $('velo').style.opacity = .82*io(p(t,4.9,5.4));
+  const g=out(p(t,5.1,5.5)); $('grito').style.opacity=g; $('grito').style.transform=`scale(${1.4-.4*g})`;
+  // 2 · folio y código de barras
+  const txt='CEN-0142', n=Math.floor(p(t,7.0,8.0)*txt.length+.0001);
+  $('folio').textContent = txt.slice(0,n) + (t>6.9 && t<8.6 && Math.floor(t*4)%2 ? '▍' : '');
+  [...bars.children].forEach((b,i)=>{ b.style.height = (200*out(p(t,8.0+i*.02,8.3+i*.02)))+'px'; });
+  const s=out(p(t,8.9,9.5)); document.querySelector('#e2 .sub').style.opacity=s; document.querySelector('#e2 .sub').style.transform=`translateY(${(1-s)*30}px)`;
+  // 3 · el viaje: el hilo de custodia
+  const tr=io(p(t,11.2,18.6));
+  hilo.setAttribute('stroke-dashoffset', L*(1-tr));
+  const pt=hilo.getPointAtLength(L*tr);
+  $('punto').style.left=pt.x+'px'; $('punto').style.top=pt.y+'px'; $('punto').style.opacity = cl(p(t,10.9,11.2)) * (1-p(t,19.2,19.6));
+  [[1,11.0],[2,14.6],[3,18.4]].forEach(([k,a])=>{
+    const q=out(p(t,a,a+.45)); const c=$('c'+k);
+    c.style.opacity=q; c.style.transform=`translateX(${(1-q)*80}px)`;
+    $('n'+k).classList.toggle('on', t>=a);
+    const pulso = t>=a ? Math.max(0,1-(t-a)/0.8) : 0;
+    $('n'+k).style.boxShadow=`0 0 0 ${40*(1-pulso)}px rgba(0,212,255,${.6*pulso})`;
+  });
+  const f3=out(p(t,19.4,20.0)); $('fin3').style.opacity=f3; $('fin3').style.transform=`translateY(${(1-f3)*30}px)`;
+  // 4 · frase
+  [['k1',21.4],['k2',22.2],['k3',23.4]].forEach(([id,a])=>{ const q=out(p(t,a,a+.5)); $(id).style.opacity=q; $(id).style.transform=`translateX(${(1-q)*-120}px)`; });
+  // 5 · cierre
+  const i5=out(p(t,26.0,26.9)); $('ins').style.opacity=i5; $('ins').style.transform=`rotate(${(1-i5)*-90 + (t-26)*4}deg) scale(${.6+.4*i5})`;
+  const n5=out(p(t,26.8,27.4)); $('nom').style.opacity=n5; $('nom').style.transform=`translateY(${(1-n5)*40}px)`;
+  const c5=out(p(t,27.6,28.2)); $('cta').style.opacity=c5;
+  $('aarx').style.opacity=out(p(t,28.4,29.0));
+}
+window.render = render;
+const q = new URLSearchParams(location.search);
+if (q.has('t')) render(Number(q.get('t')));
+else { const t0=performance.now(); (function loop(){ render(((performance.now()-t0)/1000)%32); requestAnimationFrame(loop); })(); }
+</script>
+</body>
+</html>

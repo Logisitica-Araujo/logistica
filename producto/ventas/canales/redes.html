@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Roboto:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing:border-box; } body { margin:0; background:#888; font-family:Roboto,sans-serif; }
+  .a { position:relative; overflow:hidden; margin:0 0 30px; color:#fff; background:radial-gradient(circle at 85% 115%,#0b3a66 0,#0A1A2F 60%); }
+  .a.bl { background:#fff; color:#0A1A2F; } .a.az { background:linear-gradient(160deg,#0B6FB3,#08508a); }
+  .red { position:absolute; inset:0; background-image:radial-gradient(#00D4FF 1.4px, transparent 1.6px); background-size:30px 30px; opacity:.10; }
+  .bl .red { background-image:radial-gradient(#0B6FB3 1.4px, transparent 1.6px); opacity:.08; }
+  .m { font-family:Montserrat,sans-serif; } .cy { color:#00D4FF; } .az2 { color:#0B6FB3; }
+  .marca { display:flex; align-items:center; gap:14px; font:800 34px Montserrat; } .marca img { height:56px; } .marca small { font:600 20px Montserrat; }
+  .firma { position:absolute; } .linea { height:6px; background:#00D4FF; }
+  .pill { display:inline-block; border:2px solid rgba(255,255,255,.5); border-radius:40px; padding:10px 22px; font:500 26px Roboto; margin:0 10px 10px 0; }
+  .paso { display:flex; gap:28px; align-items:center; margin:0 0 34px; }
+  .paso b { flex:none; width:96px; height:96px; border-radius:50%; background:#0B6FB3; color:#fff; display:grid; place-items:center; font:800 46px Montserrat; box-shadow:0 0 0 6px #d9f7ff; }
+  .paso div { font-size:36px; line-height:1.25; } .paso strong { display:block; font:800 46px Montserrat; }
+  .chat { background:#fff; color:#111; border-radius:22px; padding:18px 24px; font-size:32px; max-width:80%; margin:0 0 18px; box-shadow:0 8px 20px rgba(0,0,0,.25); }
+  .chat.d { margin-left:auto; background:#dcf8c6; }
+  .folio { font:600 64px "IBM Plex Mono",monospace; letter-spacing:.04em; }
+  .barras { height:90px; background:repeating-linear-gradient(90deg,#fff 0 4px,transparent 4px 8px,#fff 8px 10px,transparent 10px 16px,#fff 16px 22px,transparent 22px 25px); }
+  .sello { border-left:6px solid #00D4FF; padding:10px 20px; margin:0 0 22px; background:rgba(255,255,255,.06); border-radius:0 14px 14px 0; font-size:30px; }
+  .sello b { font-family:Montserrat; } .sello span { color:#94A3B8; font-size:24px; display:block; }
+</style>
+</head>
+<body>
+
+<!-- FACEBOOK portada 1640×624 (en celular se recortan los lados: lo importante va al centro) -->
+<div class="a" id="fb_portada" style="width:1640px;height:624px"><div class="red"></div>
+  <div style="position:absolute;left:320px;right:320px;top:150px;text-align:center">
+    <div class="m" style="font-size:62px;font-weight:800;line-height:1.1">Conectamos procesos.<br><span class="cy">Impulsamos tu operación.</span></div>
+    <div style="font-size:28px;margin-top:22px;color:#c9d6e4">Custodia: control de traslados entre sucursales, con identificación</div>
+  </div>
+  <img src="../../marca/aarx_logo_transparente.png" style="position:absolute;right:60px;bottom:40px;height:70px">
+</div>
+
+<!-- INSTAGRAM / FACEBOOK / LINKEDIN post 4:5 (1080×1350) -->
+<div class="a" id="post_1" style="width:1080px;height:1350px;padding:90px"><div class="red"></div>
+  <div class="marca"><img src="../../marca/aarx_insignia_transparente.png">Custodia <small class="cy">by AARX</small></div>
+  <div style="margin-top:110px">
+    <div class="chat">¿Alguien vio el corte de ayer? 😟</div>
+    <div class="chat d">Yo se lo di al mensajero</div>
+    <div class="chat">A mí no me llegó nada…</div>
+    <div class="chat d">Lo dejé en recepción 🤷</div>
+  </div>
+  <div class="m" style="font-size:84px;font-weight:800;line-height:1.05;margin-top:60px">¿Quién lo tiene?</div>
+  <div class="linea" style="width:160px;margin:26px 0"></div>
+  <div style="font-size:34px;color:#dbe6f2">Con Custodia, cada mano queda identificada.</div>
+  <img class="firma" src="../../marca/aarx_logo_transparente.png" style="right:90px;bottom:70px;height:58px">
+</div>
+
+<div class="a bl" id="post_2" style="width:1080px;height:1350px;padding:90px"><div class="red"></div>
+  <div class="marca"><img src="../../marca/aarx_insignia_claro.png">Custodia <small class="az2">by AARX</small></div>
+  <div class="m" style="font-size:70px;font-weight:800;line-height:1.08;margin:80px 0 70px">3 pasos.<br>Cada mano,<br>identificada.</div>
+  <div class="paso"><b>1</b><div><strong>Crear</strong>Folio y etiqueta por pieza</div></div>
+  <div class="paso"><b>2</b><div><strong>Llevar</strong>El mensajero se identifica</div></div>
+  <div class="paso"><b>3</b><div><strong>Recibir</strong>El destino confirma con su credencial</div></div>
+  <img class="firma" src="../../marca/aarx_logo_claro.png" style="right:90px;bottom:70px;height:58px">
+</div>
+
+<div class="a az" id="post_3" style="width:1080px;height:1350px;padding:90px"><div class="red"></div>
+  <div class="marca"><img src="../../marca/aarx_insignia_transparente.png">Custodia <small style="color:#bff3ff">by AARX</small></div>
+  <div class="m" style="font-size:40px;font-weight:700;margin-top:150px;color:#bff3ff;letter-spacing:.1em">SOLO 5 LUGARES</div>
+  <div class="m" style="font-size:96px;font-weight:800;line-height:1.02;margin:20px 0 40px">Clientes<br>fundadores</div>
+  <div class="pill">Arranque al 50 %</div><div class="pill">Mensualidad congelada 12 meses</div><div class="pill">Piloto 30 días</div>
+  <div style="font-size:34px;margin-top:60px">Para negocios con 2 a 12 sucursales.<br>Desde <b>$990</b> al mes.</div>
+  <div style="font-size:30px;margin-top:40px;opacity:.9">WhatsApp [WHATSAPP]</div>
+  <img class="firma" src="../../marca/aarx_logo_transparente.png" style="right:90px;bottom:70px;height:58px">
+</div>
+
+<!-- HISTORIAS / ESTADOS / REELS 9:16 (1080×1920): dejar libres 250 px arriba y abajo -->
+<div class="a" id="historia_1" style="width:1080px;height:1920px;padding:260px 90px"><div class="red"></div>
+  <div class="marca"><img src="../../marca/aarx_insignia_transparente.png">Custodia <small class="cy">by AARX</small></div>
+  <div class="m" style="font-size:100px;font-weight:800;line-height:1.02;margin-top:200px">¿Quién tiene el corte de ayer?</div>
+  <div class="linea" style="width:180px;margin:40px 0"></div>
+  <div style="font-size:42px;line-height:1.35;color:#dbe6f2">Si nadie lo sabe, nadie responde.<br>Controla cada traslado con la credencial de quien lo entrega, lo lleva y lo recibe.</div>
+  <div style="position:absolute;left:90px;bottom:280px;font-size:36px">Escríbenos 👉 WhatsApp [WHATSAPP]</div>
+</div>
+
+<div class="a" id="historia_2" style="width:1080px;height:1920px;padding:260px 90px"><div class="red"></div>
+  <div class="marca"><img src="../../marca/aarx_insignia_transparente.png">Custodia <small class="cy">by AARX</small></div>
+  <div style="margin-top:150px;font-size:30px;color:#94A3B8">FOLIO</div>
+  <div class="folio">CEN-0142</div>
+  <div class="barras" style="margin:20px 0 60px"></div>
+  <div class="sello"><b>Entregó · Ana L.</b><span>Sucursal Centro · 09:12 · credencial ✓</span></div>
+  <div class="sello"><b>Lleva · Luis P.</b><span>Mensajero · 09:15 · credencial ✓</span></div>
+  <div class="sello"><b>Recibió · María R.</b><span>Contabilidad · 10:03 · credencial ✓</span></div>
+  <div class="m" style="font-size:64px;font-weight:800;margin-top:60px">Cada mano,<br><span class="cy">identificada.</span></div>
+</div>
+
+<div class="a az" id="historia_3" style="width:1080px;height:1920px;padding:260px 90px"><div class="red"></div>
+  <div class="marca"><img src="../../marca/aarx_insignia_transparente.png">Custodia <small style="color:#bff3ff">by AARX</small></div>
+  <div class="m" style="font-size:110px;font-weight:800;line-height:1.02;margin-top:220px">Pruébalo<br>30 días.</div>
+  <div style="font-size:44px;margin:50px 0;line-height:1.35">Hasta 3 sucursales sin mensualidad.<br>Lo configuramos contigo.</div>
+  <div class="pill" style="font-size:36px">Desde $990 al mes</div><br><div class="pill" style="font-size:36px">o pago único desde $24,900</div>
+  <img src="../../marca/aarx_logo_transparente.png" style="position:absolute;left:90px;bottom:280px;height:70px">
+</div>
+
+<!-- YouTube miniatura 1280×720 -->
+<div class="a" id="yt_miniatura" style="width:1280px;height:720px;padding:70px"><div class="red"></div>
+  <div class="m" style="font-size:96px;font-weight:800;line-height:1.02;max-width:900px">¿Quién lo<br><span class="cy">tiene?</span></div>
+  <div style="font-size:38px;margin-top:30px;color:#dbe6f2">Custodia en 30 segundos</div>
+  <img src="../../marca/aarx_insignia_transparente.png" style="position:absolute;right:80px;top:120px;height:420px;opacity:.95">
+  <img src="../../marca/aarx_logo_transparente.png" style="position:absolute;left:70px;bottom:60px;height:62px">
+</div>
+</body>
+</html>

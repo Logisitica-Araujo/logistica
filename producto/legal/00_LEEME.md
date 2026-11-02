@@ -32,6 +32,7 @@
 | `12_FORMATO_COTIZACION.md` | Tú → prospecto | Cotización formal |
 | `13_ACUERDO_CONFIDENCIALIDAD_DEMO.md` | Tú + prospecto | Antes de demos a fondo: que no copien ni compartan |
 | `14_POLITICA_PROPIEDAD_INTELECTUAL.md` | Público + anexo | Licencia, no venta; prohibido revender o copiar |
+| `15_CONTRATO_LICENCIA_PERMANENTE.md` | Tú + cliente | Venta en un solo pago (sin mensualidad); con anexos A, C y D |
 
 ## Idea clave sobre datos personales
 - Los datos de los empleados del cliente (nombre, No. empleado, credencial) son **del cliente**: él es el **responsable**.
