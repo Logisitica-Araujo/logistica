@@ -23,7 +23,7 @@ var APPG_TN = {
 var __APPG_TN_LIBRO = null, __APPG_TN_T = null;
 function _tnLibro() {
   if (!__APPG_TN_LIBRO) {
-    var id = String(_config().ID_TRASPASOS || '').trim();
+    var id = _idDrive(_config().ID_TRASPASOS);
     if (!id) throw _falla('TRA-03', 'Falta ID_TRASPASOS en APP_Config.');
     __APPG_TN_LIBRO = SpreadsheetApp.openById(id);
   }

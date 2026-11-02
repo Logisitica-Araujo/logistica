@@ -164,6 +164,13 @@ function _agregar(nombre, obj) {
   sh.appendRow(enc.map(function (h) { return obj[h] != null ? obj[h] : ''; }));
 }
 
+/** Acepta el ID de un archivo o carpeta de Drive o su enlace completo (https://drive.google.com/…/folders/ID). */
+function _idDrive(v) {
+  var s = String(v || '').trim();
+  var m = /\/(?:folders|d)\/([A-Za-z0-9_-]{20,})/.exec(s) || /[?&]id=([A-Za-z0-9_-]{20,})/.exec(s);
+  return m ? m[1] : s;
+}
+
 function _ahora(patron) { return Utilities.formatDate(new Date(), APPG.ZONA, patron || 'yyyy-MM-dd HH:mm:ss'); }
 function _norm(v) {
   return String(v == null ? '' : v).normalize('NFD').replace(/[̀-ͯ]/g, '')
