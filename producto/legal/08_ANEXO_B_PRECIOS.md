@@ -1,34 +1,31 @@
 # ANEXO B — Precios
 
-> Las cifras son **referencia inicial** para la etapa de pilotos; se ajustan con lo aprendido. Todos los precios en pesos mexicanos, más IVA.
+Precios en pesos mexicanos, **más IVA**. Detalle completo de planes en `ventas/01_PLANES_Y_PRECIOS.md`.
 
-## 1. Instalación (pago único)
-| Paquete | Ubicaciones | Precio |
-|---|---|---|
-| Básico | hasta 10 | $[15,000] |
-| Empresa | 11 a 30 | $[25,000] |
-| Corporativo | más de 30 | cotización |
-
-Incluye lo descrito en el Anexo A §3.
-
-## 2. Mensualidad
-| Concepto | Precio mensual |
+## 1. Plan contratado
+| Concepto | Selección |
 |---|---|
-| Núcleo, por ubicación activa | $[350] |
-| Mínimo mensual | $[2,500] |
-| Cada módulo adicional (por empresa) | $[500] |
-| Reportes avanzados | $[800] |
+| Plan | ☐ Esencial ($1,990/mes, 5 ubicaciones) ☐ Profesional ($4,490/mes, 15) ☐ Empresarial ($8,990/mes, 40) |
+| Ubicaciones adicionales | [ ] × $[290 / 250] al mes |
+| Módulos adicionales | [ ] |
+| **Mensualidad total** | **$[ ]** |
 
-## 3. Extras
+## 2. Instalación (pago único)
+Esencial $9,900 · Profesional $19,900 · Empresarial $34,900. Incluye lo descrito en el Anexo A §3.
+
+## 3. Ubicaciones
+Cuenta toda ubicación activa que crea o recibe traslados (incluye puntos de resguardo). Las altas se cobran desde el mes en que se activan; las bajas dejan de cobrarse el mes siguiente.
+
+## 4. Extras
 | Concepto | Precio |
 |---|---|
-| Personalización (excepción) | $[ ] por hora, cotizada por escrito antes de iniciar |
-| Capacitación adicional | $[ ] por sesión |
-| Manual con imágenes de su empresa | $[ ] |
+| Personalización | $750 / hora, cotizada por escrito antes de iniciar |
+| Integración con otro sistema | desde $12,000, cotización |
+| Capacitación adicional | $1,500 / sesión en línea |
+| Visita presencial CDMX | $2,000 (fuera: + viáticos) |
 
-## 4. Descuentos
-- Pago anual adelantado: [2] meses gratis.
-- Clientes piloto: según Acuerdo de Piloto.
+## 5. Descuentos
+Pago anual adelantado: 12 meses por el precio de 10. Piloto: según Acuerdo de Piloto.
 
-## 5. Forma de pago
+## 6. Forma de pago
 Transferencia a la cuenta **[CLABE]** a nombre de **[PROVEEDOR]**, contra CFDI.

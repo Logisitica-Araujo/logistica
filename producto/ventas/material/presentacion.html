@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Custodia — Presentación</title>
+<style>
+  @page { size: 297mm 167mm; margin: 0; }
+  :root { --c:#14506f; --c2:#e7f0f5; --ac:#e08a1e; --tx:#1b2631; --mu:#5d6b78; --ln:#d9e1e7; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:13px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--tx); }
+  .pg { width:297mm; height:167mm; padding:16mm 18mm; position:relative; page-break-after:always; overflow:hidden; background:#fff; }
+  .pg:last-child { page-break-after:auto; }
+  .pie { position:absolute; left:18mm; right:18mm; bottom:8mm; display:flex; justify-content:space-between; color:var(--mu); font-size:10px; }
+  h1 { font-size:34px; margin:0 0 8px; line-height:1.1; } h2 { font-size:24px; margin:0 0 14px; color:var(--c); }
+  .marca { display:flex; align-items:center; gap:10px; font-weight:800; font-size:20px; color:var(--c); }
+  .marca i { width:34px; height:34px; border-radius:9px; background:var(--c); display:grid; place-items:center; color:#fff; font-style:normal; }
+  .portada { background:linear-gradient(135deg,#0f3f59,#14506f 55%,#1d6d93); color:#fff; }
+  .portada .marca { color:#fff; } .portada .marca i { background:#fff; color:var(--c); }
+  .portada h1 { font-size:44px; margin-top:22mm; max-width:200mm; }
+  .portada p { font-size:18px; opacity:.9; max-width:190mm; }
+  .tags { display:flex; gap:8px; margin-top:12mm; } .tags span { border:1px solid rgba(255,255,255,.5); padding:6px 12px; border-radius:20px; font-size:12px; }
+  .g3 { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; } .g4 { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; } .g2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .card { border:1px solid var(--ln); border-radius:12px; padding:14px; } .card h3 { margin:0 0 5px; font-size:15px; } .card p { margin:0; color:var(--mu); }
+  .num { width:34px; height:34px; border-radius:50%; background:var(--c); color:#fff; display:grid; place-items:center; font-weight:800; font-size:16px; margin-bottom:8px; }
+  .big { font-size:40px; font-weight:800; color:var(--ac); line-height:1; }
+  .quote { font-size:20px; font-weight:700; border-left:4px solid var(--ac); padding-left:14px; margin:14px 0; }
+  table { width:100%; border-collapse:collapse; font-size:12px; } th,td { padding:6px 8px; border-bottom:1px solid var(--ln); text-align:center; } th:first-child,td:first-child { text-align:left; }
+  th { background:var(--c2); color:var(--c); } .precio { font-size:20px; font-weight:800; color:var(--c); }
+  .ok { color:#1f7a4d; font-weight:800; } .no { color:#b3bcc4; }
+  .ph { border:1px solid var(--ln); border-radius:10px; overflow:hidden; } .ph img { width:100%; display:block; }
+  ul.l { margin:0; padding-left:18px; } ul.l li { margin:4px 0; }
+  .lbl { display:inline-block; font-size:10px; font-weight:800; letter-spacing:.08em; color:var(--ac); text-transform:uppercase; margin-bottom:4px; }
+</style>
+</head>
+<body>
+
+<section class="pg portada">
+  <div class="marca"><i>C</i>Custodia</div>
+  <h1>Sabe siempre dónde está cada cosa que se mueve entre tus sucursales, y quién la tiene.</h1>
+  <p>Control de traslados de documentos, efectivo, insumos y mercancía, con identificación de cada persona que entrega, transporta y recibe.</p>
+  <div class="tags"><span>Trazabilidad</span><span>Responsabilidad</span><span>Tranquilidad</span></div>
+  <div class="pie" style="color:rgba(255,255,255,.7)"><span>Presentación comercial</span><span>[CORREO_SOPORTE] · [SITIO]</span></div>
+</section>
+
+<section class="pg">
+  <span class="lbl">El problema</span>
+  <h2>"¿Quién tiene el corte de ayer?"</h2>
+  <div class="g2">
+    <div>
+      <p style="font-size:15px">En empresas con varias ubicaciones, todos los días se mueven sobres, facturas, contraseñas, pedidos e insumos. Se controlan con libretas, Excel o mensajes de WhatsApp, y cuando algo falta:</p>
+      <ul class="l" style="font-size:14px">
+        <li>Nadie sabe en qué manos estaba.</li>
+        <li>Se pierden horas en llamadas y búsquedas.</li>
+        <li>No hay prueba de quién lo recibió.</li>
+        <li>Las pérdidas no tienen responsable.</li>
+      </ul>
+    </div>
+    <div class="g2">
+      <div class="card"><div class="big">0</div><p>pruebas de recepción en una libreta que cualquiera puede llenar</p></div>
+      <div class="card"><div class="big">1</div><p>sobre perdido al mes puede costar más que el sistema completo</p></div>
+      <div class="card" style="grid-column:span 2"><p class="quote" style="margin:0">Si no hay registro con identificación, no hay responsable.</p></div>
+    </div>
+  </div>
+  <div class="pie"><span>Custodia</span><span>2</span></div>
+</section>
+
+<section class="pg">
+  <span class="lbl">Cómo funciona</span>
+  <h2>Tres pasos. Cada mano, identificada.</h2>
+  <div class="g3">
+    <div class="card"><div class="num">1</div><h3>Crear</h3><p>La sucursal registra qué envía y a dónde. El sistema genera un folio y una etiqueta con código de barras por pieza.</p></div>
+    <div class="card"><div class="num">2</div><h3>Llevar</h3><p>Quien lo transporta escanea la etiqueta y se identifica con su credencial o NIP. Queda registrado quién lo lleva y desde cuándo.</p></div>
+    <div class="card"><div class="num">3</div><h3>Recibir</h3><p>El destino escanea y se identifica. Si llegó dañado o incompleto, lo reporta en ese momento con cuántas piezas llegaron.</p></div>
+  </div>
+  <div class="g4" style="margin-top:14px">
+    <div class="card"><h3>🔎 Búsqueda</h3><p>Cualquier folio con su historial completo en segundos.</p></div>
+    <div class="card"><h3>🔔 Avisos</h3><p>El destino sabe qué viene en camino.</p></div>
+    <div class="card"><h3>⏱ Alertas</h3><p>Lo que lleva demasiadas horas sin moverse.</p></div>
+    <div class="card"><h3>📊 Reportes</h3><p>Tiempos de entrega e incidencias por ubicación.</p></div>
+  </div>
+  <div class="pie"><span>Custodia</span><span>3</span></div>
+</section>
+
+<section class="pg">
+  <span class="lbl">A tu medida</span>
+  <h2>Se configura para tu empresa, sin programar.</h2>
+  <div class="g2" style="grid-template-columns:1.1fr 1fr">
+    <div class="ph"><img src="../../prototipos/asistente_paso4.png"></div>
+    <div>
+      <ul class="l" style="font-size:13.5px">
+        <li><b>Tus palabras:</b> traslado o valija, pieza o bulto, mensajero o chofer.</li>
+        <li><b>Tus ubicaciones:</b> sucursales, áreas de oficina, almacenes, obras.</li>
+        <li><b>Tu forma de identificar:</b> credencial con código de barras o número de empleado + NIP.</li>
+        <li><b>Solo los módulos que usas:</b> recepción / caseta, paquetería con guía, envíos parciales, cajas, evidencia con foto, reportes para dirección.</li>
+        <li><b>Necesidades únicas:</b> se programan aparte, sin afectar lo demás.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="pie"><span>Custodia</span><span>4</span></div>
+</section>
+
+<section class="pg">
+  <span class="lbl">Casos de uso</span>
+  <h2>Para cualquier empresa que mueve cosas entre ubicaciones</h2>
+  <div class="g4">
+    <div class="card"><h3>Farmacias y tiendas</h3><p>Cortes, depósitos, facturas y traspasos de mercancía.</p></div>
+    <div class="card"><h3>Clínicas y laboratorios</h3><p>Muestras, recetas, expedientes e insumos con cadena de custodia.</p></div>
+    <div class="card"><h3>Corporativos</h3><p>Recepción que registra, avisa y entrega a cada área.</p></div>
+    <div class="card"><h3>Despachos y notarías</h3><p>Documentos originales que salen y regresan.</p></div>
+    <div class="card"><h3>Sucursales foráneas</h3><p>Paquetería con guía ligada a lo que se envió.</p></div>
+    <div class="card"><h3>Cocinas centrales</h3><p>Insumos a sucursales, con conteo al recibir.</p></div>
+    <div class="card"><h3>Escuelas</h3><p>Documentos y material entre planteles.</p></div>
+    <div class="card"><h3>Constructoras</h3><p>Planos, herramienta y documentos de obra.</p></div>
+  </div>
+  <p class="quote" style="font-size:15px">Hoy se usa diario en una empresa farmacéutica con sucursales en CDMX, oficinas centrales con recepción y una sede foránea.</p>
+  <div class="pie"><span>Custodia</span><span>5</span></div>
+</section>
+
+<section class="pg">
+  <span class="lbl">Seguridad y datos</span>
+  <h2>Tus datos son tuyos y se quedan en tu cuenta.</h2>
+  <div class="g3">
+    <div class="card"><h3>🏢 En tu Google</h3><p>La plataforma se instala en el Google Workspace de tu empresa. Nosotros no guardamos copia.</p></div>
+    <div class="card"><h3>🔒 Credenciales cifradas</h3><p>Nadie, ni el administrador, puede ver una credencial o NIP completo.</p></div>
+    <div class="card"><h3>🧾 Bitácora que no se altera</h3><p>Los registros no se borran; cualquier cambio a mano se detecta.</p></div>
+    <div class="card"><h3>💾 Respaldo semanal</h3><p>Copia automática en tu Drive.</p></div>
+    <div class="card"><h3>📤 Sin amarres</h3><p>Si te vas, te entregamos todo en Excel.</p></div>
+    <div class="card"><h3>📄 Legal</h3><p>Contrato, aviso de privacidad y cláusulas de datos personales conforme a la ley mexicana.</p></div>
+  </div>
+  <div class="pie"><span>Custodia</span><span>6</span></div>
+</section>
+
+<section class="pg">
+  <span class="lbl">Planes</span>
+  <h2>Precio claro. Personas y traslados ilimitados.</h2>
+  <table>
+    <tr><th></th><th>Esencial</th><th>Profesional</th><th>Empresarial</th></tr>
+    <tr><td>Mensualidad (más IVA)</td><td class="precio">$1,990</td><td class="precio">$4,490</td><td class="precio">$8,990</td></tr>
+    <tr><td>Ubicaciones incluidas</td><td>5</td><td>15</td><td>40</td></tr>
+    <tr><td>Ubicación adicional / mes</td><td>$290</td><td>$290</td><td>$250</td></tr>
+    <tr><td>Instalación y capacitación (una vez)</td><td>$9,900</td><td>$19,900</td><td>$34,900</td></tr>
+    <tr><td>Traslados, credenciales, etiquetas, bitácora, incidencias, avisos, reportes básicos, alertas</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td></tr>
+    <tr><td>Recepción / caseta · Paquetería con guía · Envíos parciales</td><td class="no">—</td><td class="ok">✓</td><td class="ok">✓</td></tr>
+    <tr><td>Cajas consolidadas · Evidencia con foto · Reportes para dirección</td><td class="no">—</td><td class="no">—</td><td class="ok">✓</td></tr>
+    <tr><td>Soporte</td><td>2 días hábiles</td><td>1 día hábil</td><td>4 horas hábiles</td></tr>
+  </table>
+  <p style="color:var(--mu);margin-top:8px">Pago anual: 12 meses por el precio de 10. Más de 40 ubicaciones: cotización. No incluye equipo ni licencias de Google Workspace.</p>
+  <div class="pie"><span>Custodia</span><span>7</span></div>
+</section>
+
+<section class="pg">
+  <span class="lbl">Empecemos</span>
+  <h2>Pruébalo 60 días en tu operación real.</h2>
+  <div class="g2">
+    <div>
+      <div class="g2" style="gap:10px">
+        <div class="card"><div class="num">1</div><h3>Demo</h3><p>15 minutos, en línea.</p></div>
+        <div class="card"><div class="num">2</div><h3>Piloto</h3><p>Hasta 3 ubicaciones, 60 días sin mensualidad.</p></div>
+        <div class="card"><div class="num">3</div><h3>Arranque</h3><p>Lo configuramos contigo en una sesión.</p></div>
+        <div class="card"><div class="num">4</div><h3>Resultados</h3><p>Revisamos números juntos y decides.</p></div>
+      </div>
+    </div>
+    <div class="card" style="background:var(--c2);border:0">
+      <div class="marca"><i>C</i>Custodia</div>
+      <p style="font-size:15px;margin-top:12px;color:var(--tx)"><b>[NOMBRE]</b><br>[CORREO_SOPORTE]<br>WhatsApp [ ]<br>[SITIO]</p>
+      <p class="quote" style="font-size:16px">Si algo se mueve, alguien responde por ello.</p>
+    </div>
+  </div>
+  <div class="pie"><span>Custodia</span><span>8</span></div>
+</section>
+
+</body>
+</html>

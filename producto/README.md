@@ -20,7 +20,8 @@ Nace de la app interna "Traspasos" de FADERMEX (uso autorizado por la empresa). 
 | `docs/03_SEGURIDAD.md` | Controles de seguridad del producto |
 | `docs/04_CONFIGURACION.md` | Todo lo que el cliente configura sin programar |
 | `docs/05_FASES.md` | Plan de trabajo por fases con avance |
-| `legal/` | Borradores: aviso de privacidad, términos, políticas, contrato y anexos |
+| `legal/` | Borradores: aviso de privacidad, términos, políticas, contrato y anexos, cotización, confidencialidad, propiedad intelectual |
+| `ventas/` | Kit comercial: planes y precios, casos, límites, costos, guion, videos, publicación, presentación PDF, página web, imágenes |
 | `prototipos/` | Vistas previas (HTML) para aprobar antes de programar |
 
 ## Estado

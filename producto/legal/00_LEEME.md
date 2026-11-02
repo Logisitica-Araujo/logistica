@@ -29,6 +29,9 @@
 | `09_ANEXO_C_NIVEL_DE_SERVICIO.md` | Tú + cliente | Soporte, tiempos de respuesta |
 | `10_ANEXO_D_TRATAMIENTO_DE_DATOS.md` | Tú + cliente | Cláusulas de **encargado** del tratamiento |
 | `11_ACUERDO_DE_PILOTO.md` | Tú + cliente piloto | Prueba gratis o con descuento |
+| `12_FORMATO_COTIZACION.md` | Tú → prospecto | Cotización formal |
+| `13_ACUERDO_CONFIDENCIALIDAD_DEMO.md` | Tú + prospecto | Antes de demos a fondo: que no copien ni compartan |
+| `14_POLITICA_PROPIEDAD_INTELECTUAL.md` | Público + anexo | Licencia, no venta; prohibido revender o copiar |
 
 ## Idea clave sobre datos personales
 - Los datos de los empleados del cliente (nombre, No. empleado, credencial) son **del cliente**: él es el **responsable**.

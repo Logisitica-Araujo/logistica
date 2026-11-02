@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing:border-box; } body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .p { width:1080px; height:1080px; padding:90px; position:relative; overflow:hidden; display:flex; flex-direction:column; }
+  .marca { display:flex; align-items:center; gap:16px; font-weight:800; font-size:38px; }
+  .marca i { width:60px; height:60px; border-radius:16px; display:grid; place-items:center; font-style:normal; }
+  .azul { background:linear-gradient(135deg,#0f3f59,#14506f 60%,#1d6d93); color:#fff; } .azul .marca i { background:#fff; color:#14506f; }
+  .blanco { background:#fff; color:#1b2631; } .blanco .marca { color:#14506f; } .blanco .marca i { background:#14506f; color:#fff; }
+  .naranja { background:#e08a1e; color:#fff; } .naranja .marca i { background:#fff; color:#e08a1e; }
+  h1 { font-size:96px; line-height:1.02; margin:auto 0 30px; } h2 { font-size:64px; line-height:1.05; margin:40px 0 40px; color:#14506f; }
+  .t { font-size:38px; line-height:1.3; opacity:.92; margin:0; }
+  .paso { display:flex; gap:30px; align-items:center; margin:0 0 34px; }
+  .paso b { flex:none; width:96px; height:96px; border-radius:50%; background:#14506f; color:#fff; display:grid; place-items:center; font-size:48px; }
+  .paso div { font-size:38px; line-height:1.25; } .paso div strong { display:block; font-size:46px; color:#14506f; }
+  .pie { margin-top:auto; font-size:30px; opacity:.85; }
+</style>
+</head>
+<body>
+<div class="p azul" id="promo1">
+  <div class="marca"><i>C</i>Custodia</div>
+  <h1>¿Quién tiene el corte de ayer?</h1>
+  <p class="t">Si nadie lo sabe, nadie responde.<br>Controla cada traslado entre tus sucursales con la credencial de quien lo entrega, lo lleva y lo recibe.</p>
+  <p class="pie" style="margin-top:60px">[SITIO] · Pide tu demo</p>
+</div>
+<div class="p blanco" id="promo2">
+  <div class="marca"><i>C</i>Custodia</div>
+  <h2>3 pasos. Cada mano, identificada.</h2>
+  <div class="paso"><b>1</b><div><strong>Crear</strong>Folio y etiqueta por pieza</div></div>
+  <div class="paso"><b>2</b><div><strong>Llevar</strong>El mensajero se identifica al tomarlo</div></div>
+  <div class="paso"><b>3</b><div><strong>Recibir</strong>El destino confirma con su credencial</div></div>
+  <p class="pie" style="color:#5d6b78">Documentos · efectivo · insumos · mercancía</p>
+</div>
+<div class="p naranja" id="promo3">
+  <div class="marca"><i>C</i>Custodia</div>
+  <h1>Pruébalo 60 días sin mensualidad.</h1>
+  <p class="t">Hasta 3 ubicaciones en tu operación real.<br>Lo configuramos contigo y decides con números.</p>
+  <p class="pie" style="margin-top:60px">Escríbenos: [SITIO]</p>
+</div>
+</body>
+</html>
