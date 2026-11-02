@@ -17,6 +17,7 @@ function onOpen() {
   SpreadsheetApp.getUi().createMenu('⚙ App Gestores')
     .addItem('Instalar / reparar', 'INSTALAR')
     .addSeparator()
+    .addItem('Dar de alta varios gestores', 'menuAltaVarios')
     .addItem('Nuevo gestor', 'menuNuevoGestor')
     .addItem('Restablecer contraseña', 'menuRestablecer')
     .addItem('Dar de baja a un gestor', 'menuBaja')
@@ -126,6 +127,33 @@ function menuNuevoGestor() {
       '\n\nDásela EN PERSONA. Al entrar por primera vez la app le pide cambiarla.\nEsta contraseña no se vuelve a mostrar.',
       ui.ButtonSet.OK);
   } catch (e) { ui.alert('No se pudo', e.message, ui.ButtonSet.OK); }
+}
+
+/** Pega los nombres tal como están en la hoja "Datos" (columna A, Gestores), uno por renglón.
+ *  El usuario se arma solo (sin acentos, comillas ni espacios): Antonio "A" → antonio. */
+function menuAltaVarios() {
+  var ui = SpreadsheetApp.getUi();
+  var txt = _preguntar(ui, 'Dar de alta varios gestores',
+    'Pega los nombres EXACTOS como están en "Datos" (columna Gestores), uno por renglón.\nEjemplo:\nAntonio "A"\nJose Luis');
+  if (!txt) return;
+  var r = altaVarios(txt);
+  var out = r.map(function (x) { return x.error ? '✘ ' + x.nombre + ': ' + x.error : x.numero + '  ' + x.usuario + '  →  contraseña: ' + x.clave; });
+  var html = '<pre style="font:14px/1.6 monospace;white-space:pre-wrap">' +
+    ('Anota estas contraseñas temporales y dáselas EN PERSONA. No se vuelven a mostrar.\n\n' + out.join('\n')).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</pre>';
+  ui.showModalDialog(HtmlService.createHtmlOutput(html).setWidth(560).setHeight(380), 'Gestores dados de alta');
+}
+
+function altaVarios(texto) {
+  var vistos = {};
+  return String(texto || '').split(/\r?\n|;/).map(function (n) { return n.trim(); }).filter(String).map(function (n) {
+    var base = _norm(n).replace(/"[^"]*"/g, '').replace(/[^a-z0-9]/g, '') || 'gestor';
+    var usuario = base, k = 2;
+    while (vistos[usuario] || _buscarUsuario(usuario)) usuario = base + (k++);
+    vistos[usuario] = true;
+    var mostrar = n.replace(/\s*"[^"]*"\s*/g, ' ').trim() || n;
+    try { var a = altaGestor(mostrar, n, usuario); return { nombre: n, numero: a.numero, usuario: a.usuario, clave: a.clave }; }
+    catch (e) { return { nombre: n, error: e.message }; }
+  });
 }
 
 function menuRestablecer() {

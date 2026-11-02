@@ -34,7 +34,7 @@ Tu archivo **App Gestores · Datos** → Extensiones → Apps Script. Los archiv
 | Archivo | Qué hacer |
 |---|---|
 | `00_CONFIG.gs` | Reemplazar |
-| `01_INSTALAR.gs` | Reemplazar |
+| `01_INSTALAR.gs` | Reemplazar (trae el botón "Dar de alta varios gestores") |
 | `02_SESION.gs` | No cambia |
 | `03_API.gs` | Reemplazar |
 | `04_OPERACIONES.gs` | **Nuevo** |

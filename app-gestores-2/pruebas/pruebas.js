@@ -147,6 +147,19 @@ titulo('Mantenimiento, errores y acciones futuras');
   ok(!r.ok && r.codigo === 'APP-02', 'Columna renombrada: no deja entrar (y no truena)');
 }
 
+titulo('Dar de alta varios gestores');
+{
+  const { E, L } = preparar();
+  const r = E.correr('altaVarios', 'Antonio "A"\nMiriam "C"\nBelarmino "A"\nJose Luis\nAlejandro\n');
+  ok(r.length === 5 && r.every(x => !x.error), 'Da de alta los 5 gestores de "Datos"');
+  ok(r.map(x => x.usuario).join() === 'antonio,miriam,belarmino,joseluis,alejandro', 'Usuarios: antonio, miriam, belarmino, joseluis, alejandro');
+  const f = hoja(L, 'APP_Usuarios').datos[1];
+  ok(f[1] === 'Antonio' && f[2] === 'Antonio "A"', 'Nombre para mostrar "Antonio" y en Operaciones exacto: Antonio "A"');
+  ok(E.post({ accion: 'login', usuario: 'miriam', clave: r[1].clave }).ok, 'Cada uno entra con su contraseña temporal');
+  const r2 = E.correr('altaVarios', 'Antonio "B"');
+  ok(r2[0].usuario === 'antonio2', 'Si el usuario ya existe, usa antonio2');
+}
+
 titulo('Prueba del editor (PRUEBA_ETAPA1)');
 {
   const { E } = preparar();
