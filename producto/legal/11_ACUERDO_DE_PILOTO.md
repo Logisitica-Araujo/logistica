@@ -2,7 +2,7 @@
 
 Entre **Juan Antonio Araujo Rodríguez (AARX)** (el "PROVEEDOR") y **[RAZÓN SOCIAL DEL CLIENTE]** (el "CLIENTE").
 
-1. **Objeto.** El CLIENTE probará la Plataforma en **[número]** ubicaciones durante **[60] días** naturales a partir de **[FECHA DE INICIO]**.
+1. **Objeto.** El CLIENTE probará la Plataforma en **[número]** ubicaciones durante **[30] días** naturales a partir de **[FECHA DE INICIO]**.
 2. **Costo.** Instalación **[sin costo / $___]** y mensualidad **[sin costo / ___ % de descuento]** durante el piloto.
 3. **Compromisos del CLIENTE.**
    - Designar un responsable del piloto.

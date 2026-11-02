@@ -1,7 +1,7 @@
 # 05 · Guion de venta
 
 ## 1. A quién buscar
-Director/gerente de **operaciones, administración, contraloría o logística** de empresas con **3 o más ubicaciones** que muevan papeles, efectivo, insumos o mercancía.
+**Dueño, gerente general o administrador** de pymes con **2 a 12 ubicaciones** que muevan papeles, efectivo, insumos o mercancía.
 
 ## 2. Mensaje central
 > **"Cada sobre, documento o caja que se mueve entre tus sucursales queda registrado: quién lo mandó, quién se lo llevó y quién lo recibió, con su credencial. Si algo se pierde, sabes exactamente en qué manos estaba."**
@@ -42,10 +42,10 @@ Tres palabras para repetir: **trazabilidad, responsabilidad, tranquilidad**.
 | Dicen | Respondes |
 |---|---|
 | "Ya lo llevamos en Excel / libreta" | "Eso dice lo que alguien anotó. Aquí cada persona se identifica: nadie puede decir que no lo recibió." |
-| "Está caro" | "Es menos que una sola pérdida al mes. Pruébalo 60 días sin mensualidad y decide con datos." |
+| "Está caro" | "Es menos que una sola pérdida al mes. Pruébalo 30 días sin mensualidad y decide con datos." |
 | "Mi gente no va a querer" | "Es escanear y pasar la credencial; en la empresa donde se usa, lo aprenden en un día." |
 | "¿Y si dejas de dar servicio?" | "La información está en **tu** Google y te la entrego completa en Excel. No quedas amarrado." |
-| "¿Es seguro?" | "Credenciales cifradas, bitácora que detecta cambios, respaldo semanal, y tus datos no salen de tu cuenta." |
+| "¿Es seguro?" | "Tus datos no salen de tu cuenta de Google, cada movimiento queda con nombre, fecha y hora, y nada se borra: se cancela con motivo. Además estamos agregando cifrado de credenciales y respaldo automático." |
 | "Necesitamos algo especial" | "Lo configuramos; si es único de ustedes, lo programamos aparte con cotización." |
 
 ## 6. Cierre

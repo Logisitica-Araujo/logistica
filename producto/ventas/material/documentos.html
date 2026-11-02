@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>AARX — Documentos comerciales</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Roboto:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  @page { size: letter; margin: 0; }
+  :root { --nv:#0A1A2F; --c:#0B6FB3; --c2:#eaf3fa; --cy:#00D4FF; --tx:#0A1A2F; --mu:#5b6b80; --ln:#dbe3ec; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:11pt/1.5 Roboto,sans-serif; color:var(--tx); }
+  .hoja { width:215.9mm; height:279.4mm; padding:20mm 20mm 24mm; position:relative; page-break-after:always; overflow:hidden; }
+  .doc:last-child .hoja:last-child { page-break-after:auto; }
+  h1,h2,h3 { font-family:Montserrat,sans-serif; } h1 { font-size:22pt; margin:0 0 6px; } h2 { font-size:13pt; color:var(--c); margin:16px 0 6px; } h3 { font-size:11pt; margin:0 0 3px; }
+  p { margin:0 0 8px; } ul { margin:0 0 8px; padding-left:18px; } li { margin:2px 0; }
+  .mem { display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid var(--nv); padding-bottom:8px; margin-bottom:18px; }
+  .mem img { height:15mm; } .mem small { color:var(--mu); text-align:right; font-size:9pt; }
+  .pie { position:absolute; left:20mm; right:20mm; bottom:10mm; border-top:1px solid var(--cy); padding-top:5px; display:flex; justify-content:space-between; font-size:8.5pt; color:var(--mu); }
+  .portada { background:radial-gradient(circle at 90% 110%,#0b3a66 0,#0A1A2F 60%); color:#fff; }
+  .portada img { height:22mm; } .portada h1 { font-size:28pt; margin-top:60mm; } .portada .cy { color:var(--cy); font:700 10pt Montserrat; letter-spacing:.14em; text-transform:uppercase; }
+  .portada .datos { position:absolute; left:20mm; bottom:28mm; font-size:11pt; line-height:1.8; }
+  .portada .linea { width:50mm; height:3px; background:var(--cy); margin:10mm 0; }
+  table { width:100%; border-collapse:collapse; font-size:10pt; margin:6px 0 10px; } th,td { border-bottom:1px solid var(--ln); padding:6px 8px; text-align:left; } th { background:var(--c2); color:var(--c); font-family:Montserrat; font-size:9pt; }
+  td.n { text-align:right; font-family:"IBM Plex Mono",monospace; }
+  .g2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; } .g3 { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .card { border:1px solid var(--ln); border-radius:8px; padding:10px; } .card p { margin:0; color:var(--mu); font-size:9.5pt; }
+  .dev { display:inline-block; font:600 7pt Roboto; text-transform:uppercase; color:#8a5a00; background:#fff3dc; border-radius:8px; padding:2px 5px; margin-left:4px; vertical-align:middle; }
+  .num { display:inline-grid; place-items:center; width:22px; height:22px; border-radius:50%; background:var(--c); color:#fff; font:700 10pt Montserrat; margin-right:6px; }
+  .firma { margin-top:16px; } .firma b { font-family:Montserrat; }
+  .banda { background:var(--nv); color:#fff; border-radius:8px; padding:10px 14px; margin:10px 0; } .banda b { color:var(--cy); }
+  .nota { font-size:9pt; color:var(--mu); }
+  #ficha .hoja { font-size:10pt; padding-top:16mm; } #ficha h2 { margin:10px 0 4px; } #ficha .mem { margin-bottom:10px; } #ficha table td, #ficha table th { padding:4px 8px; } #ficha li { margin:1px 0; }
+</style>
+</head>
+<body>
+
+<!-- ================= CARTA DE PRESENTACIÓN ================= -->
+<div class="doc" id="carta">
+<section class="hoja">
+  <div class="mem"><img src="../../marca/aarx_logo_claro.png"><small>AARX · Digital Systems &amp; Automation<br>[CORREO] · WhatsApp [WHATSAPP]</small></div>
+  <p style="text-align:right">Ciudad de México, [FECHA]</p>
+  <p><b>[NOMBRE DEL CONTACTO]</b><br>[PUESTO]<br>[EMPRESA]</p>
+  <p style="margin-top:14px"><b>Asunto:</b> Control de traslados entre sus sucursales</p>
+  <p>Estimado(a) [NOMBRE]:</p>
+  <p>Me presento: soy Juan Antonio Araujo Rodríguez, ingeniero en sistemas y fundador de <b>AARX · Digital Systems &amp; Automation</b>. Diseñamos sistemas que convierten procesos manuales en operaciones conectadas, visibles y con responsables.</p>
+  <p>En negocios con varias sucursales es común que documentos, cortes, depósitos, insumos o mercancía viajen de un lugar a otro anotados en una libreta, un Excel o un mensaje de WhatsApp. Cuando algo no llega completo, o no llega, es difícil saber quién lo tuvo.</p>
+  <p>Para resolverlo desarrollamos <b>Custodia</b>, una plataforma de control de traslados con identificación:</p>
+  <ul>
+    <li>Cada envío tiene un <b>folio y una etiqueta</b> con código de barras.</li>
+    <li>Quien lo <b>entrega, lo lleva y lo recibe</b> se identifica con su credencial o número de empleado y NIP.</li>
+    <li>Si llega dañado o incompleto, se reporta en ese momento.</li>
+    <li>Cualquier folio se encuentra en segundos con todo su historial, y los traslados que se quedan detenidos generan alerta.</li>
+  </ul>
+  <p>Custodia nació resolviendo este problema en una empresa con sucursales, oficinas centrales y envíos a otra ciudad, donde hoy se usa a diario. Se instala en la cuenta de Google de su empresa, así que <b>la información siempre es suya</b>.</p>
+  <p>Estamos incorporando a <b>cinco negocios fundadores</b>, con arranque a mitad de precio y mensualidad congelada por 12 meses, y la posibilidad de probarlo 30 días en hasta tres ubicaciones.</p>
+  <p>Me gustaría mostrarle cómo funciona en una videollamada de 15 minutos, en el día y hora que le acomode.</p>
+  <p>Quedo atento.</p>
+  <div class="firma"><p>Atentamente,</p><p style="margin-top:14px"><b>Juan Antonio Araujo Rodríguez</b><br>Fundador · Ingeniero en Sistemas<br>AARX · Digital Systems &amp; Automation<br>[CORREO] · WhatsApp [WHATSAPP]</p></div>
+  <div class="pie"><span>AARX · Conectamos procesos. Impulsamos tu operación.</span><span>Custodia by AARX</span></div>
+</section>
+</div>
+
+<!-- ================= FICHA DE 1 PÁGINA ================= -->
+<div class="doc" id="ficha">
+<section class="hoja">
+  <div class="mem"><img src="../../marca/aarx_logo_claro.png"><small>Ficha de producto<br>Custodia by AARX</small></div>
+  <h1>Custodia</h1>
+  <p style="font-size:13pt;color:var(--mu);margin-bottom:12px">Control de traslados entre sucursales, con identificación de cada persona que entrega, transporta y recibe.</p>
+  <div class="banda">Si algo se mueve entre tus ubicaciones, <b>sabes dónde está y quién lo tiene.</b></div>
+  <h2>Cómo funciona</h2>
+  <div class="g3">
+    <div class="card"><h3><span class="num">1</span>Crear</h3><p>Folio y etiqueta por pieza.</p></div>
+    <div class="card"><h3><span class="num">2</span>Llevar</h3><p>Quien lo transporta se identifica con su credencial.</p></div>
+    <div class="card"><h3><span class="num">3</span>Recibir</h3><p>El destino confirma; si falta algo, lo reporta.</p></div>
+  </div>
+  <h2>Qué incluye</h2>
+  <div class="g2">
+    <ul><li>Folios y etiquetas con código de barras</li><li>Identificación por credencial o No. de empleado + NIP</li><li>Bitácora completa de cada traslado</li><li>Incidencias: dañado o incompleto, con explicación</li></ul>
+    <ul><li>Avisos al destino y alertas por tiempo</li><li>Búsqueda de cualquier folio en segundos</li><li>Recepción / caseta, envíos parciales, paquetería con guía (según plan)</li><li>Evidencia con foto y reportes para dirección<span class="dev">En desarrollo</span></li></ul>
+  </div>
+  <h2>Para quién</h2>
+  <p>Farmacias, tiendas, clínicas, laboratorios, restaurantes con cocina central, despachos, escuelas y cualquier negocio con 2 a 12 ubicaciones que mueva documentos, efectivo, insumos o mercancía.</p>
+  <h2>Planes (más IVA)</h2>
+  <table>
+    <tr><th>Plan</th><th>Ubicaciones</th><th>Mensual</th><th>Arranque (una vez)</th></tr>
+    <tr><td>Arranque</td><td>3</td><td class="n">$990</td><td class="n">$3,900</td></tr>
+    <tr><td>Esencial</td><td>6</td><td class="n">$1,790</td><td class="n">$6,900</td></tr>
+    <tr><td>Profesional</td><td>12</td><td class="n">$3,490</td><td class="n">$12,900</td></tr>
+  </table>
+  <p class="nota">Personas y traslados ilimitados. Clientes fundadores: arranque al 50 % y mensualidad congelada 12 meses. Piloto de 30 días en hasta 3 ubicaciones. No incluye equipo (lector de código de barras e impresora de etiquetas).</p>
+  <h2>Tus datos</h2>
+  <p>Se instala en la cuenta de Google de tu empresa: la información es tuya y, si un día te vas, te la entregamos completa en Excel.</p>
+  <div class="pie"><span>Juan Antonio Araujo Rodríguez · [CORREO] · WhatsApp [WHATSAPP]</span><span>AARX · Digital Systems &amp; Automation</span></div>
+</section>
+</div>
+
+<!-- ================= PROPUESTA (EJEMPLO) ================= -->
+<div class="doc" id="propuesta">
+<section class="hoja portada">
+  <img src="../../marca/aarx_logo_transparente.png">
+  <div class="cy" style="margin-top:50mm">Propuesta de solución tecnológica</div>
+  <h1 style="margin-top:6mm">Control de traslados entre sucursales</h1>
+  <div class="linea"></div>
+  <div class="datos"><b>Cliente:</b> Farmacias Ejemplo, S.A. de C.V.<br><b>Proyecto:</b> Implementación de Custodia · Plan Esencial<br><b>Fecha:</b> [FECHA] · <b>Versión:</b> 1.0<br><b>Elaboró:</b> Juan Antonio Araujo Rodríguez · AARX</div>
+</section>
+<section class="hoja">
+  <div class="mem"><img src="../../marca/aarx_logo_claro.png"><small>Propuesta · Farmacias Ejemplo<br>Versión 1.0</small></div>
+  <h2>1. Problema operativo</h2>
+  <p>Entre las 4 sucursales y la oficina se mueven a diario cortes de caja, depósitos, facturas y traspasos de mercancía. Hoy se anotan en una libreta y por WhatsApp. En el último mes "no apareció" un sobre con un corte y no fue posible saber quién lo recibió.</p>
+  <h2>2. Diagnóstico</h2>
+  <table>
+    <tr><th>Concepto</th><th>Situación actual</th></tr>
+    <tr><td>Ubicaciones</td><td>4 sucursales + oficina administrativa (5)</td></tr>
+    <tr><td>Qué se mueve</td><td>Cortes, depósitos, facturas, mercancía</td></tr>
+    <tr><td>Volumen aproximado</td><td>15–25 envíos por día</td></tr>
+    <tr><td>Quién transporta</td><td>1 mensajero y encargados de sucursal</td></tr>
+    <tr><td>Control actual</td><td>Libreta en cada sucursal y mensajes de WhatsApp</td></tr>
+    <tr><td>Riesgo principal</td><td>Sin prueba de quién recibió; búsquedas por teléfono</td></tr>
+  </table>
+  <h2>3. Solución propuesta</h2>
+  <p><b>Custodia · Plan Esencial</b> (6 ubicaciones): cada envío se registra con folio y etiqueta; el mensajero y quien recibe se identifican con su credencial. La oficina funciona como <b>punto de resguardo</b>: recibe, avisa y entrega a quien corresponde. Alertas cuando algo lleva más de 24 horas sin moverse.</p>
+  <h2>4. Alcance y entregables</h2>
+  <ul><li>Instalación en la cuenta de Google de Farmacias Ejemplo.</li><li>Configuración de 5 ubicaciones, personas y credenciales (con el Excel que nos compartan).</li><li>2 sesiones de capacitación en línea (encargados y oficina).</li><li>Manuales en PDF y guía rápida para el mensajero.</li><li>Acompañamiento la primera semana de operación.</li></ul>
+  <div class="pie"><span>AARX · Digital Systems &amp; Automation</span><span>2</span></div>
+</section>
+<section class="hoja">
+  <div class="mem"><img src="../../marca/aarx_logo_claro.png"><small>Propuesta · Farmacias Ejemplo<br>Versión 1.0</small></div>
+  <h2>5. Calendario</h2>
+  <table>
+    <tr><th>Semana</th><th>Actividad</th></tr>
+    <tr><td>1</td><td>Firma, recepción del Excel, configuración y capacitación</td></tr>
+    <tr><td>2</td><td>Operación acompañada; ajustes</td></tr>
+    <tr><td>4</td><td>Revisión de resultados con indicadores</td></tr>
+  </table>
+  <h2>6. Inversión (más IVA)</h2>
+  <table>
+    <tr><th>Concepto</th><th>Normal</th><th>Cliente fundador</th></tr>
+    <tr><td>Arranque: instalación, configuración y capacitación (una vez)</td><td class="n">$6,900</td><td class="n">$3,450</td></tr>
+    <tr><td>Mensualidad Plan Esencial (6 ubicaciones)</td><td class="n">$1,790</td><td class="n">$1,790 congelada 12 meses</td></tr>
+  </table>
+  <p class="nota">Pago anual adelantado: 12 meses por el precio de 10. Se emite CFDI.</p>
+  <h2>7. Supuestos y exclusiones</h2>
+  <ul><li>El cliente cuenta con cuenta de Google y computadora o celular con internet en cada ubicación.</li><li>No incluye lector de código de barras (~$400–900 c/u) ni impresora de etiquetas (~$1,500–3,500); podemos cotizarlos.</li><li>Evidencia con foto y reportes para dirección están en desarrollo; se activarán cuando estén disponibles.</li></ul>
+  <h2>8. Indicadores que mediremos</h2>
+  <p>Envíos registrados por semana · tiempo de entrega promedio · incidencias por sucursal · envíos con alerta por tiempo.</p>
+  <h2>9. Soporte y siguientes pasos</h2>
+  <p>Soporte por WhatsApp y correo, respuesta en 1 día hábil. Para arrancar: (1) confirmar esta propuesta, (2) firmar contrato o acuerdo de piloto, (3) compartir el Excel de sucursales y personal, (4) agendar la sesión de arranque.</p>
+  <div class="firma"><p><b>Juan Antonio Araujo Rodríguez</b><br>Fundador · AARX · [CORREO] · WhatsApp [WHATSAPP]</p></div>
+  <div class="pie"><span>AARX · Digital Systems &amp; Automation</span><span>3</span></div>
+</section>
+</div>
+
+</body>
+</html>

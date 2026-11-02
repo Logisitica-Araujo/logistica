@@ -1,45 +1,48 @@
-# 04 · Costos de arranque, costos por cliente y margen
+# 04 · Costos, margen y metas
 
-> Cifras aproximadas para planear. Confirmar los derechos oficiales (IMPI, INDAUTOR) y honorarios antes de pagar.
+> Cifras aproximadas para planear. Confirmar derechos oficiales (IMPI, INDAUTOR) y honorarios antes de pagar.
 
-## 1. Costos de arranque (una vez)
-| Concepto | Aprox. MXN | Nota |
+## 1. Arranque de AARX (una vez), versión austera sin página web
+| Concepto | Aprox. MXN | ¿Ya? |
 |---|---|---|
-| Registro de marca en el IMPI (1 clase, software/servicios) | 3,000 – 4,000 | Más honorarios si lo hace un despacho |
-| Registro del programa en INDAUTOR | 300 – 600 | Trámite sencillo |
-| Revisión de contratos y avisos por abogado | 8,000 – 20,000 | Una vez; luego se reutilizan |
-| Alta en SAT (RESICO) | 0 | Con e.firma |
-| Dominio (.com.mx o .com) | 300 – 700 / año | |
-| Página web (Google Sites o similar) | 0 – 3,000 | Google Sites es gratis con el dominio |
-| Logo y marca | 0 – 5,000 | Canva o un diseñador |
-| Videos | 0 – 8,000 | Tú grabas pantalla (gratis) o un editor |
-| **Total aproximado** | **12,000 – 42,000** | |
+| Alta en SAT (RESICO) con e.firma | 0 | |
+| Registro de marca AARX en el IMPI (1 clase) | 3,000 – 4,000 | |
+| Registro del programa en INDAUTOR | 300 – 600 | |
+| Revisión de contratos por abogado | 6,000 – 15,000 | |
+| Correo profesional (Google Workspace, 1 usuario) o Gmail gratis al inicio | 0 – 2,500 / año | |
+| Lector + impresora de etiquetas para la demo | 2,000 – 4,000 | |
+| **Total** | **~11,000 – 26,000** | |
 
-## 2. Costos fijos mensuales
+## 2. Gastos fijos mensuales
 | Concepto | Aprox. MXN / mes |
 |---|---|
-| Contador (RESICO) | 800 – 1,500 |
-| Cuenta de Google Workspace para la demo y soporte | 150 – 350 |
-| Publicidad (opcional, al inicio) | 0 – 3,000 |
-| **Total** | **~1,000 – 5,000** |
+| Contador (RESICO) | 600 – 1,200 |
+| Publicidad (opcional, desde el mes 3) | 0 – 1,500 |
+| **Total** | **~600 – 2,700** |
 
 ## 3. Costo por cliente
-La plataforma corre en el Google **del cliente**: el costo de infraestructura para ti es prácticamente **$0**. Tu costo real es **tu tiempo**.
-
+La plataforma corre en el Google **del cliente**: infraestructura ≈ **$0**. El costo real es **tu tiempo**.
 | Concepto | Horas |
 |---|---|
-| Instalación + configuración + capacitación (Profesional) | 6 – 10 h (una vez) |
-| Soporte y ajustes | 1 – 3 h / mes |
+| Arranque (Esencial) | 4 – 6 h, una vez |
+| Soporte y ajustes | ~1 h / mes (bajará con tutoriales en video) |
 
-## 4. Margen (ejemplo)
-| Cliente Profesional | MXN |
-|---|---|
-| Mensualidad | 4,490 |
-| Retención ISR RESICO (1.25 %) | − 56 |
-| ISR RESICO adicional aprox. (hasta 2.5 % total) | − 56 |
-| Tiempo de soporte (2 h × $500 valor de tu hora) | − 1,000 |
-| **Margen mensual aprox.** | **≈ 3,380 (75 %)** |
+## 4. Margen por plan (mensual)
+| | Arranque | Esencial | Profesional |
+|---|---|---|---|
+| Mensualidad | 990 | 1,790 | 3,490 |
+| ISR RESICO aprox. (hasta 2.5 %) | −25 | −45 | −87 |
+| Tu tiempo de soporte (valor $400/h) | −400 (1 h) | −400 (1 h) | −800 (2 h) |
+| **Margen** | **≈ 565 (57 %)** | **≈ 1,345 (75 %)** | **≈ 2,600 (75 %)** |
 
-Con **10 clientes Profesional**: ~ $45,000 de mensualidades, más las instalaciones (~$199,000 una sola vez).
+El arranque cubre tu tiempo de instalación: Esencial $6,900 / 5 h ≈ $1,380 por hora.
+El IVA (16 %) se cobra aparte y se entera al SAT; no es ganancia.
 
-El IVA (16 %) se cobra aparte y se le paga al SAT (menos el IVA de tus gastos); no es ganancia.
+## 5. Metas sugeridas (primer año)
+| Mes | Clientes | Ingreso mensual recurrente aprox. |
+|---|---|---|
+| 3 | 2 fundadores | ~$2,800 |
+| 6 | 6 | ~$9,000 |
+| 12 | 15 | ~$25,000 |
+
+Con 15 clientes (mezcla de planes) el negocio cubre sus gastos y deja ~$20,000 al mes, más ~$90,000 en arranques durante el año.

@@ -14,13 +14,13 @@
 | 4–10 | Pantalla: crear traslado, sale la etiqueta | "Cada envío entre tus sucursales lleva su folio." |
 | 10–17 | Escaneo + credencial del mensajero | "Quien lo entrega, quien lo lleva y quien lo recibe se identifica." |
 | 17–24 | Búsqueda del folio con su historial | "Si algo falta, sabes en qué manos estaba." |
-| 24–30 | Logo + "Prueba 60 días" + contacto | "Custodia. Control de traslados con identificación." |
+| 24–30 | Logo + "Prueba 30 días" + contacto | "Custodia. Control de traslados con identificación." |
 
 ## Video 2 · Explicativo (90 segundos, horizontal 16:9)
 1. El problema (15 s): ejemplos reales sin nombres.
 2. Cómo funciona en 3 pasos (45 s): crear → llevar → recibir.
 3. Lo que gana la empresa (20 s): bitácora, alertas, incidencias, reportes.
-4. Llamado (10 s): demo gratis, piloto 60 días.
+4. Llamado (10 s): demo gratis, piloto 30 días.
 
 ## Video 3 · Demo completa (5 minutos)
 Grabación de pantalla con la demo: asistente de configuración, crear, entregar, recepción, recibir con incidencia, búsqueda, reportes, administración.

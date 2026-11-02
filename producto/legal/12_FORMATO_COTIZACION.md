@@ -11,7 +11,7 @@
 | Atención | [NOMBRE, PUESTO] |
 
 ## Solución propuesta
-Plataforma de control de traslados entre ubicaciones con identificación de personas, plan **[Esencial / Profesional / Empresarial]**.
+Plataforma de control de traslados entre ubicaciones con identificación de personas, plan **[Arranque / Esencial / Profesional]**.
 
 | Concepto | Cant. | Precio unitario | Importe |
 |---|---|---|---|

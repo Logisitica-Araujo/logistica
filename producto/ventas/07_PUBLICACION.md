@@ -43,4 +43,4 @@
 2. "3 pasos: crear, llevar, recibir" (cómo funciona).
 3. "Lo que aprendimos controlando +1,000 traslados" (caso real, números sin nombres).
 4. "Excel vs. credencial: ¿quién realmente lo recibió?" (comparativo).
-5. "Prueba 60 días" (oferta).
+5. "Prueba 30 días" (oferta).

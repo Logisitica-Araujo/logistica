@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing:border-box; } body { margin:0; background:#ccc; font-family:Roboto,sans-serif; }
+  .r { position:relative; overflow:hidden; margin:0 0 20px; background:radial-gradient(circle at 85% 120%,#0b3a66 0,#0A1A2F 60%); color:#fff; }
+  .red { position:absolute; inset:0; background-image:radial-gradient(#00D4FF 1.2px, transparent 1.4px); background-size:26px 26px; opacity:.12; }
+  .cuad { display:grid; place-items:center; } .cuad img { width:72%; }
+  #lp { width:1584px; height:396px; } #le { width:1128px; height:191px; } #yt { width:2560px; height:1440px; }
+  .tx { position:absolute; font-family:Montserrat,sans-serif; }
+  .tx b { color:#00D4FF; }
+</style>
+</head>
+<body>
+<div class="r cuad" id="p400" style="width:400px;height:400px"><img src="../../marca/aarx_insignia_transparente.png"></div>
+<div class="r cuad" id="p640" style="width:640px;height:640px"><img src="../../marca/aarx_insignia_transparente.png"></div>
+
+<!-- Portada LinkedIn personal: la foto de perfil tapa la esquina inferior izquierda -->
+<div class="r" id="lp"><div class="red"></div>
+  <div class="tx" style="right:90px;top:70px;text-align:right">
+    <div style="font-size:46px;font-weight:800;line-height:1.1">Conectamos procesos.<br><b>Impulsamos tu operación.</b></div>
+    <div style="font:500 22px Roboto;margin-top:18px;color:#c9d6e4">Trazabilidad · Automatización · Datos — para negocios con sucursales</div>
+  </div>
+  <img src="../../marca/aarx_logo_transparente.png" style="position:absolute;right:90px;bottom:34px;height:56px">
+</div>
+
+<!-- Portada página de empresa -->
+<div class="r" id="le"><div class="red"></div>
+  <img src="../../marca/aarx_logo_transparente.png" style="position:absolute;left:300px;top:42px;height:106px">
+  <div class="tx" style="right:50px;top:66px;font-size:24px;font-weight:700;text-align:right">Conectamos procesos.<br><b>Impulsamos tu operación.</b></div>
+</div>
+
+<!-- Banner YouTube: zona segura central 1546×423 -->
+<div class="r" id="yt"><div class="red"></div>
+  <div style="position:absolute;left:507px;top:508px;width:1546px;height:423px;display:flex;align-items:center;justify-content:space-between">
+    <img src="../../marca/aarx_logo_transparente.png" style="height:170px">
+    <div class="tx" style="position:static;font-size:40px;font-weight:700;text-align:right">Custodia<br><b>by AARX</b></div>
+  </div>
+</div>
+</body>
+</html>
