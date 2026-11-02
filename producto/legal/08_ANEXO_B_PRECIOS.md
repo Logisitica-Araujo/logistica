@@ -28,4 +28,4 @@ Cuenta toda ubicación activa que crea o recibe traslados (incluye puntos de res
 Pago anual adelantado: 12 meses por el precio de 10. Piloto: según Acuerdo de Piloto.
 
 ## 6. Forma de pago
-Transferencia a la cuenta **[CLABE]** a nombre de **[PROVEEDOR]**, contra CFDI.
+Transferencia a la cuenta **[CLABE]** a nombre de **Juan Antonio Araujo Rodríguez (AARX)**, contra CFDI.

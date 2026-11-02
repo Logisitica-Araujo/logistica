@@ -1,6 +1,6 @@
-# [PRODUCTO] — Control de traslados con identificación
+# Custodia by AARX — Control de traslados con identificación
 
-> Nombre comercial provisional: **[PRODUCTO]**. Se reemplaza en todos los documentos cuando se registre la marca.
+> Producto de **AARX · Digital Systems & Automation** (Juan Antonio Araujo Rodríguez). "Custodia" es nombre provisional del producto; en los documentos legales aparece como `[PRODUCTO]`.
 
 Plataforma web para registrar y dar trazabilidad al **traslado de cualquier cosa** (documentos, insumos, mercancía, equipo, efectivo en sobre, etc.) entre las ubicaciones de una empresa, con **identificación de cada persona** que entrega, transporta o recibe.
 
@@ -23,6 +23,7 @@ Nace de la app interna "Traspasos" de FADERMEX (uso autorizado por la empresa). 
 | `legal/` | Borradores: aviso de privacidad, términos, políticas, contrato y anexos, cotización, confidencialidad, propiedad intelectual |
 | `ventas/` | Kit comercial: planes y precios, casos, límites, costos, guion, videos, publicación, presentación PDF, página web, imágenes |
 | `prototipos/` | Vistas previas (HTML) para aprobar antes de programar |
+| `marca/` | Manual de identidad AARX, logos provisionales y reglas de marca aplicadas al producto |
 
 ## Estado
 Fase 1 (diseño y documentos) en curso. Ver `docs/05_FASES.md`.

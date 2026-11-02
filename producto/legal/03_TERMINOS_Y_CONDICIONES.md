@@ -3,7 +3,7 @@
 *Última actualización: [FECHA]*
 
 ## 1. Partes y aceptación
-Estos términos regulan el uso de **[PRODUCTO]** (la "Plataforma"), propiedad de **[PROVEEDOR]** (el "Proveedor"), por parte de la empresa que la contrata (el "Cliente") y de las personas que el Cliente autoriza (los "Usuarios"). Al usar la Plataforma se aceptan estos términos. Si existe un contrato firmado, el contrato prevalece.
+Estos términos regulan el uso de **[PRODUCTO]** (la "Plataforma"), propiedad de **Juan Antonio Araujo Rodríguez (AARX)** (el "Proveedor"), por parte de la empresa que la contrata (el "Cliente") y de las personas que el Cliente autoriza (los "Usuarios"). Al usar la Plataforma se aceptan estos términos. Si existe un contrato firmado, el contrato prevalece.
 
 ## 2. Qué es la Plataforma
 Un servicio para registrar y dar trazabilidad al traslado de documentos, insumos, mercancía u otros bienes entre ubicaciones del Cliente, con identificación de las personas que intervienen. **No** es un servicio de mensajería, transporte, seguro, paquetería ni inventario, y el Proveedor no transporta ni custodia bienes.

@@ -1,6 +1,8 @@
 # 08 · Lo que falta para lanzar
 
 ## Tú
+- [ ] Archivos **vectoriales (SVG/PDF) y PNG transparente** del logo AARX (los actuales son recortes provisionales del manual)
+- [ ] Revisar que **AARX** esté libre en el IMPI y en dominios/redes (manual §10)
 - [ ] Elegir el **nombre comercial** y revisar en el IMPI que esté libre (marcanet.impi.gob.mx)
 - [ ] Alta en el SAT (RESICO) con un contador
 - [ ] Dominio, correo profesional y WhatsApp Business
@@ -17,3 +19,4 @@
 - [ ] Demo "Grupo Ejemplo" con datos ficticios
 - [ ] Manuales genéricos
 - [ ] Página web final con el nombre y logo
+- [ ] Quitar las etiquetas "En desarrollo" conforme se terminen esas funciones

@@ -3,7 +3,7 @@
 *Última actualización: [FECHA]*
 
 ## 1. Responsable
-**[PROVEEDOR]**, con domicilio en **[DOMICILIO]** (en adelante, "el Responsable"), es responsable del tratamiento de los datos personales que nos proporcione como prospecto, cliente o usuario de contacto de **[PRODUCTO]**, conforme a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares y su normativa aplicable.
+**Juan Antonio Araujo Rodríguez (AARX)**, con domicilio en **[DOMICILIO]** (en adelante, "el Responsable"), es responsable del tratamiento de los datos personales que nos proporcione como prospecto, cliente o usuario de contacto de **[PRODUCTO]**, conforme a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares y su normativa aplicable.
 
 ## 2. Datos que recabamos
 - **Identificación y contacto:** nombre, puesto, empresa, correo electrónico, teléfono.

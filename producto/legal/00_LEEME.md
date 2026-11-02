@@ -6,7 +6,7 @@
 | Marcador | Qué va |
 |---|---|
 | `[PRODUCTO]` | Nombre comercial registrado |
-| `[PROVEEDOR]` | Tu nombre completo (persona física) o razón social |
+| `Juan Antonio Araujo Rodríguez (AARX)` | Tu nombre completo (persona física) o razón social |
 | `[RFC]` | RFC del proveedor |
 | `[DOMICILIO]` | Domicilio fiscal / para oír notificaciones |
 | `[CORREO_PRIVACIDAD]` | Correo para derechos ARCO y privacidad |

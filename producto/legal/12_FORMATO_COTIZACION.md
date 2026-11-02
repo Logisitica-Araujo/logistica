@@ -1,6 +1,6 @@
 # COTIZACIÓN
 
-**[PRODUCTO]** · [PROVEEDOR] · RFC [RFC] · [CORREO_SOPORTE]
+**[PRODUCTO]** · Juan Antonio Araujo Rodríguez (AARX) · RFC [RFC] · [CORREO_SOPORTE]
 
 | | |
 |---|---|
@@ -35,4 +35,4 @@ Instalación en su Google Workspace · carga inicial de ubicaciones y personas �
 - No incluye equipo, licencias de Google Workspace ni papel de etiquetas.
 
 Atentamente,
-[PROVEEDOR]
+Juan Antonio Araujo Rodríguez (AARX)

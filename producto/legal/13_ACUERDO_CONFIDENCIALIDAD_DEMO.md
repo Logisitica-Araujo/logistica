@@ -1,6 +1,6 @@
 # ACUERDO DE CONFIDENCIALIDAD (para demostraciones y negociación)
 
-Entre **[PROVEEDOR]** ("PROVEEDOR") y **[EMPRESA]** ("PROSPECTO").
+Entre **Juan Antonio Araujo Rodríguez (AARX)** ("PROVEEDOR") y **[EMPRESA]** ("PROSPECTO").
 
 1. **Información confidencial.** Todo lo que el PROVEEDOR muestre o entregue durante demostraciones, pruebas o negociación: funcionamiento, pantallas, manuales, precios, código y documentos; y todo lo que el PROSPECTO comparta sobre su operación.
 2. **Obligaciones.** Ninguna parte divulgará, copiará ni usará la información de la otra para fines distintos a evaluar la contratación.

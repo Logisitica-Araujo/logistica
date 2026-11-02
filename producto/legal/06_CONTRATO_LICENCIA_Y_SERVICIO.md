@@ -1,6 +1,6 @@
 # CONTRATO DE LICENCIA DE USO DE SOFTWARE Y PRESTACIÓN DE SERVICIOS
 
-Que celebran, por una parte, **[PROVEEDOR]**, con RFC **[RFC]** y domicilio en **[DOMICILIO]** (el "PROVEEDOR"), y por la otra **[RAZÓN SOCIAL DEL CLIENTE]**, con RFC **[RFC CLIENTE]**, representada por **[REPRESENTANTE]** (el "CLIENTE"), al tenor de las siguientes declaraciones y cláusulas.
+Que celebran, por una parte, **Juan Antonio Araujo Rodríguez (AARX)**, con RFC **[RFC]** y domicilio en **[DOMICILIO]** (el "PROVEEDOR"), y por la otra **[RAZÓN SOCIAL DEL CLIENTE]**, con RFC **[RFC CLIENTE]**, representada por **[REPRESENTANTE]** (el "CLIENTE"), al tenor de las siguientes declaraciones y cláusulas.
 
 ## DECLARACIONES
 **I. El PROVEEDOR declara:** que es titular de los derechos patrimoniales del software denominado **[PRODUCTO]** (la "Plataforma") y que cuenta con capacidad para obligarse en este contrato.
@@ -50,4 +50,4 @@ Leído y firmado en **[CIUDAD]**, el **[FECHA]**.
 | EL PROVEEDOR | EL CLIENTE |
 |---|---|
 | ______________________ | ______________________ |
-| [PROVEEDOR] | [REPRESENTANTE] |
+| Juan Antonio Araujo Rodríguez (AARX) | [REPRESENTANTE] |

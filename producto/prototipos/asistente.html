@@ -4,10 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Asistente de configuración</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Roboto:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
-  :root { --c:#1f5f8b; --c2:#e8f1f8; --tx:#1d2733; --mu:#66737f; --ln:#dde3e8; --ok:#1f7a4d; --bg:#f4f6f8; }
+  :root { --c:#0B6FB3; --c2:#eaf3fa; --tx:#0A1A2F; --mu:#66737f; --ln:#dde3e8; --ok:#1f7a4d; --bg:#f4f6f8; }
   * { box-sizing: border-box; }
-  body { margin:0; font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--tx); background:var(--bg); }
+  body { margin:0; font:15px/1.45 Roboto,system-ui,sans-serif; color:var(--tx); background:var(--bg); }
   header { display:flex; align-items:center; gap:14px; padding:14px 24px; background:#fff; border-bottom:1px solid var(--ln); }
   .logo { width:38px; height:38px; border-radius:9px; background:var(--c); color:#fff; display:grid; place-items:center; font-weight:800; }
   header b { font-size:18px; } header small { color:var(--mu); display:block; }
@@ -19,7 +20,8 @@
   nav li.ok span { background:var(--ok); color:#fff; }
   nav li.act { background:var(--c2); font-weight:700; } nav li.act span { background:var(--c); color:#fff; }
   main { background:#fff; border:1px solid var(--ln); border-radius:12px; padding:24px 28px; min-height:560px; }
-  h1 { margin:0 0 4px; font-size:24px; } .sub { color:var(--mu); margin:0 0 20px; }
+  h1,header b { font-family:Montserrat,sans-serif; } h1 { margin:0 0 4px; font-size:24px; }
+  .aarx { text-align:center; color:#94A3B8; font-size:12px; margin:0 0 24px; } .aarx img { height:16px; vertical-align:middle; margin-right:4px; } .sub { color:var(--mu); margin:0 0 20px; }
   .paso { display:none; } .paso.act { display:block; }
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px 18px; }
   label.f { display:block; font-weight:600; font-size:13px; }
@@ -54,7 +56,7 @@
 <body>
 <header>
   <div class="logo">GE</div>
-  <div><b>Grupo Ejemplo</b><small>Configuración inicial · [PRODUCTO]</small></div>
+  <div><b>Grupo Ejemplo</b><small>Configuración inicial · Custodia</small></div>
 </header>
 <div class="wrap">
   <nav><ol id="nav">
@@ -74,7 +76,7 @@
         <label class="f">Nombre de la empresa<input value="Grupo Ejemplo"></label>
         <label class="f">Zona horaria<select><option>Centro de México (CDMX)</option></select></label>
         <label class="f">Logo<div class="caja">Arrastra tu logo aquí (PNG o JPG)</div></label>
-        <label class="f">Color principal<input type="color" value="#1f5f8b" style="height:42px"></label>
+        <label class="f">Color principal<input type="color" value="#0B6FB3" style="height:42px"></label>
       </div>
       <h3 style="margin:22px 0 6px">¿Cómo le dicen ustedes?</h3>
       <p class="hint" style="margin:0 0 10px">Estas palabras se usan en pantallas, avisos, etiquetas y manuales.</p>
@@ -177,6 +179,7 @@
     <div class="pie"><button class="btn" id="atras">← Atrás</button><span class="hint" id="cuenta">Paso 4 de 8</span><button class="btn p" id="sig">Siguiente →</button></div>
   </main>
 </div>
+<p class="aarx"><img src="../marca/aarx_insignia_transparente.png">Custodia by AARX</p>
 <script>
   var p = Number((location.hash || '#4').slice(1)) || 4;
   function ir(n) {

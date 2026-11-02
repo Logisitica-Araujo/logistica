@@ -27,7 +27,7 @@ No se tratan datos personales sensibles.
 
 ## 4. Transferencias y encargados
 - Sus datos **no se transfieren** a terceros fuera de la empresa, salvo requerimiento de autoridad.
-- **[PROVEEDOR]**, proveedor de la plataforma [PRODUCTO], los trata como **encargado**, solo para dar el servicio, con obligación de confidencialidad.
+- **Juan Antonio Araujo Rodríguez (AARX)**, proveedor de la plataforma [PRODUCTO], los trata como **encargado**, solo para dar el servicio, con obligación de confidencialidad.
 - La información se aloja en la cuenta de Google Workspace de la empresa.
 
 ## 5. Conservación

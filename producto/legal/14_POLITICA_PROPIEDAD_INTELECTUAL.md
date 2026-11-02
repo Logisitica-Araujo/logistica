@@ -2,7 +2,7 @@
 
 *Última actualización: [FECHA]*
 
-1. **Titular.** [PRODUCTO], su código, diseño, pantallas, nombre, logotipo, manuales, videos y cualquier mejora o personalización son propiedad de **[PROVEEDOR]**.
+1. **Titular.** [PRODUCTO], su código, diseño, pantallas, nombre, logotipo, manuales, videos y cualquier mejora o personalización son propiedad de **Juan Antonio Araujo Rodríguez (AARX)**.
 2. **Lo que el cliente recibe.** Una **licencia de uso**: puede usar la plataforma en su empresa mientras el contrato esté vigente y al corriente. **No compra el software.**
 3. **Lo que no se permite:**
    - Vender, revender, rentar, prestar o sublicenciar la plataforma a otra empresa (incluidas filiales no contratadas).
