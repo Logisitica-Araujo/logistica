@@ -5,7 +5,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 
 // Variables que en Apps Script se reinician en cada ejecución.
-const REINICIO = ['__APPG_LIBRO', '__APPG_TN_T', '__APPG_TN_LIBRO', 'OPSW_TEL_MAP_'].map(v => 'if (typeof ' + v + ' !== "undefined") ' + v + ' = null;').join(' ');
+const REINICIO = ['__APPG_LIBRO', '__APPG_TN_T', '__APPG_TN_LIBRO', '__APPG_TN_AREAS', 'OPSW_TEL_MAP_'].map(v => 'if (typeof ' + v + ' !== "undefined") ' + v + ' = null;').join(' ');
 
 function crearEntorno(opciones) {
   opciones = opciones || {};

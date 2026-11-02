@@ -19,7 +19,8 @@ function onOpen() {
     .addSeparator()
     .addItem('Dar de alta varios gestores', 'menuAltaVarios')
     .addItem('Nuevo gestor', 'menuNuevoGestor')
-    .addItem('Restablecer contraseña', 'menuRestablecer')
+    .addItem('Poner contraseña a un gestor', 'menuPonerClave')
+    .addItem('Restablecer contraseña (temporal al azar)', 'menuRestablecer')
     .addItem('Dar de baja a un gestor', 'menuBaja')
     .addSeparator()
     .addItem('Conectar con OPERACIONES', 'menuConectarOperaciones')
@@ -76,6 +77,12 @@ function INSTALAR() {
       _agregar(APPG.H.MOTIVOS, { Tipo: m[0], Motivo: m[1], PideComentario: m[2], Activo: m[3] });
     });
     hecho.push('Motivos iniciales cargados (iguales a la app actual).');
+  }
+  if (_tabla(APPG.H.SUCURSALES).filas.length === 0) {
+    APPG.SUCURSALES_INICIALES.forEach(function (x) {
+      _agregar(APPG.H.SUCURSALES, { Sucursal: x[0], ID: x[1], Direccion: x[2], URLMaps: x[3], Activo: true });
+    });
+    hecho.push('Sucursales cargadas con su dirección (revisa Botican y Morelia: no tenían dirección).');
   }
   if (_tabla(APPG.H.DOCUMENTOS).filas.length === 0) {
     var base = 'https://logisitica-araujo.github.io/logistica/';
@@ -164,6 +171,17 @@ function menuRestablecer() {
     ui.alert('Contraseña restablecida',
       'Contraseña temporal de ' + usuario + ': ' + clave +
       '\n\nSu sesión anterior se cerró en todos sus celulares. Dásela en persona.', ui.ButtonSet.OK);
+  } catch (e) { ui.alert('No se pudo', e.message, ui.ButtonSet.OK); }
+}
+
+function menuPonerClave() {
+  var ui = SpreadsheetApp.getUi();
+  var usuario = _preguntar(ui, 'Poner contraseña (1 de 2)', 'Usuario del gestor (ej. joseluis):'); if (!usuario) return;
+  var clave = _preguntar(ui, 'Poner contraseña (2 de 2)', 'Contraseña nueva (mínimo ' + APPG.CLAVE_MIN + ' caracteres).\nNo se guarda a la vista: queda cifrada.'); if (!clave) return;
+  var r = ui.alert('¿Le pido que la cambie al entrar?', 'Sí = al entrar crea su propia contraseña (recomendado).\nNo = se queda con la que acabas de poner.', ui.ButtonSet.YES_NO);
+  try {
+    ponerClave(usuario, clave, r === ui.Button.YES);
+    ui.alert('Listo', 'Contraseña de ' + usuario + ' cambiada. Su sesión anterior se cerró en todos sus celulares.', ui.ButtonSet.OK);
   } catch (e) { ui.alert('No se pudo', e.message, ui.ButtonSet.OK); }
 }
 

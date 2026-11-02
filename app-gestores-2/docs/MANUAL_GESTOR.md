@@ -12,13 +12,13 @@
 | Recolectar en una sucursal | **Escanear** → **Recolectar** → leo los folios → **Listo** |
 | Entregar un pedido | **Pedidos** → **Entregar** → foto → (quién recibió) → **Finalizar entrega** |
 | No pude entregar | **Pedidos** → **No entregué** → Retorno o Cancelado → motivo → foto → **Registrar** |
-| Entregar un traspaso | **Escanear** → **Entregar** → leo el folio → foto → **Entregar** |
+| Entregar un traspaso | **Escanear** → **Entregar** → leo el folio → dónde lo entregué → (foto) → **Finalizar entrega** |
 | Avisar por WhatsApp | Sale solo al terminar una entrega → **Enviar por WhatsApp** |
 | Cambiar de vehículo | **Inicio** → toco el nombre del vehículo → **Cambiar** |
 | Ver el protocolo o pólizas | **Manual** (abajo a la derecha) |
 
 **Tres reglas:**
-1. **La foto siempre es obligatoria** al entregar o al no entregar. Firma y quién recibió son opcionales, **excepto** si llevas efectivo o documentos: ahí la app los pide.
+1. **Pedidos a domicilio:** la foto es obligatoria al entregar o al no entregar; firma y quién recibió son opcionales. **Traspasos:** nada es obligatorio; solo eliges dónde lo entregaste y, si quieres, tomas foto.
 2. **Sin señal no pasa nada.** Todo se guarda en tu celular y se sube solo.
 3. **No cierres sesión.** No hace falta: la app se queda abierta aunque uses otras apps.
 
@@ -136,26 +136,16 @@ Si la oficina lo vuelve a mandar, te aparece otra vez marcado **"2º intento"**,
 
 ## 8. Entregar un traspaso
 
-1. **Escanear** → arriba elige **Entregar**.
-2. Lee el folio.
-3. Revisa que la **sucursal destino** sea donde estás.
-4. Foto (opcional, salvo efectivo o documentos).
-5. **Entregar**.
+En **Lo que llevo** cada traspaso dice **a qué sucursal va, su dirección, botón de Mapa y su estatus** (por ejemplo "En camino · ya sale en el rastreo").
 
-**Si la sucursal le da entrada en su sistema,** el traspaso **desaparece solo** de tu lista, aunque tú no lo hayas escaneado. Si la sucursal no le da entrada, sigue en tu lista hasta que alguno de los dos lo registre.
+1. **Escanear** → arriba elige **Entregar** → lee el folio (o toca **Entregar** en Lo que llevo).
+2. **¿Dónde lo entregaste?** ya viene elegida la sucursal destino; cámbiala si lo dejaste en otro lugar.
+3. Nota y foto: **opcionales**.
+4. **Finalizar entrega**.
 
-**No pude entregar el traspaso** (sucursal cerrada, etc.): toca el traspaso → **No entregué** → motivo → **Registrar**.
+**Si la sucursal le da entrada en su sistema,** el traspaso **desaparece solo** de tu lista, aunque tú no lo hayas escaneado.
 
----
-
-## 9. Pedidos por paquetería
-
-Si te toca dejar un pedido en la paquetería:
-1. **Pedidos** → el pedido → **Entregado a paquetería**.
-2. Toma foto de la **guía** o del comprobante.
-3. Listo: sale de tu lista. La oficina da seguimiento con la paquetería.
-
----
+**No pude entregar el traspaso:** toca el traspaso → **No entregué** → motivo, comentario y foto (todo opcional) → **Registrar**.
 
 ## 10. Sin señal
 

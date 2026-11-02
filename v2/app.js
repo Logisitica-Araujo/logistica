@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.0.0';
+var VERSION_APP = '2.0.1';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -370,8 +370,7 @@ function tarjetasPedidos(lista) {
       '<div class="botones"><button class="b verde" onclick="abrirCierre(\'PEDIDO\',' + i + ',\'ENTREGADO\')">Entregar</button>' +
       '<button class="b" onclick="abrirCierre(\'PEDIDO\',' + i + ',\'RETORNO\')">No entregué</button>' +
       '<a class="b" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(p.direccion) + '" target="_blank" rel="noopener">' + IC.mapa + 'Mapa</a></div>' +
-      '<div class="botones dos">' + (p.telefono ? '<a class="b" href="tel:' + esc(p.telefono) + '">Llamar</a>' : '<span></span>') +
-      '<button class="b" onclick="abrirCierre(\'PEDIDO\',' + i + ',\'PAQUETERIA\')">Entregado a paquetería</button></div></div>';
+      (p.telefono ? '<a class="b" href="tel:' + esc(p.telefono) + '">Llamar · ' + esc(p.telefono) + '</a>' : '') + '</div>';
   }).join('');
 }
 
@@ -384,11 +383,13 @@ function vistaLleva() {
   d.lleva.forEach(function (l, i) {
     var tras = l.tipo === 'TRASPASO';
     html += '<div class="card"><div class="linea"><span class="id">' + esc(l.codigo) + '</span><span class="tag ' + (tras ? 'a' : 'n') + '">' + (tras ? 'TRASPASO' : l.tipo === 'PEDIDO' ? 'PEDIDO' : 'OTRO') + '</span>' +
-      (l.exigeFirma ? '<span class="tag r">PIDE FIRMA</span>' : '') + '<span class="espacio"></span><span class="hora">' + esc(String(l.fecha).slice(5)) + '</span></div>' +
-      '<div><div class="t1">' + esc(l.origen ? l.origen + ' → ' : '') + esc(l.destino) + '</div><div class="t2">' + esc(l.contenido) + '</div></div>' +
+      '<span class="espacio"></span><span class="hora">' + esc(String(l.fecha).slice(5)) + '</span></div>' +
+      '<div><div class="t2">Va a</div><div class="t1">' + esc(l.destino) + '</div>' + (l.destinoDireccion ? '<div class="t2">' + esc(l.destinoDireccion) + '</div>' : '') +
+      '<div class="t2">' + esc(l.contenido) + (l.origen ? ' · viene de ' + esc(l.origen) : '') + '</div>' +
+      (l.estado ? '<div class="t2" style="color:var(--azul);font-weight:600">' + esc(l.estado) + '</div>' : '') + '</div>' +
       '<div class="botones"><button class="b verde" onclick="abrirCierre(\'' + (tras ? 'TRASPASO' : 'RECOLECCION') + '\',' + i + ',\'ENTREGADO\')">Entregar</button>' +
       '<button class="b" onclick="abrirCierre(\'' + (tras ? 'TRASPASO' : 'RECOLECCION') + '\',' + i + ',\'NO_ENTREGADO\')">No entregué</button>' +
-      (tras ? '<span></span>' : '<button class="b" onclick="abrirCierre(\'RECOLECCION\',' + i + ',\'PAQUETERIA\')">Paquetería</button>') + '</div></div>';
+      (l.destinoMaps || l.destinoDireccion ? '<a class="b" href="' + esc(l.destinoMaps || ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(l.destinoDireccion))) + '" target="_blank" rel="noopener">' + IC.mapa + 'Mapa</a>' : '<span></span>') + '</div></div>';
   });
   pintar(html + '</div>' + nav(''));
 }
@@ -399,7 +400,8 @@ function abrirCierre(tipo, i, resultado) {
   if (!x) return;
   S.volverA = tipo === 'PEDIDO' ? 'pedidos' : 'lleva';
   S.cierre = { tipo: tipo, resultado: resultado, id: tipo === 'PEDIDO' ? x.id : x.codigo, fila: x.fila || '', cliente: x.cliente || x.destino || '',
-               direccion: x.direccion || x.contenido || '', exigeFirma: !!x.exigeFirma, foto: null, firma: null, recibio: '', motivo: '', comentario: '' };
+               direccion: x.direccion || x.contenido || '', exigeFirma: false, foto: null, firma: null, recibio: '', motivo: '', comentario: '',
+               sucursal: x.destinoSucursal || '' };
   pintarCierre();
 }
 function reglaFoto(c) {
@@ -421,15 +423,23 @@ function pintarCierre() {
     if (esPedido) html += '<div class="dosop"><button class="' + (c.resultado === 'RETORNO' ? 'sel-ret' : '') + '" onclick="tipoNoEntrega(\'RETORNO\')"><b>Retorno</b><small>Regresa a Logística</small></button>' +
       '<button class="' + (c.resultado === 'CANCELADO' ? 'sel-can' : '') + '" onclick="tipoNoEntrega(\'CANCELADO\')"><b>Cancelado</b><small>Ya no se entrega</small></button></div>';
     var motivos = S.datos.motivos[esPedido ? c.resultado : 'TRASPASO'] || [];
-    html += '<div class="bloque"><div class="cab-b"><span class="paso' + (c.motivo ? ' ok' : '') + '">' + (n++) + '</span><b>¿Por qué no se entregó?</b><span class="req">obligatorio</span></div><div class="opciones">';
+    html += '<div class="bloque"><div class="cab-b"><span class="paso' + (c.motivo ? ' ok' : '') + '">' + (n++) + '</span><b>¿Por qué no se entregó?</b>' + (esPedido ? '<span class="req">obligatorio</span>' : '<span class="opc">opcional</span>') + '</div><div class="opciones">';
     motivos.forEach(function (m, j) { html += '<button class="opcion' + (c.motivo === m.motivo ? ' sel' : '') + '" onclick="elegirMotivo(' + j + ')"><span class="radio"></span><span>' + esc(m.motivo) + '</span></button>'; });
     html += '</div><label class="et" for="inComent">Comentario <span class="opc">(opcional)</span></label><textarea class="campo" id="inComent" rows="2" placeholder="Ej. se llamó 3 veces sin respuesta">' + esc(c.comentario) + '</textarea></div>';
   }
-  html += '<div class="bloque"><div class="cab-b"><span class="paso' + (c.foto ? ' ok' : '') + '">' + (n++) + '</span><b>' + (entrega ? 'Foto de la fachada' : paq ? 'Foto de la guía o comprobante' : 'Foto de evidencia') + '</b>' +
+  if (entrega && c.tipo !== 'PEDIDO') {
+    var sucs = S.datos.sucursales || [];
+    html += '<div class="bloque"><div class="cab-b"><span class="paso' + (c.sucursal ? ' ok' : '') + '">' + (n++) + '</span><label class="et" for="selSuc" style="flex:1">¿Dónde lo entregaste?</label><span class="opc">opcional</span></div>' +
+      '<select class="campo" id="selSuc" onchange="S.cierre.sucursal=this.value;guardarBorrador()"><option value="">— Elige la sucursal —</option>' +
+      sucs.map(function (x) { return '<option' + (x.nombre === c.sucursal ? ' selected' : '') + '>' + esc(x.nombre) + '</option>'; }).join('') +
+      '<option' + (c.sucursal === 'Otro lugar' ? ' selected' : '') + '>Otro lugar</option></select>' +
+      '<label class="et" for="inComent">Nota <span class="opc">(opcional)</span></label><textarea class="campo" id="inComent" rows="2" placeholder="Ej. se lo dejé a Lalo en mostrador">' + esc(c.comentario) + '</textarea></div>';
+  }
+  html += '<div class="bloque"><div class="cab-b"><span class="paso' + (c.foto ? ' ok' : '') + '">' + (n++) + '</span><b>' + (entrega ? (c.tipo === 'PEDIDO' ? 'Foto de la fachada' : 'Foto de la entrega') : paq ? 'Foto de la guía o comprobante' : 'Foto de evidencia') + '</b>' +
     (pideFoto ? '<span class="req">obligatoria</span>' : '<span class="opc">opcional</span>') + '</div>' +
     (c.foto ? '<div class="previa"><img src="' + c.foto + '" alt="Foto tomada"><button onclick="tomarFoto()">Repetir</button></div>'
-            : '<button class="zona-foto" onclick="tomarFoto()">' + IC.cam + '<b>Tomar foto</b><small>' + (entrega ? 'Que se vea el número de la casa o el negocio' : 'Dónde y qué pasó') + '</small></button>') + '</div>';
-  if (entrega) {
+            : '<button class="zona-foto" onclick="tomarFoto()">' + IC.cam + '<b>Tomar foto</b><small>' + (entrega ? (c.tipo === 'PEDIDO' ? 'Que se vea el número de la casa o el negocio' : 'Dónde y a quién lo entregaste') : 'Dónde y qué pasó') + '</small></button>') + '</div>';
+  if (entrega && c.tipo === 'PEDIDO') {
     html += '<div class="bloque"><div class="cab-b"><span class="paso' + (c.recibio ? ' ok' : '') + '">' + (n++) + '</span><label class="et" for="inRecibio" style="flex:1">¿Quién recibió?</label>' +
       (recObl ? '<span class="req">obligatorio</span>' : '<span class="opc">opcional</span>') + '</div>' +
       '<input class="campo" id="inRecibio" autocomplete="off" placeholder="Nombre de quien recibió" value="' + esc(c.recibio) + '" oninput="S.cierre.recibio=this.value;guardarBorrador()"></div>' +
@@ -441,13 +451,14 @@ function pintarCierre() {
     '<div class="pie"><button class="btn ' + (entrega ? 'verde' : paq ? '' : c.resultado === 'CANCELADO' ? 'rojo' : 'ambar') + '" onclick="enviarCierre()">' +
     (entrega ? 'Finalizar entrega' : paq ? 'Registrar entrega a paquetería' : c.resultado === 'CANCELADO' ? 'Registrar cancelación' : c.resultado === 'RETORNO' ? 'Registrar retorno' : 'Registrar') + '</button></div>';
   pintar(html);
-  if (entrega) prepararFirma();
+  if (entrega && c.tipo === 'PEDIDO') prepararFirma();
   guardarBorrador();
 }
 function preservar() {
   var c = S.cierre; if (!c) return;
   if ($('inComent')) c.comentario = $('inComent').value;
   if ($('inRecibio')) c.recibio = $('inRecibio').value;
+  if ($('selSuc')) c.sucursal = $('selSuc').value;
   var f = leerFirma(); if (f) c.firma = f;
 }
 function tipoNoEntrega(t) { preservar(); S.cierre.resultado = t; S.cierre.motivo = ''; pintarCierre(); }
@@ -461,14 +472,13 @@ function cancelarCierre() { S.cierre = null; DB.del('borrador'); if (S.volverA =
 function enviarCierre() {
   preservar();
   var c = S.cierre, entrega = c.resultado === 'ENTREGADO';
-  if (!entrega && c.resultado !== 'PAQUETERIA' && !c.motivo) return falla(errCod('CAP-05', 'Elige el motivo.'));
+  if (c.tipo === 'PEDIDO' && !entrega && c.resultado !== 'PAQUETERIA' && !c.motivo) return falla(errCod('CAP-05', 'Elige el motivo.'));
   if (reglaFoto(c) && !c.foto) return falla(errCod('CAP-04', 'Falta la foto.'));
-  if (entrega && (c.exigeFirma || S.datos.reglas.exigirQuienRecibio) && !String(c.recibio).trim()) return falla(errCod('CAP-08', 'Anota quién recibió.'));
-  if (entrega && c.exigeFirma && !c.firma) return falla(errCod('CAP-08', 'Lleva efectivo o documentos: pide la firma.'));
+  if (c.tipo === 'PEDIDO' && entrega && S.datos.reglas.exigirQuienRecibio && !String(c.recibio).trim()) return falla(errCod('CAP-08', 'Anota quién recibió.'));
   cargando('Guardando…');
   obtenerGPS().then(function (g) {
     var datos = { idLocal: idLocal(), tipo: c.tipo, id: c.id, fila: c.fila, resultado: c.resultado, motivo: c.motivo, comentario: c.comentario,
-                  recibio: c.recibio, foto: c.foto, firma: c.firma, lat: g.lat, lng: g.lng, horaCelular: horaTxt() };
+                  recibio: c.recibio, foto: c.foto, firma: c.firma, sucursal: c.sucursal || '', lat: g.lat, lng: g.lng, horaCelular: horaTxt() };
     var etiqueta = c.id + ' · ' + ({ ENTREGADO: 'Entregado', RETORNO: 'Retorno', CANCELADO: 'Cancelado', PAQUETERIA: 'Paquetería', NO_ENTREGADO: 'No entregado' })[c.resultado];
     return encolar('cerrar', datos, etiqueta).then(function () {
       // fuera de la lista al instante, aunque no haya señal
@@ -604,7 +614,7 @@ function aplicarResultados(res, items) {
   res.forEach(function (r, i) {
     var l = items[i] || {};
     l.codigo = r.codigo;
-    if (r.ok) { l.estado = 'ok'; l.texto = (r.origen ? r.origen + ' → ' : '') + (r.destino || '') + (r.enPedidos ? ' · ya está en tus pedidos' : ''); }
+    if (r.ok) { l.estado = 'ok'; l.texto = 'Va a ' + (r.destino || '—') + (r.direccion ? ' · ' + r.direccion : '') + (r.enPedidos ? ' · ya está en tus pedidos' : ''); }
     else if (r.pideDestino) { l.estado = 'esp'; l.texto = r.mensaje; l.pideDestino = true; }
     else { l.estado = 'mal'; l.texto = r.mensaje; if (!r.repetido) beep('malo'); }
   });
