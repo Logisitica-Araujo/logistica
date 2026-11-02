@@ -284,7 +284,7 @@ function _guardarImagen(base64, mime, nombre, carpetaId, quien) {
   if (datos.length > 4 * 1024 * 1024) throw _falla('CAP-04', 'La foto pesa demasiado. Tómala otra vez.');
   var blob = Utilities.newBlob(Utilities.base64Decode(datos), mime, nombre);
   if (carpetaId) {
-    try { return DriveApp.getFolderById(String(carpetaId).trim()).createFile(blob).getUrl(); }
+    try { return DriveApp.getFolderById(_idDrive(carpetaId)).createFile(blob).getUrl(); }
     catch (e) { _problema('DRV-01', quien, 'No pude guardar "' + nombre + '" en la carpeta ' + carpetaId + ': ' + e.message + '. Quedó en la carpeta de respaldo.'); }
   }
   return _carpetaRespaldo().createFile(blob).getUrl();
@@ -292,7 +292,7 @@ function _guardarImagen(base64, mime, nombre, carpetaId, quien) {
 
 function _carpetaRespaldo() {
   var cfg = _config();
-  if (cfg.CARPETA_RESPALDO) { try { return DriveApp.getFolderById(String(cfg.CARPETA_RESPALDO).trim()); } catch (e) { } }
+  if (cfg.CARPETA_RESPALDO) { try { return DriveApp.getFolderById(_idDrive(cfg.CARPETA_RESPALDO)); } catch (e) { } }
   var props = PropertiesService.getScriptProperties();
   var id = props.getProperty('CARPETA_RESPALDO_AUTO');
   if (id) { try { return DriveApp.getFolderById(id); } catch (e) { } }

@@ -49,6 +49,9 @@ ok(filasDe('APP_Pedidos').filter(f => f.NumeroGestor === prueba.numero).length =
    'Usuario de prueba con el mismo nombre en Operaciones: los dos ven los 3 pedidos de Jose Luis');
 APP.correr('bajaGestor', 'prueba.jose'); robot();
 
+// La administradora pegó los ENLACES de las carpetas (no solo el ID): también debe funcionar
+APP.ctx._ponerConfig('CARPETA_ENTREGADO', 'https://drive.google.com/drive/u/0/folders/1fGcPo7r1p2QHw-wV507l1ovzesKj9-fu');
+APP.ctx._ponerConfig('CARPETA_RETORNO', 'https://drive.google.com/drive/u/0/folders/1aRw_0Xv719WXD6cyxzLD7yEGZ2jHZFpu?usp=sharing');
 titulo('Entregar un pedido');
 const sinFoto = APP.post({ accion: 'cerrar', token: tJL, idLocal: 'cierre-000001', tipo: 'PEDIDO', id: '#16062', resultado: 'ENTREGADO' });
 ok(!sinFoto.ok && sinFoto.codigo === 'CAP-04', 'Sin foto: no deja (CAP-04)');
@@ -63,6 +66,7 @@ ok(r.hecho.cierres === 1, 'El robot pasa el cierre a la API');
 ok(filasDe('APP_Cierres')[0].Estado === 'ENVIADO', 'APP_Cierres: ENVIADO');
 ok(opsFila('#16062')[22] === true && opsFila('#16062')[21] instanceof Date, 'Operaciones: casilla W marcada y fecha en V');
 ok(opsFila('#16062')[26] === c1.urlFoto, 'Operaciones: foto en AA');
+ok(opsFila('#16062')[34] === 'Sra. Torres', 'Operaciones: quién recibió en AI');
 ok(hEnt.datos.length === 2 && hEnt.datos[1][1] === '#16062' && hEnt.datos[1][4] === 'ENTREGADO' && hEnt.datos[1][16] === 'Sra. Torres', 'APP_Entregas: renglón con quién recibió (para las fórmulas de Operaciones)');
 ok(hEnt.datos[1][0] === '2026-11-04 10:01:00', 'Se anota la hora real de la entrega (la del celular)');
 ok(opsFila('#16062')[15] === 'ENTREGADO', 'ESTATUS: ENTREGADO');
