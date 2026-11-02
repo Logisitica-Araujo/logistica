@@ -17,14 +17,14 @@ Qué pide y qué recibe la app del celular. Aprobado el 29-oct-2026.
 | `login` | **1 ✔** | `usuario`, `clave`, `dispositivo` | `token`, `nombre`, `numero`, `debeCambiar` |
 | `cambiarClave` | **1 ✔** | `token`, `actual`, `nueva` (mín. 6) | `token`, `debeCambiar:false` |
 | `yo` | **1 ✔** | `token` | `numero`, `nombre`, `debeCambiar`, `reglas{exigirFotoEntrega, exigirFirmaEntrega, exigirQuienRecibio, exigirFotoNoEntrega, palabrasExigenFirma[]}`, `versionServidor` |
-| `inicio` | 2 | `token` | `gestor`, `vehiculo`, `checklist`, `pedidos[]`, `recolecciones[]`, `avisos[]` |
-| `vehiculo` | 2 | `token`, `vehiculo`, `checklist[]` | `ok` |
-| `cerrar` | 2 | `token`, `idLocal`, `tipo` (PEDIDO o TRASPASO), `id`, `fila`, `resultado` (ENTREGADO, RETORNO, CANCELADO, PAQUETERIA, NO_ENTREGADO), `motivo`, `comentario`, `recibio`, `foto` (JPEG base64, máx. 1280 px), `firma` (PNG base64, opcional), `lat`, `lng`, `horaCelular` | `idCierre` (si llega dos veces el mismo `idLocal`, devuelve el mismo `idCierre` y no duplica) |
-| `recolectar` | 2 | `token`, `codigos[]` | `resultados[]{codigo, tipo (PEDIDO, TRASPASO u OTRO), ok, origen, destino, contenido, mensaje}` |
-| `problema` | 2 | `token`, `id`, `tipo`, `solucion` | `ok` |
-| `documentos` | 2 | `token` | `documentos[]` |
+| `inicio` | **2 ✔** | `token` | `gestor`, `vehiculo`, `checklist`, `pedidos[]`, `recolecciones[]`, `avisos[]` |
+| `vehiculo` | **2 ✔** | `token`, `vehiculo`, `checklist[]` | `ok` |
+| `cerrar` | **2 ✔** | `token`, `idLocal`, `tipo` (PEDIDO, TRASPASO o RECOLECCION), `id`, `fila`, `resultado` (ENTREGADO, RETORNO, CANCELADO, PAQUETERIA, NO_ENTREGADO), `motivo`, `comentario`, `recibio`, `foto` (JPEG base64, máx. 1280 px), `firma` (PNG base64, opcional), `lat`, `lng`, `horaCelular` | `idCierre` (si llega dos veces el mismo `idLocal`, devuelve el mismo `idCierre` y no duplica) |
+| `recolectar` | **2 ✔** | `token`, `codigos[]` | `resultados[]{codigo, tipo (PEDIDO, TRASPASO u OTRO), ok, origen, destino, contenido, mensaje}` |
+| `problema` | **2 ✔** | `token`, `id`, `tipo`, `solucion` | `ok` |
+| `documentos` | **2 ✔** | `token` | `documentos[]` |
 
-Hasta su etapa, las acciones 2 responden `codigo: "APP-09"` ("llega en la siguiente versión").
+`inicio` devuelve además `vehiculos[]` (con `ocupadoPor`), `lleva[]` (traspasos y recolecciones en ruta), `motivos`, `whatsapp`, `hoy` y `reglas`.
 
 ## Reglas
 - **El celular nunca habla con Logística FED 2026 ni con el Sistema de Traspasos.** Solo con este archivo.
