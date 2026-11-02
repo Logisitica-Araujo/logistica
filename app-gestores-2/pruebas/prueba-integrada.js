@@ -43,6 +43,12 @@ ok(!ocupado.ok && ocupado.codigo === 'CAP-06' && /Jose Luis ya trae/.test(ocupad
 ok(APP.post({ accion: 'inicio', token: tAN }).vehiculos.find(v => v.nombre === 'Suzuki 4B1228').ocupadoPor === 'Jose Luis', 'A Antonio le sale ocupada por Jose Luis');
 APP.post({ accion: 'vehiculo', token: tAN, vehiculo: 'FED 2 14KGC4' });
 
+const prueba = APP.correr('altaGestor', 'Prueba Jose', 'Jose Luis', 'prueba.jose');
+robot();
+ok(filasDe('APP_Pedidos').filter(f => f.NumeroGestor === prueba.numero).length === 3 && filasDe('APP_Pedidos').filter(f => f.NumeroGestor === jl.numero).length === 3,
+   'Usuario de prueba con el mismo nombre en Operaciones: los dos ven los 3 pedidos de Jose Luis');
+APP.correr('bajaGestor', 'prueba.jose'); robot();
+
 titulo('Entregar un pedido');
 const sinFoto = APP.post({ accion: 'cerrar', token: tJL, idLocal: 'cierre-000001', tipo: 'PEDIDO', id: '#16062', resultado: 'ENTREGADO' });
 ok(!sinFoto.ok && sinFoto.codigo === 'CAP-04', 'Sin foto: no deja (CAP-04)');

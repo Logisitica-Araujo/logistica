@@ -47,14 +47,21 @@ function _robotPedidos() {
   var r = _ops('rutaGestores', {});
   if (!r.ok) throw _falla(r.codigo, r.mensaje || r.error);
   var porNombre = {};
-  _tabla(APPG.H.USUARIOS).filas.forEach(function (u) { if (_si(u.Activo) && u.NombreEnOperaciones) porNombre[_norm(u.NombreEnOperaciones)] = u; });
+  // Varios usuarios pueden tener el mismo nombre en Operaciones (ej. el gestor y un usuario de prueba): todos ven sus pedidos.
+  _tabla(APPG.H.USUARIOS).filas.forEach(function (u) {
+    if (!_si(u.Activo) || !u.NombreEnOperaciones) return;
+    var k = _norm(u.NombreEnOperaciones);
+    (porNombre[k] = porNombre[k] || []).push(u);
+  });
   var desconocidos = {};
   var filas = [];
   r.pedidos.forEach(function (p) {
-    var u = porNombre[_norm(p.gestor)];
-    if (!u) { desconocidos[p.gestor] = (desconocidos[p.gestor] || 0) + 1; return; }
-    filas.push([p.id, p.fila, u.Numero, u.Nombre, p.nombre, p.direccion, p.telefono || '', [p.incidencia, p.motivo].filter(String).join(' · '),
-                p.area, p.subarea, p.metodo, p.estatus, p.eta, '']);
+    var us = porNombre[_norm(p.gestor)];
+    if (!us) { desconocidos[p.gestor] = (desconocidos[p.gestor] || 0) + 1; return; }
+    us.forEach(function (u) {
+      filas.push([p.id, p.fila, u.Numero, u.Nombre, p.nombre, p.direccion, p.telefono || '', [p.incidencia, p.motivo].filter(String).join(' · '),
+                  p.area, p.subarea, p.metodo, p.estatus, p.eta, '']);
+    });
   });
   _avisarDesconocidos(desconocidos);
 

@@ -134,7 +134,7 @@ function menuNuevoGestor() {
 function menuAltaVarios() {
   var ui = SpreadsheetApp.getUi();
   var txt = _preguntar(ui, 'Dar de alta varios gestores',
-    'Pega los nombres EXACTOS como están en "Datos" (columna Gestores), uno por renglón.\nEjemplo:\nAntonio "A"\nJose Luis');
+    'Escribe los nombres EXACTOS como están en "Datos" (columna Gestores), separados por punto y coma ;\nEjemplo:  Antonio "A"; Jose Luis; Alejandro');
   if (!txt) return;
   var r = altaVarios(txt);
   var out = r.map(function (x) { return x.error ? '✘ ' + x.nombre + ': ' + x.error : x.numero + '  ' + x.usuario + '  →  contraseña: ' + x.clave; });
