@@ -99,7 +99,7 @@ ok(!R('BOT-0005').ok && /eliminación/.test(R('BOT-0005').mensaje), 'BOT-0005 co
 ok(rec.resultados[5].repetido, 'Leer dos veces el mismo folio (minúsculas): "Ya lo habías leído"');
 const rec2 = APP.post({ accion: 'recolectar', token: tJL, codigos: [{ codigo: 'VREM-00072092', destino: 'Oficinas · Logística', contenido: 'Remisión' }, 'BOT-0013', 'C-PV-0017'] });
 ok(rec2.resultados.every(x => x.ok) && rec2.resultados[0].tipo === 'OTRO', 'Con destino escrito: se recolecta como OTRO');
-ok(rec2.resultados[2].exigeFirma, 'C-PV-0017 dice "Efectivo": exige firma');
+ok(rec2.resultados[0].tipo === 'OTRO' && /Doctores|Morones/.test(R('C-PV-0019').direccion || '') , 'Al recolectar muestra la dirección de la sucursal destino');
 r = robot();
 ok(estT('C-PV-0019') === 'RECOLECTADO' && hRes.datos.find(f => f[0] === 'C-PV-0019')[encT.indexOf('Gestor')] === 'Jose Luis', 'Sistema de Traspasos: C-PV-0019 RECOLECTADO por Jose Luis (rastreo: "Recolectado por gestoría")');
 ok(hMov.datos.some(m => m[3] === 'C-PV-0019' && m[4] === 'RECOLECTADO POR GESTORÍA') && hAv.datos.some(a => a[3] === 'C-PV-0019' && a[2] === 'D-RB'), 'Movimiento y aviso al destino');
@@ -108,12 +108,14 @@ ini = APP.post({ accion: 'inicio', token: tJL });
 ok(ini.lleva.length === 4 && ini.hoy.recolectados === 5, 'Lleva 4 cosas fuera de sus pedidos (C-PV-0019, VREM, BOT-0013, C-PV-0017); 5 recolectadas hoy');
 
 titulo('Entregar traspasos');
-const ef = APP.post({ accion: 'cerrar', token: tJL, idLocal: 'cierre-000004', tipo: 'TRASPASO', id: 'C-PV-0017', resultado: 'ENTREGADO' });
-ok(!ef.ok && ef.codigo === 'CAP-08', 'Efectivo sin firma ni quién recibió: no deja (CAP-08)');
-const ef2 = APP.post({ accion: 'cerrar', token: tJL, idLocal: 'cierre-000004', tipo: 'TRASPASO', id: 'C-PV-0017', resultado: 'ENTREGADO', recibio: 'Lalo', firma: FIRMA });
-ok(ef2.ok, 'Con firma y nombre: sí');
-ok(APP.archivos.some(a => a.carpeta.indexOf('RAIZ/') === 0 && a.nombre === 'C-PV-0017 FIRMA') && filasDe('APP_Problemas').some(p => p.Codigo === 'DRV-01'),
+const ef = APP.post({ accion: 'cerrar', token: tJL, idLocal: 'cierre-000004', tipo: 'TRASPASO', id: 'C-PV-0017', resultado: 'ENTREGADO', sucursal: 'Coapa' });
+ok(ef.ok, 'Traspaso: se entrega sin nada obligatorio (ni foto, ni firma, ni quién recibió)');
+ok(filasDe('APP_Cierres').find(c => c.ID === 'C-PV-0017').DondeEntrego === 'Coapa', 'Se guarda dónde lo entregó');
+const ped = APP.post({ accion: 'cerrar', token: tJL, idLocal: 'cierre-00000f', tipo: 'PEDIDO', id: '#16018', fila: 7, resultado: 'ENTREGADO', foto: FOTO, firma: FIRMA });
+ok(APP.archivos.some(a => a.carpeta.indexOf('RAIZ/') === 0 && a.nombre === '#16018 FIRMA') && filasDe('APP_Problemas').some(p => p.Codigo === 'DRV-01'),
    'Carpeta Firmas sin permiso: la firma va al respaldo y queda DRV-01');
+const nt = APP.post({ accion: 'cerrar', token: tJL, idLocal: 'cierre-00000g', tipo: 'TRASPASO', id: 'VREM-00072092', resultado: 'NO_ENTREGADO' });
+ok(nt.ok, 'Traspaso no entregado: el motivo es opcional');
 APP.post({ accion: 'cerrar', token: tJL, idLocal: 'cierre-000005', tipo: 'TRASPASO', id: 'BOT-0013', resultado: 'ENTREGADO', foto: FOTO });
 r = robot();
 ok(estT('C-PV-0017') === 'ENTREGADO_GESTOR' && estT('BOT-0013') === 'ENTREGADO_GESTOR', 'Sistema de Traspasos: ENTREGADO_GESTOR (falta que el destino confirme)');

@@ -78,6 +78,12 @@ function INSTALAR() {
     });
     hecho.push('Motivos iniciales cargados (iguales a la app actual).');
   }
+  if (_tabla(APPG.H.SUCURSALES).filas.length === 0) {
+    APPG.SUCURSALES_INICIALES.forEach(function (x) {
+      _agregar(APPG.H.SUCURSALES, { Sucursal: x[0], ID: x[1], Direccion: x[2], URLMaps: x[3], Activo: true });
+    });
+    hecho.push('Sucursales cargadas con su dirección (revisa Botican y Morelia: no tenían dirección).');
+  }
   if (_tabla(APPG.H.DOCUMENTOS).filas.length === 0) {
     var base = 'https://logisitica-araujo.github.io/logistica/';
     [['Protocolos', 'Cómo entregar un pedido a domicilio', 'texto',

@@ -10,7 +10,7 @@
  ***********************************************************************/
 
 var APPG = {
-  VERSION: '0.2.0',
+  VERSION: '0.3.0',
   ZONA: 'America/Mexico_City',
 
   /* Nombres de las pestañas del archivo de la app. */
@@ -25,7 +25,8 @@ var APPG = {
     RECOLECCIONES: 'APP_Recolecciones',
     SESIONES:      'APP_Sesiones',
     LOG:           'APP_Log',
-    PROBLEMAS:     'APP_Problemas'
+    PROBLEMAS:     'APP_Problemas',
+    SUCURSALES:    'APP_Sucursales'
   },
 
   /* Encabezados de cada pestaña, en orden. El código busca las columnas
@@ -42,16 +43,30 @@ var APPG = {
                         'Metodo', 'Estatus', 'ETA', 'Actualizado'],
     APP_Cierres:       ['IdCierre', 'FechaHora', 'HoraCelular', 'NumeroGestor', 'Gestor', 'Vehiculo', 'Tipo', 'ID', 'Fila',
                         'Resultado', 'Motivo', 'Comentario', 'Recibio', 'Lat', 'Lng', 'URLFoto', 'URLFirma',
-                        'Estado', 'Intentos', 'UltimoError', 'EnviadoEn', 'Cliente', 'Direccion'],
+                        'Estado', 'Intentos', 'UltimoError', 'EnviadoEn', 'Cliente', 'Direccion', 'DondeEntrego'],
     APP_Recolecciones: ['FechaHora', 'NumeroGestor', 'Gestor', 'Vehiculo', 'Codigo', 'Tipo', 'Origen', 'Destino',
-                        'Contenido', 'Estado', 'EstadoFuente', 'Actualizado', 'Enviado'],
+                        'Contenido', 'Estado', 'EstadoFuente', 'Actualizado', 'Enviado', 'DestinoPrefijo'],
     APP_Sesiones:      ['FechaHora', 'Usuario', 'NumeroGestor', 'Dispositivo', 'Resultado'],
     APP_Log:           ['FechaHora', 'Quien', 'Accion', 'Detalle'],
-    APP_Problemas:     ['Numero', 'FechaHora', 'Codigo', 'Quien', 'Detalle', 'Resuelto']
+    APP_Problemas:     ['Numero', 'FechaHora', 'Codigo', 'Quien', 'Detalle', 'Resuelto'],
+    APP_Sucursales:    ['Sucursal', 'ID', 'Direccion', 'URLMaps', 'Activo']
   },
 
   /* Pestañas que la administradora SÍ edita a mano. Las demás se protegen. */
-  EDITABLES: ['APP_Config', 'APP_Usuarios', 'APP_Vehiculos', 'APP_Motivos', 'APP_Documentos', 'APP_Problemas'],
+  EDITABLES: ['APP_Config', 'APP_Usuarios', 'APP_Vehiculos', 'APP_Motivos', 'APP_Documentos', 'APP_Problemas', 'APP_Sucursales'],
+
+  /* Sucursales a donde se entregan traspasos. ID = el de CAT_Sucursales del Sistema de Traspasos
+     (el folio D-RB-0005 va a la sucursal D). Direcciones tomadas de la app actual. */
+  SUCURSALES_INICIALES: [
+    ['Oficinas', 'OFI', 'Tlacotalpan 104, Roma Sur, Cuauhtémoc, 06760 Ciudad de México, CDMX', 'https://maps.app.goo.gl/S1bdz9WBsNjzwmk29'],
+    ['Nueva Roma', 'NR', 'Av. Baja California 114 B, Roma Sur, Cuauhtémoc, 06760 Ciudad de México, CDMX', 'https://maps.app.goo.gl/FbRW1zySPTzeMGDC8'],
+    ['Vertiz', 'V', 'C. Dr. José María Vértiz 434, Buenos Aires, Cuauhtémoc, 06780 Ciudad de México, CDMX', 'https://maps.app.goo.gl/1hiZ14RAWjzzhkfz5'],
+    ['Doctores', 'D', 'Eje 3 Sur, Dr. Ignacio Morones Prieto 155, Doctores, Cuauhtémoc, 06720 Ciudad de México, CDMX', 'https://maps.app.goo.gl/Ke68Mp5qqyFgbViS8'],
+    ['Coapa', 'C', 'Calz. del Hueso 921 Local 29, Col. Granjas Coapa, Tlalpan, CDMX', 'https://maps.app.goo.gl/h4LvvdFCKBMWoUMi6'],
+    ['Ecatepec', 'E', 'Vía Morelos 172, interior C-5 Los Laureles, 55090 Ecatepec de Morelos, Méx.', 'https://maps.app.goo.gl/fHKbVsPdZV8HJAHA8'],
+    ['Botican', 'BOT', '', ''],
+    ['Morelia', 'M', '', '']
+  ],
 
   /* Valores iniciales de APP_Config (INSTALAR solo agrega los que falten). */
   CONFIG_INICIAL: [

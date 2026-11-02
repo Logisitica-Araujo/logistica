@@ -133,7 +133,7 @@ function _robotCierres(ruta) {
 
 function _robotCierreTraspaso(c) {
   var r = String(c.Resultado);
-  var est = _tnCierre(String(c.ID), String(c.Gestor), r === 'ENTREGADO', String(c.URLFoto), String(c.Motivo), String(c.Comentario), String(c.Recibio));
+  var est = _tnCierre(String(c.ID), String(c.Gestor), r === 'ENTREGADO', String(c.URLFoto), String(c.Motivo), String(c.Comentario), String(c.Recibio), String(c.DondeEntrego || ''));
   return { ok: true, estado: est };
 }
 

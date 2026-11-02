@@ -399,9 +399,9 @@ Errores que cometen personas. No son fallas del sistema, pero el sistema ayuda a
 ### CAP-07 · Recolectó algo que no era para él
 - **Qué hago:** en su lista, **Devolver**, con motivo. El folio regresa a "sin recolectar" en el Sistema de Traspasos.
 
-### CAP-08 · Efectivo sin quién recibió
+### CAP-08 · Falta quién recibió (solo pedidos, si EXIGIR_QUIEN_RECIBIO = TRUE)
 - **Caso real:** C-PV-0009 ($3,287) y C-PV-0017 ($3,798) se entregaron sin nombre de quién recibió.
-- **Prevención:** si el contenido dice "Efectivo", la app **exige** quién recibió y firma (`DIS-04`).
+- **Decisión (2-nov):** en traspasos no se pide firma ni quién recibió; solo dónde se entregó y foto opcional.
 
 ---
 
@@ -424,9 +424,9 @@ Son errores en **cómo está pensado** el trabajo. Se arreglan cambiando una reg
 
 ### DIS-03 · Pedidos que se van por paquetería
 - **Problema:** el gestor los lleva a la paquetería, pero Operaciones los mantiene "ENVIADO POR PAQUETERÍA" hasta que la paquetería entrega, y se quedaban en su lista.
-- **Regla:** botón **"Entregado a paquetería"**, con foto de la guía, que lo saca de su lista.
+- **Decisión (2-nov):** no se usa botón de paquetería en la app. Si un pedido de paquetería aparece asignado a un gestor, se corrige el método o el gestor en Operaciones.
 
-### DIS-04 · Efectivo y documentos delicados
+### DIS-04 · Efectivo y documentos delicados (desactivado el 2-nov)
 - **Regla:** contenido con "Efectivo", "Factura" o "Cortes" exige **quién recibió y firma**.
 - **Dónde se ajusta:** `APP_Config` → `PALABRAS_EXIGEN_FIRMA`.
 

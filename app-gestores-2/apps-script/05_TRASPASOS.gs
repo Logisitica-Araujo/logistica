@@ -65,7 +65,10 @@ function _tnBuscar(codigo) {
 function _tnSet(fila, cambios) {
   var t = _tnTabla();
   cambios['Última actualización'] = _ahora('yyyy-MM-dd HH:mm');
-  Object.keys(cambios).forEach(function (h) { t.sh.getRange(fila, t.c(h) + 1).setValue(cambios[h]); });
+  Object.keys(cambios).forEach(function (h) {
+    t.sh.getRange(fila, t.c(h) + 1).setValue(cambios[h]);
+    var v = t.datos[fila - APPG_TN.FILA_ENC - 1]; if (v) v[t.c(h)] = cambios[h];   // la copia en memoria también, para el resto de la vuelta
+  });
 }
 function _tnAnotar(hoja, o) {
   var sh = _tnLibro().getSheetByName(hoja);
@@ -81,6 +84,22 @@ function _tnAviso(para, folio, msg) {
   _tnAnotar(APPG_TN.H.AVISOS, { 'Fecha': _ahora('yyyy-MM-dd'), 'Hora': _ahora('HH:mm'), 'Para (área)': para, 'Folio': folio, 'Mensaje': msg, 'Visto': 'NO' });
 }
 
+/** Prefijo de área (D-RB, LOG, BOT) → ID de sucursal (D, OFI, BOT), según CAT_Areas. */
+var __APPG_TN_AREAS = null;
+function _tnSucursalDe(prefijo) {
+  var p = String(prefijo || '').trim().toUpperCase();
+  if (!p) return '';
+  if (!__APPG_TN_AREAS) {
+    __APPG_TN_AREAS = {};
+    try {
+      var sh = _tnLibro().getSheetByName('CAT_Areas');
+      var d = sh.getRange(APPG_TN.FILA_ENC + 1, 1, Math.max(1, sh.getLastRow() - APPG_TN.FILA_ENC), 3).getValues();
+      d.forEach(function (r) { if (r[0]) __APPG_TN_AREAS[String(r[0]).trim().toUpperCase()] = String(r[2]).trim().toUpperCase(); });
+    } catch (e) { }
+  }
+  return __APPG_TN_AREAS[p] || p.split('-')[0];
+}
+
 /** El gestor lo recolectó. Devuelve true si se marcó en el sistema. */
 function _tnRecolectar(codigo, gestor, vehiculo) {
   var r = _tnBuscar(codigo);
@@ -94,14 +113,14 @@ function _tnRecolectar(codigo, gestor, vehiculo) {
 }
 
 /** El gestor lo entregó (o no). */
-function _tnCierre(codigo, gestor, entregado, urlFoto, motivo, comentario, recibio) {
+function _tnCierre(codigo, gestor, entregado, urlFoto, motivo, comentario, recibio, dondeEntrego) {
   var r = _tnBuscar(codigo);
   if (!r) return 'NO_EXISTE';
   if (r.estatus !== 'RECOLECTADO' && r.estatus !== 'UBICADO') return r.estatus;   // solo lo que trae el gestor
   if (entregado) {
     _tnSet(r.fila, { 'Estatus': 'ENTREGADO_GESTOR' });
     _tnMov(r.folio, 'ENTREGADO POR GESTOR (FALTA CONFIRMAR)', r.estatus, 'ENTREGADO_GESTOR', gestor,
-           (recibio ? 'Recibió: ' + recibio + ' · ' : '') + (urlFoto ? 'Foto: ' + urlFoto : 'Sin foto'));
+           (dondeEntrego ? 'Entregado en: ' + dondeEntrego + ' · ' : '') + (comentario ? comentario + ' · ' : '') + (urlFoto ? 'Foto: ' + urlFoto : 'Sin foto'));
     _tnAviso(r.destinoPrefijo, r.folio, 'El gestor ' + gestor + ' dice que ya te lo entregó. Escanéalo para confirmar.');
     return 'ENTREGADO_GESTOR';
   }

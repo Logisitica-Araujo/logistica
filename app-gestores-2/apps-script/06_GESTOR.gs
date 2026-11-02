@@ -55,14 +55,22 @@ function apiInicio(p) {
              metodo: String(f.Metodo), eta: String(f.ETA || ''), estatus: String(f.Estatus || '') };
   });
 
+  var sucursales = _tabla(APPG.H.SUCURSALES).filas.filter(function (x) { return _si(x.Activo); }).map(function (x) {
+    return { nombre: String(x.Sucursal), id: String(x.ID).toUpperCase(), direccion: String(x.Direccion || ''), maps: String(x.URLMaps || '') };
+  });
+  var porId = {};
+  sucursales.forEach(function (x) { porId[x.id] = x; });
   var lleva = [];
   _tabla(APPG.H.RECOLECCIONES).filas.forEach(function (r) {
     if (String(r.NumeroGestor) !== String(u.Numero)) return;
     if (_fechaTxt(r.FechaHora) === hoy) hoyCuenta.recolectados++;
     if (String(r.Estado) !== 'EN RUTA') return;
+    var suc = null;
+    if (r.DestinoPrefijo) { try { suc = porId[_tnSucursalDe(r.DestinoPrefijo)] || null; } catch (e) { } }
     lleva.push({ codigo: String(r.Codigo), tipo: String(r.Tipo), origen: String(r.Origen), destino: String(r.Destino),
                  contenido: String(r.Contenido), fecha: _fechaTxt(r.FechaHora, 'yyyy-MM-dd HH:mm'),
-                 exigeFirma: _exigeFirma(r.Contenido, cfg) });
+                 estado: _estadoAmigable(r.EstadoFuente, r.Enviado),
+                 destinoSucursal: suc ? suc.nombre : '', destinoDireccion: suc ? suc.direccion : '', destinoMaps: suc ? suc.maps : '' });
   });
 
   var motivos = { RETORNO: [], CANCELADO: [], TRASPASO: [] };
@@ -79,7 +87,7 @@ function apiInicio(p) {
     vehiculo: _fechaTxt(u.FechaVehiculo) === hoy && u.VehiculoHoy ? String(u.VehiculoHoy) : '',
     vehiculos: vehiculos,
     checklist: { MOTO: _lista(cfg.CHECK_MOTO), AUTO: _lista(cfg.CHECK_AUTO) },
-    pedidos: pedidos, lleva: lleva, motivos: motivos, whatsapp: wa, hoy: hoyCuenta,
+    pedidos: pedidos, lleva: lleva, sucursales: sucursales, motivos: motivos, whatsapp: wa, hoy: hoyCuenta,
     reglas: apiYo(p).reglas,
     robot: String(cfg.ULTIMA_VUELTA_ROBOT || ''),
     hora: _ahora('yyyy-MM-dd HH:mm:ss'), version: APPG.VERSION
@@ -133,22 +141,11 @@ function apiCerrar(p) {
   if (!id) throw _falla('APP-01', 'Falta el número de pedido o folio.');
 
   /* Reglas (las mismas que valida el celular; aquí por si alguien se las salta) */
-  var noEntrega = res === 'RETORNO' || res === 'CANCELADO' || res === 'NO_ENTREGADO';
-  if (noEntrega && !String(p.motivo || '').trim()) throw _falla('CAP-05', 'Elige el motivo.');
+  // En traspasos nada es obligatorio. En pedidos: motivo en retorno/cancelado y las fotos que diga APP_Config.
+  if (tipo === 'PEDIDO' && (res === 'RETORNO' || res === 'CANCELADO') && !String(p.motivo || '').trim()) throw _falla('CAP-05', 'Elige el motivo.');
   if (tipo === 'PEDIDO' && res === 'ENTREGADO' && _si(cfg.EXIGIR_FOTO_ENTREGA) && !p.foto) throw _falla('CAP-04', 'Falta la foto de la fachada.');
   if (tipo === 'PEDIDO' && (res === 'RETORNO' || res === 'CANCELADO') && _si(cfg.EXIGIR_FOTO_NOENTREGA) && !p.foto) throw _falla('CAP-04', 'Falta la foto de evidencia.');
-  if (res === 'PAQUETERIA' && !p.foto) throw _falla('CAP-04', 'Falta la foto de la guía o comprobante.');
-  if (res === 'ENTREGADO' && _si(cfg.EXIGIR_QUIEN_RECIBIO) && !String(p.recibio || '').trim()) throw _falla('CAP-08', 'Anota quién recibió.');
-  var contenido = '';
-  if (tipo !== 'PEDIDO') {
-    var rec = _tabla(APPG.H.RECOLECCIONES).filas.filter(function (r) {
-      return String(r.NumeroGestor) === String(u.Numero) && _tnClave(r.Codigo) === _tnClave(id) && String(r.Estado) === 'EN RUTA';
-    })[0];
-    contenido = rec ? String(rec.Contenido) : '';
-  }
-  if (res === 'ENTREGADO' && _exigeFirma(contenido, cfg) && (!String(p.recibio || '').trim() || !p.firma)) {
-    throw _falla('CAP-08', 'Lleva efectivo o documentos: anota quién recibió y pide su firma.');
-  }
+  if (tipo === 'PEDIDO' && res === 'ENTREGADO' && _si(cfg.EXIGIR_QUIEN_RECIBIO) && !String(p.recibio || '').trim()) throw _falla('CAP-08', 'Anota quién recibió.');
 
   /* Fotos a Drive (si una carpeta falla, va a la de respaldo y queda en APP_Problemas) */
   var nombreArchivo = id.replace(/[\\/:*?"<>|]/g, '-');
@@ -165,7 +162,8 @@ function apiCerrar(p) {
     Vehiculo: _fechaTxt(u.FechaVehiculo) === _hoyTxt() ? String(u.VehiculoHoy || '') : '', Tipo: tipo, ID: id,
     Fila: ped ? Number(ped.Fila) : (Number(p.fila) || ''), Resultado: res, Motivo: String(p.motivo || ''), Comentario: String(p.comentario || '').slice(0, 1000),
     Recibio: String(p.recibio || '').slice(0, 120), Lat: p.lat || '', Lng: p.lng || '', URLFoto: urlFoto, URLFirma: urlFirma,
-    Estado: estado, Intentos: 0, UltimoError: '', EnviadoEn: '', Cliente: ped ? String(ped.Cliente) : '', Direccion: ped ? String(ped.Direccion) : ''
+    Estado: estado, Intentos: 0, UltimoError: '', EnviadoEn: '', Cliente: ped ? String(ped.Cliente) : '', Direccion: ped ? String(ped.Direccion) : '',
+    DondeEntrego: tipo === 'PEDIDO' ? '' : String(p.sucursal || '').slice(0, 80)
   });
 
   /* Lo que lleva (traspaso o recolección) sale de su lista al entregar */
@@ -210,6 +208,7 @@ function apiRecolectar(p) {
       if (APPG_TN.TERMINADOS.indexOf(tn.estatus) >= 0) return { codigo: tn.folio, ok: false, mensaje: 'Ese traspaso ya está ' + tn.estatus + ' en el sistema.' };
       if (tn.eliminar) return { codigo: tn.folio, ok: false, mensaje: 'Ese traspaso tiene eliminación solicitada. Pregunta en la sucursal.' };
       reg.Codigo = tn.folio; reg.Tipo = 'TRASPASO'; reg.Origen = tn.origen; reg.Destino = tn.destino; reg.Contenido = tn.contenido; reg.EstadoFuente = tn.estatus;
+      reg.DestinoPrefijo = tn.destinoPrefijo;
     } else if (codigo.charAt(0) === '#') {
       var mio = misPedidos[k];
       reg.Tipo = 'PEDIDO'; reg.Origen = o.origen || ''; reg.Destino = mio ? String(mio.Cliente) : (o.destino || '');
@@ -222,7 +221,7 @@ function apiRecolectar(p) {
     _agregar(APPG.H.RECOLECCIONES, reg);
     abiertos[k] = true;
     return { codigo: reg.Codigo, ok: true, tipo: reg.Tipo, origen: reg.Origen, destino: reg.Destino, contenido: reg.Contenido,
-             enPedidos: reg.Estado !== 'EN RUTA', exigeFirma: _exigeFirma(reg.Contenido, _config()),
+             enPedidos: reg.Estado !== 'EN RUTA', direccion: _direccionDe(reg.DestinoPrefijo),
              mensaje: reg.Tipo === 'TRASPASO' ? 'Recolectado · ya se ve en el rastreo en 1 minuto' : 'Recolectado' };
   });
   _log(u.Nombre, 'RECOLECTA', resultados.filter(function (r) { return r.ok; }).map(function (r) { return r.codigo; }).join(', '));
@@ -245,6 +244,23 @@ function apiDocumentos(p) {
 }
 
 /* ==================== utilidades ==================== */
+
+/** Texto para el gestor según el estatus del Sistema de Traspasos. */
+function _estadoAmigable(fuente, enviado) {
+  var f = String(fuente || '').toUpperCase();
+  if (String(enviado) === 'NO') return 'Registrando en el sistema…';
+  if (/RECOLECTADO/.test(f)) return 'En camino · ya sale en el rastreo';
+  if (/EN_RECEPCION/.test(f)) return 'En recepción';
+  if (/NO RECOLECTABLE|NO EXISTE/.test(f)) return 'No está en el Sistema de Traspasos';
+  if (/ALERTA/.test(f)) return 'Lleva días sin entregarse';
+  return f ? f.replace(/_/g, ' ').toLowerCase() : '';
+}
+function _direccionDe(prefijo) {
+  if (!prefijo) return '';
+  var id = _tnSucursalDe(prefijo);
+  var s = _tabla(APPG.H.SUCURSALES).filas.filter(function (x) { return String(x.ID).toUpperCase() === id; })[0];
+  return s ? String(s.Direccion || '') : '';
+}
 
 function _exigeFirma(contenido, cfg) {
   var c = _norm(contenido);
