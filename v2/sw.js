@@ -2,7 +2,7 @@
  * Guarda la app en el celular para que abra al instante y sin señal.
  * Nunca guarda respuestas del servidor (esas las maneja app.js).
  * Al cambiar cualquier archivo de la app, sube VERSION. */
-const VERSION = 'gestores2-v1';
+const VERSION = 'gestores2-v2';
 const ARCHIVOS = ['./', './index.html', './estilos.css', './app.js', './config.js', './manifest.json',
   '../lib/barcode-detector.js', '../lib/zxing_reader.wasm', '../iconos/icono-192.png', '../iconos/favicon.png'];
 

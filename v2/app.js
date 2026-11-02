@@ -222,7 +222,12 @@ function entrar(ev) {
     S.token = d.token; guardar('token', d.token); guardar('nombre', d.nombre);
     guardar('debeCambiar', d.debeCambiar ? '1' : '0');
     return actualizar(true);
-  }).catch(function (e) { quitarCargando(); falla(e); });
+  }).catch(function (e) {
+    quitarCargando();
+    // Sin sesión todavía, un "sin señal" casi siempre es que el servidor no está abierto a "Cualquier persona".
+    if (e.red && navigator.onLine) e = errCod('APP-01', 'No pude hablar con el servidor. Si tienes señal, avisa a tu administradora: el servidor debe estar publicado para "Cualquier persona".');
+    falla(e);
+  });
 }
 function vistaCambiarClave(obligatorio) {
   S.vista = 'clave';
