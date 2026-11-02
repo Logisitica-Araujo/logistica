@@ -1,0 +1,302 @@
+/***********************************************************************
+ * APP GESTORES 2 — 06_GESTOR.gs
+ * Proyecto: Apps Script del archivo "App Gestores · Datos"
+ * ---------------------------------------------------------------------
+ * Lo que pide el celular (ver CONTRATO.md):
+ *   inicio · vehiculo · cerrar · recolectar · problema · documentos
+ * Todo contesta en 1–2 s porque solo toca ESTE archivo (y, al escanear,
+ * lee el Sistema de Traspasos). Lo pesado (Operaciones) lo hace el robot.
+ ***********************************************************************/
+
+var APPG_RESULTADOS = ['ENTREGADO', 'RETORNO', 'CANCELADO', 'PAQUETERIA', 'NO_ENTREGADO'];
+
+function _hoyTxt() { return _ahora('yyyy-MM-dd'); }
+function _lista(v) { return String(v || '').split('|').map(function (x) { return x.trim(); }).filter(String); }
+
+/* ==================== inicio ==================== */
+
+function apiInicio(p) {
+  var s = _exigirSesion(p.token);
+  var u = _buscarUsuario(s.Usuario);
+  var cfg = _config();
+  var hoy = _hoyTxt();
+
+  /* Vehículos y quién trae cuál hoy */
+  var ocupados = {};
+  u._t.filas.forEach(function (f) {
+    if (String(f.Numero) !== String(u.Numero) && _si(f.Activo) && _fechaTxt(f.FechaVehiculo) === hoy && f.VehiculoHoy) ocupados[_norm(f.VehiculoHoy)] = f.Nombre;
+  });
+  var vehiculos = _tabla(APPG.H.VEHICULOS).filas.filter(function (v) { return _si(v.Activo); }).map(function (v) {
+    var tipo = String(v.Tipo || 'AUTO').toUpperCase();
+    return { nombre: String(v.Vehiculo), tipo: tipo, placa: String(v.Placa || ''),
+             ocupadoPor: tipo === 'NINGUNO' ? '' : (ocupados[_norm(v.Vehiculo)] || '') };
+  });
+
+  /* Lo que cerró (para no volver a mostrarlo mientras Operaciones se entera) */
+  var cierres = _tabla(APPG.H.CIERRES).filas;
+  var ocultar = {}, hoyCuenta = { entregados: 0, noEntregados: 0, recolectados: 0 };
+  var hace15 = Date.now() - 15 * 60000;
+  cierres.forEach(function (c) {
+    var k = _norm(c.ID);
+    var est = String(c.Estado);
+    var reciente = _fechaMs(c.EnviadoEn || c.FechaHora) > hace15;
+    if (String(c.Resultado) === 'PAQUETERIA' || est === 'PENDIENTE' || (est === 'ENVIADO' && reciente) || est === 'LOCAL') ocultar[k] = true;
+    if (String(c.NumeroGestor) === String(u.Numero) && _fechaTxt(c.FechaHora) === hoy) {
+      if (c.Resultado === 'ENTREGADO') hoyCuenta.entregados++;
+      else if (c.Resultado !== 'PAQUETERIA') hoyCuenta.noEntregados++;
+    }
+  });
+
+  var pedidos = _tabla(APPG.H.PEDIDOS).filas.filter(function (f) {
+    return String(f.NumeroGestor) === String(u.Numero) && !ocultar[_norm(f.ID)];
+  }).map(function (f) {
+    return { id: String(f.ID), fila: Number(f.Fila), cliente: String(f.Cliente), direccion: String(f.Direccion),
+             telefono: String(f.Telefono || ''), notas: String(f.Notas || ''), area: String(f.Area), subarea: String(f.SubArea),
+             metodo: String(f.Metodo), eta: String(f.ETA || ''), estatus: String(f.Estatus || '') };
+  });
+
+  var lleva = [];
+  _tabla(APPG.H.RECOLECCIONES).filas.forEach(function (r) {
+    if (String(r.NumeroGestor) !== String(u.Numero)) return;
+    if (_fechaTxt(r.FechaHora) === hoy) hoyCuenta.recolectados++;
+    if (String(r.Estado) !== 'EN RUTA') return;
+    lleva.push({ codigo: String(r.Codigo), tipo: String(r.Tipo), origen: String(r.Origen), destino: String(r.Destino),
+                 contenido: String(r.Contenido), fecha: _fechaTxt(r.FechaHora, 'yyyy-MM-dd HH:mm'),
+                 exigeFirma: _exigeFirma(r.Contenido, cfg) });
+  });
+
+  var motivos = { RETORNO: [], CANCELADO: [], TRASPASO: [] };
+  _tabla(APPG.H.MOTIVOS).filas.forEach(function (m) {
+    var t = String(m.Tipo).toUpperCase();
+    if (motivos[t] && _si(m.Activo)) motivos[t].push({ motivo: String(m.Motivo), pideComentario: _si(m.PideComentario) });
+  });
+
+  var wa = {};
+  Object.keys(cfg).forEach(function (k) { if (/^WA_MSG_/.test(k)) wa[k.replace('WA_MSG_', '')] = String(cfg[k]).replace(/\\n/g, '\n'); });
+
+  return {
+    gestor: { numero: u.Numero, nombre: u.Nombre },
+    vehiculo: _fechaTxt(u.FechaVehiculo) === hoy && u.VehiculoHoy ? String(u.VehiculoHoy) : '',
+    vehiculos: vehiculos,
+    checklist: { MOTO: _lista(cfg.CHECK_MOTO), AUTO: _lista(cfg.CHECK_AUTO) },
+    pedidos: pedidos, lleva: lleva, motivos: motivos, whatsapp: wa, hoy: hoyCuenta,
+    reglas: apiYo(p).reglas,
+    robot: String(cfg.ULTIMA_VUELTA_ROBOT || ''),
+    hora: _ahora('yyyy-MM-dd HH:mm:ss'), version: APPG.VERSION
+  };
+}
+
+/* ==================== vehiculo ==================== */
+
+function apiVehiculo(p) {
+  var s = _exigirSesion(p.token);
+  var u = _buscarUsuario(s.Usuario);
+  var nombre = String(p.vehiculo || '').trim();
+  var v = _tabla(APPG.H.VEHICULOS).filas.filter(function (x) { return _si(x.Activo) && _norm(x.Vehiculo) === _norm(nombre); })[0];
+  if (!v) throw _falla('CAP-06', 'Ese vehículo no está en la lista.');
+  var hoy = _hoyTxt();
+  if (String(v.Tipo).toUpperCase() !== 'NINGUNO') {
+    var otro = u._t.filas.filter(function (f) {
+      return String(f.Numero) !== String(u.Numero) && _si(f.Activo) && _fechaTxt(f.FechaVehiculo) === hoy && _norm(f.VehiculoHoy) === _norm(nombre);
+    })[0];
+    if (otro) throw _falla('CAP-06', otro.Nombre + ' ya trae ' + nombre + ' hoy. Elige otro o pídele que lo cambie.');
+  }
+  var antes = _fechaTxt(u.FechaVehiculo) === hoy ? String(u.VehiculoHoy || '') : '';
+  u._t.sh.getRange(u._fila, u._t.col('VehiculoHoy')).setValue(String(v.Vehiculo));
+  u._t.sh.getRange(u._fila, u._t.col('FechaVehiculo')).setValue(_ahora('yyyy-MM-dd HH:mm'));
+  var falta = (p.checklist || []).filter(function (c) { return c && c.ok === false; }).map(function (c) { return c.texto; });
+  _log(u.Nombre, antes ? 'CAMBIA_VEHICULO' : 'VEHICULO', (antes ? antes + ' → ' : '') + v.Vehiculo + (falta.length ? ' · le falta: ' + falta.join(', ') : ''));
+  if (falta.length) _problema('CAP-06', u.Nombre, 'Salió en ' + v.Vehiculo + ' sin: ' + falta.join(', '));
+  return { vehiculo: String(v.Vehiculo) };
+}
+
+/* ==================== cerrar ==================== */
+/* p = { idLocal, tipo: PEDIDO|TRASPASO|RECOLECCION, id, fila, resultado, motivo, comentario, recibio,
+         foto (base64 JPEG), firma (base64 PNG), lat, lng, horaCelular } */
+function apiCerrar(p) {
+  var s = _exigirSesion(p.token);
+  var u = _buscarUsuario(s.Usuario);
+  var cfg = _config();
+  var idLocal = String(p.idLocal || '').trim();
+  if (!/^[A-Za-z0-9_-]{8,60}$/.test(idLocal)) throw _falla('APP-01', 'Falta el identificador del cierre (actualiza la app).');
+
+  // Mismo cierre que llega dos veces (mala señal): se contesta igual y no se duplica.
+  var cierres = _tabla(APPG.H.CIERRES);
+  var ya = cierres.filas.filter(function (c) { return String(c.IdCierre) === idLocal; })[0];
+  if (ya) return { idCierre: idLocal, repetido: true };
+
+  var tipo = String(p.tipo || 'PEDIDO').toUpperCase();
+  var res = String(p.resultado || '').toUpperCase();
+  var id = String(p.id || '').trim();
+  if (['PEDIDO', 'TRASPASO', 'RECOLECCION'].indexOf(tipo) < 0) throw _falla('APP-01', 'Tipo de cierre desconocido.');
+  if (APPG_RESULTADOS.indexOf(res) < 0) throw _falla('APP-01', 'Resultado desconocido.');
+  if (!id) throw _falla('APP-01', 'Falta el número de pedido o folio.');
+
+  /* Reglas (las mismas que valida el celular; aquí por si alguien se las salta) */
+  var noEntrega = res === 'RETORNO' || res === 'CANCELADO' || res === 'NO_ENTREGADO';
+  if (noEntrega && !String(p.motivo || '').trim()) throw _falla('CAP-05', 'Elige el motivo.');
+  if (tipo === 'PEDIDO' && res === 'ENTREGADO' && _si(cfg.EXIGIR_FOTO_ENTREGA) && !p.foto) throw _falla('CAP-04', 'Falta la foto de la fachada.');
+  if (tipo === 'PEDIDO' && (res === 'RETORNO' || res === 'CANCELADO') && _si(cfg.EXIGIR_FOTO_NOENTREGA) && !p.foto) throw _falla('CAP-04', 'Falta la foto de evidencia.');
+  if (res === 'PAQUETERIA' && !p.foto) throw _falla('CAP-04', 'Falta la foto de la guía o comprobante.');
+  if (res === 'ENTREGADO' && _si(cfg.EXIGIR_QUIEN_RECIBIO) && !String(p.recibio || '').trim()) throw _falla('CAP-08', 'Anota quién recibió.');
+  var contenido = '';
+  if (tipo !== 'PEDIDO') {
+    var rec = _tabla(APPG.H.RECOLECCIONES).filas.filter(function (r) {
+      return String(r.NumeroGestor) === String(u.Numero) && _tnClave(r.Codigo) === _tnClave(id) && String(r.Estado) === 'EN RUTA';
+    })[0];
+    contenido = rec ? String(rec.Contenido) : '';
+  }
+  if (res === 'ENTREGADO' && _exigeFirma(contenido, cfg) && (!String(p.recibio || '').trim() || !p.firma)) {
+    throw _falla('CAP-08', 'Lleva efectivo o documentos: anota quién recibió y pide su firma.');
+  }
+
+  /* Fotos a Drive (si una carpeta falla, va a la de respaldo y queda en APP_Problemas) */
+  var nombreArchivo = id.replace(/[\\/:*?"<>|]/g, '-');
+  var carpeta = tipo === 'PEDIDO' ? ({ ENTREGADO: 'CARPETA_ENTREGADO', RETORNO: 'CARPETA_RETORNO', CANCELADO: 'CARPETA_CANCELADO', PAQUETERIA: 'CARPETA_ENTREGADO' })[res]
+                                  : 'CARPETA_TRASPASOS';
+  var urlFoto = p.foto ? _guardarImagen(p.foto, 'image/jpeg', nombreArchivo + (res === 'PAQUETERIA' ? ' PAQUETERIA' : ''), cfg[carpeta], u.Nombre) : '';
+  var urlFirma = p.firma ? _guardarImagen(p.firma, 'image/png', nombreArchivo + ' FIRMA', cfg.CARPETA_FIRMAS, u.Nombre) : '';
+
+  var ped = tipo === 'PEDIDO' ? _tabla(APPG.H.PEDIDOS).filas.filter(function (f) { return _norm(f.ID) === _norm(id); })[0] : null;
+  // PEDIDO y TRASPASO los lleva el robot a su sistema. RECOLECCION y PAQUETERIA solo se anotan aquí.
+  var estado = (tipo === 'RECOLECCION' || res === 'PAQUETERIA') ? 'LOCAL' : 'PENDIENTE';
+  _agregar(APPG.H.CIERRES, {
+    IdCierre: idLocal, FechaHora: _ahora(), HoraCelular: String(p.horaCelular || '').slice(0, 19), NumeroGestor: u.Numero, Gestor: u.Nombre,
+    Vehiculo: _fechaTxt(u.FechaVehiculo) === _hoyTxt() ? String(u.VehiculoHoy || '') : '', Tipo: tipo, ID: id,
+    Fila: ped ? Number(ped.Fila) : (Number(p.fila) || ''), Resultado: res, Motivo: String(p.motivo || ''), Comentario: String(p.comentario || '').slice(0, 1000),
+    Recibio: String(p.recibio || '').slice(0, 120), Lat: p.lat || '', Lng: p.lng || '', URLFoto: urlFoto, URLFirma: urlFirma,
+    Estado: estado, Intentos: 0, UltimoError: '', EnviadoEn: '', Cliente: ped ? String(ped.Cliente) : '', Direccion: ped ? String(ped.Direccion) : ''
+  });
+
+  /* Lo que lleva (traspaso o recolección) sale de su lista al entregar */
+  if (tipo !== 'PEDIDO' && (res === 'ENTREGADO' || res === 'PAQUETERIA')) {
+    var tr = _tabla(APPG.H.RECOLECCIONES);
+    tr.filas.forEach(function (r) {
+      if (String(r.NumeroGestor) === String(u.Numero) && _tnClave(r.Codigo) === _tnClave(id) && String(r.Estado) === 'EN RUTA') {
+        tr.sh.getRange(r._fila, tr.col('Estado')).setValue(res === 'PAQUETERIA' ? 'EN PAQUETERÍA' : 'ENTREGADO POR GESTOR');
+        tr.sh.getRange(r._fila, tr.col('Actualizado')).setValue(_ahora());
+      }
+    });
+  }
+  _log(u.Nombre, 'CIERRE', tipo + ' ' + id + ' · ' + res + (p.motivo ? ' · ' + p.motivo : ''));
+  return { idCierre: idLocal, urlFoto: urlFoto };
+}
+
+/* ==================== recolectar ==================== */
+/* p.codigos = [ "C-PV-0019", "#16018", {codigo:"VREM-123", origen:"…", destino:"…", contenido:"…"} ] */
+function apiRecolectar(p) {
+  var s = _exigirSesion(p.token);
+  var u = _buscarUsuario(s.Usuario);
+  var vehiculo = _fechaTxt(u.FechaVehiculo) === _hoyTxt() ? String(u.VehiculoHoy || '') : '';
+  var lista = (p.codigos || []).slice(0, 60);
+  var t = _tabla(APPG.H.RECOLECCIONES);
+  var abiertos = {};
+  t.filas.forEach(function (r) { if (String(r.NumeroGestor) === String(u.Numero) && String(r.Estado) === 'EN RUTA') abiertos[_tnClave(r.Codigo)] = true; });
+  var misPedidos = {};
+  _tabla(APPG.H.PEDIDOS).filas.forEach(function (f) { if (String(f.NumeroGestor) === String(u.Numero)) misPedidos[_tnClave(f.ID)] = f; });
+
+  var resultados = lista.map(function (x) {
+    var o = typeof x === 'object' && x ? x : { codigo: x };
+    var codigo = String(o.codigo || '').trim().toUpperCase();
+    var k = _tnClave(codigo);
+    if (k.length < 3) return { codigo: codigo, ok: false, mensaje: 'Código muy corto. Revísalo.' };
+    if (abiertos[k]) return { codigo: codigo, ok: false, repetido: true, mensaje: 'Ya lo habías leído.' };
+
+    var reg = { FechaHora: _ahora(), NumeroGestor: u.Numero, Gestor: u.Nombre, Vehiculo: vehiculo, Codigo: codigo,
+                Estado: 'EN RUTA', EstadoFuente: '', Actualizado: _ahora(), Enviado: 'NO' };
+    var tn = null;
+    try { tn = _tnBuscar(codigo); } catch (e) { _log(u.Nombre, 'TN_LECTURA', e.message); }
+    if (tn) {
+      if (APPG_TN.TERMINADOS.indexOf(tn.estatus) >= 0) return { codigo: tn.folio, ok: false, mensaje: 'Ese traspaso ya está ' + tn.estatus + ' en el sistema.' };
+      if (tn.eliminar) return { codigo: tn.folio, ok: false, mensaje: 'Ese traspaso tiene eliminación solicitada. Pregunta en la sucursal.' };
+      reg.Codigo = tn.folio; reg.Tipo = 'TRASPASO'; reg.Origen = tn.origen; reg.Destino = tn.destino; reg.Contenido = tn.contenido; reg.EstadoFuente = tn.estatus;
+    } else if (codigo.charAt(0) === '#') {
+      var mio = misPedidos[k];
+      reg.Tipo = 'PEDIDO'; reg.Origen = o.origen || ''; reg.Destino = mio ? String(mio.Cliente) : (o.destino || '');
+      reg.Contenido = mio ? String(mio.Direccion) : (o.contenido || '');
+      if (mio) reg.Estado = 'EN RUTA (EN MIS PEDIDOS)';   // ya está en su lista de pedidos: se entrega desde ahí
+    } else {
+      if (!String(o.destino || '').trim()) return { codigo: codigo, ok: false, pideDestino: true, mensaje: 'No está en el Sistema de Traspasos. Escribe a dónde va.' };
+      reg.Tipo = 'OTRO'; reg.Origen = String(o.origen || ''); reg.Destino = String(o.destino); reg.Contenido = String(o.contenido || '');
+    }
+    _agregar(APPG.H.RECOLECCIONES, reg);
+    abiertos[k] = true;
+    return { codigo: reg.Codigo, ok: true, tipo: reg.Tipo, origen: reg.Origen, destino: reg.Destino, contenido: reg.Contenido,
+             enPedidos: reg.Estado !== 'EN RUTA', exigeFirma: _exigeFirma(reg.Contenido, _config()),
+             mensaje: reg.Tipo === 'TRASPASO' ? 'Recolectado · ya se ve en el rastreo en 1 minuto' : 'Recolectado' };
+  });
+  _log(u.Nombre, 'RECOLECTA', resultados.filter(function (r) { return r.ok; }).map(function (r) { return r.codigo; }).join(', '));
+  return { resultados: resultados };
+}
+
+/* ==================== problema y documentos ==================== */
+
+function apiProblema(p) {
+  var s = _exigirSesion(p.token);
+  var num = _problema(String(p.codigo || 'CEL'), s.Nombre, (p.id ? p.id + ' · ' : '') + String(p.detalle || '').slice(0, 800));
+  return { numero: num };
+}
+
+function apiDocumentos(p) {
+  _exigirSesion(p.token);
+  return { documentos: _tabla(APPG.H.DOCUMENTOS).filas.filter(function (d) { return _si(d.Activo); })
+    .sort(function (a, b) { return (Number(a.Orden) || 99) - (Number(b.Orden) || 99); })
+    .map(function (d) { return { categoria: String(d.Categoria), titulo: String(d.Titulo), tipo: String(d.Tipo), contenido: String(d.Contenido) }; }) };
+}
+
+/* ==================== utilidades ==================== */
+
+function _exigeFirma(contenido, cfg) {
+  var c = _norm(contenido);
+  if (!c) return false;
+  return _lista(cfg.PALABRAS_EXIGEN_FIRMA).some(function (w) { return w && c.indexOf(_norm(w)) >= 0; });
+}
+
+/** Anota un problema numerado P-0001… y devuelve su número. */
+function _problema(codigo, quien, detalle) {
+  var t = _tabla(APPG.H.PROBLEMAS);
+  var max = 0;
+  t.filas.forEach(function (f) { var m = /P-(\d+)/.exec(String(f.Numero)); if (m) max = Math.max(max, Number(m[1])); });
+  var num = 'P-' + ('000' + (max + 1)).slice(-4);
+  _agregar(APPG.H.PROBLEMAS, { Numero: num, FechaHora: _ahora(), Codigo: codigo, Quien: quien || '', Detalle: detalle, Resuelto: false });
+  return num;
+}
+
+/** Guarda una imagen base64 en Drive. Si la carpeta falla, usa la de respaldo. Devuelve la URL. */
+function _guardarImagen(base64, mime, nombre, carpetaId, quien) {
+  var datos = String(base64).replace(/^data:[^,]+,/, '');
+  if (datos.length > 4 * 1024 * 1024) throw _falla('CAP-04', 'La foto pesa demasiado. Tómala otra vez.');
+  var blob = Utilities.newBlob(Utilities.base64Decode(datos), mime, nombre);
+  if (carpetaId) {
+    try { return DriveApp.getFolderById(String(carpetaId).trim()).createFile(blob).getUrl(); }
+    catch (e) { _problema('DRV-01', quien, 'No pude guardar "' + nombre + '" en la carpeta ' + carpetaId + ': ' + e.message + '. Quedó en la carpeta de respaldo.'); }
+  }
+  return _carpetaRespaldo().createFile(blob).getUrl();
+}
+
+function _carpetaRespaldo() {
+  var cfg = _config();
+  if (cfg.CARPETA_RESPALDO) { try { return DriveApp.getFolderById(String(cfg.CARPETA_RESPALDO).trim()); } catch (e) { } }
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty('CARPETA_RESPALDO_AUTO');
+  if (id) { try { return DriveApp.getFolderById(id); } catch (e) { } }
+  var c = DriveApp.createFolder('App Gestores · Respaldo fotos');
+  props.setProperty('CARPETA_RESPALDO_AUTO', c.getId());
+  return c;
+}
+
+/** Fecha (Date o texto) → 'yyyy-MM-dd' (o el patrón dado). '' si no hay. */
+function _fechaTxt(v, patron) {
+  if (!v) return '';
+  if (Object.prototype.toString.call(v) === '[object Date]') return Utilities.formatDate(v, APPG.ZONA, patron || 'yyyy-MM-dd');
+  var s = String(v);
+  return patron ? s.slice(0, patron.length) : s.slice(0, 10);
+}
+function _fechaMs(v) {
+  if (!v) return 0;
+  if (Object.prototype.toString.call(v) === '[object Date]') return v.getTime();
+  var m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/.exec(String(v));
+  if (!m) return 0;
+  // Hora de CDMX (UTC-6, sin horario de verano desde 2022)
+  return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4] + 6, +m[5], +(m[6] || 0));
+}

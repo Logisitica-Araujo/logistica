@@ -1,0 +1,26 @@
+# Registro de cambios · App Gestores 2
+
+## 0.2.0 · 2-nov-2026 · Etapas 2 y 3: robot, conexión y la app del celular
+- **Servidor (App Gestores · Datos):** nuevos `04_OPERACIONES.gs` (habla con la API), `05_TRASPASOS.gs` (Sistema de Traspasos), `06_GESTOR.gs` (inicio, vehículo, cerrar, recolectar, problema, documentos) y `07_ROBOT.gs` (cada minuto: pedidos, cierres, recolecciones y limpieza de lo ya entregado). Cambian `00_CONFIG`, `01_INSTALAR`, `03_API` y `09_PRUEBAS`.
+- **Fotos** a las carpetas de siempre; si una carpeta no acepta (Firmas), van a "App Gestores · Respaldo fotos" y queda en APP_Problemas (`DRV-01`).
+- **Efectivo, Factura, Cortes** en el contenido: exigen quién recibió y firma.
+- **API de OPERACIONES** (repositorio OPERACIONES, misma rama): `04_Backend_App.gs` nuevo, rol App, el Gestor solo cierra sus pedidos, memoria de 60 s.
+- **App del celular** en `v2/`: entrar una vez, vehículo y revisión, inicio con avisos y sonido, pedidos, entregar con cámara dentro de la app, firma, no entregué, paquetería, WhatsApp, escáner para recolectar y entregar, lo que llevo, manual, fila sin señal y borrador si se cierra la app.
+- **Pruebas:** `pruebas.js` 45/45, `prueba-integrada.js` 61/61 (código real de OPERACIONES), `prueba-celular.js` 23/23 (navegador real).
+- Puesta en marcha: [MIERCOLES.md](MIERCOLES.md).
+
+## 0.1.0 · 29-oct-2026 · Etapa 1: el archivo de la app y el inicio de sesión
+- **Archivos nuevos** (proyecto de Apps Script de "App Gestores · Datos"): `00_CONFIG.gs`, `01_INSTALAR.gs`, `02_SESION.gs`, `03_API.gs`, `09_PRUEBAS.gs`.
+- `INSTALAR()` crea las 11 pestañas `APP_*` con sus encabezados, configuración inicial (foto obligatoria; firma y quién recibió opcionales; palabras Efectivo/Factura/Cortes exigen firma) y los 11 motivos de la app actual. Se puede correr de nuevo para reparar: nunca borra ni duplica.
+- Menú **⚙ App Gestores**: Instalar / reparar, Nuevo gestor (número G-01…, contraseña temporal), Restablecer contraseña, Dar de baja, Probar etapa 1.
+- Inicio de sesión con usuario y contraseña:
+  - contraseñas cifradas;
+  - sesión sin caducidad;
+  - baja inmediata;
+  - restablecer cierra las sesiones abiertas;
+  - bloqueo de 15 minutos tras 5 intentos;
+  - modo mantenimiento (`APP_BLOQUEADA`).
+- Acciones `login`, `cambiarClave` y `yo` del contrato. Las demás responden `APP-09` hasta la etapa 2.
+- Errores con los códigos de la guía (`APP-01`, `APP-02`, `APP-07`, `APP-09`, `CEL-06`, `CAP-01`).
+- Pruebas: `pruebas/pruebas.js` (45/45 en el simulador). `PRUEBA_ETAPA1()` repite lo principal dentro de tu archivo.
+- **No toca** Logística FED 2026, el Sistema de Traspasos ni la app actual.
