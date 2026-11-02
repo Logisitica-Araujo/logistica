@@ -21,6 +21,10 @@ function onOpen() {
     .addItem('Restablecer contraseña', 'menuRestablecer')
     .addItem('Dar de baja a un gestor', 'menuBaja')
     .addSeparator()
+    .addItem('Conectar con OPERACIONES', 'menuConectarOperaciones')
+    .addItem('Instalar robot', 'instalarRobot')
+    .addItem('Correr el robot ahora', 'correrRobotAhora')
+    .addSeparator()
     .addItem('Probar etapa 1', 'PRUEBA_ETAPA1')
     .addToUi();
 }
@@ -71,6 +75,20 @@ function INSTALAR() {
       _agregar(APPG.H.MOTIVOS, { Tipo: m[0], Motivo: m[1], PideComentario: m[2], Activo: m[3] });
     });
     hecho.push('Motivos iniciales cargados (iguales a la app actual).');
+  }
+  if (_tabla(APPG.H.DOCUMENTOS).filas.length === 0) {
+    var base = 'https://logisitica-araujo.github.io/logistica/';
+    [['Protocolos', 'Cómo entregar un pedido a domicilio', 'texto',
+      '1. Saluda y preséntate con tu credencial.\n2. Confirma el nombre del cliente y el número de pedido.\n3. Toma la foto de la fachada desde la app (que se vea el número).\n4. Pide la firma o anota quién recibió. Si llevas efectivo o documentos, las dos.\n5. Toca «Finalizar entrega» y manda el aviso por WhatsApp.', 1],
+     ['Protocolos', 'Qué hacer si el cliente no está', 'texto',
+      '1. Llama o manda mensaje al cliente.\n2. Espera unos minutos.\n3. Si no aparece: «No entregué» → Retorno → «No se encontraba cliente», con foto de la fachada.\n4. Regresa el pedido a Logística.', 2],
+     ['Vehículos', 'Póliza de seguro · Saveiro', 'enlace', base + 'poliza-seguro-saveiro.pdf', 3],
+     ['Vehículos', 'Póliza de seguro · Suzuki Gixxer', 'enlace', base + 'poliza-suzuki-gixxer.pdf', 4],
+     ['Vehículos', 'Permiso de carga · Saveiro', 'enlace', base + 'permiso-carga-saveiro.pdf', 5]
+    ].forEach(function (d) {
+      _agregar(APPG.H.DOCUMENTOS, { Categoria: d[0], Titulo: d[1], Tipo: d[2], Contenido: d[3].replace(/\\n/g, '\n'), Activo: true, Orden: d[4] });
+    });
+    hecho.push('Documentos iniciales cargados (protocolos y pólizas).');
   }
 
   /* 5) Proteger lo que no se edita a mano. Solo AVISO: Google pregunta

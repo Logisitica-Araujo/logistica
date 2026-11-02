@@ -136,7 +136,7 @@ titulo('Mantenimiento, errores y acciones futuras');
   ok(E.post({ accion: 'login', usuario: 'joseluis', clave: alta.clave }).codigo === 'APP-07', 'APP_BLOQUEADA: tampoco deja entrar');
   cfg.find(f => f[0] === 'APP_BLOQUEADA')[1] = false; E.cache.remove('cfg');
 
-  ok(E.post({ accion: 'inicio', token: t }).codigo === 'APP-09', 'Acción de la etapa 2: avisa que viene después (APP-09)');
+  ok(E.post({ accion: 'inicio', token: t }).ok, 'inicio ya responde (etapa 2)');
   ok(E.post({ accion: 'borrarTodo', token: t }).codigo === 'APP-01', 'Acción desconocida: APP-01');
   const g = E.ctx.doGet({ parameter: { ping: '1' } });
   ok(JSON.parse(g.texto).version === E.ctx.APPG.VERSION, 'ping responde la versión');

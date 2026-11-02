@@ -4,11 +4,14 @@ const vm = require('vm');
 const fs = require('fs');
 const crypto = require('crypto');
 
+// Variables que en Apps Script se reinician en cada ejecución.
+const REINICIO = ['__APPG_LIBRO', '__APPG_TN_T', '__APPG_TN_LIBRO', 'OPSW_TEL_MAP_'].map(v => 'if (typeof ' + v + ' !== "undefined") ' + v + ' = null;').join(' ');
+
 function crearEntorno(opciones) {
   opciones = opciones || {};
   const reloj = { ahora: Date.parse(opciones.inicio || '2026-10-20T14:00:00Z') };
   const stats = { openById: 0, escrituras: {}, lecturas: {} };
-  const libros = {};
+  const libros = opciones.libros || {};
   let sigId = 1;
 
   class FakeDate extends Date {
@@ -31,6 +34,8 @@ function crearEntorno(opciones) {
       return out;
     }
     getValue() { return this.getValues()[0][0]; }
+    getDisplayValues() { return this.getValues().map(f => f.map(v => v instanceof Date ? v.toISOString() : String(v))); }
+    setNumberFormat() { return this; } setFormula(f) { return this.setValue(f); } clearDataValidations() { return this; } setDataValidation() { return this; }
     getFormulas() { return this.getValues().map(f => f.map(() => '')); }
     setValues(v) {
       if (v.length !== this.nr || v[0].length !== this.nc) throw new Error('setValues: tamaño no coincide ' + v.length + 'x' + v[0].length + ' vs ' + this.nr + 'x' + this.nc);
@@ -64,7 +69,7 @@ function crearEntorno(opciones) {
 
   class Libro {
     constructor(nombre, id) { this.nombre = nombre; this.id = id; this.hojas = []; }
-    getName() { return this.nombre; } getId() { return this.id; }
+    getName() { return this.nombre; } getId() { return this.id; } getSpreadsheetTimeZone() { return 'America/Mexico_City'; }
     getUrl() { return 'https://docs.google.com/spreadsheets/d/' + this.id; }
     getSheetByName(n) { return this.hojas.find(h => h.nombre === n) || null; }
     getSheets() { return this.hojas.slice(); }
@@ -80,7 +85,9 @@ function crearEntorno(opciones) {
     get(k) { const e = cacheMem[k]; if (!e) return null; if (e.hasta <= reloj.ahora) { delete cacheMem[k]; return null; } return e.v; },
     put(k, v, seg) { if (String(v).length > 100000) throw new Error('Argument too large'); cacheMem[k] = { v: String(v), hasta: reloj.ahora + (seg || 600) * 1000 }; },
     remove(k) { delete cacheMem[k]; },
-    removeAll(ks) { ks.forEach(k => delete cacheMem[k]); }
+    removeAll(ks) { ks.forEach(k => delete cacheMem[k]); },
+    getAll(ks) { const o = {}; ks.forEach(k => { const v = cache.get(k); if (v != null) o[k] = v; }); return o; },
+    putAll(o, seg) { Object.keys(o).forEach(k => cache.put(k, o[k], seg)); }
   };
 
   const propsMem = {};
@@ -97,11 +104,13 @@ function crearEntorno(opciones) {
 
   // ---- Drive ----
   const archivos = [];
+  const carpetasNegadas = opciones.carpetasNegadas || [];
   function carpeta(id, nombre) {
+    if (carpetasNegadas.indexOf(id) >= 0) return { createFile() { throw new Error('Acceso denegado: DriveApp'); }, getId() { return id; } };
     return {
       id, getName() { return nombre || ('Carpeta ' + id); }, getId() { return id; },
       getFilesByName(n) { const l = archivos.filter(a => a.carpeta === id && a.nombre === n && !a.papelera); let i = 0; return { hasNext: () => i < l.length, next: () => l[i++] }; },
-      createFile(blob) { const a = { carpeta: id, nombre: blob.nombre, bytes: blob.bytes.length, papelera: false,
+      createFile(blob) { const a = { carpeta: id, nombre: blob.nombre, bytes: (blob.bytes || []).length, papelera: false,
         setTrashed(v) { this.papelera = v; }, setDescription() {}, getUrl() { return 'https://drive/' + this.nombre; } };
         archivos.push(a); return a; },
       getFoldersByName(n) { let dado = false; return { hasNext: () => !dado && false, next: () => null }; },
@@ -132,7 +141,8 @@ function crearEntorno(opciones) {
       getActiveSpreadsheet() { if (!activo.libro) throw new Error('sin libro activo'); return activo.libro; },
       ProtectionType: { SHEET: 'SHEET' },
       create(n) { return libroNuevo(n); },
-      getUi() { throw new Error('sin UI'); }
+      getUi() { throw new Error('sin UI'); },
+      flush() {}, newDataValidation() { const b = { requireValueInList() { return b; }, setAllowInvalid() { return b; }, build() { return {}; } }; return b; }
     },
     CacheService: { getScriptCache: () => cache },
     PropertiesService: { getScriptProperties: () => props },
@@ -140,20 +150,23 @@ function crearEntorno(opciones) {
     Utilities: {
       formatDate: fmt,
       getUuid: () => crypto.randomUUID(),
-      base64Decode: s => Buffer.from(s, 'base64'),
+      base64Decode: s => Array.from(Buffer.from(s, 'base64')),
       base64Encode: b => Buffer.from(b).toString('base64'),
       newBlob: (bytes, mime, nombre) => ({ bytes, mime, nombre, getDataAsString: () => Buffer.from(bytes).toString('utf8') }),
-      computeDigest: (alg, s) => Array.from(crypto.createHash('md5').update(s).digest()),
-      DigestAlgorithm: { MD5: 'MD5' },
+      computeDigest: (alg, s) => Array.from(crypto.createHash(alg === 'SHA_256' ? 'sha256' : 'md5').update(s).digest()).map(b => b > 127 ? b - 256 : b),
+      DigestAlgorithm: { MD5: 'MD5', SHA_256: 'SHA_256' },
+      parseDate: (txt, tz, patron) => { const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(txt); if (!m) throw new Error('fecha'); return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4] + 6, +m[5])); },
       computeHmacSha256Signature: (v, k) => Array.from(crypto.createHmac('sha256', String(k)).update(String(v)).digest()),
       base64EncodeWebSafe: b => Buffer.from(typeof b === 'string' ? Buffer.from(b) : Buffer.from(b.map(x => x & 255))).toString('base64').replace(/\+/g, '-').replace(/\//g, '_'),
       base64DecodeWebSafe: s => Array.from(Buffer.from(String(s).replace(/-/g, '+').replace(/_/g, '/'), 'base64'))
     },
     DriveApp: {
       getFolderById: id => carpeta(id),
-      getFileById: id => ({ getParents: () => ({ hasNext: () => false }), moveTo() {} })
+      getFileById: id => ({ getParents: () => ({ hasNext: () => false }), moveTo() {} }),
+      createFolder: n => carpeta('RAIZ/' + n, n)
     },
     ScriptApp: {
+      getOAuthToken: () => 'oauth-falso',
       getProjectTriggers: () => triggers.slice(),
       deleteTrigger: t => { const i = triggers.indexOf(t); if (i >= 0) triggers.splice(i, 1); },
       newTrigger: fn => ({ timeBased: () => ({ everyMinutes: () => ({ create: () => { const t = { getHandlerFunction: () => fn }; triggers.push(t); return t; } }) }) })
@@ -161,6 +174,7 @@ function crearEntorno(opciones) {
     Session: { getScriptTimeZone: () => 'America/Mexico_City' },
     ContentService: { createTextOutput: s => ({ texto: s, setMimeType() { return this; } }), MimeType: { JSON: 'json' } },
     HtmlService: {}, MailApp: {},
+    UrlFetchApp: { fetch: (url, o) => { if (!opciones.red) throw new Error('sin red'); return opciones.red(url, o); } },
     // De archivos que no tocamos
     apiAdmin: () => ({ ok: true, datos: {} }),
     doGetRastreo: () => 'rastreo'
@@ -171,11 +185,11 @@ function crearEntorno(opciones) {
     cargar(rutas) { const codigo = rutas.map(r => fs.readFileSync(r, 'utf8')).join('\n;\n'); vm.runInContext(codigo, ctx, { filename: 'servidor.gs' }); },
     // Simula una consulta HTTP nueva: las variables de memoria por ejecución se reinician
     post(cuerpo) {
-      vm.runInContext('if (typeof __APPG_LIBRO !== "undefined") __APPG_LIBRO = null;', ctx);
+      vm.runInContext(REINICIO, ctx);
       const r = ctx.doPost({ postData: { contents: JSON.stringify(cuerpo) } });
       return JSON.parse(r.texto);
     },
-    correr(fn) { vm.runInContext('if (typeof __APPG_LIBRO !== "undefined") __APPG_LIBRO = null;', ctx); return ctx[fn].apply(null, [].slice.call(arguments, 1)); },
+    correr(fn) { vm.runInContext(REINICIO, ctx); return ctx[fn].apply(null, [].slice.call(arguments, 1)); },
     avanzar(horas) { reloj.ahora += horas * 3600000; }
   };
 }

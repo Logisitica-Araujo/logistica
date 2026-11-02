@@ -10,7 +10,7 @@
  ***********************************************************************/
 
 var APPG = {
-  VERSION: '0.1.0',
+  VERSION: '0.2.0',
   ZONA: 'America/Mexico_City',
 
   /* Nombres de las pestañas del archivo de la app. */
@@ -34,17 +34,17 @@ var APPG = {
   ENC: {
     APP_Config:        ['Clave', 'Valor', 'Descripción'],
     APP_Usuarios:      ['Numero', 'Nombre', 'NombreEnOperaciones', 'Usuario', 'ClaveCifrada', 'Rol', 'Activo',
-                        'DebeCambiar', 'VersionSesion', 'Alta', 'UltimoAcceso', 'Notas'],
+                        'DebeCambiar', 'VersionSesion', 'Alta', 'UltimoAcceso', 'Notas', 'VehiculoHoy', 'FechaVehiculo'],
     APP_Vehiculos:     ['Vehiculo', 'Tipo', 'Placa', 'Activo'],
     APP_Motivos:       ['Tipo', 'Motivo', 'PideComentario', 'Activo'],
     APP_Documentos:    ['Categoria', 'Titulo', 'Tipo', 'Contenido', 'Activo', 'Orden'],
-    APP_Pedidos:       ['ID', 'Fila', 'NumeroGestor', 'Gestor', 'Cliente', 'Direccion', 'Notas', 'Area', 'SubArea',
+    APP_Pedidos:       ['ID', 'Fila', 'NumeroGestor', 'Gestor', 'Cliente', 'Direccion', 'Telefono', 'Notas', 'Area', 'SubArea',
                         'Metodo', 'Estatus', 'ETA', 'Actualizado'],
     APP_Cierres:       ['IdCierre', 'FechaHora', 'HoraCelular', 'NumeroGestor', 'Gestor', 'Vehiculo', 'Tipo', 'ID', 'Fila',
                         'Resultado', 'Motivo', 'Comentario', 'Recibio', 'Lat', 'Lng', 'URLFoto', 'URLFirma',
-                        'Estado', 'Intentos', 'UltimoError', 'EnviadoEn'],
+                        'Estado', 'Intentos', 'UltimoError', 'EnviadoEn', 'Cliente', 'Direccion'],
     APP_Recolecciones: ['FechaHora', 'NumeroGestor', 'Gestor', 'Vehiculo', 'Codigo', 'Tipo', 'Origen', 'Destino',
-                        'Contenido', 'Estado', 'EstadoFuente', 'Actualizado'],
+                        'Contenido', 'Estado', 'EstadoFuente', 'Actualizado', 'Enviado'],
     APP_Sesiones:      ['FechaHora', 'Usuario', 'NumeroGestor', 'Dispositivo', 'Resultado'],
     APP_Log:           ['FechaHora', 'Quien', 'Accion', 'Detalle'],
     APP_Problemas:     ['Numero', 'FechaHora', 'Codigo', 'Quien', 'Detalle', 'Resuelto']
@@ -68,7 +68,16 @@ var APPG = {
     ['WA_MSG_ENTREGADO', 'PEDIDO ENTREGADO\\n{id} · {cliente}\\nRecibió: {recibio}\\nGestor: {gestor}\\n{fecha} {hora}', 'Mensaje de WhatsApp al entregar'],
     ['APP_BLOQUEADA', false, 'TRUE = nadie puede entrar (mantenimiento)'],
     ['MENSAJE_BLOQUEO', 'App en mantenimiento. Intenta más tarde.', 'Texto que ven los gestores si está bloqueada'],
-    ['ULTIMA_VUELTA_ROBOT', '', 'La escribe el robot. No editar.']
+    ['ULTIMA_VUELTA_ROBOT', '', 'La escribe el robot. No editar.'],
+    ['ULTIMO_ERROR_ROBOT', '', 'La escribe el robot. No editar.'],
+    ['OPERACIONES_URL', '', 'Dirección /exec de OPERACIONES · Backend (la pone el menú Conectar con OPERACIONES)'],
+    ['ID_TRASPASOS', '1Fn5VKZZ-gUS_QRYIbos1WwCFzXpnIF_g7ofApN5vIxg', 'Archivo Traspasos_FADERMEX_BD'],
+    ['CARPETA_ENTREGADO', '1fGcPo7r1p2QHw-wV507l1ovzesKj9-fu', 'Drive: Pedidos entregados Logística'],
+    ['CARPETA_RETORNO', '1aRw_0Xv719WXD6cyxzLD7yEGZ2jHZFpu', 'Drive: …Logistica RETORNO'],
+    ['CARPETA_CANCELADO', '1tLoTzGye9z6QBaHNiiJRfUTskurv9cAb', 'Drive: …Logistica CANCELADO'],
+    ['CARPETA_FIRMAS', '153U2PjEDCaNvkIxoIfuz2nYLGrEixM7q', 'Drive: Firmas del cliente'],
+    ['CARPETA_TRASPASOS', '', 'Drive: fotos de traspasos (vacío = carpeta de respaldo)'],
+    ['CARPETA_RESPALDO', '', 'Drive: si una carpeta no acepta la foto, va aquí (vacío = se crea "App Gestores · Respaldo fotos")']
   ],
 
   /* Motivos iniciales: los mismos textos que hoy tiene la app vieja (APP_Motivos). */

@@ -12,13 +12,19 @@
  * Contrato completo: app-gestores-2/CONTRATO.md
  ***********************************************************************/
 
-/* Acciones de la etapa 1. Las demás del contrato llegan en la etapa 2. */
+/* Acciones del contrato (CONTRATO.md). */
 var APPG_ACCIONES = {
-  login:       { fn: function (p) { return apiLogin(p); },       sinSesion: true },
-  cambiarClave:{ fn: function (p) { return apiCambiarClave(p); } },
-  yo:          { fn: function (p) { return apiYo(p); } }
+  login:        { fn: function (p) { return apiLogin(p); },       sinSesion: true },
+  cambiarClave: { fn: function (p) { return apiCambiarClave(p); } },
+  yo:           { fn: function (p) { return apiYo(p); } },
+  inicio:       { fn: function (p) { return apiInicio(p); } },
+  vehiculo:     { fn: function (p) { return apiVehiculo(p); } },
+  cerrar:       { fn: function (p) { return apiCerrar(p); } },
+  recolectar:   { fn: function (p) { return apiRecolectar(p); } },
+  problema:     { fn: function (p) { return apiProblema(p); } },
+  documentos:   { fn: function (p) { return apiDocumentos(p); } }
 };
-var APPG_PROXIMAS = ['inicio', 'vehiculo', 'cerrar', 'recolectar', 'problema', 'documentos'];
+var APPG_PROXIMAS = [];
 
 function doGet(e) {
   if (e && e.parameter && e.parameter.ping) {

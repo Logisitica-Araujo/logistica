@@ -36,8 +36,8 @@ function PRUEBA_ETAPA1() {
     var r6 = manejar({ accion: 'yo', token: r2.token });
     ok(!r6.ok && r6.codigo === 'CEL-06', 'Al restablecer la contraseña se cierra la sesión anterior');
 
-    var r7 = manejar({ accion: 'inicio', token: r2.token });
-    ok(!r7.ok && r7.codigo === 'APP-09', 'Acciones de la etapa 2 avisan que vienen después');
+    var r7 = manejar({ accion: 'borrarTodo', token: r2.token });
+    ok(!r7.ok && r7.codigo === 'APP-01', 'Acción desconocida: APP-01');
   } catch (e) {
     L.push('✘ Error: ' + e.message);
   } finally {
