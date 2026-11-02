@@ -190,6 +190,21 @@ function restablecerClave(usuario) {
   return clave;
 }
 
+/** La administradora pone una contraseña que ella elige. Cierra las sesiones abiertas. */
+function ponerClave(usuario, clave, debeCambiar) {
+  var u = _buscarUsuario(usuario);
+  if (!u) throw new Error('No existe el usuario ' + usuario + '.');
+  clave = String(clave || '');
+  if (clave.length < APPG.CLAVE_MIN) throw new Error('La contraseña debe tener al menos ' + APPG.CLAVE_MIN + ' caracteres.');
+  var sh = u._t.sh;
+  sh.getRange(u._fila, u._t.col('ClaveCifrada')).setValue(_cifrar(u.Usuario, clave));
+  sh.getRange(u._fila, u._t.col('DebeCambiar')).setValue(!!debeCambiar);
+  sh.getRange(u._fila, u._t.col('VersionSesion')).setValue(Number(u.VersionSesion || 1) + 1);
+  CacheService.getScriptCache().remove('bloq_' + _norm(usuario));
+  _olvidarUsuario(usuario);
+  _log('administradora', 'PONE_CLAVE', u.Numero + ' · ' + u.Usuario);
+}
+
 function bajaGestor(usuario) {
   var u = _buscarUsuario(usuario);
   if (!u) throw new Error('No existe el usuario ' + usuario + '.');

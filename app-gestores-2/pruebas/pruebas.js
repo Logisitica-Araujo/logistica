@@ -106,6 +106,19 @@ titulo('La sesión no caduca, pero se puede cerrar desde la oficina');
   ok(E.post({ accion: 'login', usuario: 'joseluis', clave: nueva }).debeCambiar === true, 'Con la nueva temporal entra y debe cambiarla');
 }
 
+titulo('Poner contraseña elegida por la administradora');
+{
+  const { E } = preparar();
+  const alta = E.correr('altaGestor', 'Jose Luis', 'Jose Luis', 'joseluis');
+  const t = E.post({ accion: 'login', usuario: 'joseluis', clave: alta.clave }).token;
+  E.correr('ponerClave', 'joseluis', 'Logistica-2026', false);
+  ok(E.post({ accion: 'yo', token: t }).codigo === 'CEL-06', 'Cierra la sesión anterior');
+  const r = E.post({ accion: 'login', usuario: 'joseluis', clave: 'Logistica-2026' });
+  ok(r.ok && r.debeCambiar === false, 'Entra con la contraseña elegida y no le pide cambiarla');
+  let err = null; try { E.correr('ponerClave', 'joseluis', '123', false); } catch (e) { err = e; }
+  ok(err && /al menos/.test(err.message), 'No acepta contraseñas cortas');
+}
+
 titulo('Seguridad');
 {
   const { E } = preparar();

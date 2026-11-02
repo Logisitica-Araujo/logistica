@@ -19,7 +19,8 @@ function onOpen() {
     .addSeparator()
     .addItem('Dar de alta varios gestores', 'menuAltaVarios')
     .addItem('Nuevo gestor', 'menuNuevoGestor')
-    .addItem('Restablecer contraseña', 'menuRestablecer')
+    .addItem('Poner contraseña a un gestor', 'menuPonerClave')
+    .addItem('Restablecer contraseña (temporal al azar)', 'menuRestablecer')
     .addItem('Dar de baja a un gestor', 'menuBaja')
     .addSeparator()
     .addItem('Conectar con OPERACIONES', 'menuConectarOperaciones')
@@ -164,6 +165,17 @@ function menuRestablecer() {
     ui.alert('Contraseña restablecida',
       'Contraseña temporal de ' + usuario + ': ' + clave +
       '\n\nSu sesión anterior se cerró en todos sus celulares. Dásela en persona.', ui.ButtonSet.OK);
+  } catch (e) { ui.alert('No se pudo', e.message, ui.ButtonSet.OK); }
+}
+
+function menuPonerClave() {
+  var ui = SpreadsheetApp.getUi();
+  var usuario = _preguntar(ui, 'Poner contraseña (1 de 2)', 'Usuario del gestor (ej. joseluis):'); if (!usuario) return;
+  var clave = _preguntar(ui, 'Poner contraseña (2 de 2)', 'Contraseña nueva (mínimo ' + APPG.CLAVE_MIN + ' caracteres).\nNo se guarda a la vista: queda cifrada.'); if (!clave) return;
+  var r = ui.alert('¿Le pido que la cambie al entrar?', 'Sí = al entrar crea su propia contraseña (recomendado).\nNo = se queda con la que acabas de poner.', ui.ButtonSet.YES_NO);
+  try {
+    ponerClave(usuario, clave, r === ui.Button.YES);
+    ui.alert('Listo', 'Contraseña de ' + usuario + ' cambiada. Su sesión anterior se cerró en todos sus celulares.', ui.ButtonSet.OK);
   } catch (e) { ui.alert('No se pudo', e.message, ui.ButtonSet.OK); }
 }
 

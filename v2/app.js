@@ -425,10 +425,10 @@ function pintarCierre() {
     motivos.forEach(function (m, j) { html += '<button class="opcion' + (c.motivo === m.motivo ? ' sel' : '') + '" onclick="elegirMotivo(' + j + ')"><span class="radio"></span><span>' + esc(m.motivo) + '</span></button>'; });
     html += '</div><label class="et" for="inComent">Comentario <span class="opc">(opcional)</span></label><textarea class="campo" id="inComent" rows="2" placeholder="Ej. se llamó 3 veces sin respuesta">' + esc(c.comentario) + '</textarea></div>';
   }
-  html += '<div class="bloque"><div class="cab-b"><span class="paso' + (c.foto ? ' ok' : '') + '">' + (n++) + '</span><b>' + (entrega ? 'Foto de la fachada' : paq ? 'Foto de la guía o comprobante' : 'Foto de evidencia') + '</b>' +
+  html += '<div class="bloque"><div class="cab-b"><span class="paso' + (c.foto ? ' ok' : '') + '">' + (n++) + '</span><b>' + (entrega ? (c.tipo === 'PEDIDO' ? 'Foto de la fachada' : 'Foto de la entrega') : paq ? 'Foto de la guía o comprobante' : 'Foto de evidencia') + '</b>' +
     (pideFoto ? '<span class="req">obligatoria</span>' : '<span class="opc">opcional</span>') + '</div>' +
     (c.foto ? '<div class="previa"><img src="' + c.foto + '" alt="Foto tomada"><button onclick="tomarFoto()">Repetir</button></div>'
-            : '<button class="zona-foto" onclick="tomarFoto()">' + IC.cam + '<b>Tomar foto</b><small>' + (entrega ? 'Que se vea el número de la casa o el negocio' : 'Dónde y qué pasó') + '</small></button>') + '</div>';
+            : '<button class="zona-foto" onclick="tomarFoto()">' + IC.cam + '<b>Tomar foto</b><small>' + (entrega ? (c.tipo === 'PEDIDO' ? 'Que se vea el número de la casa o el negocio' : 'Dónde y a quién lo entregaste') : 'Dónde y qué pasó') + '</small></button>') + '</div>';
   if (entrega) {
     html += '<div class="bloque"><div class="cab-b"><span class="paso' + (c.recibio ? ' ok' : '') + '">' + (n++) + '</span><label class="et" for="inRecibio" style="flex:1">¿Quién recibió?</label>' +
       (recObl ? '<span class="req">obligatorio</span>' : '<span class="opc">opcional</span>') + '</div>' +
