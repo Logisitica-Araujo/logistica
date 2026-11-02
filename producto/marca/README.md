@@ -21,13 +21,15 @@ Proporción: 60 % azul profundo / neutros · 25 % blanco/gris · 10 % azul tecno
 Tipografías (Google Fonts): **Montserrat** (títulos y marca) · **Roboto** (texto e interfaz) · **IBM Plex Mono** (folios, códigos, cifras técnicas).
 
 ## Archivos de logo
-| Archivo | Nota |
+| Archivo | Uso |
 |---|---|
-| `aarx_logo_horizontal_transparente.png` | Logo horizontal, **solo sobre fondo oscuro** (letras blancas) |
-| `aarx_insignia_transparente.png` | Insignia sola; funciona sobre oscuro y sobre claro |
-| `*_oscuro.png` | Recortes con su fondo original |
+| `aarx_logo_completo_oscuro.png` | Original con fondo azul profundo y frase (2400×840) |
+| `aarx_logo_completo_transparente.png` | Original transparente con frase; **solo sobre fondo oscuro** |
+| `aarx_logo_transparente.png` | Insignia + AARX + descriptor, sin frase; **sobre fondo oscuro** |
+| `aarx_logo_claro.png` | Igual, con letras azul profundo; **sobre fondo blanco** |
+| `aarx_insignia_transparente.png` / `aarx_insignia_claro.png` | Insignia sola (íconos, favicon, encabezados) |
 
-> ⚠ Son **recortes provisionales** del tablero del manual (baja resolución). Para material final se necesitan los archivos **vectoriales (SVG o PDF) y PNG transparente** del logotipo, como pide el propio manual (sección 10).
+> Las versiones "claro" se generaron recoloreando el blanco a azul profundo. Para impresión profesional conviene tener el **vectorial (SVG/PDF)**.
 
 ## Reglas que aplican al producto
 - **Principio de credibilidad (manual §01):** no anunciar funciones, integraciones o niveles de servicio que no puedan demostrarse. En el material, lo que aún no está construido lleva la etiqueta **"En desarrollo"** hasta terminar las fases 4 y 5.
