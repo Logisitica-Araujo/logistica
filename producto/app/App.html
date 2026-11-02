@@ -1,0 +1,1567 @@
+<script>
+/***********************************************************************
+ * CUSTODIA by AARX — App.html (lo que corre en la computadora)
+ ***********************************************************************/
+var S = {
+  token: null, ctx: null, cat: null, A: {}, E: {}, EC: {},
+  data: { traspasos: [], activos: [], avisos: [], solicitudes: [] },
+  tab: 'bandeja', dir: 'in', filtro: null,
+  wiz: { step: 1 },
+  scan: { modo: 'RECIBIR', lote: [], fb: null, gestor: null, log: [], enviando: false },
+  modal: null, bell: false, q: '', timer: null, ocupado: false, noVistos: 0,
+  caja: { lista: [], fb: null, enviando: false }
+};
+
+/* ---------- utilidades ---------- */
+function $(s) { return document.querySelector(s); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function guardar(k, v) { try { localStorage.setItem('trasp_' + k, v); } catch (e) { } }
+function leer(k) { try { return localStorage.getItem('trasp_' + k); } catch (e) { return null; } }
+function borrar(k) { try { localStorage.removeItem('trasp_' + k); } catch (e) { } }
+function horaAhora() { var d = new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+function nom(id) { return R.nom(S.A, id); }
+
+/* ---------- Fechas para leer: "jue, 16 oct 26, 15:39" (en la hoja siguen como 2026-10-16 15:39) ---------- */
+var DIAS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+var MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+/** fh('2026-10-16', '15:39') · fh('2026-10-16 15:39') → "jue, 16 oct 26, 15:39" */
+function fh(fecha, hora) {
+  var s = String(fecha || '').trim(), m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}))?/);
+  var hm = String(hora || '').trim().match(/(\d{1,2}):(\d{2})/);
+  if (!m) return s + (hora ? ' ' + hora : '');
+  var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  var hh = hm ? hm[1] : m[4], mm = hm ? hm[2] : m[5];
+  return DIAS[d.getDay()] + ', ' + m[3] + ' ' + MESES[d.getMonth()] + ' ' + m[1].slice(2) + (hh != null ? ', ' + ('0' + hh).slice(-2) + ':' + mm : '');
+}
+/* ---------- Personas para leer: en la página no salen correos; en su lugar, el área ---------- */
+/** quien('jaraujo@fadermex.com', 'Oficinas · Logística') → 'Oficinas · Logística' */
+function quien(txt, area) {
+  var s = String(txt || ''), re = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+  if (!re.test(s)) return s;
+  var dentro = s.match(/\(([^)]*)\)/);                          // "correo (Oficinas · Logística)"
+  s = s.replace(re, '').replace(/\([^)]*\)/, '').replace(/^[\s·]+|[\s·]+$/g, '').replace(/\s*·\s*·\s*/g, ' · ');
+  return s || (dentro ? dentro[1] : '') || area || '';
+}
+function me() { return S.ctx ? S.ctx.area : ''; }
+function esVistaAdmin() { return me() === 'ADMIN'; }
+/** Oficinas trabaja con la cuenta abierta (sin credencial). Sucursales sí escanean credencial. */
+function sinCred() { var a = S.A[me()]; return !!a && a.tipo === 'OFICINAS'; }
+function wizNuevo() { return sinCred() ? { step: 2, persona: { nombre: S.ctx.email }, ident: {} } : { step: 1 }; }
+function quienTxt(q) { return q.tipo === 'GESTOR' ? 'Gestor' : (q.areaNombre || 'Persona registrada'); }
+
+function toast(msg) {
+  $('#toast').innerHTML = '<div class="toast" role="status">' + esc(msg) + '</div>';
+  clearTimeout(toast.t); toast.t = setTimeout(function () { $('#toast').innerHTML = ''; }, 3200);
+}
+/*
+ * SONIDOS OFICIALES (aprobados 20 oct; no cambiar sin preguntar). Todos son de campana:
+ *   ok     escaneo correcto o credencial reconocida   · dos notas rápidas que suben      (1C)
+ *   listo  se guardó (confirmar, crear, recolección)    · dos campanas en quinta que suben (2A)
+ *   warn   ojo: ya estaba en la lista, se saltó un paso · dos toques iguales               (3B)
+ *   err    error: no se puede                          · tres campanas que bajan          (4C)
+ *   aviso  llegó una notificación nueva                  · campanita de tres notas
+ * Cada nota: [frecuencia, inicio (s), duración (s), volumen]
+ */
+var CAMPANA = [[1, 1], [2.76, .22], [5.4, .06]];
+var AC = null, SONIDOS = {
+  ok: { nombre: 'Escaneo correcto', notas: [[1568, 0, .12, .13], [2093, .06, .3, .15]] },
+  listo: { nombre: 'Guardado / confirmado', notas: [[1046.5, 0, .5, .14], [1568, .14, .8, .14]] },
+  warn: { nombre: 'Ojo (aviso)', notas: [[784, 0, .3, .13], [784, .22, .45, .13]] },
+  err: { nombre: 'Error', notas: [[440, 0, .25, .15], [349.2, .15, .25, .15], [293.7, .3, .6, .16]] },
+  aviso: { nombre: 'Notificación nueva', notas: [[784, 0, .5, .1], [1046.5, .12, .5, .1], [1318.5, .24, .8, .1]], parciales: [[1, 1], [2.76, .22]], corto: .45 }
+};
+function beep(k) {
+  try {
+    var snd = SONIDOS[k] || SONIDOS.ok;
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    var suave = AC.createBiquadFilter(); suave.type = 'lowpass'; suave.frequency.value = 3900; suave.connect(AC.destination);
+    var t0 = AC.currentTime + .01;
+    snd.notas.forEach(function (n) {
+      // Nota principal + armónicos tenues de campana (los agudos se apagan antes)
+      (snd.parciales || CAMPANA).forEach(function (p) {
+        var o = AC.createOscillator(), g = AC.createGain(), ini = t0 + n[1], dur = n[2] * (p[0] === 1 ? 1 : (snd.corto || .5));
+        o.type = 'sine';
+        o.frequency.value = n[0] * p[0];
+        g.gain.setValueAtTime(0, ini);
+        g.gain.linearRampToValueAtTime(n[3] * p[1], ini + .007);
+        g.gain.exponentialRampToValueAtTime(.0001, ini + dur);
+        o.connect(g); g.connect(suave); o.start(ini); o.stop(ini + dur + .02);
+      });
+    });
+  } catch (e) { }
+}
+
+/** Llama al servidor (Apps Script). */
+function srv(fn) {
+  var args = [].slice.call(arguments, 1);
+  return new Promise(function (res, rej) {
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (r && r.ok === false) {
+          if (r.error === 'SESION_EXPIRADA') { cerrarSesion('Tu sesión terminó. Vuelve a entrar.'); }
+          if (/^AREA_NO_EXISTE:/.test(r.error)) {
+            var vieja = r.error.split(':')[1];
+            cerrarSesion('Esta computadora estaba en el área "' + vieja + '", que ya no existe (probablemente cambió su prefijo en CAT_Areas). Elige tu área otra vez.');
+            r.error = 'Elige tu área otra vez.';
+          }
+          rej(new Error(r.error));
+        } else res(r ? r.datos : null);
+      })
+      .withFailureHandler(function (e) { rej(e instanceof Error ? e : new Error(String(e))); })[fn].apply(null, args);
+  });
+}
+
+/* ---------- entrada y sesión ---------- */
+function arrancar() {
+  // URL terminada en /SALIR (ej. Recepción en modo kiosco): olvida el área de esta computadora.
+  if (window.SALIR) { borrar('token'); return pantallaEntrada('Saliste del área. Elige el área de esta computadora.'); }
+  seguir();
+}
+function seguir() {
+  var tk = leer('token');
+  if (!tk) return pantallaEntrada();
+  srv('apiReanudar', tk).then(function (d) { S.token = tk; aplicarSesion(d.ctx, d.cat); })
+    .catch(function (e) { if (/Elige tu área otra vez/.test(e.message)) return; borrar('token'); pantallaEntrada(); });
+}
+
+function pantallaEntrada(msg, pinPara) {
+  pararPoll();
+  S.token = null; S.ctx = null;
+  $('#hdr').hidden = true; $('#adminbar').innerHTML = ''; $('#modal').innerHTML = '';
+  $('#view').innerHTML = '<div class="cargando">Revisando tu cuenta…</div>';
+  srv('apiInicio').then(function (d) { S.inicio = d; dibujarEntrada(msg, pinPara); })
+    .catch(function (e) {
+      $('#view').innerHTML = '<div class="entrada"><h1>Traspasos</h1><div class="feedback err">' + esc(e.message) + '</div></div>';
+    });
+}
+
+function dibujarEntrada(msg, pinPara) {
+  var d = S.inicio;
+  var porSuc = {};
+  d.areas.forEach(function (a) { (porSuc[a.suc] = porSuc[a.suc] || []).push(a); });
+  var nomPin = pinPara === 'ADMIN' ? 'Modo administrador' : ((d.areas.filter(function (a) { return a.id === pinPara; })[0] || {}).nombre || pinPara);
+  var html = '<div class="entrada">' +
+    (msg ? '<div class="feedback warn">' + esc(msg) + '</div>' : '') +
+    (pinPara ? '<div class="panel stack pinbox"><b style="font-size:17px">🔑 PIN para entrar a ' + esc(nomPin) + '</b>' +
+      '<div class="row"><input class="t" id="pinin" type="password" autocomplete="off" placeholder="PIN" style="max-width:220px">' +
+      '<button class="btn primary" type="button" data-a="entrarpin" data-v="' + esc(pinPara) + '">Entrar</button>' +
+      '<button class="btn ghost" type="button" data-a="pincancel">Cancelar</button></div></div>' : '') +
+    '<div><h1>Traspasos</h1><p class="sub">Hola <b>' + esc(d.email) + '</b>. Elige el área de <b>esta computadora</b>. ' +
+    'La app la recordará.</p></div>';
+  if (d.admin) html += '<div class="grupo"><h2>Administración</h2><div class="areas"><button class="adm" data-a="entrar" data-v="ADMIN">' + (d.adminPin ? '🔑 ' : '') + 'Entrar como administrador</button></div><p class="muted" style="margin:0;font-size:13.5px">Para el día a día entra como tu área. Cuando necesites arreglar algo, usa el botón dorado "Modo administrador" de arriba.</p></div>';
+  Object.keys(porSuc).forEach(function (s) {
+    html += '<div class="grupo"><h2>' + esc(s) + '</h2><div class="areas">' +
+      porSuc[s].map(function (a) {
+        return a.mia
+          ? '<button data-a="entrar" data-v="' + esc(a.id) + '">' + (a.pin ? '🔑 ' : '') + esc(a.nombre) + '<div class="muted" style="font-size:12.5px;font-weight:700">' + (a.pin ? 'Pide PIN · ' : '') + 'Folios ' + esc(a.id) + '-0001</div></button>'
+          : '<button class="bloq" disabled title="Esta cuenta no tiene acceso a esta área">🔒 ' + esc(a.nombre) + '<div style="font-size:12.5px;font-weight:700">Sin acceso con esta cuenta</div></button>';
+      }).join('') +
+      '</div></div>';
+  });
+  $('#view').innerHTML = html + '</div>';
+  if ($('#pinin')) $('#pinin').focus();
+}
+
+function entrar(area, pin) {
+  if (area !== 'ADMIN') guardar('ultimaArea', area);
+  $('#view').innerHTML = '<div class="cargando">Entrando…</div>';
+  srv('apiEntrar', area, navigator.userAgent, pin || '').then(function (d) {
+    guardar('token', d.token); S.token = d.token; aplicarSesion(d.ctx, d.cat);
+  }).catch(function (e) {
+    if (e.message === 'PIN_REQUERIDO') return S.inicio && !S.ctx ? dibujarEntrada('', area) : pantallaEntrada('', area);
+    if (S.inicio && !S.ctx) return dibujarEntrada(e.message, pin ? area : null);
+    pantallaEntrada(e.message);
+  });
+}
+
+/** Nombres de las ubicaciones con papel especial (punto de resguardo / centro de envíos). */
+function nomP() { return R.PAUSA && S.A[R.PAUSA] ? nom(R.PAUSA) : 'el punto de resguardo'; }
+function nomH() { return R.HUB && S.A[R.HUB] ? nom(R.HUB) : 'el centro de envíos'; }
+
+function aplicarSesion(ctx, cat) {
+  S.ctx = ctx; S.cat = cat; S.A = {}; S.E = {}; S.EC = {};
+  cat.areas.forEach(function (a) { S.A[a.id] = a; });
+  R.config(cat.roles);
+  cat.estatus.forEach(function (e) { S.E[e.clave] = e.nombre; S.EC[e.clave] = e; });
+  var css = cat.estatus.map(function (e) { return '.b-' + e.clave + '{color:' + e.color + ';background:' + e.fondo + '}'; }).join('');
+  var st = document.getElementById('est-css') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'est-css' }));
+  st.textContent = css;
+  // Si entró al modo administrador con solicitudes pendientes, abre directo en Solicitudes.
+  S.tab = esVistaAdmin() ? (((S.data && S.data.solicitudes) || []).length ? 'sol' : 'todos') : (ctx.area === R.PAUSA ? 'dejar' : 'bandeja');
+  S.rec = { quien: null, quienId: null, lote: [], fb: null, enviando: false };
+  S.scan = { modo: 'RECIBIR', lote: [], fb: null, gestor: null, log: [], enviando: false };
+  S.wiz = wizNuevo();
+  $('#hdr').hidden = false;
+  render();
+  refrescar(true);
+  iniciarPoll();
+}
+
+function cerrarSesion(msg) { borrar('token'); pantallaEntrada(msg); }
+function salir() { var tk = S.token; borrar('token'); if (tk) srv('apiSalir', tk).catch(function () { }); pantallaEntrada(); }
+
+/* ---------- datos ---------- */
+var MAPA = {}, CAJAS = {};
+function refrescar(inicial) {
+  if (!S.token || S.ocupado) return Promise.resolve();
+  return srv('apiDatos', S.token).then(function (d) {
+    var antes = S.noVistos;
+    S.data = d;
+    MAPA = {}; CAJAS = {};
+    d.activos.forEach(function (t) { MAPA[R.limpio(t.folio)] = t; });
+    (d.cajas || []).forEach(function (c) { CAJAS[R.limpio(c.folio)] = c; });
+    S.noVistos = d.avisos.filter(function (a) { return !a.visto; }).length;
+    if (!inicial && S.noVistos > antes) {
+      beep('aviso'); toast('🔔 ' + (d.avisos[0] ? d.avisos[0].folio + ' · ' + d.avisos[0].msg : 'Tienes avisos nuevos'));
+      document.title = '(' + S.noVistos + ') Traspasos';
+    }
+    avisarSolicitudes(d.solicitudes || [], inicial);
+    if (!S.noVistos && !(d.solicitudes || []).length) document.title = 'Traspasos';
+    var ae = document.activeElement;
+    if (!inicial && ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName) && ae.value) renderHeader();
+    else render();
+  }).catch(function (e) { if (inicial) toast(e.message); });
+}
+/** Administradores: suena y avisa cuando llega una solicitud nueva (cancelación o cambio de destino),
+ *  aunque estén trabajando como su área. El número sale en el botón "Modo administrador". */
+function avisarSolicitudes(sol, inicial) {
+  if (!S.ctx.puedeAdmin || me() === R.PAUSA) return;
+  var antes = S.solIds || {}, nuevas = sol.filter(function (x) { return !antes[x.id]; });
+  S.solIds = {}; sol.forEach(function (x) { S.solIds[x.id] = true; });
+  if (sol.length) document.title = '(' + sol.length + ' solicitud' + (sol.length > 1 ? 'es' : '') + ') Traspasos';
+  if (inicial) { if (sol.length && !esVistaAdmin()) toast('📋 Hay ' + sol.length + ' solicitud(es) esperando a un administrador'); return; }
+  if (!nuevas.length) return;
+  var x = nuevas[0];
+  beep('aviso');
+  toast('📋 Solicitud para administradores · ' + (x.tipo === 'DESTINO' ? 'cambio de destino' : 'cancelación') + ' de ' + x.folio + ' · ' + x.area + (nuevas.length > 1 ? ' (y ' + (nuevas.length - 1) + ' más)' : ''));
+}
+function iniciarPoll() {
+  pararPoll();
+  var seg = (S.cat && S.cat.ajustes.revisarSeg) || 45;
+  S.timer = setInterval(function () {
+    if (S.ctx && Date.now() > S.ctx.exp) return cerrarSesion('Tu sesión de 12 horas terminó. Vuelve a entrar.');
+    refrescar(false);
+  }, seg * 1000);
+}
+function pararPoll() { if (S.timer) { clearInterval(S.timer); S.timer = null; } }
+
+/* ---------- pintado ---------- */
+function badge(t) {
+  var h = '<span class="badge b-' + esc(t.estatus) + '">' + esc(S.E[t.estatus] || t.estatus) + (t.estatus === 'UBICADO' && t.ubic ? ': ' + esc(nom(t.ubic)) : '') + '</span>';
+  if (t.solicitud) h += ' <span class="badge b-ELIMINACION_SOLICITADA">Eliminación solicitada</span>';
+  if (t.pend > 0) h += ' <span class="badge pendb">⚠ ' + esc(R.txtPend(t, S.A)) + '</span>';
+  return h;
+}
+function areaTag(id) {
+  var a = S.A[id];
+  if (!a || (a.tipo !== 'SUCURSAL' && a.tipo !== 'FORANEA')) return '';
+  var rb = /rebot/i.test(a.corto);
+  return '<span class="atag ' + (rb ? 'rb' : 'pv') + '">PARA ' + esc(String(a.corto).toUpperCase()) + '</span>';
+}
+function colorDe(t) { return (S.EC[t.estatus] && S.EC[t.estatus].color) || '#5D6C7A'; }
+
+function render() {
+  if (!S.ctx) return;
+  var adm = S.ctx.admin;
+  $('#adminbar').innerHTML = adm ? '<div class="adminbar"><div class="wrap"><strong>MODO ADMINISTRADOR</strong><span>' + esc(S.ctx.email) + ' · control total: editar, mover, cambiar estatus y eliminar</span></div></div>' : '';
+  renderHeader();
+  var v = '';
+  if (esVistaAdmin()) {
+    v = S.tab === 'buscar' ? vBuscar() : S.tab === 'sol' ? vSolicitudes() : S.tab === 'hoja' ? vHoja() : vTodos();
+  } else {
+    v = me() === R.PAUSA ? vRecepcion()
+      : S.tab === 'nuevo' ? vNuevo() : S.tab === 'escaner' ? vEscaner() : S.tab === 'paq' ? vPaqueteria() : vBandeja();
+  }
+  $('#view').innerHTML = v;
+  pintarCodigos($('#view'));
+  renderModal();
+  var si = $('#scanin') || $('#crea-cod') || $('#gest-cod') || $('#recv-cod') || $('#rec-cod') || $('#recin') || $('#cajain');
+  if (si && !S.modal && !S.bell) si.focus({ preventScroll: true });
+}
+
+/** Botón ❓ Ayuda: los manuales en PDF que le tocan a esta computadora (links en CFG_Ajustes). */
+function manualesPara() {
+  var M = (S.cat.ajustes && S.cat.ajustes.manuales) || {}, l = [];
+  // La computadora de Recepción solo ve SU manual, aunque esté abierta con una cuenta de administrador.
+  if (me() === R.PAUSA) return [['📙', 'Manual de ' + nomP() + '', 'Cómo usar esta computadora del stand', M.rec]];
+  var ofi = R.esOf(S.A, me());
+  if (S.ctx.puedeAdmin || !ofi) l.push(['📗', 'Manual de Sucursales', 'Crear, entregar y recibir traslados', M.suc]);
+  if (S.ctx.puedeAdmin || ofi) l.push(['📘', 'Manual de Oficinas y ' + nomP() + '', 'Áreas de Oficinas, ' + nomH() + ' y ' + nomP() + '', M.ofi]);
+  if (S.ctx.puedeAdmin) {
+    l.push(['📙', 'Manual de ' + nomP() + '', 'La computadora del stand', M.rec]);
+    l.push(['📕', 'Manual de Administradores', 'Modo administrador, catálogos y operación', M.adm]);
+    if (M.proc) l.push(['📄', 'Proceso implementado', 'Documento oficial del proceso', M.proc]);
+  }
+  return l;
+}
+function ayudaHTML() {
+  var l = manualesPara(), M = (S.cat.ajustes && S.cat.ajustes.manuales) || {};
+  return '<div class="bellwrap"><button type="button" class="bell ayuda" data-a="ayuda" aria-label="Ayuda" aria-expanded="' + !!S.ayuda + '">❓</button>' +
+    (S.ayuda ? '<div class="bellpanel"><b>Ayuda · Manual de uso</b>' + l.map(function (x) {
+      return x[3] ? '<a class="bellitem manual" href="' + esc(x[3]) + '" target="_blank" rel="noopener"><span style="font-size:22px">' + x[0] + '</span><span><b>' + esc(x[1]) + '</b><br><span class="muted" style="font-size:12.5px">' + esc(x[2]) + ' · abrir PDF</span></span></a>'
+        : '<div class="bellitem manual" style="cursor:default;opacity:.6"><span style="font-size:22px">' + x[0] + '</span><span><b>' + esc(x[1]) + '</b><br><span class="muted" style="font-size:12.5px">Todavía no se carga. Avisa a ' + nomH() + '.</span></span></div>';
+    }).join('') +
+      (S.ctx.puedeAdmin && me() !== R.PAUSA && M.carpeta ? '<a class="btn ghost" style="justify-self:start;font-size:13px;padding:6px 10px" href="' + esc(M.carpeta) + '" target="_blank" rel="noopener">📁 Carpeta de manuales (actualizar)</a>' : '') +
+      '<div class="muted" style="font-size:12px">Versión de la página: <b>' + VERSION_PAGINA + '</b>. Siempre se abre el manual más reciente.' + (me() === R.PAUSA ? ' Para regresar a la página, cierra el PDF con <b>Ctrl + W</b>.' : '') + '</div></div>' : '') + '</div>';
+}
+function renderHeader() {
+  var tabs = [];
+  if (esVistaAdmin()) {
+    tabs = [['todos', 'Todos los traspasos'], ['buscar', 'Buscador'], ['sol', 'Solicitudes', S.data.solicitudes.length], ['hoja', 'Catálogos']];
+  } else if (me() === R.PAUSA) {
+    var enRec = S.data.traspasos.filter(function (t) { return t.estatus === 'EN_RECEPCION' || R.porSalirRec(t, S.A); }).length;
+    tabs = [['dejar', '📥 Dejar'], ['recoger', '📤 Recoger'], ['resguardo', 'En resguardo', enRec], ['imprimir', '🖨 Centro de Impresión', (S.data.cajas || []).filter(function (c) { return c.estatus === 'ARMADA'; }).length, 'destacado']];
+  } else {
+    tabs = [['bandeja', 'Mi bandeja'], ['nuevo', 'Nuevo traspaso'], ['escaner', 'Escáner']];
+    if (me() === R.HUB || R.esMor(S.A, me())) {
+      var enCaja = {};
+      (S.data.cajas || []).forEach(function (c) { if (c.estatus === 'ARMADA' || c.estatus === 'ENVIADA') c.traspasos.forEach(function (f) { enCaja[f] = true; }); });
+      var n = me() === R.HUB
+        ? S.data.traspasos.filter(function (t) { return R.empacable(t, S.A) && !enCaja[R.limpio(t.folio)]; }).length
+        : S.data.traspasos.filter(function (t) { return R.paqueteria(t, me(), S.A); }).length;
+      tabs.push(['paq', 'Paquetería', n]);
+    }
+  }
+  var min = Math.max(0, Math.floor((S.ctx.exp - Date.now()) / 60000));
+  var hueco = '<span class="logo" title="Aquí va el logo (CFG_Ajustes → logo_empresa)">LOGO</span>';
+  var logo = S.cat.ajustes.logo && /^(https?:|data:image)/i.test(S.cat.ajustes.logo)
+    ? '<img class="logo-img" src="' + esc(S.cat.ajustes.logo) + '" alt="" onerror="this.nextSibling.hidden=false;this.remove()">' + hueco.replace('<span ', '<span hidden ') : hueco;
+  var bell = '<div class="bellwrap"><button type="button" class="bell" data-a="bell" aria-label="Avisos">🔔' + (S.noVistos ? '<span class="count">' + S.noVistos + '</span>' : '') + '</button>' +
+    (S.bell ? '<div class="bellpanel"><b>Avisos nuevos</b>' + ((S.bellLista || []).length ? S.bellLista.map(function (a) {
+      return '<button type="button" class="bellitem unseen" data-a="open" data-v="' + esc(a.folio) + '"><span class="num">' + esc(a.folio) + '</span><span>' + esc(a.msg) + '</span><span class="muted" style="font-size:12px">' + esc(fh(a.fecha, a.hora)) + '</span></button>';
+    }).join('') + '<div class="muted" style="font-size:12px">Ya se marcaron como vistos: la próxima vez que abras la campana ya no saldrán.</div>' : '<div class="muted">No tienes avisos nuevos.</div>') +
+      '<button type="button" class="btn ghost" style="justify-self:start;font-size:13px;padding:6px 10px" data-a="sonidos">🔊 ' + (S.sonidos ? 'Ocultar sonidos' : 'Conoce los sonidos') + '</button>' +
+      (S.sonidos ? '<div class="stack" style="gap:6px">' + Object.keys(SONIDOS).map(function (k) {
+        return '<button type="button" class="btn" style="justify-content:flex-start" data-a="oir" data-v="' + k + '">▶ ' + esc(SONIDOS[k].nombre) + '</button>';
+      }).join('') + '</div>' : '') + '</div>' : '') + '</div>';
+  $('#header').innerHTML = '<div class="brand">' + logo + 'Traspasos</div>' +
+    cambioModo() + '<div class="who"><span class="p">' + esc(S.ctx.areaNombre) + '</span><span class="u">' + esc(S.ctx.email) + (min < 60 * 24 * 30 ? ' · sesión: cierra en ' + Math.floor(min / 60) + ' h ' + ('0' + (min % 60)).slice(-2) + ' min' : '') + (me() === R.PAUSA ? ' · 🔒 equipo fijo' : ' · <a href="#" data-a="salir">Salir</a>') + '</span></div>' +
+    (esVistaAdmin() ? '' : '<form class="hsearch" data-form="hbuscar" role="search"><input id="hbusq" autocomplete="off" placeholder="🔎 Buscar folio" aria-label="Buscar folio"></form>') +
+    ayudaHTML() + bell + '<nav class="tabs">' + tabs.map(function (x) {
+      return '<button type="button" data-a="tab" data-v="' + x[0] + '"' + (x[3] ? ' class="' + x[3] + '"' : '') + (S.tab === x[0] ? ' aria-current="page"' : '') + '>' + x[1] + (x[2] ? ' <span class="count">' + x[2] + '</span>' : '') + '</button>';
+    }).join('') + '</nav>';
+}
+
+/** Solo los administradores ven este botón: pasan de su área al modo administrador y de regreso. */
+function cambioModo() {
+  if (!S.ctx.puedeAdmin || me() === R.PAUSA) return '';
+  if (esVistaAdmin()) {
+    var ult = leer('ultimaArea');
+    return '<button class="btn" type="button" data-a="' + (ult ? 'entrar' : 'cambiarArea') + '" data-v="' + esc(ult || '') + '" title="Volver a trabajar como usuario">← ' + (ult && S.A[ult] ? 'Volver a ' + esc(nom(ult)) : 'Elegir mi área') + '</button>';
+  }
+  var n = ((S.data && S.data.solicitudes) || []).length;
+  return '<button class="btn gold' + (n ? ' conpend' : '') + '" type="button" data-a="entrar" data-v="ADMIN" title="' + (n ? n + ' solicitud(es) esperando respuesta de un administrador' : 'Entrar al modo administrador') + '">Modo administrador' + (n ? ' <span class="count">' + n + '</span>' : '') + '</button>';
+}
+
+function tcard(t, desdeOrigen) {
+  var ruta = desdeOrigen ? '<span class="arrow">→</span>' + esc(nom(t.destino)) : esc(nom(t.origen)) + '<span class="arrow">→</span>' + esc(nom(t.destino));
+  return '<button type="button" class="tcard" data-a="open" data-v="' + esc(t.folio) + '" style="color:' + colorDe(t) + '"><span class="stripe"></span>' +
+    '<span class="body"><span class="top"><span class="folio">' + esc(t.folio) + '</span>' + badge(t) + areaTag(t.destino) + '</span>' +
+    '<span class="route">' + ruta + '</span><span class="desc">' + esc(t.desc) + '</span></span>' +
+    '<span class="side"><b>' + t.bultos + ' ' + (t.bultos > 1 ? 'bultos' : 'bulto') + '</b><span>' + esc(fh(t.fecha, t.hora)) + '</span><span>' + esc(t.act ? 'Act. ' + fh(t.act) : '') + '</span></span></button>';
+}
+var ORD = { UBICADO: 0, EXTRAVIADO: 1, INCIDENCIA: 2, EN_RECEPCION: 3, ENTREGADO_GESTOR: 3, RECOLECTADO: 4, PAQUETERIA: 5, EN_LOGISTICA: 6, NUEVO: 7, ENTREGADO: 9 };
+function orden(a, b) { var x = (a.solicitud ? -1 : (ORD[a.estatus] != null ? ORD[a.estatus] : 5)), y = (b.solicitud ? -1 : (ORD[b.estatus] != null ? ORD[b.estatus] : 5)); return x - y || String(b.act).localeCompare(String(a.act)); }
+
+function chips(lista, accion, sel) {
+  var c = {};
+  lista.forEach(function (t) { c[t.estatus] = (c[t.estatus] || 0) + 1; });
+  return '<div class="summary">' + S.cat.estatus.filter(function (e) { return c[e.clave]; }).map(function (e) {
+    return '<button type="button" class="chip" data-a="' + accion + '" data-v="' + e.clave + '" aria-pressed="' + (sel === e.clave) + '"><span class="badge b-' + e.clave + '">' + esc(e.nombre) + '</span><span class="num">' + c[e.clave] + '</span></button>';
+  }).join('') + '</div>';
+}
+
+/* ---------- Mi bandeja ---------- */
+function vBandeja() {
+  var m = me(), A = S.A;
+  var ent = S.data.traspasos.filter(function (t) { return R.esEntrante(t, m, A) || (t.ubic === m && t.estatus === 'UBICADO'); });
+  var sal = S.data.traspasos.filter(function (t) { return t.origen === m; });
+  var src = S.dir === 'in' ? ent : sal;
+  var lista = src.filter(function (t) { return !S.filtro || t.estatus === S.filtro; }).sort(orden);
+  var a = A[m] || {};
+  var nota = (a.tipo === 'SUCURSAL' || a.tipo === 'FORANEA')
+    ? '<b>Entrantes</b>: todo lo que llega a ' + esc(a.sucNombre) + ' (PV y Rebotica). Cualquiera lo puede recibir; cada traspaso dice para quién es. <b>Salientes</b>: lo que sale de ' + esc(nom(m)) + '.'
+    : 'Solo ves los traspasos que van para <b>' + esc(nom(m)) + '</b> o que salieron de aquí.';
+  return '<h1>Mi bandeja</h1><p class="sub">' + nota + ' Para recibir o entregar usa el <b>Escáner</b>.</p>' +
+    '<div class="seg"><button type="button" data-a="dir" data-v="in" aria-pressed="' + (S.dir === 'in') + '">Entrantes (' + ent.length + ')</button><button type="button" data-a="dir" data-v="out" aria-pressed="' + (S.dir === 'out') + '">Salientes (' + sal.length + ')</button></div>' +
+    chips(src, 'filtro', S.filtro) +
+    '<div class="list">' + (lista.length ? lista.map(function (t) { return tcard(t, S.dir === 'out'); }).join('') : '<div class="empty">No hay traspasos aquí.</div>') + '</div>';
+}
+
+/* ---------- Nuevo traspaso ---------- */
+function vNuevo() {
+  var w = S.wiz, m = me();
+  var pasos = [sinCred() ? 'Tu cuenta' : 'Credencial', 'Destino', 'Contenido y bultos', 'Etiquetas'];
+  var head = '<h1>Nuevo traspaso</h1><p class="sub">Sale de <b>' + esc(nom(m)) + '</b>. El folio y las etiquetas se generan solos al final.</p>' +
+    '<div class="steps">' + pasos.map(function (p, i) { return '<div class="' + (w.step === i + 1 ? 'on' : w.step > i + 1 ? 'done' : '') + '">' + (i + 1) + '. ' + p + '</div>'; }).join('') + '</div>';
+  var err = w.err ? '<div class="feedback err">' + esc(w.err) + '</div>' : '';
+  if (w.step === 1) {
+    return head + '<div class="grid2"><div class="panel stack">' +
+      '<div class="scanbox"><b style="font-size:18px">Escanea tu credencial</b><span class="muted">Es obligatorio: queda registrado quién creó el traspaso.</span></div>' +
+      idHTML('crea', 'Credencial', 'Escanea tu credencial') + err +
+      '</div><div class="panel stack"><h2>¿No tienes credencial?</h2><p class="muted" style="margin:0">Abre <b>"¿Sin credencial?"</b> y teclea tu <b>usuario</b> (o número de empleado) y tu <b>NIP</b>. Si todavía no tienes, pídelos a un administrador.</p></div></div>';
+  }
+  if (w.step === 2) {
+    var grupos = {};
+    S.cat.areas.filter(function (a) { return a.activa && a.id !== m && !R.esPausa(a.id); }).forEach(function (a) { var g = a.tipo === 'OFICINAS' ? 'Oficinas' : (a.sucNombre || a.corto); (grupos[g] = grupos[g] || []).push(a); });
+    var opts = Object.keys(grupos).map(function (g) { return '<optgroup label="' + esc(g) + '">' + grupos[g].map(function (a) { return '<option value="' + esc(a.id) + '"' + (w.destino === a.id ? ' selected' : '') + '>' + esc(a.nombre) + '</option>'; }).join('') + '</optgroup>'; }).join('');
+    return head + '<div class="grid2"><div class="panel stack">' +
+      '<div class="note">Creado por: <b>' + esc(w.persona.nombre) + '</b>' + (sinCred() ? ' · con la cuenta de Oficinas' : '') + '</div>' +
+      '<label class="f">¿Para dónde va?<select class="t" id="destin"><option value="">Elige el destino…</option>' + opts + '</select></label>' +
+      '<div id="rutanote">' + rutaNota(m, w.destino) + '</div>' +
+      '<div class="row">' + (sinCred() ? '' : '<button class="btn ghost" type="button" data-a="atras">Atrás</button>') + '<button class="btn primary" type="button" data-a="dest">Continuar</button></div>' + err +
+      '</div><div class="panel stack" id="sugpanel">' + guiaEnvios(w.destino) + '</div></div>';
+  }
+  if (w.step === 3) {
+    return head + '<div class="grid2"><div class="panel stack">' +
+      '<div class="note"><b>' + esc(nom(m)) + '</b><span class="arrow">→</span><b>' + esc(nom(w.destino)) + '</b></div>' +
+      '<label class="f">¿Qué envías?<textarea class="t" id="descin" placeholder="Ej. Material de curación, 3 cajas">' + esc(w.desc || '') + '</textarea></label>' +
+      sugerenciasDesc(w.destino) +
+      '<div style="display:grid;gap:6px"><span style="font-weight:700;font-size:14px">Número de bultos</span><div class="qty"><button type="button" data-a="qty" data-v="-1" aria-label="Menos">−</button><span>' + (w.bultos || 1) + '</span><button type="button" data-a="qty" data-v="1" aria-label="Más">+</button></div><span class="muted" style="font-size:13px">Se imprime una etiqueta por bulto.</span></div>' +
+      '<div class="row"><button class="btn ghost" type="button" data-a="atras">Atrás</button><button class="btn primary" type="button" data-a="crear"' + (w.enviando ? ' disabled' : '') + '>' + (w.enviando ? 'Generando…' : 'Generar traspaso e imprimir') + '</button></div>' + err +
+      '</div><div class="panel stack"><h2>Así saldrá la etiqueta</h2><div class="labels">' +
+      etiquetaHTML({ folio: m + '-0000', origen: m, destino: w.destino, bultos: w.bultos || 1, fecha: '', hora: horaAhora(), por: w.persona.nombre }, 1, 0, true) + '</div></div></div>';
+  }
+  var t = w.t;
+  return head + '<div class="panel stack"><div class="feedback ok">✓ Traspaso <span class="num">' + esc(t.folio) + '</span> creado. Se mandaron ' + t.bultos + ' etiqueta(s) a imprimir. Pégalas en los bultos; queda en espera de gestoría.</div>' +
+    '<div class="labels">' + rango(t.bultos).map(function (b) { return etiquetaHTML(t, b, 0, true); }).join('') + '</div>' +
+    '<div class="row"><button class="btn" type="button" data-a="reimp-auto">Volver a imprimir</button><button class="btn" type="button" data-a="open" data-v="' + esc(t.folio) + '">Ver detalle</button><button class="btn primary" type="button" data-a="otro">Crear otro traspaso</button></div></div>';
+}
+/* ---------- Guía: qué se manda a cada área de Oficinas (hoja CAT_EnviosOf) ---------- */
+function docsDe(area) {
+  return (S.cat.enviosOf || []).filter(function (x) { return x.area === area; }).map(function (x) { return x.doc; });
+}
+/**
+ * Recuadro derecho del paso "Destino": SOLO cuando el destino es un área de Oficinas.
+ * Es un aviso (no se toca): lo que normalmente se le manda a esa área, para no enviar por error.
+ */
+function guiaEnvios(dest) {
+  var base = '<h2 style="margin:0">Rutas precargadas</h2><p class="muted" style="margin:0">Aquí aparecen todas las áreas activas. Si el destino es la ubicación foránea, la ruta va sola por ' + nomH() + ' y paquetería.</p>';
+  if (!dest || !S.A[dest] || S.A[dest].tipo !== 'OFICINAS') return base;
+  var docs = docsDe(dest);
+  if (!docs.length) return base;
+  return '<div class="sugbox" role="note"><b>📌 A ' + esc(S.A[dest].corto) + ' normalmente se le manda:</b><ul>' +
+    docs.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul>' +
+    '<div style="font-size:13px;margin-top:6px">Si lo que envías no es nada de esto, revisa que sea el área correcta.</div></div>';
+}
+/** Botones del paso "Contenido": llenan "¿Qué envías?" con un clic. */
+function sugerenciasDesc(dest) {
+  var docs = docsDe(dest);
+  if (!docs.length) return '';
+  return '<div class="sugchips"><span class="muted" style="font-size:13px;font-weight:700">Lo que normalmente va a ' + esc(S.A[dest].corto) + ' (toca para agregarlo):</span><div class="row" style="gap:6px">' +
+    docs.map(function (d) { return '<button type="button" class="chipdoc" data-a="sugdesc" data-v="' + esc(d) + '">＋ ' + esc(d) + '</button>'; }).join('') + '</div></div>';
+}
+
+function rutaNota(m, d) {
+  if (!d) return '';
+  var A = S.A;
+  if (R.esMor(A, d) || R.esMor(A, m)) {
+    var r = R.esMor(A, m) ? 'Paquetería → ' + nomH() + ' → ' + (R.esOf(A, d) ? 'entrega interna' : 'gestoría') + ' → destino'
+      : R.esOf(A, m) ? 'Entrega a ' + nomH() + ' → paquetería → la ubicación foránea' : 'Gestoría → ' + nomH() + ' → paquetería → la ubicación foránea';
+    return '<div class="note route"><b>Ruta con paquetería:</b> ' + r + '. Es el mismo folio de principio a fin.</div>';
+  }
+  if (R.esOf(A, m) && R.esOf(A, d)) return '<div class="note">Entrega interna en Oficinas: el área destino lo recibe escaneándolo.</div>';
+  return '<div class="note">Lo recoge gestoría y lo entrega en el destino.</div>';
+}
+function rango(n) { var a = []; for (var i = 1; i <= n; i++) a.push(i); return a; }
+
+/* ---------- Etiquetas ---------- */
+/** Tamaño de etiqueta de ESTA computadora (CAT_Impresoras), o el general de CFG_Ajustes. */
+function tamEtiqueta() {
+  var imp = (S.cat.impresoras || {})[me()];
+  var tm = imp ? { w: imp.ancho, h: imp.alto, arriba: imp.arriba || 0, izq: imp.izq || 0, girar: !!imp.girar, formato: imp.formato || '' }
+               : { w: S.cat.ajustes.etiquetaAncho, h: S.cat.ajustes.etiquetaAlto, arriba: 0, izq: 0, girar: false, formato: '' };
+  if (!/^(MINI|CHICA|COMPLETA)$/.test(tm.formato)) tm.formato = tm.h < 30 ? 'MINI' : tm.h < 50 ? 'CHICA' : 'COMPLETA';
+  return tm;
+}
+/** Estilo de tamaño: en pantalla se escala; al imprimir mide exacto (un poco menos que la hoja, para que no salte a otra página). */
+function estiloTam(tm, pantalla) {
+  if (pantalla) return 'width:100%;aspect-ratio:' + tm.w + '/' + tm.h + ';';
+  return 'width:' + (tm.w - 0.4) + 'mm;height:' + (tm.h - 0.6) + 'mm;' +
+    (tm.arriba || tm.izq ? 'margin:' + tm.arriba + 'mm 0 0 ' + tm.izq + 'mm;' : '');
+}
+/** Manda a imprimir: una hoja por etiqueta, del tamaño exacto, sin hojas en blanco. */
+function mandarImprimir(html) {
+  var tm = tamEtiqueta(), p = $('#print');
+  var pw = tm.girar ? tm.h : tm.w, ph = tm.girar ? tm.w : tm.h;
+  p.innerHTML = '<style>@page{size:' + pw + 'mm ' + ph + 'mm;margin:0}' +
+    (tm.girar ? '#print .lbl{transform:rotate(90deg) translateY(-100%);transform-origin:top left}' : '') + '</style>' + html;
+  pintarCodigos(p);
+  ajustarDestinos(p);
+  setTimeout(function () { window.print(); }, 200);
+}
+/** Etiqueta chica: el destino va del tamaño del folio (11 pt); si no cabe en una línea, baja de medio en medio punto hasta 7 pt. */
+function ajustarDestinos(raiz) {
+  var p = raiz.style.display; raiz.style.display = 'block';          // para poder medir aunque esté oculto
+  raiz.querySelectorAll('.lbl.mini .dest').forEach(function (d) {
+    for (var pt = 11; pt > 7 && d.scrollWidth > d.clientWidth; pt -= 0.5) d.style.fontSize = (pt - 0.5) + 'pt';
+  });
+  raiz.style.display = p;
+}
+function etiquetaHTML(t, b, rp, pantalla) {
+  var tm = tamEtiqueta();
+  var tam = estiloTam(tm, pantalla);
+  // Etiqueta MINI (menos de 30 mm de alto, ej. 50 × 20 mm de la Argox): folio, bulto, código y destino.
+  if (tm.formato === 'MINI') {
+    return '<div class="' + (pantalla ? 'label ' : '') + 'lbl mini" style="' + tam + '">' +
+      '<div class="mrow"><span class="fol">' + esc(t.folio) + '</span><span class="bul">' + (rp ? 'R' + rp + ' · ' : '') + b + '/' + t.bultos + '</span></div>' +
+      bcHTML(t.folio, tm.w - 0.4 - 3, 7) +
+      '<div class="dest">→ ' + esc(t.destino ? nom(t.destino) : '—') + '</div></div>';
+  }
+  var chica = tm.formato === 'CHICA' ? ' chica' : '';   // etiquetas chicas (ej. 62 × 29 mm): solo lo esencial
+  return '<div class="' + (pantalla ? 'label ' : '') + 'lbl' + chica + '" style="' + tam + '">' + (rp ? '<span class="rp">R' + rp + '</span>' : '') +
+    '<div><div class="k">DESTINO</div><div class="dest">' + esc(t.destino ? nom(t.destino) : '—') + '</div></div>' +
+    '<div><div class="k">ORIGEN</div><div class="orig">' + esc(nom(t.origen)) + '</div></div>' +
+    '<div class="fol">' + esc(t.folio) + '</div>' +
+    bcHTML(t.folio, tm.w - 0.4 - (chica ? 3 : 6), chica ? 8 : 12) +
+    '<div class="bul">BULTO ' + b + ' DE ' + t.bultos + '</div>' +
+    '<div class="pie">' + esc(fh(t.fecha, t.hora)) + '<br>Creó: ' + esc(quien(String(t.por || '').split(' · ')[0], nom(t.origen))) + '</div></div>';
+}
+/*
+ * CÓDIGO DE BARRAS PARA IMPRESORA TÉRMICA (203 dpi: 1 punto = 0.125 mm)
+ * - Cada barra mide un número EXACTO de puntos (nada de estirar el código al ancho de la etiqueta):
+ *   así la impresora no redondea y todas las barras del mismo tipo salen iguales.
+ * - Barras de 3 puntos (0.375 mm) si caben; si el folio es largo (ej. NR-RB-0001), de 2 puntos.
+ * - Con barras de 3 puntos se imprimen 1 punto más delgadas: la tinta que se corre las deja del tamaño justo.
+ * - Margen blanco de 2.5 mm a cada lado (sin él la pistola no sabe dónde empieza el código).
+ * - Altura corta (7 mm en 50 × 20): menos tinta y menos calor.
+ */
+var PUNTO = 0.125;
+/** Versión de la página (sale en ❓ Ayuda). Sirve para saber si ya se publicó lo último. */
+var VERSION_PAGINA = '2026-10-29 · candado';
+function bcHTML(code, anchoMm, altoMm) {
+  return '<div class="bcw"><svg class="bc" data-code="' + esc(code) + '" data-w="' + anchoMm + '" data-h="' + altoMm + '"></svg></div>';
+}
+function pintarCodigos(raiz) {
+  if (!window.JsBarcode) return;
+  raiz.querySelectorAll('svg.bc').forEach(function (s) {
+    try {
+      var o = {};
+      JsBarcode(o, s.getAttribute('data-code'), { format: 'CODE128' });
+      var bits = o.encodings.map(function (e) { return e.data; }).join('');
+      var ancho = Number(s.getAttribute('data-w')) || 45, alto = Number(s.getAttribute('data-h')) || 7;
+      var quiet = 2.5, puntos = 3;
+      if (bits.length * puntos * PUNTO + 2 * quiet > ancho) puntos = 2;
+      if (bits.length * puntos * PUNTO + 2 * quiet > ancho) quiet = 2;
+      var mod = puntos * PUNTO, red = puntos >= 3 ? PUNTO : 0;
+      var w = bits.length * mod + 2 * quiet, r = '';
+      for (var i = 0; i < bits.length;) {
+        if (bits[i] !== '1') { i++; continue; }
+        var j = i; while (j < bits.length && bits[j] === '1') j++;
+        r += '<rect x="' + (quiet + i * mod) + '" y="0" width="' + ((j - i) * mod - red) + '" height="' + alto + '"/>';
+        i = j;
+      }
+      // Centrado, pero cayendo justo en un punto de la impresora
+      var izq = Math.max(0, Math.floor((ancho - w) / 2 / PUNTO) * PUNTO);
+      s.setAttribute('viewBox', '0 0 ' + w + ' ' + alto);
+      s.setAttribute('width', w + 'mm'); s.setAttribute('height', alto + 'mm');
+      s.setAttribute('shape-rendering', 'crispEdges');
+      s.style.marginLeft = izq + 'mm';
+      s.innerHTML = r;
+    } catch (e) { }
+  });
+}
+function imprimir(t, bultos, rp) {
+  mandarImprimir(bultos.map(function (b) { return etiquetaHTML(t, b, rp || 0, false); }).join(''));
+}
+
+/* ---------- Escáner ---------- */
+function vEscaner() {
+  var sc = S.scan, m = me();
+  var faltaG = sc.modo === 'ENTREGAR' && !sc.gestor;
+  var faltaR = sc.modo === 'RECIBIR' && !sinCred() && !sc.receptor;   // sucursales: quién recibe
+  var falta = faltaG || faltaR;
+  var fb = sc.fb;
+  var fbh = !fb ? '<div class="feedback idle">Escanea con la pistola: se agrega solo, sin Enter. Si lo tecleas, escribe el folio completo (ej. ' + esc(m) + '-0001).</div>'
+    : '<div class="feedback ' + fb.k + '" role="alert"><span style="font-size:20px;line-height:1">' + ({ ok: '✓', err: '✕', warn: '!' })[fb.k] + '</span><span>' + esc(fb.m) +
+      (fb.ubicable ? '<br><button class="btn" type="button" style="margin-top:8px" data-a="ubicar" data-v="' + esc(fb.folio) + '">Registrar que está aquí</button>' : '') + '</span></div>';
+  var cola = sc.lote.length ? sc.lote.slice().reverse().map(function (it) {
+    var t = it.t;
+    return '<div class="qrow"><span style="color:var(--ok);font-weight:900">✓</span><div style="min-width:0"><div class="row" style="gap:6px 10px">' + areaTag(t.destino) + '<span><span class="num">' + esc(t.folio) + '</span> · ' + esc(nom(t.origen)) + '<span class="arrow">→</span>' + esc(nom(t.destino)) + '</span></div>' +
+      '<div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + t.bultos + ' bulto(s) · ' + esc(t.desc) + ' · creó ' + esc(quien(String(t.por).split(' · ')[0], nom(t.origen))) + '</div></div>' +
+      (sc.modo === 'RECIBIR' ? '<label><input type="checkbox" data-a="faltan" data-v="' + esc(t.folio) + '"' + (it.faltan ? ' checked' : '') + '> Faltan / dañado</label>' : '<span></span>') +
+      (sc.modo === 'RECIBIR' && it.faltan ? incidenciaHTML(it) : '') +
+      (sc.modo === 'ENTREGAR' && it.max > 1 ? llevaHTML(it.t.folio, it.lleva, it.max, it.motivo, it.resto) : '') +
+      (sc.modo === 'RECIBIR' && (t.pend > 0 || t.recib > 0) ? '<div class="vienen">📦 Vienen <b>' + R.enCamino(t) + ' de ' + t.bultos + '</b>' + (t.pend ? ' · ' + esc(R.txtPend(t, S.A)) : (t.recib ? ' · ya habían llegado ' + t.recib : '')) + '</div>' : '') + '</div>';
+  }).join('') : '<div class="empty">Aún no hay traspasos en la lista. Escanea el primero.</div>';
+  var pill = function (q, que, accion) {
+    return '<div class="gestorpill"><div><b>' + esc(q.nombre) + '</b><div class="muted" style="font-size:13px">' + que + ' · ' + esc(quienTxt(q)) + '</div></div><button class="btn ghost" type="button" data-a="' + accion + '" style="margin-left:auto">Cambiar</button></div>';
+  };
+  var ident = '';
+  if (sc.modo === 'ENTREGAR') {
+    ident = sc.gestor ? pill(sc.gestor, 'Se lo lleva', 'gclear')
+      : '<div class="scanbox"><b>Primero escanea la credencial de quien se lo lleva</b><span class="muted">El gestor (o cualquier persona registrada) que transporta los paquetes.</span></div>' + idHTML('gest', 'Credencial', 'Escanea la credencial');
+  } else if (!sinCred()) {
+    ident = sc.receptor ? pill(sc.receptor, 'Recibe', 'rclear')
+      : '<div class="scanbox"><b>Primero escanea TU credencial</b><span class="muted">Es obligatorio: queda registrado quién recibe.</span></div>' + idHTML('recv', 'Credencial de quien recibe', 'Escanea tu credencial');
+  }
+  return '<h1>Escáner en ráfaga</h1><p class="sub">Una sola pantalla para recibir y para entregar a gestoría. Cada folio se revisa al instante y se va formando la fila. Al final confirma.</p>' +
+    '<div class="seg modos"><button type="button" class="m-rec" data-a="modo" data-v="RECIBIR" aria-pressed="' + (sc.modo === 'RECIBIR') + '">📥 Recibir traspasos</button><button type="button" class="m-ent" data-a="modo" data-v="ENTREGAR" aria-pressed="' + (sc.modo === 'ENTREGAR') + '">🛵 Entregar a gestor</button></div>' +
+    '<div class="modoban ' + (sc.modo === 'RECIBIR' ? 'm-rec' : 'm-ent') + '">Estás en: <b>' + (sc.modo === 'RECIBIR' ? 'RECIBIR TRASPASOS' : 'ENTREGAR A GESTOR') + '</b></div>' +
+    '<div class="scanner"><div class="stack">' + ident +
+    (falta ? '' : '<label class="f">Folio<input class="scaninput" id="scanin" autocomplete="off" placeholder="' + esc(m) + '-0001"></label>') + fbh +
+    '</div><div class="stack"><div class="row" style="justify-content:space-between"><h2 style="margin:0">' + (sc.modo === 'RECIBIR' ? 'Recibiendo' : 'Entregando a gestor') + ' · ' + sc.lote.length + '</h2>' +
+    '<div class="row"><button class="btn ghost" type="button" data-a="vaciar"' + (sc.lote.length ? '' : ' disabled') + '>Vaciar</button><button class="btn primary" type="button" data-a="confirmar"' + (sc.lote.length && !sc.enviando ? '' : ' disabled') + '>' + (sc.enviando ? 'Guardando…' : 'Confirmar ' + (sc.modo === 'RECIBIR' ? 'recepción' : 'salida')) + '</button></div></div>' +
+    '<div class="queue">' + cola + '</div></div></div>' + (sc.modo === 'ENTREGAR' ? porEntregarHTML(falta) : porRecibirHTML(falta));
+}
+/**
+ * Tercera opción para recibir: lo que viene para aquí y aún no se recibe.
+ * - En color: lo que trae el gestor cuya credencial se escaneó (Recolectado por él).
+ * - En gris (se ilumina al pasar el cursor): lo que sigue en "Nuevo traspaso" (se les olvidó darle salida)
+ *   o lo que trae otro gestor. Igual se puede tocar para agregarlo.
+ */
+function porRecibirHTML(bloq) {
+  var m = me(), sc = S.scan, g = sc.trae;
+  var enLote = {};
+  sc.lote.forEach(function (it) { enLote[R.limpio(it.t.folio)] = true; });
+  var norm = function (x) { return String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase(); };
+  var enRuta = function (t) { return t.estatus === 'RECOLECTADO' || t.estatus === 'ENTREGADO_GESTOR'; };
+  var suyo = function (t) { return !!g && enRuta(t) && norm(t.gestor) === norm(g.nombre); };
+  // TODO lo que esta área puede recibir: nuevo, en ruta con gestor, en Recepción Oficinas, en Logística, por paquetería…
+  var l = S.data.traspasos.filter(function (t) {
+    return !enLote[R.limpio(t.folio)] && R.recibir(t, m, S.A, S.E).k === 'ok';
+  }).sort(function (a, b) { return (suyo(b) - suyo(a)) || ((b.estatus !== 'NUEVO') - (a.estatus !== 'NUEVO')); });
+  var n = l.filter(suyo).length;
+  var gest = bloq ? '' : g ? '<div class="gestorpill"><div><b>' + esc(g.nombre) + '</b><div class="muted" style="font-size:13px">Lo trae · ' + n + ' traspaso(s) para aquí</div></div><button class="btn ghost" type="button" data-a="tclear" style="margin-left:auto">Cambiar</button></div>'
+    : '<div style="max-width:420px">' + idHTML('rgest', '¿Qué gestor lo trae? Escanea su credencial (opcional)', 'Credencial del gestor') + '</div>';
+  return '<div class="panel stack" style="margin-top:20px"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Vienen para aquí (' + l.length + ')</h2>' +
+    '<span class="muted" style="font-size:13px">' + (bloq ? 'Primero escanea tu credencial.' : 'Toca un traspaso para agregarlo. En color: los que trae el gestor. En gris: los demás.') + '</span></div>' + gest +
+    (l.length ? '<div class="list" style="gap:8px">' + l.map(function (t) {
+      var col = suyo(t);
+      return '<button type="button" class="ped' + (col ? ' trae' : ' tenue') + '" data-a="recsug" data-v="' + esc(t.folio) + '"' + (bloq ? ' disabled' : '') + '><span class="caja">＋</span>' +
+        '<span style="min-width:0"><span class="row" style="gap:6px 10px">' + areaTag(t.destino) + '<span><span class="num" style="font-size:16px">' + esc(t.folio) + '</span> · de ' + esc(nom(t.origen)) + '</span>' + badge(t) + '</span>' +
+        '<span class="d">' + (t.pend > 0 || t.recib > 0 ? 'vienen ' + R.enCamino(t) + ' de ' + t.bultos : t.bultos + ' bulto(s)') + ' · ' + esc(t.desc) + (enRuta(t) && t.gestor ? ' · lo lleva ' + esc(t.gestor) : '') + '</span></span><span class="r">Creado<br>' + esc(fh(t.fecha, t.hora)) + '</span></button>';
+    }).join('') + '</div>' : '<div class="muted">No hay traspasos pendientes de recibir aquí.</div>') + '</div>';
+}
+function validarTrae(d) {
+  srv('apiGestor', S.token, d).then(function (g) { S.scan.trae = g; S.idAbierto = null; beep('ok'); render(); })
+    .catch(function (e) { S.scan.fb = { k: 'err', m: e.message }; beep('err'); render(); });
+}
+/** Tercera opción para entregar: los traspasos que creó esta área y siguen en "Nuevo traspaso"; se tocan para agregarlos. */
+function porEntregarHTML(bloq) {
+  var m = me(), sc = S.scan;
+  var enLote = {};
+  sc.lote.forEach(function (it) { enLote[R.limpio(it.t.folio)] = true; });
+  var l = S.data.traspasos.filter(function (t) { return ((t.origen === m && t.estatus === 'NUEVO') || (t.pend > 0 && t.pendEn === m)) && !t.solicitud && !enLote[R.limpio(t.folio)]; });
+  return '<div class="panel stack" style="margin-top:20px"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Creados aquí, por entregar (' + l.length + ')</h2>' +
+    '<span class="muted" style="font-size:13px">' + (bloq ? 'Primero escanea la credencial de quien se lo lleva.' : 'Toca un traspaso para agregarlo. Salen los que están en "Nuevo traspaso" y los bultos que se quedaron aquí.') + '</span></div>' +
+    (l.length ? '<div class="list" style="gap:8px">' + l.map(function (t) {
+      return '<button type="button" class="ped" data-a="entsug" data-v="' + esc(t.folio) + '"' + (bloq ? ' disabled' : '') + '><span class="caja">＋</span>' +
+        '<span style="min-width:0"><span class="row" style="gap:6px 10px">' + areaTag(t.destino) + '<span><span class="num" style="font-size:16px">' + esc(t.folio) + '</span> → ' + esc(nom(t.destino)) + '</span></span>' +
+        '<span class="d">' + (t.pend > 0 ? '<b style="color:#9A5B00">⚠ ' + (t.pend > 1 ? 'faltan ' : 'falta ') + t.pend + ' de ' + t.bultos + ' por salir</b>' : t.bultos + ' bulto(s)') + ' · ' + esc(t.desc) + '</span></span><span class="r">Creado<br>' + esc(fh(t.fecha, t.hora)) + '</span></button>';
+    }).join('') + '</div>' : '<div class="muted">No hay traspasos de esta área en "Nuevo traspaso".</div>') + '</div>';
+}
+function alEscanear(texto) {
+  texto = String(texto || '').trim();
+  if (!texto) return;
+  var sc = S.scan, m = me();
+  var folio = R.folioDe(texto);
+  if (CAJAS[folio] && sc.modo === 'RECIBIR') return escanearCaja(texto, CAJAS[folio]);
+  var t = MAPA[folio];
+  var v;
+  if (!R.valido(texto) && !t) v = { k: 'err', m: '"' + texto + '" no parece un folio de traspaso. Revisa que esté bien tecleado.' };
+  else v = sc.modo === 'RECIBIR' ? R.recibir(t, m, S.A, S.E) : R.salir(t, m, S.A, S.E, 'ENTREGAR');
+  if (v.k === 'ok' && sc.lote.some(function (it) { return R.limpio(it.t.folio) === folio; })) v = { k: 'warn', m: t.folio + ' ya está en la lista.' };
+  if (v.k === 'ok') {
+    var mx = sc.modo === 'ENTREGAR' ? (v.resto ? t.pend : t.bultos) : 0;
+    sc.lote.push({ t: t, faltan: false, resto: !!v.resto, max: mx, lleva: mx });
+    v = { k: v.salto ? 'warn' : 'ok', m: t.folio + ' · ' + t.bultos + ' bulto(s) · ' + nom(t.origen) + ' → ' + nom(t.destino) +
+      (v.salto ? ' · Agregado. Ojo: nadie registró la recolección; queda anotado.' : '') };
+  }
+  v.folio = t ? t.folio : folio;
+  sc.fb = v;
+  sc.log.push({ texto: texto, resultado: v.k === 'ok' ? 'OK' : v.k === 'warn' ? 'AVISO' : 'ERROR', mensaje: v.m, hora: horaAhora() });
+  beep(v.k);
+  render();
+}
+/** Si llegó roto o incompleto: qué pasó (obligatorio) y, si faltan, cuántos bultos llegaron. */
+function incidenciaHTML(it) {
+  var t = it.t, inc = it.inc || (it.inc = { tipo: '', llegaron: '', detalle: '' }), f = esc(t.folio);
+  var falta = inc.tipo === 'INCOMPLETO' || inc.tipo === 'AMBOS';
+  return '<div class="incform"><div class="row" style="gap:10px">' +
+    '<label class="f" style="flex:1;min-width:190px">¿Qué pasó?<select class="t" data-inc="tipo" data-v="' + f + '"><option value="">Elige…</option>' +
+    Object.keys(R.INCIDENCIAS).map(function (k) { return '<option value="' + k + '"' + (inc.tipo === k ? ' selected' : '') + '>' + esc(R.INCIDENCIAS[k]) + '</option>'; }).join('') + '</select></label>' +
+    (falta ? '<label class="f" style="width:170px">¿Cuántos bultos llegaron?<span class="row" style="gap:6px;flex-wrap:nowrap"><input class="t" type="number" min="0" max="' + (t.bultos - 1) + '" data-inc="llegaron" data-v="' + f + '" value="' + esc(inc.llegaron) + '" style="width:80px"><span class="muted">de ' + t.bultos + '</span></span></label>' : '') +
+    '</div><label class="f">Explica qué pasó (obligatorio)<textarea class="t" data-inc="detalle" data-v="' + f + '" rows="2" placeholder="' +
+    (falta ? 'Ej. faltó la caja 2 de 3; llegó solo la de frascos' : 'Ej. la caja llegó aplastada y 2 frascos rotos') + '">' + esc(inc.detalle) + '</textarea></label></div>';
+}
+/** "Se lleva [k] de N" con − y +; si se lleva menos, por qué se quedan los demás. */
+var MOTIVOS_QUEDAN = ['No cabe en el vehículo', 'Pesa demasiado', 'Se le olvidó', 'Otro'];
+function llevaHTML(folio, k, max, motivo, resto) {
+  var f = esc(folio);
+  return '<div class="lleva' + (k < max ? ' menos' : '') + '"><span>' + (resto ? 'Faltaban ' + max + ' · se lleva' : 'Se lleva') + '</span>' +
+    '<button type="button" class="btn" data-a="llevamenos" data-v="' + f + '"' + (k <= 1 ? ' disabled' : '') + ' aria-label="Uno menos">−</button>' +
+    '<b class="num">' + k + '</b><span>de ' + max + ' bulto' + (max > 1 ? 's' : '') + '</span>' +
+    '<button type="button" class="btn" data-a="llevamas" data-v="' + f + '"' + (k >= max ? ' disabled' : '') + ' aria-label="Uno más">+</button>' +
+    (k < max ? '<label class="f">¿Por qué se queda' + (max - k > 1 ? 'n ' + (max - k) : ' 1') + '?<select class="t" data-mot="1" data-v="' + f + '"><option value="">Elige…</option>' +
+      MOTIVOS_QUEDAN.map(function (x) { return '<option' + (motivo === x ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></label>' : '') + '</div>';
+}
+/** La etiqueta de una caja: se agregan todos los traspasos que trae. */
+function escanearCaja(texto, cj) {
+  var sc = S.scan, m = me(), agregados = 0, malos = [];
+  cj.traspasos.forEach(function (f) {
+    var t = MAPA[f];
+    var v = R.recibir(t, m, S.A, S.E);
+    if (v.k !== 'ok') { malos.push(f + ': ' + v.m); return; }
+    if (sc.lote.some(function (it) { return R.limpio(it.t.folio) === f; })) return;
+    sc.lote.push({ t: t, faltan: false, caja: cj.folio });
+    agregados++;
+  });
+  var v2 = agregados
+    ? { k: malos.length ? 'warn' : 'ok', m: 'Caja ' + cj.folio + ': ' + agregados + ' de ' + cj.traspasos.length + ' traspasos agregados.' + (malos.length ? ' No se agregaron: ' + malos.join(' · ') : '') }
+    : { k: 'err', m: 'Caja ' + cj.folio + ': no se pudo agregar ningún traspaso. ' + malos.join(' · ') };
+  sc.fb = v2;
+  sc.log.push({ texto: texto, resultado: v2.k === 'ok' ? 'OK' : v2.k === 'warn' ? 'AVISO' : 'ERROR', mensaje: v2.m, hora: horaAhora() });
+  beep(v2.k);
+  render();
+}
+
+function guardarInc(el) {
+  var f = el.getAttribute('data-v'), k = el.getAttribute('data-inc');
+  S.scan.lote.forEach(function (it) { if (it.t.folio === f) { it.inc = it.inc || {}; it.inc[k] = el.value; } });
+}
+function confirmarLote() {
+  var sc = S.scan;
+  if (!sc.lote.length || sc.enviando) return;
+  if (sc.modo === 'ENTREGAR') {
+    var sinMot = sc.lote.filter(function (it) { return it.lleva < it.max && !it.motivo; })[0];
+    if (sinMot) { sc.fb = { k: 'err', m: sinMot.t.folio + ': se lleva ' + sinMot.lleva + ' de ' + sinMot.max + '. Elige por qué se quedan los demás.' }; beep('err'); return render(); }
+  }
+  if (sc.modo === 'RECIBIR') {
+    var mal = sc.lote.filter(function (it) {
+      var inc = it.inc || {};
+      return it.faltan && (!inc.tipo || String(inc.detalle || '').trim().length < 3 || (inc.tipo !== 'DANADO' && String(inc.llegaron) === ''));
+    })[0];
+    if (mal) { sc.fb = { k: 'err', m: mal.t.folio + ': marcaste "Faltan / dañado". Elige qué pasó, explícalo' + ((mal.inc || {}).tipo && mal.inc.tipo !== 'DANADO' ? ' y escribe cuántos bultos llegaron' : '') + '.' }; beep('err'); return render(); }
+  }
+  sc.enviando = true; S.ocupado = true; render();
+  srv('apiConfirmarLote', S.token, {
+    modo: sc.modo, gestor: sc.gestorId || null, receptor: sc.receptorId || null,
+    items: sc.lote.map(function (it) { return { folio: it.t.folio, faltan: !!it.faltan, inc: it.faltan ? it.inc : null, caja: it.caja || '', lleva: it.max ? it.lleva : null, max: it.max || null, motivo: it.motivo || '' }; }),
+    escaneos: sc.log
+  }).then(function (d) {
+    var ok = d.resultados.filter(function (r) { return r.ok; }).length;
+    var mal = d.resultados.filter(function (r) { return !r.ok; });
+    // Quien recibe se vuelve a escanear en cada recepción (así no se registra a otra persona por error).
+    S.scan = { modo: sc.modo, lote: [], log: [], gestor: sc.gestor, gestorId: sc.gestorId, receptor: null, receptorId: null, enviando: false,
+      fb: mal.length ? { k: 'warn', m: ok + ' guardado(s). No se guardaron: ' + mal.map(function (r) { return r.folio + ' (' + r.msg + ')'; }).join('; ') } : { k: 'ok', m: ok + ' traspaso(s) guardados.' } };
+    toast(ok + ' traspaso(s) guardados'); beep(mal.length ? 'warn' : 'listo');
+    S.ocupado = false; refrescar(false);
+  }).catch(function (e) { sc.enviando = false; S.ocupado = false; sc.fb = { k: 'err', m: e.message }; render(); });
+}
+
+/* ---------- Paquetería ---------- */
+function vPaqueteria() {
+  if (me() === R.HUB) return vPaqLogistica();
+  var m = me();
+  var por = S.data.traspasos.filter(function (t) { return R.paqueteria(t, m, S.A); });
+  var camino = S.data.traspasos.filter(function (t) { return t.estatus === 'PAQUETERIA'; });
+  var dist = m === R.HUB ? S.data.traspasos.filter(function (t) { return t.estatus === 'EN_LOGISTICA' && !R.esMor(S.A, t.destino); }) : [];
+  var opts = S.cat.paqueterias.map(function (p) { return '<option>' + esc(p) + '</option>'; }).join('');
+  return '<h1>Paquetería</h1><p class="sub">Lo que va o viene de la ubicación foránea viaja con guía. Captura la paquetería y el número de guía para enviarlo.</p>' +
+    '<h2>Por enviar (' + por.length + ')</h2><div class="list" style="margin-bottom:22px">' + (por.length ? por.map(function (t) {
+      return '<div class="panel stack" style="padding:14px"><div class="row" style="justify-content:space-between"><div><span class="num" style="font-size:16px">' + esc(t.folio) + '</span> · ' + esc(nom(t.origen)) + '<span class="arrow">→</span><b>' + esc(nom(t.destino)) + '</b> · ' + t.bultos + ' bulto(s)</div>' + badge(t) + '</div>' +
+        '<div class="row"><select class="t" id="pq-' + esc(t.folio) + '" style="width:auto">' + opts + '</select><input class="t" id="gu-' + esc(t.folio) + '" placeholder="Número de guía" style="flex:1;min-width:180px"><button class="btn primary" type="button" data-a="enviarpq" data-v="' + esc(t.folio) + '">Marcar enviado</button></div></div>';
+    }).join('') : '<div class="empty">Nada por enviar.</div>') + '</div>' +
+    '<h2>En camino por paquetería (' + camino.length + ')</h2><div class="list" style="margin-bottom:22px">' + (camino.length ? camino.map(function (t) { return tcard(t); }).join('') : '<div class="empty">Nada en camino.</div>') + '</div>' +
+    (m === R.HUB ? '<h2>En ' + nomH() + ', por distribuir (' + dist.length + ')</h2><div class="list">' + (dist.length ? dist.map(function (t) { return tcard(t); }).join('') : '<div class="empty">Nada por distribuir.</div>') + '</div>' : '');
+}
+
+/** Centro de envíos: armar cajas para las ubicaciones foráneas y capturar guías. */
+function vPaqLogistica() {
+  var A = S.A, cj = S.caja;
+  var enCaja = {};
+  (S.data.cajas || []).forEach(function (c) { if (c.estatus === 'ARMADA' || c.estatus === 'ENVIADA') c.traspasos.forEach(function (f) { enCaja[f] = c.folio; }); });
+  var sueltos = S.data.traspasos.filter(function (t) { return R.empacable(t, A) && !enCaja[R.limpio(t.folio)]; });
+  var armadas = (S.data.cajas || []).filter(function (c) { return c.estatus === 'ARMADA'; });
+  var enviadas = (S.data.cajas || []).filter(function (c) { return c.estatus === 'ENVIADA'; });
+  var camino = S.data.traspasos.filter(function (t) { return t.estatus === 'PAQUETERIA'; });
+  var dist = S.data.traspasos.filter(function (t) { return t.estatus === 'EN_LOGISTICA' && !R.esMor(A, t.destino); });
+  var fb = cj.fb ? '<div class="feedback ' + cj.fb.k + '">' + esc(cj.fb.m) + '</div>' : '';
+  var cajaCard = function (c, botones) {
+    return '<div class="panel stack" style="padding:14px"><div class="row" style="justify-content:space-between"><div><span class="num" style="font-size:18px">' + esc(c.folio) + '</span> · para <b>' + esc(c.destino) + '</b> · ' + c.traspasos.length + ' traspaso(s), ' + c.bultos + ' bulto(s)</div>' +
+      '<span class="muted">' + esc(fh(c.fecha, c.hora)) + '</span></div><div class="muted" style="font-size:14px">' + esc(c.traspasos.join(', ')) + '</div>' +
+      (c.guia ? '<div class="note">' + esc(c.paqueteria) + ' · guía <b>' + esc(c.guia) + '</b>' + (c.eta ? ' · llega ' + esc(c.eta) : '') + '</div>' : '') +
+      '<div class="row">' + botones + '</div></div>';
+  };
+  var opts = S.cat.paqueterias.map(function (p) { return '<option>' + esc(p) + '</option>'; }).join('');
+  var guiaForm = function (folio) {
+    return '<select class="t" id="pq-' + esc(folio) + '" style="width:auto">' + opts + '</select><input class="t" id="gu-' + esc(folio) + '" placeholder="Número de guía" style="flex:1;min-width:160px">' +
+      '<button class="btn primary" type="button" data-a="guiamanual" data-v="' + esc(folio) + '">Guardar guía</button>';
+  };
+  return '<h1>Paquetería</h1><p class="sub">Arma aquí las cajas para las ubicaciones foráneas (o manda traslados sueltos). Cuando la paquetería te dé la guía, captúrala en la caja o en el traslado: pasan a "Enviado por paquetería".</p>' +
+    '<div class="grid2" style="margin-bottom:24px;align-items:start"><div class="panel stack"><h2 style="margin:0">Armar caja</h2>' +
+      '<label class="f">Escanea los traspasos que van en la caja<input class="scaninput" id="cajain" autocomplete="off" placeholder="NR-0003"></label>' + fb +
+      '<div class="queue">' + (cj.lista.length ? cj.lista.map(function (t) {
+        return '<div class="qrow"><span style="color:var(--ok);font-weight:900">✓</span><div style="min-width:0"><span class="num">' + esc(t.folio) + '</span> · ' + esc(nom(t.origen)) + '<span class="arrow">→</span>' + esc(nom(t.destino)) + '<div class="muted" style="font-size:13px">' + t.bultos + ' bulto(s) · ' + esc(t.desc) + '</div></div><button class="btn ghost" type="button" data-a="cajaquitar" data-v="' + esc(t.folio) + '">Quitar</button></div>';
+      }).join('') : '<div class="empty">Escanea el primer traspaso.</div>') + '</div>' +
+      '<div class="row"><button class="btn ghost" type="button" data-a="cajavaciar"' + (cj.lista.length ? '' : ' disabled') + '>Vaciar</button><button class="btn primary" type="button" data-a="cajacrear"' + (cj.lista.length && !cj.enviando ? '' : ' disabled') + '>' + (cj.enviando ? 'Creando…' : 'Crear caja e imprimir etiqueta') + '</button></div>' +
+    '</div><div class="panel stack" style="align-content:start"><h2 style="margin:0">Listos para la ubicación foránea (' + sueltos.length + ')</h2><p class="muted" style="margin:0;font-size:14px">En ' + nomH() + ', todavía sin caja ni guía. Puedes meterlos a una caja o mandarlos sueltos con su propia guía.</p>' +
+      (sueltos.length ? sueltos.map(function (t) { return '<div class="stack" style="gap:6px;border-bottom:1px solid var(--line);padding-bottom:8px"><button type="button" class="btn" style="justify-content:space-between" data-a="cajaagregar" data-v="' + esc(t.folio) + '"><span class="num">' + esc(t.folio) + '</span><span class="muted">' + esc(nom(t.destino)) + ' · ' + t.bultos + ' b.</span><span>＋ caja</span></button><div class="row">' + guiaForm(t.folio) + '</div></div>'; }).join('') : '<div class="empty">Nada pendiente.</div>') +
+    '</div></div>' +
+    '<h2>Cajas armadas, esperando guía (' + armadas.length + ')</h2><div class="list" style="margin-bottom:22px">' + (armadas.length ? armadas.map(function (c) {
+      return cajaCard(c, guiaForm(c.folio) + '<button class="btn" type="button" data-a="cajaprint" data-v="' + esc(c.folio) + '">Reimprimir etiqueta</button><button class="btn ghost" type="button" data-a="cajadeshacer" data-v="' + esc(c.folio) + '">Deshacer caja</button>');
+    }).join('') : '<div class="empty">No hay cajas esperando guía.</div>') + '</div>' +
+    '<h2>Cajas en camino (' + enviadas.length + ')</h2><div class="list" style="margin-bottom:22px">' + (enviadas.length ? enviadas.map(function (c) { return cajaCard(c, '<button class="btn" type="button" data-a="cajaprint" data-v="' + esc(c.folio) + '">Reimprimir etiqueta</button>'); }).join('') : '<div class="empty">Ninguna en camino.</div>') + '</div>' +
+    '<h2>Traspasos en camino por paquetería (' + camino.length + ')</h2><div class="list" style="margin-bottom:22px">' + (camino.length ? camino.map(function (t) { return tcard(t); }).join('') : '<div class="empty">Nada en camino.</div>') + '</div>' +
+    '<h2>En ' + nomH() + ', por distribuir (' + dist.length + ')</h2><div class="list">' + (dist.length ? dist.map(function (t) { return tcard(t); }).join('') : '<div class="empty">Nada por distribuir.</div>') + '</div>';
+}
+function agregarACaja(texto) {
+  var cj = S.caja, f = R.folioDe(texto), t = MAPA[f];
+  var enCaja = null;
+  (S.data.cajas || []).forEach(function (c) { if (c.estatus === 'ARMADA' && c.traspasos.indexOf(f) >= 0) enCaja = c.folio; });
+  if (!t) cj.fb = { k: 'err', m: 'El folio ' + f + ' no existe.' };
+  else if (!R.empacable(t, S.A)) cj.fb = { k: 'err', m: t.folio + ' no se puede meter: debe ir a la ubicación foránea y estar "En ' + nomH() + '" (o creado por ' + nomH() + '). Está como "' + (S.E[t.estatus] || t.estatus) + '", va a ' + nom(t.destino) + '.' };
+  else if (enCaja) cj.fb = { k: 'err', m: t.folio + ' ya está en la caja ' + enCaja + '.' };
+  else if (cj.lista.some(function (x) { return x.folio === t.folio; })) cj.fb = { k: 'warn', m: t.folio + ' ya está en esta caja.' };
+  else { cj.lista.push(t); cj.fb = { k: 'ok', m: t.folio + ' agregado · ' + t.bultos + ' bulto(s) → ' + nom(t.destino) }; }
+  beep(cj.fb.k);
+  render();
+}
+/** Etiqueta de la caja (mismo tamaño que las de traspaso de esta computadora). */
+function cajaHTML(c, pantalla) {
+  var tm = tamEtiqueta();
+  var tam = estiloTam(tm, pantalla);
+  var det = (c.detalle || c.traspasos.map(function (f) { var t = MAPA[f]; return { folio: f, destino: t ? t.destino : '', bultos: t ? t.bultos : '' }; }));
+  if (tm.formato === 'MINI') {
+    return '<div class="' + (pantalla ? 'label ' : '') + 'lbl mini" style="' + tam + '">' +
+      '<div class="mrow"><span class="fol">' + esc(c.folio) + '</span><span class="bul">' + c.traspasos.length + ' trasp.</span></div>' +
+      bcHTML(c.folio, tm.w - 0.4 - 3, 7) +
+      '<div class="dest">CAJA → ' + esc(String(c.destino).toUpperCase()) + ' · ' + c.bultos + ' bultos</div></div>';
+  }
+  var chica = tm.formato === 'CHICA';
+  return '<div class="' + (pantalla ? 'label ' : '') + 'lbl' + (chica ? ' chica' : '') + '" style="' + tam + '">' +
+    '<div><div class="k">CAJA PARA</div><div class="dest">' + esc(String(c.destino).toUpperCase()) + '</div></div>' +
+    '<div class="fol">' + esc(c.folio) + '</div>' + bcHTML(c.folio, tm.w - 0.4 - (chica ? 3 : 6), chica ? 8 : 12) +
+    '<div class="bul">' + c.traspasos.length + ' TRASPASOS · ' + c.bultos + ' BULTOS</div>' +
+    (chica ? '' : '<div class="pie">' + det.map(function (x) { return esc(x.folio) + (x.destino ? ' → ' + esc(S.A[x.destino] ? S.A[x.destino].corto : x.destino) : '') + (x.bultos ? ' (' + x.bultos + ')' : ''); }).join('<br>') + '</div>') +
+    '</div>';
+}
+/** Detalle de una caja (desde el buscador): qué trae, guía y botón para imprimir su etiqueta. */
+function cajaDetalleHTML(c) {
+  var est = { ARMADA: 'Esperando guía', ENVIADA: 'En camino por paquetería', RECIBIDA: 'Recibida en la ubicación foránea' }[c.estatus] || c.estatus;
+  return '<div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="num" style="font-size:28px">' + esc(c.folio) + '</div><div class="muted">Caja para ' + esc(c.destino) + '</div></div>' +
+    '<div class="row"><span class="badge" style="color:#0B6C80;background:#DAF2F7">' + esc(est) + '</span><button class="btn ghost" type="button" data-a="cerrar" aria-label="Cerrar">✕</button></div></div>' +
+    '<dl class="dl"><div><dt>Traspasos</dt><dd>' + c.traspasos.length + '</dd></div><div><dt>Bultos</dt><dd>' + c.bultos + '</dd></div>' +
+    '<div><dt>Armada</dt><dd>' + esc(fh(c.fecha, c.hora)) + '</dd></div>' + (c.guia ? '<div><dt>Guía</dt><dd>' + esc((c.paqueteria ? c.paqueteria + ' · ' : '') + c.guia) + '</dd></div>' : '') + '</dl>' +
+    '<h2>Lo que trae</h2><div class="list" style="gap:6px">' + c.traspasos.map(function (f) {
+      var t = MAPA[R.limpio(f)];
+      return '<button type="button" class="btn" style="justify-content:space-between" data-a="open" data-v="' + esc(f) + '"><span class="num">' + esc(f) + '</span><span class="muted">' + (t ? esc(nom(t.destino)) : '') + '</span></button>';
+    }).join('') + '</div>' +
+    '<div class="actions"><div class="row"><button class="btn primary" type="button" data-a="cajaprint" data-v="' + esc(c.folio) + '">🖨 Imprimir etiqueta de caja</button></div></div>';
+}
+function imprimirCaja(c) {
+  mandarImprimir(cajaHTML(c, false));
+}
+
+/* ---------- Recepción Oficinas (computadora del patio) ---------- */
+function vRecepcion() {
+  if (S.tab === 'resguardo') return vResguardo();
+  if (S.tab === 'imprimir') return vCentroImpresion();
+  var r = S.rec, dejar = S.tab !== 'recoger';
+  var fb = r.fb ? '<div class="feedback ' + r.fb.k + '" role="alert">' + esc(r.fb.m) + '</div>' : '';
+  var titulo = dejar ? 'Dejar traspasos en ' + nomP() + '' : 'Recoger traspasos de ' + nomP() + '';
+  var sub = dejar ? '' + nomP() + ' es un punto de pausa: aquí se dejan los traspasos mientras los recoge su área o un gestor. Escanea cada traspaso.'
+                  : 'Un gestor se puede llevar cualquier traspaso a su destino. Una persona solo puede recoger lo de su área.';
+  if (!r.quien) {
+    return '<h1>' + titulo + '</h1><p class="sub">' + sub + '</p><div class="panel stack rec-id">' +
+      '<div class="scanbox"><b style="font-size:22px">Escanea tu credencial</b></div>' +
+      idHTML('rec', 'Credencial', 'Escanea tu credencial') + fb + '</div>';
+  }
+  var q = r.quien;
+  if (!dejar) return vRecoger(r, q, fb);
+  var disp = [];
+  return '<h1>' + titulo + '</h1>' +
+    '<div class="gestorpill" style="margin-bottom:16px"><div><b style="font-size:18px">' + esc(q.nombre) + '</b><div class="muted" style="font-size:13px">' +
+      esc(quienTxt(q)) + '</div></div>' +
+      '<button class="btn ghost" type="button" data-a="recquien" style="margin-left:auto">Cambiar de persona</button></div>' +
+    '<div class="scanner"><div class="stack">' +
+      '<label class="f">Escanea cada traspaso<input class="scaninput" id="recin" autocomplete="off" placeholder="NR-0001"></label>' + fb +
+      (dejar ? '' : disponiblesHTML(disp, q)) +
+    '</div><div class="stack"><div class="row" style="justify-content:space-between"><h2 style="margin:0">' + (dejar ? 'Deja' : 'Se lleva') + ' · ' + r.lote.length + '</h2>' +
+      '<button class="btn primary" type="button" data-a="recconfirmar"' + (r.lote.length && !r.enviando ? '' : ' disabled') + '>' + (r.enviando ? 'Guardando…' : (dejar ? 'Confirmar: dejar ' : 'Confirmar: me llevo ') + r.lote.length) + '</button></div>' +
+      '<div class="queue">' + (r.lote.length ? r.lote.map(function (t) {
+        return '<div class="qrow"><span style="color:var(--ok);font-weight:900">✓</span><div style="min-width:0"><div class="row" style="gap:6px 10px">' + areaTag(t.destino) + '<span><span class="num">' + esc(t.folio) + '</span> · ' + esc(nom(t.origen)) + '<span class="arrow">→</span>' + esc(nom(t.destino)) + '</span></div><div class="muted" style="font-size:13px">' + t.bultos + ' bulto(s) · ' + esc(t.desc) + '</div></div><button class="btn ghost" type="button" data-a="recquitar" data-v="' + esc(t.folio) + '">Quitar</button></div>';
+      }).join('') : '<div class="empty">Escanea el primer traspaso.</div>') + '</div></div></div>';
+}
+/*
+ * RECOGER, pensado para quien no usa computadora:
+ *  1) ya se identificó  2) toca las tarjetas de lo que se lleva (o escanea)  3) confirma.
+ * Arriba, grande, solo lo que YA está en el stand para él, agrupado por destino.
+ * Lo que todavía no llega al stand queda guardado en "Ver más".
+ */
+function vRecoger(r, q, fb) {
+  var gestor = q.tipo === 'GESTOR', lleva = R.transporta(q), sel = {};
+  r.lote.forEach(function (t) { sel[t.folio] = true; });
+  var todos = S.data.traspasos.filter(function (t) { return R.recogible(t, S.A, S.E, q).k === 'ok' || sel[t.folio]; });
+  var stand = todos.filter(function (t) { return t.estatus === 'EN_RECEPCION' || sel[t.folio]; });
+  var fuera = todos.filter(function (t) { return t.estatus !== 'EN_RECEPCION' && !sel[t.folio]; });
+  var bultos = r.lote.reduce(function (s, t) { var mx = t.pend > 0 && t.pendEn === R.PAUSA ? t.pend : t.bultos; return s + ((r.lleva || {})[t.folio] || mx); }, 0);
+  var grupos = {};
+  stand.forEach(function (t) { (grupos[t.destino] = grupos[t.destino] || []).push(t); });
+  var orden = Object.keys(grupos).sort(function (a, b) {
+    var ta = grupos[a].some(atrasado), tb = grupos[b].some(atrasado);
+    return (tb - ta) || nom(a).localeCompare(nom(b));
+  });
+  var tarjeta = function (t) {
+    var on = !!sel[t.folio], tarde = atrasado(t);
+    return '<button type="button" class="rcard' + (on ? ' on' : '') + (tarde ? ' tarde' : '') + '" data-a="rectog" data-v="' + esc(t.folio) + '" aria-pressed="' + on + '">' +
+      '<span class="chk">' + (on ? '✓' : '') + '</span>' +
+      '<span class="fol">' + esc(t.folio) + '</span>' +
+      '<span class="bul">' + (t.pend > 0 && t.pendEn === R.PAUSA ? 'falta' + (t.pend > 1 ? 'n ' : ' ') + t.pend + ' de ' + t.bultos : t.bultos + ' bulto' + (t.bultos > 1 ? 's' : '')) + '</span>' +
+      '<span class="de">de ' + esc(nom(t.origen)) + (tarde ? ' · <b>lleva ' + hTxt(t) + '</b>' : '') + '</span></button>';
+  };
+  var cuerpo = orden.length ? orden.map(function (d) {
+    var l = grupos[d], faltan = l.filter(function (t) { return !sel[t.folio]; }).length;
+    return '<section class="rgrupo"><div class="rgh"><div class="rdest">' + esc(nom(d)) + '</div>' + areaTag(d) + '</div>' +
+      '<div class="rcol">' + l.map(tarjeta).join('') + '</div>' +
+      (faltan > 1 ? '<button class="btn rtodos" type="button" data-a="rectodos" data-v="' + esc(d) + '">＋ Llevar los ' + faltan + '</button>' : '') + '</section>';
+  }).join('') : '<div class="empty" style="font-size:18px">' + (lleva ? 'No hay nada en el stand para llevar.' : 'No hay nada en el stand para ' + esc(q.areaNombre || 'tu área') + '.') + '</div>';
+  var mas = fuera.length ? '<details class="rmas"><summary>Ver ' + fuera.length + ' más que todavía <b>no llegan al stand</b> (siguen en su área)</summary>' +
+    '<p class="muted" style="margin:6px 0 10px">Solo llévatelos si te los dan en la mano.</p><div class="rcards">' + fuera.map(tarjeta).join('') + '</div></details>' : '';
+  return '<div class="rpasos"><div class="rp ok"><span>1</span><div><b>' + esc(q.nombre) + '</b><small>' + (gestor ? 'Gestor' : esc(q.areaNombre || 'Persona')) + ' · <a href="#" data-a="recquien">Cambiar</a></small></div></div>' +
+      '<div class="rp' + (r.lote.length ? ' ok' : ' act') + '"><span>2</span><div><b>Toca lo que te llevas</b><small>o escanea la etiqueta</small></div></div>' +
+      '<div class="rp' + (r.lote.length ? ' act' : '') + '"><span>3</span><div><b>Confirma</b><small>al final, abajo</small></div></div></div>' +
+    '<div class="rgrid"><div>' +
+      '<h1 style="margin:0 0 4px">' + (lleva ? 'En el stand para llevar' : 'Te esperan en el stand') + '</h1>' +
+      '<label class="rscan"><span>📷 ¿Traes la etiqueta en la mano? Escanéala aquí</span><input class="scaninput" id="recin" autocomplete="off" placeholder="NR-0001"></label>' + (r.fb && r.fb.k !== 'ok' ? fb : '') +
+      '<div class="rgrupos">' + cuerpo + '</div>' + mas +
+    '</div><aside class="rlleva"><div class="muted" style="font-weight:800;letter-spacing:.06em;font-size:12px">TE LLEVAS</div>' +
+      '<div class="rnum">' + r.lote.length + '<small> traspaso(s)</small></div><div class="muted" style="font-weight:700">' + bultos + ' bulto(s)</div>' +
+      (r.lote.length ? '<div class="rsel">' + r.lote.map(function (t) {
+        var mx = t.pend > 0 && t.pendEn === R.PAUSA ? t.pend : t.bultos, k = (r.lleva || {})[t.folio] || mx;
+        return '<div class="rchip"><div class="row" style="justify-content:space-between;gap:6px"><b class="num">' + esc(t.folio) + '</b><button type="button" data-a="recquitar" data-v="' + esc(t.folio) + '" aria-label="Quitar">✕</button></div>' +
+          (lleva && mx > 1 ? llevaHTML(t.folio, k, mx, (r.mot || {})[t.folio], t.pend > 0) : '') + '</div>';
+      }).join('') + '</div>' : '<div class="muted" style="margin:10px 0">Toca las tarjetas de lo que te llevas.</div>') +
+      '<button class="btn primary rconf" type="button" data-a="recconfirmar"' + (r.lote.length && !r.enviando ? '' : ' disabled') + '>' + (r.enviando ? 'Guardando…' : 'Confirmar: me llevo ' + r.lote.length) + '</button></aside></div>';
+}
+/* ---------- Centro de Impresión (Recepción) ----------
+ * La etiquetadora está conectada solo a esta computadora. Las áreas de Oficinas
+ * crean sus traspasos en su equipo y aquí imprimen las etiquetas.
+ * Solo salen los traspasos en "Nuevo traspaso" (pedido creado, todavía sin moverse).
+ */
+function abrirCentroImpresion() {
+  S.imp = { areas: null, area: (S.imp && S.imp.area) || '', lista: null, err: null, ocupado: false };
+  srv('apiCentroImpresion', S.token).then(function (areas) {
+    S.imp.areas = areas;
+    if (S.imp.area) return cargarPendientes(S.imp.area);
+    render();
+  }).catch(function (e) { S.imp.err = e.message; render(); });
+}
+function cargarPendientes(area) {
+  S.imp.area = area; S.imp.lista = null; S.imp.err = null;
+  if (!area) return render();
+  render();
+  srv('apiPendientesImpresion', S.token, area).then(function (lista) {
+    if (S.imp.area !== area) return;          // cambió de área mientras cargaba
+    S.imp.lista = lista;
+    var a = (S.imp.areas || []).filter(function (x) { return x.id === area; })[0];
+    if (a) a.pendientes = lista.length;
+    render();
+  }).catch(function (e) { S.imp.err = e.message; render(); });
+}
+function imprimirEnRecepcion(folios) {
+  if (S.imp.ocupado) return;
+  S.imp.ocupado = true; S.ocupado = true; render();
+  srv('apiImprimirEnRecepcion', S.token, folios).then(function (listos) {
+    // Un solo trabajo de impresión con todas las etiquetas
+    mandarImprimir(listos.map(function (x) { return x.bultos.map(function (b) { return etiquetaHTML(x.traspaso, b, 0, false); }).join(''); }).join(''));
+    var n = listos.reduce(function (s, x) { return s + x.bultos.length; }, 0);
+    toast('🖨 ' + n + ' etiqueta(s) enviadas a la impresora');
+    S.imp.ocupado = false; S.ocupado = false;
+    cargarPendientes(S.imp.area);
+  }).catch(function (e) { S.imp.ocupado = false; S.ocupado = false; S.imp.err = e.message; render(); });
+}
+function vCentroImpresion() {
+  var im = S.imp || {};
+  var head = '<h1>🖨 Centro de Impresión</h1><p class="sub">Etiquetas de los traspasos que las áreas de Oficinas crearon en su computadora. Solo aparecen los que siguen en <b>Nuevo traspaso</b>; en cuanto un gestor los recoge, salen de aquí.</p>';
+  if (!im.areas) return head + (im.err ? '<div class="feedback err">' + esc(im.err) + '</div>' : '<div class="cargando">Cargando áreas…</div>');
+  var opts = '<option value="">Elige el área…</option>' + im.areas.map(function (a) {
+    return '<option value="' + esc(a.id) + '"' + (im.area === a.id ? ' selected' : '') + '>' + esc(a.nombre) + (a.pendientes ? ' (' + a.pendientes + ')' : '') + '</option>';
+  }).join('');
+  var cuerpo = '';
+  if (im.err) cuerpo = '<div class="feedback err">' + esc(im.err) + '</div>';
+  else if (!im.area) cuerpo = '<div class="empty">Elige un área para ver sus etiquetas por imprimir.</div>';
+  else if (!im.lista) cuerpo = '<div class="cargando">Buscando traspasos…</div>';
+  else if (!im.lista.length) cuerpo = '<div class="empty">Esta área no tiene traspasos en "Nuevo traspaso".</div>';
+  else {
+    var total = im.lista.reduce(function (s, t) { return s + t.bultos; }, 0);
+    cuerpo = '<div class="row" style="justify-content:space-between;margin-bottom:10px"><b>' + im.lista.length + ' traspaso(s) · ' + total + ' etiqueta(s)</b>' +
+      '<button class="btn primary" type="button" data-a="impTodas"' + (im.ocupado ? ' disabled' : '') + '>🖨 Imprimir todas</button></div>' +
+      '<div class="tablewrap"><table><thead><tr><th>Folio</th><th>Destino</th><th>Fecha</th><th>Bultos</th><th>Creó</th><th></th></tr></thead><tbody>' +
+      im.lista.map(function (t) {
+        return '<tr><td class="num">' + esc(t.folio) + (t.impresoEnRec ? '<div class="muted" style="font-size:12px;font-weight:700">ya impreso aquí' + (t.enRecepcion ? ' · en el stand' : '') + '</div>' : '') + '</td>' +
+          '<td>' + areaTag(t.destino) + ' ' + esc(t.destinoNombre) + '<div class="muted" style="font-size:12.5px;white-space:normal">' + esc(t.desc) + '</div></td>' +
+          '<td>' + esc(fh(t.fecha, t.hora)) + '</td><td class="num">' + t.bultos + '</td><td>' + esc(quien(t.por, S.A[S.imp.area] ? S.A[S.imp.area].corto : '')) + '</td>' +
+          '<td><button class="btn' + (t.impresoEnRec ? '' : ' primary') + '" type="button" data-a="impUno" data-v="' + esc(t.folio) + '"' + (im.ocupado ? ' disabled' : '') + '>🖨 ' + (t.impresoEnRec ? 'Imprimir otra vez' : 'Imprimir etiqueta') + '</button></td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  // Cajas para Morelia que armó Logística (esperando guía): su etiqueta se imprime aquí.
+  // También las que ya tienen guía (en camino) hasta que Morelia las reciba: a veces se registra la guía antes de imprimir.
+  var cajas = (S.data.cajas || []).filter(function (c) { return c.estatus === 'ARMADA' || c.estatus === 'ENVIADA'; });
+  var cajasH = cajas.length ? '<div class="panel stack" style="margin-bottom:16px"><b style="font-size:17px">📦 Cajas para la ubicación foránea (' + cajas.length + ')</b>' +
+    '<div class="muted" style="font-size:13px;margin-top:-6px">Las armó ' + nomH() + '. Imprime la etiqueta y pégala en la caja antes de que salga.</div>' +
+    cajas.map(function (c) {
+      return '<div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding-top:10px"><div><span class="num" style="font-size:17px">' + esc(c.folio) + '</span> · para <b>' + esc(c.destino) + '</b> · ' + c.traspasos.length + ' traspaso(s), ' + c.bultos + ' bulto(s)' +
+        (c.estatus === 'ENVIADA' ? ' <span class="badge" style="color:#0B6C80;background:#DAF2F7">ya tiene guía' + (c.guia ? ' ' + esc(c.guia) : '') + '</span>' : ' <span class="badge" style="color:#8A5A00;background:#FFF2D2">esperando guía</span>') +
+        '<div class="muted" style="font-size:12.5px">' + esc(c.traspasos.join(', ')) + '</div></div>' +
+        '<button class="btn primary" type="button" data-a="cajaprint" data-v="' + esc(c.folio) + '">🖨 Imprimir etiqueta de caja</button></div>';
+    }).join('') + '</div>' : '';
+  return head + cajasH + '<div class="panel stack" style="margin-bottom:16px;max-width:520px"><label class="f">Área de Oficinas<select class="t" id="impArea">' + opts + '</select></label>' +
+    '<div class="row"><button class="btn ghost" type="button" data-a="impRecargar">↻ Actualizar</button></div></div>' + cuerpo;
+}
+
+/** Horas desde que se creó el traspaso. */
+function horasDesde(t) {
+  var f = String(t.fecha || '').slice(0, 10), hh = String(t.hora || '').slice(-5);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) { f = String(t.act || '').slice(0, 10); hh = String(t.act || '').slice(11, 16); }
+  var d = new Date(f + 'T' + (/^\d{2}:\d{2}$/.test(hh) ? hh : '00:00') + ':00');
+  var h = (Date.now() - d.getTime()) / 3600000;
+  return isNaN(h) ? 0 : h;
+}
+function atrasado(t) { return t.estatus !== 'EN_LOGISTICA' && horasDesde(t) >= ((S.cat.ajustes && S.cat.ajustes.horasSinSalida) || 36); }
+function hTxt(t) { var h = Math.floor(horasDesde(t)); return h < 1 ? 'menos de 1 h' : h + ' h'; }
+/** Lo que el gestor (o la persona) puede llevarse, agrupado por destino. Lo atrasado sale en rojo. */
+function disponiblesHTML(disp, q) {
+  var grupos = {};
+  disp.forEach(function (t) { (grupos[t.destino] = grupos[t.destino] || []).push(t); });
+  return '<div class="panel stack" style="padding:14px"><b>Disponibles para ' + (q.tipo === 'GESTOR' ? 'llevar' : 'ti') + ' (' + disp.length + ')</b>' +
+    (disp.length ? Object.keys(grupos).sort(function (a, b) { return nom(a).localeCompare(nom(b)); }).map(function (dst) {
+      return '<div class="muted" style="font-size:12.5px;font-weight:900;letter-spacing:.06em;margin-top:4px">' + esc(nom(dst).toUpperCase()) + ' (' + grupos[dst].length + ')</div>' +
+        grupos[dst].map(function (t) {
+          return '<button type="button" class="btn' + (atrasado(t) ? ' tarde' : '') + '" style="justify-content:space-between" data-a="recadd" data-v="' + esc(t.folio) + '"><span class="num">' + esc(t.folio) + '</span><span class="muted">' + esc(nom(t.origen)) + (atrasado(t) ? ' · ' + hTxt(t) : '') + '</span><span>＋</span></button>';
+        }).join('');
+    }).join('') : '<div class="muted">Nada pendiente.</div>') + '</div>';
+}
+function vResguardo() {
+  var stand = S.data.traspasos.filter(function (t) { return t.estatus === 'EN_RECEPCION'; });
+  var porSalir = S.data.traspasos.filter(function (t) { return t.estatus !== 'EN_RECEPCION' && R.porSalirRec(t, S.A); });
+  var lim = (S.cat.ajustes && S.cat.ajustes.horasSinSalida) || 36;
+  var tarde = stand.concat(porSalir).filter(atrasado);
+  var tarjeta = function (t, lugar) {
+    return '<button type="button" class="tcard' + (atrasado(t) ? ' tarde' : '') + '" data-a="open" data-v="' + esc(t.folio) + '" style="color:' + (atrasado(t) ? 'var(--err)' : colorDe(t)) + '"><span class="stripe"></span><span class="body"><span class="top"><span class="folio">' + esc(t.folio) + '</span>' + badge(t) + (atrasado(t) ? '<span class="badge" style="color:var(--err);background:var(--err-bg)">Más de ' + lim + ' h sin salida</span>' : '') + '</span><span class="route">' + esc(nom(t.origen)) + '<span class="arrow">→</span>' + esc(nom(t.destino)) + '</span><span class="desc">' + esc(t.desc) + '</span></span><span class="side"><b>' + t.bultos + ' bulto(s)</b><span>' + lugar + ' hace ' + hTxt(t) + '</span></span></button>';
+  };
+  var seccion = function (titulo, sub, lista, lugar) {
+    var grupos = {};
+    lista.forEach(function (t) { (grupos[t.destino] = grupos[t.destino] || []).push(t); });
+    return '<h2 style="margin-top:22px">' + titulo + ' (' + lista.length + ')</h2><p class="muted" style="margin:-6px 0 10px;font-size:14px">' + sub + '</p>' +
+      (lista.length ? Object.keys(grupos).map(function (dst) {
+        return '<div class="muted" style="font-size:12.5px;font-weight:900;letter-spacing:.06em;margin:10px 0 6px">' + esc(nom(dst).toUpperCase()) + ' (' + grupos[dst].length + ')</div><div class="list">' + grupos[dst].map(function (t) { return tarjeta(t, lugar); }).join('') + '</div>';
+      }).join('') : '<div class="empty">Nada.</div>');
+  };
+  return '<h1>En resguardo</h1><p class="sub">Todo lo que debe salir de Oficinas con un gestor. El gestor le da salida en <b>📤 Recoger</b> con su credencial.</p>' +
+    (tarde.length ? '<div class="feedback err">⚠ ' + tarde.length + ' traspaso(s) llevan más de ' + lim + ' h sin salida. Si ya no están aquí, quizá un gestor se los llevó sin escanear: avisa a ' + nomH() + '.</div>' : '') +
+    seccion('En el stand', 'Registrados aquí (dejados o con etiqueta impresa en el Centro de Impresión).', stand, 'Creado') +
+    seccion('Por salir de Oficinas', 'Creados por un área de Oficinas (o por distribuir de ' + nomH() + ') que todavía no se registran aquí. Pueden estar en camino al stand.', porSalir, 'Creado');
+}
+function identificarRec(d) {
+  var dejar = S.tab !== 'recoger';
+  srv('apiIdentificar', S.token, d).then(function (q) {
+    S.rec = { quien: q, quienId: d, lote: [], fb: { k: 'ok', m: 'Hola ' + q.nombre + '. Ahora escanea los traspasos.' }, enviando: false };
+    S.idAbierto = null; beep('ok'); render();
+  }).catch(function (e) { S.rec.fb = { k: 'err', m: e.message }; beep('err'); render(); });
+}
+function recEscanear(texto) {
+  var r = S.rec, dejar = S.tab !== 'recoger';
+  var f = R.folioDe(texto); if (!f) return;
+  var t = MAPA[f];
+  var v = dejar ? R.dejable(t, S.A, S.E) : R.recogible(t, S.A, S.E, r.quien);
+  if (v.k === 'ok' && r.lote.some(function (x) { return x.folio === t.folio; })) v = { k: 'warn', m: t.folio + ' ya está en la lista.' };
+  if (v.k === 'ok') { r.lote.push(t); v = { k: 'ok', m: t.folio + ' · ' + t.bultos + ' bulto(s) → ' + nom(t.destino) }; }
+  r.fb = v; beep(v.k); render();
+}
+function recConfirmar() {
+  var r = S.rec, dejar = S.tab !== 'recoger';
+  if (!r.lote.length || r.enviando) return;
+  r.enviando = true; S.ocupado = true; render();
+  var lleva = {}, max = {}, motivos = {};
+  if (!dejar) r.lote.forEach(function (t) {
+    var mx = t.pend > 0 && t.pendEn === R.PAUSA ? t.pend : t.bultos;
+    lleva[t.folio] = (r.lleva || {})[t.folio] || mx; max[t.folio] = mx; motivos[t.folio] = (r.mot || {})[t.folio] || '';
+  });
+  var sinM = Object.keys(lleva).filter(function (f) { return lleva[f] < max[f] && !motivos[f]; })[0];
+  if (sinM) { r.enviando = false; S.ocupado = false; r.fb = { k: 'err', m: sinM + ': se lleva ' + lleva[sinM] + ' de ' + max[sinM] + '. Elige por qué se quedan los demás.' }; beep('err'); return render(); }
+  srv('apiRecepcion', S.token, { modo: dejar ? 'DEJAR' : 'RECOGER', quien: r.quienId, folios: r.lote.map(function (t) { return t.folio; }), lleva: lleva, max: max, motivos: motivos })
+    .then(function (d) {
+      var ok = d.resultados.filter(function (x) { return x.ok; }).length;
+      var mal = d.resultados.filter(function (x) { return !x.ok; });
+      S.rec = { quien: null, quienId: null, lote: [], enviando: false,
+        fb: { k: mal.length ? 'warn' : 'ok', m: '✓ ' + ok + ' traspaso(s) ' + (dejar ? 'dejados en ' + nomP() + '' : 'entregados a ' + d.quien) + '.' + (mal.length ? ' No se guardaron: ' + mal.map(function (x) { return x.folio + ' (' + x.msg + ')'; }).join('; ') : ' Listo, puede pasar el siguiente.') } };
+      toast(ok + ' traspaso(s) guardados'); beep(mal.length ? 'warn' : 'listo'); S.ocupado = false; refrescar(false);
+    }).catch(function (e) { r.enviando = false; S.ocupado = false; r.fb = { k: 'err', m: e.message }; render(); });
+}
+
+/* ---------- Administración ---------- */
+function vTodos() {
+  var all = S.data.traspasos;
+  var lista = all.filter(function (t) { return !S.filtro || t.estatus === S.filtro; }).sort(orden);
+  return '<h1>Todos los traspasos</h1><p class="sub">En movimiento y entregados de los últimos 45 días. Para uno más viejo, búscalo por folio en el Buscador. Clic en un traspaso para editarlo, moverlo o eliminarlo.</p>' +
+    chips(all, 'filtro', S.filtro) +
+    '<div class="tablewrap"><table><thead><tr><th>Folio</th><th>Estatus</th><th>Origen</th><th>Destino</th><th>Bultos</th><th>Creado</th><th>Últ. actualización</th></tr></thead><tbody>' +
+    lista.map(function (t) { return '<tr class="click" data-a="open" data-v="' + esc(t.folio) + '"><td class="num">' + esc(t.folio) + '</td><td>' + badge(t) + '</td><td>' + esc(nom(t.origen)) + '</td><td>' + esc(nom(t.destino)) + '</td><td class="num">' + t.bultos + '</td><td>' + esc(fh(t.fecha, t.hora)) + '</td><td>' + esc(fh(t.act)) + '</td></tr>'; }).join('') +
+    '</tbody></table></div>';
+}
+function vBuscar() {
+  var q = S.q.trim().toUpperCase();
+  var res = q ? S.data.traspasos.filter(function (t) {
+    return (t.folio + ' ' + t.desc + ' ' + t.por + ' ' + t.guia + ' ' + t.gestor + ' ' + nom(t.origen) + ' ' + nom(t.destino)).toUpperCase().indexOf(q) >= 0;
+  }).slice(0, 60) : [];
+  return '<h1>Buscador</h1><p class="sub">Escribe o escanea un folio y presiona Enter para ver su historia completa. También busca por guía, persona, gestor o descripción.</p>' +
+    '<form class="searchbar" data-form="buscar"><input id="busq" value="' + esc(S.q) + '" placeholder="NR-0041" autocomplete="off"><button class="btn gold" type="submit">Buscar</button></form>' +
+    (q ? (res.length ? '<div class="list">' + res.map(function (t) { return tcard(t); }).join('') + '</div>' : '<div class="empty">Nada en los últimos 45 días. Si es un folio exacto, presiona Enter para buscarlo en todo el historial.</div>') : '');
+}
+function vSolicitudes() {
+  var s = S.data.solicitudes;
+  return '<h1>Solicitudes</h1><p class="sub"><b>Cancelación:</b> mientras espera respuesta, el traspaso queda congelado. <b>Cambio de destino:</b> el traspaso sigue igual hasta que lo apruebes. Las dos quedan a nombre del área que las pide.</p><div class="list">' +
+    (s.length ? s.map(function (x) {
+      return '<div class="panel stack"><div class="row" style="justify-content:space-between"><span class="num" style="font-size:17px">' + esc(x.folio) + '</span><span class="muted">' + esc(fh(x.fecha)) + '</span></div>' +
+        '<div class="row" style="gap:8px"><span class="badge" style="' + (x.tipo === 'DESTINO' ? 'color:#38559E;background:#E5EBF7' : 'color:#C8232D;background:#FDE6E7') + '">' + (x.tipo === 'DESTINO' ? '📍 Cambio de destino' : '🗑 Cancelación') + '</span>' +
+        (x.tipo === 'DESTINO' ? '<span>' + esc(MAPA[R.limpio(x.folio)] ? nom(MAPA[R.limpio(x.folio)].destino) : '') + ' <span class="arrow">→</span> <b>' + esc(nom(x.destinoNuevo)) + '</b></span>' : '') + '</div>' +
+        '<div class="note"><b>' + esc(x.solicito) + '</b> · ' + esc(x.area) + (x.lado ? ' · <b>' + esc(x.lado) + '</b>' : '') + '<br>"' + esc(x.motivo) + '"</div>' +
+        '<label class="f">Comentario (opcional)<input class="t" id="cm-' + esc(x.id) + '" autocomplete="off"></label>' +
+        '<div class="row"><button class="btn" type="button" data-a="open" data-v="' + esc(x.folio) + '">Ver historia</button><button class="btn" type="button" data-a="solno" data-v="' + esc(x.id) + '">Rechazar</button><button class="btn ' + (x.tipo === 'DESTINO' ? 'gold' : 'danger') + '" type="button" data-a="solsi" data-v="' + esc(x.id) + '">' + (x.tipo === 'DESTINO' ? 'Aprobar y cambiar destino' : 'Aprobar y cancelar') + '</button></div></div>';
+    }).join('') : '<div class="empty">No hay solicitudes pendientes.</div>') + '</div>';
+}
+function vHoja() {
+  return '<h1>Catálogos</h1><p class="sub">Las áreas, personas, credenciales, gestores, administradores, colores de estatus y ajustes se editan directo en el archivo de Google Sheets (hojas azules CAT_ y morada CFG_). La app toma los cambios sola.</p>' +
+    '<div class="panel stack"><a class="btn gold" href="' + esc(S.cat.ajustes.urlHoja) + '" target="_blank" rel="noopener">Abrir la base de datos</a>' +
+    '<div class="note">Para dar de baja algo pon <b>Activo = NO</b>; no borres filas. Para quien pierde la credencial: Activo = NO y dale una nueva.</div></div>';
+}
+
+/* ---------- Detalle (modal) ---------- */
+function abrir(folio) {
+  S.bell = false;
+  S.modal = { folio: folio, det: null, form: null, err: null };
+  render();
+  srv('apiDetalle', S.token, folio).then(function (d) { if (S.modal && S.modal.folio === folio) { if (d.caja) S.modal = { caja: d.caja }; else S.modal.det = d; render(); } })
+    .catch(function (e) { if (S.modal) { S.modal.err = e.message; render(); } });
+}
+function renderModal() {
+  var m = S.modal;
+  if (!m) { $('#modal').innerHTML = ''; return; }
+  var inner;
+  if (m.err && !m.det) inner = '<div class="feedback err">' + esc(m.err) + '</div><div class="row" style="margin-top:12px"><button class="btn" type="button" data-a="cerrar">Cerrar</button></div>';
+  else if (m.caja) inner = cajaDetalleHTML(m.caja);
+  else if (!m.det) inner = '<div class="cargando">Cargando historia…</div>';
+  else inner = detalleHTML(m.det.traspaso, m.det.movimientos);
+  $('#modal').innerHTML = '<div class="modal" data-a="fondo"><div class="box" role="dialog" aria-modal="true">' + inner + '</div></div>';
+  pintarCodigos($('#modal'));
+}
+/** En sucursales: credencial de quien hace la acción (cancelar, editar). En Oficinas no se pide. */
+function credModal(p, que, etiqueta) {
+  var m = S.modal;
+  if (sinCred()) return '';
+  return m[p] ? '<div class="gestorpill"><div><b>' + esc(m[p].nombre) + '</b><div class="muted" style="font-size:13px">' + que + '</div></div><button class="btn ghost" type="button" data-a="' + p + 'clear" style="margin-left:auto">Cambiar</button></div>'
+    : idHTML(p, etiqueta);
+}
+function detalleHTML(t, movs) {
+  var m = S.modal, yo = me(), adm = S.ctx.admin;
+  var dl = [['Origen', nom(t.origen)], ['Destino', nom(t.destino)], ['Bultos', t.bultos], ['Creado', fh(t.fecha, t.hora)], ['Creó', quien(t.por, nom(t.origen))]];
+  if (t.gestor) dl.push(['Gestor', t.gestor]);
+  if (t.guia) dl.push(['Paquetería / guía', t.paqueteria + ' · ' + t.guia]);
+  if (t.recibio) dl.push(['Recibido', quien(t.recibio, nom(t.destino)) + ' · ' + fh(t.fechaEnt)]);
+  if (t.incidencia) dl.push(['Incidencia', t.incidencia]);
+  if (t.editado) dl.push(['Editado', t.editado.replace(/(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/, function (x, f, h) { return fh(f, h); })]);
+  if (R.viaLog(t)) dl.push(['Ruta', 'Vía ' + nomH() + ' + paquetería']);
+  var acc = '';
+  var puedeRe = adm || t.origen === yo;
+  var motR = S.cat.motivos.REIMPRESION.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('');
+  var forms = '';
+  if (m.form === 'rp') {
+    forms += '<div class="inline-form"><div class="row"><label class="f" style="flex:1;min-width:140px">¿Qué etiqueta?<select class="t" id="rpb"><option value="0">Todas (' + t.bultos + ')</option>' + rango(t.bultos).map(function (b) { return '<option value="' + b + '">Bulto ' + b + ' de ' + t.bultos + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f" style="flex:1;min-width:160px">Motivo<select class="t" id="rpm">' + motR + '</select></label></div>' +
+      '<div class="muted" style="font-size:13px">No pide credencial: queda registrado con la cuenta de esta computadora.</div>' +
+      '<div class="row"><button class="btn primary" type="button" data-a="rpgo" data-v="' + esc(t.folio) + '">Reimprimir</button><button class="btn ghost" type="button" data-a="form" data-v="">Cancelar</button></div></div>';
+  }
+  var ladoDest = !adm && !R.eliminable(t, yo) && R.cancelableDestino(t, yo, S.A);
+  if (m.form === 'del') {
+    forms += '<div class="inline-form">' +
+      (ladoDest ? '<div class="note"><b>Lo pides tú, que lo ibas a recibir.</b> La cancelación queda a nombre de <b>' + esc(nom(yo)) + '</b>, no de ' + esc(nom(t.origen)) + ', que lo creó.</div>' : '') +
+      credModal('canc', 'Solicita la cancelación', 'Tu credencial (quien solicita la cancelación)') +
+      '<label class="f">¿Por qué se debe cancelar? (obligatorio)<textarea class="t" id="delm">' + esc(m.delm || '') + '</textarea></label><div class="muted" style="font-size:13px">No se cancela al momento: un administrador revisa la solicitud. Mientras tanto el traspaso queda congelado.</div>' +
+      '<div class="row"><button class="btn danger" type="button" data-a="delgo" data-v="' + esc(t.folio) + '">Enviar solicitud</button><button class="btn ghost" type="button" data-a="form" data-v="">Cancelar</button></div></div>';
+  }
+  if (m.form === 'edit') {
+    var bEd = R.bultosEditables(t);
+    forms += '<div class="inline-form"><div class="note"><b>Solo se puede editar una vez.</b> Queda registrado quién lo editó y se avisa a la otra área.</div>' +
+      credModal('edq', 'Edita el contenido', 'Tu credencial (quien edita)') +
+      '<label class="f">¿Qué se envía?<textarea class="t" id="edesc">' + esc(m.edesc != null ? m.edesc : t.desc) + '</textarea></label>' +
+      (bEd ? '<label class="f" style="max-width:220px">Bultos<input class="t" id="ebul" type="number" min="1" max="99" value="' + esc(m.ebul != null ? m.ebul : t.bultos) + '"></label>'
+           : '<div class="muted" style="font-size:13px">Los bultos ya no se pueden cambiar: el traspaso ya salió.</div>') +
+      '<div class="row"><button class="btn primary" type="button" data-a="edgo" data-v="' + esc(t.folio) + '">Guardar cambios</button><button class="btn ghost" type="button" data-a="form" data-v="">Cancelar</button></div></div>';
+  }
+  if (m.form === 'dest' && !adm) {
+    forms += '<div class="inline-form"><div class="note"><b>Es una solicitud:</b> el destino no cambia hasta que un administrador la apruebe. Queda a nombre de tu área.</div>' +
+      credModal('dsq', 'Solicita el cambio de destino', 'Tu credencial (quien solicita el cambio)') +
+      '<label class="f">¿A dónde debe ir?<select class="t" id="ndest"><option value="">Elige el destino correcto…</option>' + S.cat.areas.filter(function (a) { return a.id !== t.destino && !R.esPausa(a.id); }).map(function (a) { return '<option value="' + a.id + '"' + (m.ndest === a.id ? ' selected' : '') + '>' + esc(a.nombre) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f">¿Por qué se debe cambiar? (obligatorio)<textarea class="t" id="nmot">' + esc(m.nmot || '') + '</textarea></label>' +
+      '<div class="row"><button class="btn primary" type="button" data-a="dsgo" data-v="' + esc(t.folio) + '">Enviar solicitud</button><button class="btn ghost" type="button" data-a="form" data-v="">Cancelar</button></div></div>';
+  }
+  if (m.form === 'dest' && adm) {
+    forms += '<div class="inline-form"><label class="f">Nuevo destino<select class="t" id="ndest">' + S.cat.areas.map(function (a) { return '<option value="' + a.id + '"' + (t.destino === a.id ? ' selected' : '') + '>' + esc(a.nombre) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f">Motivo<input class="t" id="nmot" autocomplete="off" placeholder="Ej. se capturó con el destino equivocado"></label>' +
+      '<div class="muted" style="font-size:13px">Después reimprime las etiquetas: el destino viene impreso.</div>' +
+      '<div class="row"><button class="btn gold" type="button" data-a="destgo" data-v="' + esc(t.folio) + '">Cambiar destino</button><button class="btn ghost" type="button" data-a="form" data-v="">Cancelar</button></div></div>';
+  }
+  var botones = [];
+  if (puedeRe && t.estatus !== 'ELIMINADO' && m.form !== 'rp') botones.push('<button class="btn" type="button" data-a="form" data-v="rp">Reimprimir etiqueta</button>');
+  // Los 3 botones: Cancelar / eliminar (se solicita) · Editar (una vez) · Editar destino (solo administrador)
+  var vivo = t.estatus !== 'ELIMINADO';
+  if (!adm && vivo && m.form !== 'del') botones.push((R.eliminable(t, yo) || ladoDest)
+    ? '<button class="btn" type="button" data-a="form" data-v="del">🗑 Cancelar / eliminar</button>'
+    : '<button class="btn" type="button" disabled title="Solo mientras siga en Nuevo traspaso, desde el área que lo creó o la que lo recibe">🗑 Cancelar / eliminar</button>');
+  if (!adm && vivo && m.form !== 'edit') botones.push(R.editable(t)
+    ? '<button class="btn" type="button" data-a="form" data-v="edit">✏️ Editar</button>'
+    : '<button class="btn" type="button" disabled title="' + esc(t.editado ? 'Ya se editó una vez: ' + t.editado : 'Ya no se puede editar') + '">✏️ Editar' + (t.editado ? ' (ya se usó)' : '') + '</button>');
+  if (vivo && m.form !== 'dest') botones.push(adm
+    ? '<button class="btn gold" type="button" data-a="form" data-v="dest">📍 Editar destino</button>'
+    : R.destinoSolicitable(t, yo, S.A)
+      ? '<button class="btn" type="button" data-a="form" data-v="dest">📍 Editar destino</button>'
+      : '<button class="btn" type="button" disabled title="Solo el área que lo creó o la que lo recibe, antes de que se entregue">📍 Editar destino</button>');
+  if (yo === R.PAUSA) { botones = []; forms = ''; }      // Recepción solo consulta la historia
+  if (botones.length || forms) acc += '<div class="actions"><div class="row">' + botones.join('') + '</div>' + forms + '</div>';
+
+  if (adm) {
+    var ests = S.cat.estatus.map(function (e) { return '<option value="' + e.clave + '"' + (t.estatus === e.clave ? ' selected' : '') + '>' + esc(e.nombre) + '</option>'; }).join('');
+    var areas = function (sel) { return S.cat.areas.map(function (a) { return '<option value="' + a.id + '"' + (sel === a.id ? ' selected' : '') + '>' + esc(a.nombre) + '</option>'; }).join(''); };
+    acc += '<div class="actions"><div class="muted" style="font-size:12px;font-weight:900;letter-spacing:.08em">ACCIONES DE ADMINISTRADOR</div><div class="inline-form">' +
+      '<div class="row"><label class="f" style="flex:1;min-width:180px">Cambiar estatus<select class="t" id="aest">' + ests + '</select></label>' +
+      '<label class="f" style="flex:1;min-width:180px">Mover a otro destino<select class="t" id="adest">' + areas(t.destino) + '</select></label></div>' +
+      '<div class="row"><label class="f" style="flex:1;min-width:180px">Dónde está (si el estatus es "El traspaso está en…")<select class="t" id="aubic"><option value="">—</option>' + areas(t.ubic) + '</select></label>' +
+      '<label class="f" style="flex:1;min-width:180px">Motivo<input class="t" id="amot" placeholder="Opcional" autocomplete="off"></label></div>' +
+      '<div class="row"><button class="btn gold" type="button" data-a="asave" data-v="' + esc(t.folio) + '">Guardar cambios</button>' +
+      (m.confirmDel ? '<span style="font-weight:800;color:var(--err)">¿Eliminar ' + esc(t.folio) + '?</span><button class="btn danger" type="button" data-a="adel" data-v="' + esc(t.folio) + '">Sí, eliminar</button><button class="btn ghost" type="button" data-a="adelno">No</button>'
+        : '<button class="btn danger" type="button" data-a="adelask">Eliminar</button>') + '</div></div></div>';
+  }
+  return '<div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="num" style="font-size:28px">' + esc(t.folio) + '</div><div class="muted">' + esc(t.desc) + '</div></div><div class="row">' + badge(t) + areaTag(t.destino) + '<button class="btn ghost" type="button" data-a="cerrar" aria-label="Cerrar">✕</button></div></div>' +
+    (m.err ? '<div class="feedback err" style="margin-top:10px">' + esc(m.err) + '</div>' : '') +
+    '<dl class="dl">' + dl.map(function (x) { return '<div><dt>' + x[0] + '</dt><dd>' + esc(x[1]) + '</dd></div>'; }).join('') + '</dl>' +
+    '<h2>Línea de tiempo</h2><ol class="timeline">' + (movs.length ? movs.map(function (e) {
+      var c = (S.EC[e.nuevo] && S.EC[e.nuevo].color) || '#9AA7B3';
+      return '<li style="--tl:' + c + '"><div class="when">' + esc(fh(e.fecha, e.hora)) + '</div><div class="what">' + esc(e.accion) + '</div><div class="detail">' + esc([quien(e.persona, ''), e.donde, e.medio, e.detalle].filter(function (x, i, arr) { return x && arr.indexOf(x) === i; }).join(' · ')) + '</div></li>';
+    }).join('') : '<li>Sin movimientos.</li>') + '</ol>' +
+    '<details style="margin:8px 0 4px"><summary style="cursor:pointer;font-weight:800">Ver etiquetas (' + t.bultos + ')</summary><div class="labels" style="margin-top:12px">' + rango(t.bultos).map(function (b) { return etiquetaHTML(t, b, t.reimp || 0, true); }).join('') + '</div></details>' + acc;
+}
+
+/* ---------- eventos ---------- */
+document.addEventListener('click', function (e) {
+  var el = e.target.closest('[data-a]'); if (!el) return;
+  var a = el.getAttribute('data-a'), v = el.getAttribute('data-v');
+  if (a === 'fondo' && e.target !== el) return;
+  if (a === 'faltan') return;
+  if (a === 'llevamenos' || a === 'llevamas') {
+    var d1 = a === 'llevamas' ? 1 : -1;
+    if (S.tab === 'recoger' && me() === R.PAUSA) { var rl = S.rec.lleva || (S.rec.lleva = {}); var tt = S.rec.lote.filter(function (x) { return x.folio === v; })[0]; var mx2 = tt ? (tt.pend > 0 && tt.pendEn === R.PAUSA ? tt.pend : tt.bultos) : 1; rl[v] = Math.max(1, Math.min(mx2, (rl[v] || mx2) + d1)); }
+    else S.scan.lote.forEach(function (it) { if (it.t.folio === v) it.lleva = Math.max(1, Math.min(it.max, it.lleva + d1)); });
+    return render();
+  }
+  var w = S.wiz;
+  switch (a) {
+    case 'entrar': return entrar(v);
+    case 'salir': e.preventDefault(); return salir();
+    case 'cambiarArea': return pantallaEntrada();
+    case 'tab':
+      if (me() === R.PAUSA && S.tab !== v) S.rec = { quien: null, quienId: null, lote: [], fb: null, enviando: false };
+      S.tab = v; S.filtro = null; S.bell = false;
+      if (v === 'imprimir') { abrirCentroImpresion(); return; }
+      break;
+    case 'impUno': return imprimirEnRecepcion([v]);
+    case 'impTodas': return imprimirEnRecepcion(S.imp.lista.map(function (t) { return t.folio; }));
+    case 'impRecargar': return abrirCentroImpresion();
+    case 'entsug': case 'recsug': return alEscanear(v);
+    case 'tclear': S.scan.trae = null; break;
+    case 'dir': S.dir = v; S.filtro = null; break;
+    case 'filtro': S.filtro = S.filtro === v ? null : v; break;
+    case 'ayuda': S.ayuda = !S.ayuda; S.bell = false; break;
+    case 'bell':
+      S.bell = !S.bell; S.sonidos = false; S.ayuda = false;
+      // Solo se muestran los nuevos; al abrir se marcan vistos y ya no vuelven a salir.
+      S.bellLista = S.bell ? (S.data.avisos || []).filter(function (x) { return !x.visto; }) : null;
+      if (S.bell && S.noVistos) { srv('apiAvisosVistos', S.token).catch(function () { }); S.data.avisos.forEach(function (x) { x.visto = true; }); S.noVistos = 0; document.title = 'Traspasos'; }
+      break;
+    case 'sonidos': S.sonidos = !S.sonidos; break;
+    case 'oir': beep(v); return;
+    case 'open': return abrir(v);
+    case 'cerrar': case 'fondo': S.modal = null; break;
+    case 'form': S.modal.form = v || null; S.modal.err = null; S.modal.edesc = null; S.modal.ebul = null; S.modal.ndest = null; S.modal.nmot = null; break;
+
+    case 'idman': return alIdentificar(v, leerId(v, true));
+    case 'entrarpin': return entrar(v, $('#pinin').value);
+    case 'pincancel': return leer('token') ? arrancar() : dibujarEntrada();
+    case 'recquien': e.preventDefault(); S.rec = { quien: null, quienId: null, lote: [], fb: null, enviando: false }; break;
+    case 'recadd': return recEscanear(v);
+    case 'rectog':
+      if (S.rec.lote.some(function (t) { return t.folio === v; })) S.rec.lote = S.rec.lote.filter(function (t) { return t.folio !== v; });
+      else return recEscanear(v);
+      break;
+    case 'rectodos':
+      S.data.traspasos.filter(function (t) { return t.destino === v && t.estatus === 'EN_RECEPCION' && R.recogible(t, S.A, S.E, S.rec.quien).k === 'ok' && !S.rec.lote.some(function (x) { return x.folio === t.folio; }); })
+        .forEach(function (t) { S.rec.lote.push(t); });
+      beep('ok'); break;
+    case 'recquitar': S.rec.lote = S.rec.lote.filter(function (t) { return t.folio !== v; }); break;
+    case 'recconfirmar': return recConfirmar();
+    case 'atras': w.step--; w.err = null; break;
+    case 'dest': { var d = $('#destin').value; if (!d) { w.err = 'Elige el destino.'; break; } w.destino = d; w.bultos = w.bultos || 1; w.err = null; w.step = 3; break; }
+    case 'sugdesc': {
+      var actual = $('#descin').value.trim();
+      if (actual.toLowerCase().indexOf(v.toLowerCase()) < 0) w.desc = actual ? actual + ', ' + v : v;
+      else w.desc = actual;
+      break;
+    }
+    case 'qty': w.desc = $('#descin').value; w.bultos = Math.min(99, Math.max(1, (w.bultos || 1) + Number(v))); break;
+    case 'crear': return crear();
+    case 'otro': S.wiz = wizNuevo(); break;
+    case 'reimp-auto': if (w.t) imprimir(w.t, rango(w.t.bultos), 0); return;
+
+    case 'modo': S.scan = { modo: v, lote: [], fb: null, gestor: null, log: [], enviando: false }; break;
+    case 'gclear': S.scan.gestor = null; S.scan.lote = []; S.scan.fb = null; break;
+    case 'rclear': S.scan.receptor = null; S.scan.receptorId = null; S.scan.fb = null; break;
+    case 'vaciar': S.scan.lote = []; S.scan.fb = null; break;
+    case 'confirmar': return confirmarLote();
+    case 'ubicar':
+      srv('apiUbicar', S.token, v).then(function () { toast('Registrado: ' + v + ' está en ' + nom(me())); S.scan.fb = { k: 'ok', m: 'Quedó registrado que ' + v + ' está aquí. Se avisó al origen, al destino y a administración.' }; refrescar(false); })
+        .catch(function (er) { toast(er.message); });
+      return;
+
+    case 'cajaagregar': return agregarACaja(v);
+    case 'cajaquitar': S.caja.lista = S.caja.lista.filter(function (t) { return t.folio !== v; }); S.caja.fb = null; break;
+    case 'cajavaciar': S.caja = { lista: [], fb: null, enviando: false }; break;
+    case 'cajacrear':
+      S.caja.enviando = true; S.ocupado = true; render();
+      srv('apiArmarCaja', S.token, S.caja.lista.map(function (t) { return t.folio; })).then(function (c) {
+        S.caja = { lista: [], fb: { k: 'ok', m: 'Caja ' + c.folio + ' creada. Si esta computadora no tiene etiquetadora, imprímela en ' + nomP() + ' → 🖨 Centro de Impresión → Cajas para la ubicación foránea. Cuando tengas la guía, captúrala aquí en la caja.' }, enviando: false };
+        imprimirCaja(c); S.ocupado = false; refrescar(false);
+      }).catch(function (er) { S.caja.enviando = false; S.ocupado = false; S.caja.fb = { k: 'err', m: er.message }; render(); });
+      return;
+    case 'cajaprint': { var c = CAJAS[R.limpio(v)]; if (c) imprimirCaja(c); return; }
+    case 'cajadeshacer':
+      srv('apiDeshacerCaja', S.token, v).then(function () { toast('Caja ' + v + ' deshecha; sus traspasos quedan sueltos'); refrescar(false); }).catch(function (er) { toast(er.message); });
+      return;
+    case 'guiamanual': {
+      var gm = $('#gu-' + v).value.trim(); if (!gm) { toast('Captura el número de guía'); return; }
+      srv('apiCapturarGuia', S.token, v, $('#pq-' + v).value, gm, '').then(function (d) {
+        toast(d.actualizados + ' traslado(s) enviados por paquetería'); refrescar(false);
+      }).catch(function (er) { toast(er.message); });
+      return;
+    }
+    case 'enviarpq': {
+      var g = $('#gu-' + v).value.trim(); if (!g) { toast('Captura el número de guía'); return; }
+      srv('apiPaqueteria', S.token, v, $('#pq-' + v).value, g).then(function () { toast(v + ' enviado por paquetería'); refrescar(false); }).catch(function (er) { toast(er.message); });
+      return;
+    }
+    case 'rpgo': {
+      var b = $('#rpb').value, mot = $('#rpm').value;
+      srv('apiReimprimir', S.token, { folio: v, bulto: b, motivo: mot }).then(function (d) {
+        S.modal.form = null; imprimir(d.traspaso, d.bultos, d.rp); abrir(v);
+      }).catch(function (er) { S.modal.err = er.message; render(); });
+      return;
+    }
+    case 'cancclear': S.modal.canc = null; S.modal.cancId = null; break;
+    case 'edqclear': S.modal.edq = null; S.modal.edqId = null; break;
+    case 'dsqclear': S.modal.dsq = null; S.modal.dsqId = null; break;
+    case 'dsgo': {
+      S.modal.ndest = $('#ndest').value; S.modal.nmot = $('#nmot').value.trim();
+      if (!S.modal.ndest) { S.modal.err = 'Elige a dónde debe ir.'; break; }
+      if (!S.modal.nmot) { S.modal.err = 'Escribe por qué se debe cambiar el destino.'; break; }
+      if (!sinCred() && !S.modal.dsqId) { S.modal.err = 'Escanea tu credencial: queda registrado quién solicita el cambio.'; break; }
+      srv('apiSolicitarCambioDestino', S.token, v, S.modal.ndest, S.modal.nmot, S.modal.dsqId || null).then(function () {
+        beep('listo'); toast('Solicitud enviada a los administradores'); abrir(v); refrescar(false);
+      }).catch(function (er) { S.modal.err = er.message; beep('err'); render(); });
+      return;
+    }
+    case 'edgo': {
+      S.modal.edesc = $('#edesc').value; S.modal.ebul = $('#ebul') ? $('#ebul').value : null;
+      if (!S.modal.edesc.trim()) { S.modal.err = 'Escribe qué se envía.'; break; }
+      if (!sinCred() && !S.modal.edqId) { S.modal.err = 'Escanea tu credencial: queda registrado quién editó.'; break; }
+      srv('apiEditarContenido', S.token, { folio: v, desc: S.modal.edesc, bultos: S.modal.ebul, quien: S.modal.edqId || null }).then(function (r) {
+        beep('listo');
+        if (r.bultosCambio && r.origen === me()) {
+          toast('Guardado. Imprimiendo las etiquetas nuevas…');
+          srv('apiReimprimir', S.token, { folio: v, bulto: 0, motivo: 'Se editó el número de bultos' }).then(function (x) { imprimir(x.traspaso, x.bultos, x.rp); });
+        } else toast(r.bultosCambio ? 'Guardado. Se avisó al área que lo creó para que reimprima las etiquetas.' : 'Cambios guardados');
+        abrir(v); refrescar(false);
+      }).catch(function (er) { S.modal.err = er.message; beep('err'); render(); });
+      return;
+    }
+    case 'destgo':
+      srv('apiAdminEditar', S.token, v, { destino: $('#ndest').value }, $('#nmot').value)
+        .then(function () { toast('Destino cambiado'); abrir(v); refrescar(false); }).catch(function (er) { S.modal.err = er.message; render(); });
+      return;
+    case 'delgo': {
+      var mt = $('#delm').value.trim(); S.modal.delm = mt;
+      if (!mt) { S.modal.err = 'Escribe el motivo.'; break; }
+      if (!sinCred() && !S.modal.cancId) { S.modal.err = 'Escanea tu credencial: queda registrado quién solicita la cancelación.'; break; }
+      srv('apiSolicitarEliminacion', S.token, v, mt, S.modal.cancId || null).then(function () { toast('Solicitud enviada a los administradores'); S.modal = null; refrescar(false); })
+        .catch(function (er) { S.modal.err = er.message; render(); });
+      return;
+    }
+    case 'asave':
+      srv('apiAdminEditar', S.token, v, { estatus: $('#aest').value, destino: $('#adest').value, ubic: $('#aubic').value }, $('#amot').value)
+        .then(function () { toast('Cambios guardados'); abrir(v); refrescar(false); }).catch(function (er) { S.modal.err = er.message; render(); });
+      return;
+    case 'adelask': S.modal.confirmDel = true; break;
+    case 'adelno': S.modal.confirmDel = false; break;
+    case 'adel':
+      srv('apiAdminEliminar', S.token, v, $('#amot') ? $('#amot').value : '').then(function () { toast(v + ' eliminado'); S.modal = null; refrescar(false); })
+        .catch(function (er) { S.modal.err = er.message; render(); });
+      return;
+    case 'solsi': case 'solno':
+      srv('apiAdminResolver', S.token, v, a === 'solsi', $('#cm-' + v).value).then(function () { toast(a === 'solsi' ? 'Solicitud aprobada' : 'Solicitud rechazada'); refrescar(false); })
+        .catch(function (er) { toast(er.message); });
+      return;
+    default: return;
+  }
+  render();
+});
+document.addEventListener('change', function (e) {
+  if (e.target.id === 'destin') { $('#rutanote').innerHTML = rutaNota(me(), e.target.value); if ($('#sugpanel')) $('#sugpanel').innerHTML = guiaEnvios(e.target.value); }
+  if (e.target.id === 'impArea') cargarPendientes(e.target.value);
+  if (e.target.getAttribute('data-a') === 'faltan') {
+    var f = e.target.getAttribute('data-v');
+    S.scan.lote.forEach(function (it) { if (it.t.folio === f) it.faltan = e.target.checked; });
+    render();
+  }
+  if (e.target.getAttribute('data-inc') === 'tipo') { guardarInc(e.target); render(); }
+  if (e.target.getAttribute('data-mot')) {
+    var fm = e.target.getAttribute('data-v');
+    if (S.tab === 'recoger' && me() === R.PAUSA) (S.rec.mot || (S.rec.mot = {}))[fm] = e.target.value;
+    else S.scan.lote.forEach(function (it) { if (it.t.folio === fm) it.motivo = e.target.value; });
+  }
+});
+/** Lo que pasa cuando un campo "se envía" (Enter, o solo, al terminar de escanear). */
+function procesarCampo(el) {
+  var id = el.id, v = el.value;
+  if (id === 'scanin') alEscanear(v);
+  else if (id === 'cajain') agregarACaja(v);
+  else if (id === 'recin') recEscanear(v);
+  else if (id === 'hbusq') { var fm = el.closest('form'); if (fm) fm.requestSubmit ? fm.requestSubmit() : fm.dispatchEvent(new Event('submit', { cancelable: true })); }
+  else if (id === 'pinin') entrar(S.pinPara || el.closest('.pinbox').querySelector('[data-a=entrarpin]').getAttribute('data-v'), v);
+  else if (/-(cod|nip|usr)$/.test(id)) {
+    var p = id.replace(/-(cod|nip|usr)$/, '');
+    alIdentificar(p, leerId(p, !/-cod$/.test(id)));
+  }
+  else return false;
+  return true;
+}
+
+/*
+ * ESCÁNER SIN ENTER: la pistola "teclea" muy rápido (menos de ~40 ms entre letras).
+ * Si detectamos esa ráfaga, al terminar se envía solo, sin Enter ni teclado.
+ * Si alguien teclea a mano un folio completo que existe, también se envía solo al dejar de teclear.
+ * Si la pistola además manda Enter, no se duplica.
+ */
+var AUTO = { el: null, t: null, ult: 0, rapidas: 0, lentas: 0 };
+var CAMPOS_AUTO = /^(scanin|cajain|recin|hbusq|[a-z]+-cod)$/;
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && S.modal) { S.modal = null; render(); return; }
+  var el = e.target;
+  if (e.key === 'Enter') {
+    if (!el.id) return;
+    clearTimeout(AUTO.t); AUTO.el = null;
+    if (procesarCampo(el)) e.preventDefault();
+    return;
+  }
+  if (!CAMPOS_AUTO.test(el.id || '') || e.key.length !== 1) return;
+  var ahora = Date.now();
+  if (AUTO.el !== el || !el.value) { AUTO.el = el; AUTO.rapidas = 0; AUTO.lentas = 0; }
+  else if (ahora - AUTO.ult < 45) AUTO.rapidas++; else AUTO.lentas++;
+  AUTO.ult = ahora;
+});
+document.addEventListener('input', function (e) {
+  var el = e.target;
+  if (el.id === 'descin') { S.wiz.desc = el.value; return; }
+  if (el.getAttribute && el.getAttribute('data-inc')) { guardarInc(el); return; }
+  if (!CAMPOS_AUTO.test(el.id || '')) return;
+  clearTimeout(AUTO.t);
+  var v = String(el.value || '').trim();
+  if (!v) return;
+  var pistola = AUTO.el === el && AUTO.rapidas >= 3 && AUTO.rapidas > AUTO.lentas;
+  var f = R.folioDe(v);
+  var completo = !/-cod$/.test(el.id) && (MAPA[f] || CAJAS[f]) && R.valido(v);
+  if (!pistola && !completo) return;
+  AUTO.t = setTimeout(function () {
+    if (!document.body.contains(el) || String(el.value || '').trim() !== v) return;
+    AUTO.el = null;
+    procesarCampo(el);
+  }, pistola ? 120 : 900);
+});
+document.addEventListener('submit', function (e) {
+  if (e.target.getAttribute('data-form') === 'hbuscar') {
+    e.preventDefault();
+    var q = String($('#hbusq').value || '').trim();
+    if (!q) return;
+    $('#hbusq').value = '';
+    var cj = CAJAS[R.limpio(q)];
+    if (cj) { S.bell = false; S.modal = { caja: cj }; return render(); }
+    return abrir(/^#/.test(q) ? q.replace(/\s+/g, '').toUpperCase() : (R.folioDe(q) || q.toUpperCase()));
+  }
+  if (e.target.getAttribute('data-form') !== 'buscar') return;
+  e.preventDefault();
+  S.q = $('#busq').value;
+  var f = R.folioDe(S.q);
+  if (R.valido(S.q)) return abrir(f);
+  if (/^\s*#\s*\w+\s*$/.test(S.q)) return abrir(S.q.replace(/\s+/g, '').toUpperCase());
+  render();
+});
+
+/* ---------- Identificarse: credencial, o usuario + NIP ---------- */
+function idHTML(p, etiqueta, ph) {
+  // El código de la credencial nunca se ve: el campo lo muestra como ●●●● y luego solo aparece el nombre.
+  return '<label class="f">' + etiqueta + '<input class="scaninput cred" id="' + p + '-cod" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="' + esc(ph || 'Escanea la credencial') + '"></label>' +
+    '<details class="sincred"' + (S.idAbierto === p ? ' open' : '') + '><summary>¿Sin credencial? Teclea usuario y NIP</summary>' +
+    '<div class="row" style="margin-top:8px"><input class="t" id="' + p + '-usr" autocomplete="off" placeholder="Usuario o No. de empleado" style="flex:1;min-width:150px">' +
+    '<input class="t" id="' + p + '-nip" type="password" autocomplete="off" placeholder="NIP" style="width:130px">' +
+    '<button class="btn primary" type="button" data-a="idman" data-v="' + p + '">Continuar</button></div></details>';
+}
+function leerId(p, manual) {
+  var g = function (sfx) { var el = $('#' + p + '-' + sfx); return el ? String(el.value || '').trim() : ''; };
+  if (manual) { S.idAbierto = p; return { usuario: g('usr'), nip: g('nip') }; }
+  return { codigo: g('cod') };
+}
+function alIdentificar(p, d) {
+  if (!d.codigo && !(d.usuario && d.nip)) return;
+  if (p === 'crea') validarCred(d);
+  else if (p === 'gest') validarGestor(d);
+  else if (p === 'recv') validarReceptor(d);
+  else if (p === 'rec') identificarRec(d);
+  else if (p === 'rgest') validarTrae(d);
+  else if (p === 'canc' || p === 'edq' || p === 'dsq') {
+    // Guardar lo que ya escribieron antes de volver a pintar
+    if (S.modal && $('#delm')) S.modal.delm = $('#delm').value;
+    if (S.modal && $('#nmot')) { S.modal.nmot = $('#nmot').value; S.modal.ndest = $('#ndest').value; }
+    if (S.modal && $('#edesc')) { S.modal.edesc = $('#edesc').value; S.modal.ebul = $('#ebul') ? $('#ebul').value : null; }
+    srv('apiPersona', S.token, d).then(function (q) { if (!S.modal) return; S.modal[p] = q; S.modal[p + 'Id'] = d; S.modal.err = null; S.idAbierto = null; beep('ok'); render(); })
+      .catch(function (e) { if (S.modal) { S.modal.err = e.message; beep('err'); render(); } });
+  }
+}
+function validarCred(d) {
+  srv('apiPersona', S.token, d).then(function (p) { S.wiz.persona = p; S.wiz.ident = d; S.wiz.err = null; S.wiz.step = 2; S.idAbierto = null; beep('ok'); render(); })
+    .catch(function (e) { S.wiz.err = e.message; beep('err'); render(); });
+}
+function validarGestor(d) {
+  srv('apiGestor', S.token, d).then(function (g) { S.scan.gestor = g; S.scan.gestorId = d; S.idAbierto = null; S.scan.fb = { k: 'ok', m: g.nombre + ' se los lleva. Ahora escanea los traspasos.' }; beep('ok'); render(); })
+    .catch(function (e) { S.scan.fb = { k: 'err', m: e.message }; beep('err'); render(); });
+}
+function validarReceptor(d) {
+  srv('apiPersona', S.token, d).then(function (q) { S.scan.receptor = q; S.scan.receptorId = d; S.idAbierto = null; S.scan.fb = { k: 'ok', m: 'Recibe ' + q.nombre + '. Ahora escanea los traspasos.' }; beep('ok'); render(); })
+    .catch(function (e) { S.scan.fb = { k: 'err', m: e.message }; beep('err'); render(); });
+}
+function crear() {
+  var w = S.wiz;
+  w.desc = $('#descin').value.trim();
+  if (!w.desc) { w.err = 'Describe qué envías.'; return render(); }
+  w.enviando = true; w.err = null; render();
+  var d = { destino: w.destino, desc: w.desc, bultos: w.bultos || 1 };
+  var id = w.ident || {};
+  if (id.codigo) d.codigo = id.codigo; else { d.usuario = id.usuario; d.nip = id.nip; }
+  srv('apiCrear', S.token, d).then(function (t) {
+    S.wiz = { step: 4, t: t };
+    beep('listo'); render();
+    imprimir(t, rango(t.bultos), 0);
+    refrescar(false);
+  }).catch(function (e) { w.enviando = false; w.err = e.message; render(); });
+}
+
+arrancar();
+</script>

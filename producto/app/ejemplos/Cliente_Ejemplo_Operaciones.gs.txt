@@ -1,0 +1,75 @@
+/***********************************************************************
+ * EJEMPLO DE EXCEPCIÓN DE CLIENTE: guías desde la hoja "Operaciones" de otro sistema
+ * (caso real: la app de gestores de un cliente registra ahí paquetería y guía).
+ *
+ * Para usarlo con un cliente: copia este archivo como Cliente_<nombre>.gs,
+ * ajusta TR_OPS y renombra _guiasOperaciones → clienteGuias.
+ * revisionPeriodica() (06_Cajas.gs) lo llama cada 10 minutos.
+ ***********************************************************************/
+const TR_OPS = { ID_ARCHIVO: '<ID del archivo>', HOJA: 'Operaciones', FILA_ENC: 2, MAX_FILAS: 2500 };
+
+function _idOperaciones() {
+  const v = String(_ajuste('url_archivo_operaciones', '') || '');
+  const m = v.match(/\/d\/([-\w]{20,})/) || v.match(/^([-\w]{30,})$/);
+  return m ? m[1] : TR_OPS.ID_ARCHIVO;
+}
+
+/** Letra de columna ("A", "K", "AB") → número (1, 11, 28). */
+function _colNum(letra, porDefecto) {
+  const s = String(letra || '').trim().toUpperCase();
+  if (!/^[A-Z]{1,2}$/.test(s)) return porDefecto;
+  let n = 0;
+  for (let i = 0; i < s.length; i++) n = n * 26 + (s.charCodeAt(i) - 64);
+  return n;
+}
+
+/**
+ * Columnas de "Operaciones" que se leen. Por defecto:
+ *   A = folio del traspaso o de la caja (ID Pedido / Tarea)
+ *   K = paquetería (DHL, Estafeta…)
+ *   M = número de guía
+ * Se pueden cambiar en CFG_Ajustes: ops_columna_folio, ops_columna_paqueteria, ops_columna_guia.
+ */
+function _colsOperaciones() {
+  return {
+    id: _colNum(_ajuste('ops_columna_folio', 'A'), 1),
+    prov: _colNum(_ajuste('ops_columna_paqueteria', 'K'), 11),
+    guia: _colNum(_ajuste('ops_columna_guia', 'M'), 13)
+  };
+}
+
+/**
+ * Lee de "Operaciones" las filas con guía:
+ *   { 'CJ-0001': {prov, guia, eta, fila}, 'NR-0003': {...} }
+ * En la columna del folio puede venir uno solo o varios separados por coma o espacio.
+ */
+function _guiasOperaciones() {
+  const sh = SpreadsheetApp.openById(_idOperaciones()).getSheetByName(TR_OPS.HOJA);
+  if (!sh) throw new Error('No encontré la hoja "' + TR_OPS.HOJA + '" en el archivo de Operaciones.');
+  const C = _colsOperaciones();
+  const lc = Math.max(sh.getLastColumn(), C.id, C.prov, C.guia);
+  const enc = sh.getRange(TR_OPS.FILA_ENC, 1, 1, lc).getValues()[0].map(_norm);
+  let cEta = -1;
+  for (let i = 0; i < enc.length; i++) if (enc[i].indexOf('eta') === 0) { cEta = i; break; }
+  const ult = sh.getLastRow();
+  // Después de "Limpiar para lanzamiento" se ignoran las filas viejas (sus folios podrían repetirse).
+  const ignorar = Number(_ajuste('ops_ignorar_hasta_fila', 0)) || 0;
+  const desde = Math.max(TR_OPS.FILA_ENC + 1, ult - TR_OPS.MAX_FILAS + 1, ignorar + 1);
+  if (ult < desde) return {};
+  const datos = sh.getRange(desde, 1, ult - desde + 1, lc).getValues();
+  const out = {};
+  datos.forEach(function (f, i) {
+    const guia = String(f[C.guia - 1] == null ? '' : f[C.guia - 1]).trim();
+    if (!guia || /no aplica|^n\/?a$|^-+$/i.test(guia)) return;
+    const prov = String(f[C.prov - 1] == null ? '' : f[C.prov - 1]).trim();
+    String(f[C.id - 1] == null ? '' : f[C.id - 1]).split(/[\s,;\/]+/).forEach(function (x) {
+      const id = R.folioDe(x);
+      if (!id || !R.valido(id)) return;
+      out[id] = { prov: prov, guia: guia, eta: cEta >= 0 ? _txt(f[cEta]) : '', fila: desde + i };
+    });
+  });
+  return out;
+}
+
+
+function clienteGuias() { return _guiasOperaciones(); }

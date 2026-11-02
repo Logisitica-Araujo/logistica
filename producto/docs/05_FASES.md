@@ -11,12 +11,14 @@ Cada fase termina con una **vista previa** que se aprueba antes de pasar a la si
 - [x] Vista previa del asistente de configuración
 - [ ] **Aprobación** del diseño y del nombre comercial
 
-## Fase 2 · Extracción y limpieza
-- [ ] Copiar el código a `producto/app/` sin datos ni IDs de FADERMEX
-- [ ] Renombrar a vocabulario universal (traslado, ubicación, pieza, portador)
+## Fase 2 · Extracción y limpieza (en curso)
+- [x] Copiar el código a `producto/app/` sin datos ni IDs de FADERMEX
+- [x] Recepción y Logística convertidas en papeles configurables (punto de resguardo / centro de envíos)
+- [x] Quitar Botican y la hoja Operaciones; quedan como ejemplos en `app/ejemplos/`
+- [x] Captura manual de guías; revisión periódica genérica; enchufes de cliente
+- [x] Pruebas automáticas del núcleo pasando
+- [ ] Renombrar a vocabulario universal (traslado, ubicación, pieza, portador) → con palabras configurables (Fase 3)
 - [ ] Estados universales (8)
-- [ ] Quitar Botican, Operaciones y reglas de Morelia; dejarlos como ejemplo en `Cliente_Ejemplo.gs`
-- [ ] Pruebas automáticas del núcleo pasando
 
 ## Fase 3 · Configuración y módulos
 - [ ] Hojas `CFG_*` y lectura de módulos activos
