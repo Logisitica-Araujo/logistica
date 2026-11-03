@@ -19,7 +19,7 @@
 - **API de OPERACIONES** (repositorio OPERACIONES, misma rama): `04_Backend_App.gs` nuevo, rol App, el Gestor solo cierra sus pedidos, memoria de 60 s.
 - **App del celular** en `v2/`: entrar una vez, vehículo y revisión, inicio con avisos y sonido, pedidos, entregar con cámara dentro de la app, firma, no entregué, paquetería, WhatsApp, escáner para recolectar y entregar, lo que llevo, manual, fila sin señal y borrador si se cierra la app.
 - **Pruebas:** `pruebas.js` 45/45, `prueba-integrada.js` 61/61 (código real de OPERACIONES), `prueba-celular.js` 23/23 (navegador real).
-- Puesta en marcha: [MIERCOLES.md](MIERCOLES.md).
+- Puesta en marcha: [PUESTA_EN_MARCHA.md](2-MANUALES/PUESTA_EN_MARCHA.md).
 
 ## 0.1.0 · 29-oct-2026 · Etapa 1: el archivo de la app y el inicio de sesión
 - **Archivos nuevos** (proyecto de Apps Script de "App Gestores · Datos"): `00_CONFIG.gs`, `01_INSTALAR.gs`, `02_SESION.gs`, `03_API.gs`, `09_PRUEBAS.gs`.

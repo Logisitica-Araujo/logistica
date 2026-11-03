@@ -1,5 +1,5 @@
 // Simulador mínimo de Google Apps Script para probar el servidor en Node.
-// (Copia del de APP GESTORES/pruebas, con lo que necesita App Gestores 2: firmas HMAC, base64 web, archivo activo.)
+// (Copia del de APP GESTORES 1 (la vieja)/pruebas, con lo que necesita App Gestores 2: firmas HMAC, base64 web, archivo activo.)
 const vm = require('vm');
 const fs = require('fs');
 const crypto = require('crypto');

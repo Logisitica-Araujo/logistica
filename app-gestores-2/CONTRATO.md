@@ -7,7 +7,7 @@ Qué pide y qué recibe la app del celular. Aprobado el 29-oct-2026.
   `{ "accion": "...", "token": "...", ...datos }`
 - **Respuesta correcta:** `{ "ok": true, ...datos }`
 - **Respuesta con error:** `{ "ok": false, "codigo": "CEL-06", "mensaje": "texto para el gestor" }`
-  El `codigo` es el de [docs/ERRORES_Y_SOLUCIONES.md](docs/ERRORES_Y_SOLUCIONES.md).
+  El `codigo` es el de [2-MANUALES/ERRORES_Y_SOLUCIONES.md](2-MANUALES/ERRORES_Y_SOLUCIONES.md).
 - **Prueba:** `GET /exec?ping=1` → `{ "ok": true, "app": "App Gestores 2", "version": "0.1.0" }`
 
 ## Acciones
@@ -39,7 +39,7 @@ Qué pide y qué recibe la app del celular. Aprobado el 29-oct-2026.
   - Traspaso: columna M de `RES_Traspasos` (la lee el robot directo, por ID).
 
 ## Pestañas del archivo
-Ver `APPG.ENC` en [apps-script/00_CONFIG.gs](apps-script/00_CONFIG.gs). El código busca las columnas por **nombre**: se pueden reordenar, pero no renombrar.
+Ver `APPG.ENC` en [1-SCRIPTS-PARA-PEGAR/00_CONFIG.gs](1-SCRIPTS-PARA-PEGAR/00_CONFIG.gs). El código busca las columnas por **nombre**: se pueden reordenar, pero no renombrar.
 
 ## Cambios aprobados a la API de OPERACIONES (etapa 2)
 1. `estado`: el Gestor puede marcar también retornado y cancelado (con motivo), **solo en renglones con su nombre en la columna I**.

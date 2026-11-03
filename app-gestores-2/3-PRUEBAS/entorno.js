@@ -3,7 +3,7 @@ const { crearEntorno } = require('./simulador');
 const path = require('path');
 const fs = require('fs');
 
-const DIR_APP = path.join(__dirname, '..', 'apps-script');
+const DIR_APP = path.join(__dirname, '..', '1-SCRIPTS-PARA-PEGAR');
 const DIR_OPS = process.env.OPS || path.join(__dirname, '..', '..', '..', 'operaciones', 'apps-script');
 const gs = d => fs.readdirSync(d).filter(f => f.endsWith('.gs')).sort().map(f => path.join(d, f));
 if (!fs.existsSync(DIR_OPS)) { console.log('No encuentro el código de OPERACIONES en ' + DIR_OPS + ' (usa OPS=...)'); process.exit(1); }

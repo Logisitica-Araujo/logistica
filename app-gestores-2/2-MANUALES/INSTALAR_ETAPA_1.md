@@ -9,7 +9,7 @@ Tiempo: unos 15 minutos. **No toca ningún archivo que ya uses.**
 ## 2. Pegar el código
 1. En ese archivo: **Extensiones → Apps Script**.
 2. Borra lo que trae el archivo `Código.gs`.
-3. Crea 5 archivos (botón **+** → Secuencia de comandos) con estos nombres, y pega en cada uno su contenido de GitHub (`app-gestores-2/apps-script/` → el archivo → **Copy raw file**):
+3. Crea 5 archivos (botón **+** → Secuencia de comandos) con estos nombres, y pega en cada uno su contenido de GitHub (`app-gestores-2/1-SCRIPTS-PARA-PEGAR/` → el archivo → **Copy raw file**):
 
 | Nombre en Apps Script | Archivo en GitHub |
 |---|---|

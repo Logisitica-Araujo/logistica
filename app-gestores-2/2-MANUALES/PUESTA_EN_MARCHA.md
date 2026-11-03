@@ -1,14 +1,14 @@
 # Miércoles: poner en marcha App Gestores 2
 
 Tiempo: unos 45 minutos. Necesitas a tus superiores **solo** en los pasos marcados 👔 (implementar con acceso "Cualquier persona").
-Si algo falla, busca el código en [docs/ERRORES_Y_SOLUCIONES.md](docs/ERRORES_Y_SOLUCIONES.md) o mándame una captura.
+Si algo falla, busca el código en [2-MANUALES/ERRORES_Y_SOLUCIONES.md](ERRORES_Y_SOLUCIONES.md) o mándame una captura.
 
 > **Antes de empezar, avísame.** Reviso que los archivos de OPERACIONES estén al día con lo último de ese proyecto, para que al pegarlos no se pierda ningún cambio reciente.
 
 ---
 
 ## Parte A · OPERACIONES · Backend (15 min)
-Proyecto de Apps Script **"OPERACIONES · Backend"**. Los archivos están en GitHub: repositorio `OPERACIONES`, rama `claude/practical-shannon-8koohs`, carpeta `apps-script/`.
+Proyecto de Apps Script **"OPERACIONES · Backend"**. Los archivos están en GitHub: repositorio `OPERACIONES`, rama `main`, carpeta `apps-script/`.
 
 1. Pega cada archivo con Copy raw file → Ctrl+A → pegar → Ctrl+S:
 
@@ -27,7 +27,7 @@ Proyecto de Apps Script **"OPERACIONES · Backend"**. Los archivos están en Git
    - PIN: uno de al menos 6 caracteres. Anótalo; lo usas en la parte B y no se vuelve a mostrar.
 
 ## Parte B · App Gestores · Datos (20 min)
-Tu archivo **App Gestores · Datos** → Extensiones → Apps Script. Los archivos están en GitHub: repositorio `logistica`, rama `claude/practical-shannon-8koohs`, carpeta `app-gestores-2/apps-script/`.
+Tu archivo **App Gestores · Datos** → Extensiones → Apps Script. Los archivos están en GitHub: repositorio `logistica`, rama `main`, carpeta `app-gestores-2/1-SCRIPTS-PARA-PEGAR/`.
 
 1. Pega:
 
@@ -67,4 +67,4 @@ Tu archivo **App Gestores · Datos** → Extensiones → Apps Script. Los archiv
 - Al terminar su ruta, revisa `APP_Cierres` (que nada esté en ERROR) y `APP_Problemas`.
 
 ## Jueves
-Si el piloto salió bien, todos instalan la app nueva con el [manual del gestor](docs/MANUAL_GESTOR.md). La app vieja sigue funcionando por si acaso.
+Si el piloto salió bien, todos instalan la app nueva con el [manual del gestor](MANUAL_GESTOR.md). La app vieja sigue funcionando por si acaso.

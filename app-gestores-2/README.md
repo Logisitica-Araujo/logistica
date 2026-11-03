@@ -1,10 +1,17 @@
 # App Gestores 2
 
+| Carpeta | Qué hay |
+|---|---|
+| **[1-SCRIPTS-PARA-PEGAR/](1-SCRIPTS-PARA-PEGAR/)** | Los archivos `.gs` que van en *App Gestores · Datos* → Extensiones → Apps Script. Un archivo de GitHub = un archivo de Apps Script con el mismo nombre. |
+| **[2-MANUALES/](2-MANUALES/)** | Manual del gestor, de la administradora, errores y soluciones, puesta en marcha. |
+| [3-PRUEBAS/](3-PRUEBAS/) | Pruebas automáticas (no se pegan en ningún lado). |
+| [CAMBIOS.md](CAMBIOS.md) · [CONTRATO.md](CONTRATO.md) | Qué cambió en cada versión · cómo hablan el celular y el servidor. |
+
 La app nueva de los gestores. Vive en **su propio archivo de Google Sheets** ("App Gestores · Datos") para no cargar "Logística FED 2026". Habla con Operaciones **solo** a través de la API de OPERACIONES y con el Sistema de Traspasos a través de su propia lógica.
 
-> **Estado:** etapas 1 a 3 listas y probadas en simulador. Puesta en marcha: **[MIERCOLES.md](MIERCOLES.md)**. La app del celular está en `v2/` (raíz del repositorio). La app actual (raíz del repositorio) sigue funcionando mientras tanto.
+> **Estado:** versión 0.4.0 (perfiles Gestoría, Facturación y Administrador; sonidos nuevos). Puesta en marcha: **[2-MANUALES/PUESTA_EN_MARCHA.md](2-MANUALES/PUESTA_EN_MARCHA.md)**. La app del celular está en `v2/` (raíz del repositorio). La app actual (raíz del repositorio) sigue funcionando mientras tanto.
 >
-> Contrato de datos: [CONTRATO.md](CONTRATO.md) · Cambios: [CAMBIOS.md](CAMBIOS.md) · Pruebas: `cd pruebas && node pruebas.js && node prueba-integrada.js`
+> Contrato de datos: [CONTRATO.md](CONTRATO.md) · Cambios: [CAMBIOS.md](CAMBIOS.md) · Pruebas: `cd 3-PRUEBAS && node pruebas.js && node prueba-integrada.js && node prueba-perfiles.js`
 
 ## Etapas
 | # | Qué | Estado |
@@ -18,9 +25,9 @@ La app nueva de los gestores. Vive en **su propio archivo de Google Sheets** ("A
 ## Documentación
 | Documento | Para quién |
 |---|---|
-| [docs/MANUAL_GESTOR.md](docs/MANUAL_GESTOR.md) | Gestores: instalar, entrar, recolectar, entregar, sin señal |
-| [docs/MANUAL_ADMINISTRADOR.md](docs/MANUAL_ADMINISTRADOR.md) | Administradora: usuarios, ajustes, rutina, actualizar, seguridad |
-| [docs/ERRORES_Y_SOLUCIONES.md](docs/ERRORES_Y_SOLUCIONES.md) | Administradora: cada error posible, dónde recae y qué hacer |
+| [2-MANUALES/MANUAL_GESTOR.md](2-MANUALES/MANUAL_GESTOR.md) | Gestores: instalar, entrar, recolectar, entregar, sin señal |
+| [2-MANUALES/MANUAL_ADMINISTRADOR.md](2-MANUALES/MANUAL_ADMINISTRADOR.md) | Administradora: usuarios, ajustes, rutina, actualizar, seguridad |
+| [2-MANUALES/ERRORES_Y_SOLUCIONES.md](2-MANUALES/ERRORES_Y_SOLUCIONES.md) | Administradora: cada error posible, dónde recae y qué hacer |
 
 ## Las piezas
 ```
