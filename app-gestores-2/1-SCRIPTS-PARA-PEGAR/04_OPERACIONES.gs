@@ -91,9 +91,10 @@ function _importarVehiculos() {
   r.listas.vehiculos.forEach(function (v) {
     if (!v || /^no aplica$/i.test(v)) return;
     var moto = /suzuki|moto|gixxer|italika|honda|yamaha|bajaj|vento|dinamo|fed/i.test(v);
-    _agregar(APPG.H.VEHICULOS, { Vehiculo: v, Tipo: moto ? 'MOTO' : 'AUTO', Placa: '', Activo: true });
+    _agregar(APPG.H.VEHICULOS, { Vehiculo: v, Tipo: /^(sin veh|a pie|camin)/.test(_norm(v)) ? 'NINGUNO' : moto ? 'MOTO' : 'AUTO', Placa: '', Activo: true });
     n++;
   });
-  _agregar(APPG.H.VEHICULOS, { Vehiculo: 'Sin vehículo', Tipo: 'NINGUNO', Placa: '', Activo: true });
+  var hayPie = r.listas.vehiculos.some(function (v) { return /^(sin veh|a pie|camin)/.test(_norm(v)); });
+  if (!hayPie) _agregar(APPG.H.VEHICULOS, { Vehiculo: 'Sin vehículo', Tipo: 'NINGUNO', Placa: '', Activo: true });
   return n;
 }

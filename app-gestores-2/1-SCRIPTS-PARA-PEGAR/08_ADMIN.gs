@@ -349,7 +349,7 @@ function _admVehiculos() {
   var us = _tabla(APPG.H.USUARIOS).filas.filter(function (u) { return _si(u.Activo); });
   return { vehiculos: _tabla(APPG.H.VEHICULOS).filas.map(function (v) {
     var quien = us.filter(function (u) { return _fechaTxt(u.FechaVehiculo) === hoy && _norm(u.VehiculoHoy) === _norm(v.Vehiculo); })[0];
-    return { nombre: String(v.Vehiculo), tipo: String(v.Tipo || 'AUTO').toUpperCase(), placa: String(v.Placa || ''), activo: _si(v.Activo), enTaller: _si(v.EnTaller),
+    return { nombre: String(v.Vehiculo), tipo: _tipoVehiculo(v), placa: String(v.Placa || ''), activo: _si(v.Activo), enTaller: _si(v.EnTaller),
              quien: quien ? String(quien.Nombre) : '', numero: quien ? String(quien.Numero) : '',
              desde: quien ? _fechaTxt(quien.FechaVehiculo, 'yyyy-MM-dd HH:mm').slice(11) : '', nota: quien ? String(quien.VehiculoNota || '') : '' };
   }) };

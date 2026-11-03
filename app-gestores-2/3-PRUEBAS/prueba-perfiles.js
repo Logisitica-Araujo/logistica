@@ -91,6 +91,11 @@ ok(!taller.ok && /taller/.test(taller.mensaje), 'Nadie puede elegir un vehículo
 ok(post({ accion: 'inicio', token: tAN }).vehiculos.find(v => v.nombre === 'Saviero LKC-752-D').enTaller, 'La app lo muestra en taller');
 post({ accion: 'admin', token: tAD, que: 'vehiculoCambiar', vehiculo: 'Saviero LKC-752-D', enTaller: false });
 
+hv.datos.push(['Sin Vehiculo', 'AUTO', '', true, false]);   // como vino de Operaciones, con Tipo equivocado
+ok(post({ accion: 'vehiculo', token: tJL, vehiculo: 'Sin Vehiculo' }).ok && post({ accion: 'vehiculo', token: tAN, vehiculo: 'Sin Vehiculo' }).ok, '"Sin vehículo" lo pueden elegir varios a la vez (aunque diga AUTO)');
+ok(!post({ accion: 'inicio', token: tAL }).vehiculos.find(v => v.nombre === 'Sin Vehiculo').ocupadoPor, '…y nunca sale "Lo trae…"');
+post({ accion: 'vehiculo', token: tJL, vehiculo: 'FED 2 14KGC4' }); post({ accion: 'vehiculo', token: tAN, vehiculo: 'A pie' });
+
 titulo('Administración: permisos y Hoy');
 const noAdm = post({ accion: 'admin', token: tJL, que: 'hoy' });
 ok(!noAdm.ok && noAdm.codigo === 'APP-02', 'Un gestor no puede entrar a Administración');

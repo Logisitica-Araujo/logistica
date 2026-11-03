@@ -12,6 +12,13 @@ var APPG_RESULTADOS = ['ENTREGADO', 'RETORNO', 'CANCELADO', 'PAQUETERIA', 'NO_EN
 
 function _hoyTxt() { return _ahora('yyyy-MM-dd'); }
 
+/** MOTO, AUTO o NINGUNO. "Sin vehículo", "A pie", "Caminando", "Transporte público" siempre son NINGUNO:
+ *  esos los pueden elegir varios gestores a la vez. */
+function _tipoVehiculo(v) {
+  if (/^(sin veh|a pie|camin|transporte|metro|taxi)/.test(_norm(v.Vehiculo))) return 'NINGUNO';
+  return String(v.Tipo || 'AUTO').trim().toUpperCase() || 'AUTO';
+}
+
 /** ¿Qué es? IMSS (entrega en un área del IMSS), EFECTIVO, DOCUMENTO o '' (traspaso o pedido normal). */
 function _clase(texto, cfg, esPedidoImss) {
   var t = _norm(texto);
@@ -48,7 +55,7 @@ function apiInicio(p) {
     if (String(f.Numero) !== String(u.Numero) && _si(f.Activo) && _fechaTxt(f.FechaVehiculo) === hoy && f.VehiculoHoy) ocupados[_norm(f.VehiculoHoy)] = f.Nombre;
   });
   var vehiculos = _tabla(APPG.H.VEHICULOS).filas.filter(function (v) { return _si(v.Activo); }).map(function (v) {
-    var tipo = String(v.Tipo || 'AUTO').toUpperCase();
+    var tipo = _tipoVehiculo(v);
     return { nombre: String(v.Vehiculo), tipo: tipo, placa: String(v.Placa || ''),
              ocupadoPor: tipo === 'NINGUNO' ? '' : (ocupados[_norm(v.Vehiculo)] || ''), enTaller: _si(v.EnTaller) };
   });
@@ -128,7 +135,7 @@ function apiVehiculo(p) {
   if (!v) throw _falla('CAP-06', 'Ese vehículo no está en la lista.');
   if (_si(v.EnTaller)) throw _falla('CAP-06', nombre + ' está en taller. Elige otro.');
   var hoy = _hoyTxt();
-  if (String(v.Tipo).toUpperCase() !== 'NINGUNO') {
+  if (_tipoVehiculo(v) !== 'NINGUNO') {
     var otro = u._t.filas.filter(function (f) {
       return String(f.Numero) !== String(u.Numero) && _si(f.Activo) && _fechaTxt(f.FechaVehiculo) === hoy && _norm(f.VehiculoHoy) === _norm(nombre);
     })[0];
