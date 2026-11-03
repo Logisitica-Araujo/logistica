@@ -115,6 +115,12 @@ function apiInicio(p) {
   return {
     gestor: { numero: u.Numero, nombre: u.Nombre }, perfil: perfil,
     porRecoger: perfil.area === 'FACTURACION' ? _porRecoger() : [],
+    libresHoy: cierres.filter(function (c) {
+      return String(c.Tipo) === 'LIBRE' && String(c.NumeroGestor) === String(u.Numero) && _fechaTxt(c.FechaHora) === hoy && String(c.Estado) !== 'ANULADO';
+    }).map(function (c) {
+      return { id: String(c.ID), que: String(c.Clase), detalle: String(c.Cliente), donde: String(c.Direccion), recibio: String(c.Recibio || ''),
+               monto: c.Monto === '' ? '' : String(c.Monto), hora: _fechaTxt(c.FechaHora, 'yyyy-MM-dd HH:mm').slice(11), foto: !!c.URLFoto };
+    }),
     vehiculo: _fechaTxt(u.FechaVehiculo) === hoy && u.VehiculoHoy ? String(u.VehiculoHoy) : '',
     vehiculos: vehiculos,
     checklist: { MOTO: _lista(cfg.CHECK_MOTO), AUTO: _lista(cfg.CHECK_AUTO) },
@@ -211,7 +217,16 @@ function _cerrarUno(u, cfg, p, urlFotoYa) {
   var tipo = String(p.tipo || 'PEDIDO').toUpperCase();
   var res = String(p.resultado || '').toUpperCase();
   var id = String(p.id || '').trim();
-  if (['PEDIDO', 'TRASPASO', 'RECOLECCION'].indexOf(tipo) < 0) throw _falla('APP-01', 'Tipo de cierre desconocido.');
+  /* LIBRE = entrega sin asignar que registra el mismo gestor (perfil Facturación). Solo queda en la app. */
+  if (tipo === 'LIBRE') {
+    if (!String(p.que || '').trim()) throw _falla('CAP-01', 'Elige qué entregaste.');
+    if (!String(p.donde || '').trim()) throw _falla('CAP-01', 'Escribe dónde lo entregaste.');
+    res = 'ENTREGADO';
+    p.clase = String(p.que).toUpperCase().slice(0, 30);
+    p.sucursal = String(p.donde);
+    if (p.pidio) p.comentario = (p.comentario ? p.comentario + ' · ' : '') + 'Lo pidió: ' + String(p.pidio).slice(0, 80);
+  }
+  if (['PEDIDO', 'TRASPASO', 'RECOLECCION', 'LIBRE'].indexOf(tipo) < 0) throw _falla('APP-01', 'Tipo de cierre desconocido.');
   if (APPG_RESULTADOS.indexOf(res) < 0) throw _falla('APP-01', 'Resultado desconocido.');
   if (!id) throw _falla('APP-01', 'Falta el número de pedido o folio.');
 
@@ -244,19 +259,20 @@ function _cerrarUno(u, cfg, p, urlFotoYa) {
   /* Fotos a Drive (si una carpeta falla, va a la de respaldo y queda en APP_Problemas) */
   var nombreArchivo = id.replace(/[\\/:*?"<>|]/g, '-');
   var carpeta = tipo === 'PEDIDO' ? ({ ENTREGADO: 'CARPETA_ENTREGADO', RETORNO: 'CARPETA_RETORNO', CANCELADO: 'CARPETA_CANCELADO', PAQUETERIA: 'CARPETA_ENTREGADO' })[res]
-                                  : 'CARPETA_TRASPASOS';
+                                  : tipo === 'LIBRE' && cfg.CARPETA_LIBRES ? 'CARPETA_LIBRES' : 'CARPETA_TRASPASOS';
   var urlFoto = urlFotoYa || (p.foto ? _guardarImagen(p.foto, 'image/jpeg', nombreArchivo + (res === 'PAQUETERIA' ? ' PAQUETERIA' : ''), cfg[carpeta], u.Nombre) : '');
   var urlFirma = p.firma ? _guardarImagen(p.firma, 'image/png', nombreArchivo + ' FIRMA', cfg.CARPETA_FIRMAS, u.Nombre) : '';
 
   var ped = tipo === 'PEDIDO' ? _tabla(APPG.H.PEDIDOS).filas.filter(function (f) { return _norm(f.ID) === _norm(id); })[0] : null;
   // PEDIDO y TRASPASO los lleva el robot a su sistema. RECOLECCION y PAQUETERIA solo se anotan aquí.
-  var estado = (tipo === 'RECOLECCION' || res === 'PAQUETERIA') ? 'LOCAL' : 'PENDIENTE';
+  var estado = (tipo === 'RECOLECCION' || tipo === 'LIBRE' || res === 'PAQUETERIA') ? 'LOCAL' : 'PENDIENTE';
   _agregar(APPG.H.CIERRES, {
     IdCierre: idLocal, FechaHora: _ahora(), HoraCelular: String(p.horaCelular || '').slice(0, 19), NumeroGestor: u.Numero, Gestor: u.Nombre,
     Vehiculo: _fechaTxt(u.FechaVehiculo) === _hoyTxt() ? String(u.VehiculoHoy || '') : '', Tipo: tipo, ID: id,
     Fila: ped ? Number(ped.Fila) : (Number(p.fila) || ''), Resultado: res, Motivo: String(p.motivo || ''), Comentario: comentario.slice(0, 1000),
     Recibio: recibio.slice(0, 120), Lat: p.lat || '', Lng: p.lng || '', URLFoto: urlFoto, URLFirma: urlFirma,
-    Estado: estado, Intentos: 0, UltimoError: '', EnviadoEn: '', Cliente: ped ? String(ped.Cliente) : '', Direccion: ped ? String(ped.Direccion) : '',
+    Estado: estado, Intentos: 0, UltimoError: '', EnviadoEn: '', Cliente: ped ? String(ped.Cliente) : tipo === 'LIBRE' ? (String(p.que) + (p.detalle ? ' · ' + String(p.detalle) : '')).slice(0, 200) : '',
+    Direccion: ped ? String(ped.Direccion) : tipo === 'LIBRE' ? String(p.donde).slice(0, 200) : '',
     DondeEntrego: donde, Monto: monto === '' ? '' : monto, Clase: clase, Corregido: ''
   });
 

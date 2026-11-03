@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.1.0';
+var VERSION_APP = '2.2.0';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -558,7 +558,11 @@ function enviarCierre() {
       var hecho = c; S.cierre = null;
       var parada = S.volverParada && armarParadas().porK[S.volverParada];
       if (entrega && c.tipo === 'PEDIDO' && !fac) vistaListo(hecho);
-      else { toast(etiqueta + ' · guardado', 'ok'); if (parada && (parada.items.length || parada.recoger.length)) vistaParada(S.volverParada); else vistaInicio(); }
+      else {
+        var volver = parada && (parada.items.length || parada.recoger.length) ? "vistaParada('" + esc(S.volverParada) + "')" : 'vistaInicio()';
+        if (fac && entrega) waDespuesDeCierre(hecho, volver);
+        else { toast(etiqueta + ' · guardado', 'ok'); if (parada && (parada.items.length || parada.recoger.length)) vistaParada(S.volverParada); else vistaInicio(); }
+      }
       subirCola();
     });
   }).catch(function (e) { quitarCargando(); falla(e); });
@@ -838,7 +842,7 @@ function codigoDeFoto() {
 /* La cámara normal del celular hacía que Android cerrara el navegador en celulares con poca memoria. */
 var camFoto = null;
 function tomarFoto() {
-  preservar(); guardarBorrador();
+  preservar(); guardarBorrador(); if (S.vista === 'libre') libPres();
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return fotoDeArchivo();
   cerrarCamFoto();
   document.body.insertAdjacentHTML('beforeend', '<div class="cam-foto" id="camFoto"><video playsinline muted autoplay></video><div class="cam-aviso" id="camAviso">Abriendo cámara…</div>' +
@@ -871,11 +875,12 @@ function dispararFoto() {
 function luzFoto() { if (!camFoto || !camFoto.track) return; var p = !camFoto.luz; camFoto.track.applyConstraints({ advanced: [{ torch: p }] }).then(function () { camFoto.luz = p; $('camLuz').textContent = p ? 'Apagar' : 'Luz'; }).catch(function () {}); }
 function cerrarCamFoto() { if (camFoto && camFoto.stream) camFoto.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} }); camFoto = null; var c = $('camFoto'); if (c) c.remove(); }
 function ponerFoto(f) {
+  if (!S.cierre && S.vista === 'libre' && S.libre) { S.libre.foto = f; beep(); return vistaLibre(); }
   if (!S.cierre && S.vista === 'parada' && S.parada) { S.parada.foto = f; beep(); return vistaParada(S.parada.k); }
   if (!S.cierre) return; S.cierre.foto = f; beep(); pintarCierre();
 }
 function fotoDeArchivo() {
-  preservar(); guardarBorrador();
+  preservar(); guardarBorrador(); if (S.vista === 'libre') libPres();
   elegirArchivo(function (f) {
     cargando('Procesando foto…');
     reducirFoto(f, 1280).then(function (cv) { var u = cv.toDataURL('image/jpeg', 0.72); cv.width = cv.height = 0; quitarCargando(); ponerFoto(u); })

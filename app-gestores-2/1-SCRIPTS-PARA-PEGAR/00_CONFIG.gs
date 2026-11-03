@@ -10,7 +10,7 @@
  ***********************************************************************/
 
 var APPG = {
-  VERSION: '0.4.0',
+  VERSION: '0.4.1',
   ZONA: 'America/Mexico_City',
 
   /* Nombres de las pestañas del archivo de la app. */
@@ -106,6 +106,7 @@ var APPG = {
     ['CARPETA_RETORNO', '1aRw_0Xv719WXD6cyxzLD7yEGZ2jHZFpu', 'Drive: …Logistica RETORNO'],
     ['CARPETA_CANCELADO', '1tLoTzGye9z6QBaHNiiJRfUTskurv9cAb', 'Drive: …Logistica CANCELADO'],
     ['CARPETA_FIRMAS', '153U2PjEDCaNvkIxoIfuz2nYLGrEixM7q', 'Drive: Firmas del cliente'],
+    ['CARPETA_LIBRES', '', 'Drive: fotos de entregas sin asignar de Facturación (vacío = la de traspasos)'],
     ['CARPETA_TRASPASOS', '', 'Drive: fotos de traspasos (vacío = carpeta de respaldo)'],
     ['CARPETA_RESPALDO', '', 'Drive: si una carpeta no acepta la foto, va aquí (vacío = se crea "App Gestores · Respaldo fotos")']
   ],
