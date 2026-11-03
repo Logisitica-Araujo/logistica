@@ -1,5 +1,11 @@
 # Registro de cambios · App Gestores 2
 
+## 0.4.2 · 3-nov-2026 · WhatsApp en todo y traspasos que ya recibió la sucursal
+- **WhatsApp** con la información (y foto, o "Agregar una foto") al terminar de **recolectar** (de dónde → a dónde, qué, quién lo lleva), al **entregar** traspasos y recolecciones, en **retorno, cancelado y no entregué** (con el motivo), en cada folio leído del escáner y en cada tarjeta de "Lo que llevo". Para todos los perfiles.
+- **Robot:** si un traspaso que recolectó el gestor cambia en el Sistema de Traspasos a otro estatus (ej. EN_RECEPCION), sale de "Lo que llevo" (Estado `YA NO LO TRAE (…)`).
+- **La app se actualiza sola:** busca versión nueva al abrirla y cada 30 min, y se recarga cuando no estás capturando.
+- App 2.3.0 (service worker `gestores2-v8`). Pruebas: `prueba-celular.js` 32/32, `prueba-perfiles.js` 103/103.
+
 ## 0.4.1 · 3-nov-2026 · Entregas sin asignar y WhatsApp en Facturación
 - **"+ Registrar entrega"** (perfil Facturación): lo que entregan sin que esté en su ruta. Qué (Medicamento, Facturas, Documentos, Efectivo con monto opcional, Insumos, Otro), dónde (IMSS unidad y área, sucursal u otro lugar), foto, quién recibió, matrícula, quién lo pidió. Folio `E-MMDD-` + iniciales + número (ej. E-1103-A1), funciona sin señal.
 - Se guarda **solo en la app**: APP_Cierres con Tipo `LIBRE` y Estado `LOCAL` (no va a Operaciones). Se ve en Administración → Hoy y Buscar. Ajuste nuevo `CARPETA_LIBRES` para sus fotos (vacío = la de traspasos).

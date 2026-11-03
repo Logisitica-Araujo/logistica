@@ -717,24 +717,27 @@ function guardarLibre() {
 }
 /* El mensaje de WhatsApp con lo capturado. */
 function msgEntrega(o) {
-  var ahora = new Date(), L = ['ENTREGA REALIZADA · ' + o.id];
+  var ahora = new Date(), L = [(o.encabezado || 'ENTREGA REALIZADA') + ' · ' + o.id];
+  if (o.de || o.a) L.push('De: ' + (o.de || '—') + '  →  A: ' + (o.a || '—'));
+  if (o.motivo) L.push('Motivo: ' + o.motivo);
   if (o.que || o.detalle) L.push('Qué: ' + [o.que, o.detalle].filter(Boolean).join(' · '));
   if (o.monto) L.push('Monto: ' + dinero(Number(String(o.monto).replace(/[$,\s]/g, ''))));
   if (o.donde) L.push('Dónde: ' + o.donde);
   if (o.recibio || o.matricula) L.push('Recibió: ' + (o.recibio || '—') + (o.matricula ? ' (Mat. ' + o.matricula + ')' : ''));
   if (o.pidio) L.push('Lo pidió: ' + o.pidio);
   if (o.nota) L.push('Nota: ' + o.nota);
-  L.push('Entregó: ' + S.datos.gestor.nombre);
+  L.push((o.quien || 'Entregó') + ': ' + S.datos.gestor.nombre);
   L.push(ahora.toLocaleDateString('es-MX') + ' · ' + ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }));
   return L.join('\n');
 }
 /** Pantalla "listo" con el botón de WhatsApp (entregas de Facturación). */
 function vistaWA(o) {
-  S.vista = 'listo'; S.wa = { msg: o.msg, foto: o.foto, id: o.id };
+  S.vista = 'listo'; S.wa = { msg: o.msg, foto: o.foto, id: o.id }; S.waOpts = o;
   pintar('<div class="listo"><div class="verde-top"><span class="palomita">' + IC.palomita + '</span><b>' + esc(o.titulo) + '</b><span>' + esc(o.sub) + '</span></div>' +
     '<div class="cuerpo"><b>¿Avisar por WhatsApp?</b><p class="nota" style="text-align:left;margin:0">Tú eliges a quién: a quien te lo pidió, al cliente o al grupo.</p>' +
     '<div class="wa-burbuja"><div>' + (o.foto ? '<img src="' + o.foto + '" alt="">' : '') + '<pre>' + esc(o.msg) + '</pre></div></div>' +
-    (o.foto ? '<label class="check"><input type="checkbox" id="waFoto" checked> Incluir la foto</label>' : '') + '</div>' +
+    (o.foto ? '<label class="check"><input type="checkbox" id="waFoto" checked> Incluir la foto</label><button class="b" onclick="tomarFoto()">Cambiar la foto</button>'
+            : '<button class="b" onclick="tomarFoto()">' + IC.cam + ' Agregar una foto</button>') + '</div>' +
     '<div class="pie"><button class="btn wa" onclick="mandarWA()">Enviar por WhatsApp</button><button class="btn linea" onclick="' + o.volver + '">Ahora no · volver</button></div></div>');
 }
 function waLibre(i) {
@@ -744,8 +747,35 @@ function waLibre(i) {
 }
 /** Después de una entrega asignada (IMSS, efectivo, traspaso): mensaje con lo que se capturó. */
 function waDespuesDeCierre(c, volver) {
+  if (c.resultado !== 'ENTREGADO') {
+    var t = { RETORNO: 'RETORNO', CANCELADO: 'CANCELADO', NO_ENTREGADO: 'NO ENTREGADO' }[c.resultado] || c.resultado;
+    return vistaWA({ titulo: t.charAt(0) + t.slice(1).toLowerCase() + ' registrado', sub: c.id + ' · guardado', foto: c.foto, id: c.id, volver: volver,
+      msg: msgEntrega({ encabezado: t, id: c.id, detalle: c.cliente + (c.direccion && c.direccion !== c.cliente ? ' · ' + c.direccion : ''), motivo: c.motivo, nota: c.comentario, quien: 'Gestor' }) });
+  }
   var o = { id: c.id, que: c.clase === 'IMSS' ? 'Entrega IMSS' : c.clase ? ({ EFECTIVO: 'Efectivo', DOCUMENTO: 'Documentos', INSUMO: 'Insumos', TRASPASO: 'Traspaso' })[c.clase] || '' : (c.tipo === 'PEDIDO' ? 'Pedido' : 'Traspaso'),
             detalle: c.clase === 'IMSS' ? c.cliente : c.direccion, donde: c.clase === 'IMSS' ? [c.cliente, c.areaImss].filter(Boolean).join(' · ') : (c.sucursal || c.cliente),
             recibio: c.recibio, matricula: c.matricula, monto: c.clase === 'EFECTIVO' ? c.monto : '', nota: c.comentario, foto: c.foto };
   vistaWA({ titulo: 'Entrega registrada', sub: c.id + ' · ya salió de tu ruta', msg: msgEntrega(o), foto: c.foto, id: c.id, volver: volver });
+}
+
+
+/* ---------- WhatsApp de lo que recoges y de lo que llevas (todos los perfiles) ---------- */
+function msgRecoleccion(lista) {
+  var ahora = new Date(), L = [lista.length === 1 ? 'RECOLECTADO · ' + lista[0].codigo : 'RECOLECTÉ ' + lista.length];
+  lista.forEach(function (l) {
+    if (lista.length > 1) L.push('• ' + l.codigo);
+    if (l.origen || l.destino) L.push((lista.length > 1 ? '   ' : '') + 'De: ' + (l.origen || '—') + '  →  A: ' + (l.destino || '—'));
+    if (l.contenido) L.push((lista.length > 1 ? '   ' : '') + 'Qué: ' + l.contenido);
+  });
+  L.push('Lo lleva: ' + S.datos.gestor.nombre + (S.datos.vehiculo ? ' · ' + S.datos.vehiculo : ''));
+  L.push(ahora.toLocaleDateString('es-MX') + ' · ' + ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }));
+  return L.join('\n');
+}
+function waRecoleccion(lista, volver) {
+  vistaWA({ titulo: lista.length === 1 ? 'Recolectado' : lista.length + ' recolectados', sub: 'Ya sale en el rastreo', foto: null, id: lista[0].codigo, volver: volver || 'vistaInicio()', msg: msgRecoleccion(lista) });
+}
+function waLeido(i) { var l = S.leidos[i]; if (l) { pararEscaner(); waRecoleccion([l], "vistaEscaner('recolectar')"); } }
+function waLleva(i) {
+  var l = S.datos.lleva[i]; if (!l) return;
+  waRecoleccion([{ codigo: l.codigo, origen: l.origen, destino: l.destino + (l.destinoDireccion ? ' (' + l.destinoDireccion + ')' : ''), contenido: l.contenido }], 'vistaLleva()');
 }

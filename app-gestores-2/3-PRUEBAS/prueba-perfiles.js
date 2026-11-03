@@ -81,6 +81,16 @@ ok(E.estT('C-PV-0019') === 'ENTREGADO_GESTOR' && E.estT('BOT-0013') === 'ENTREGA
 const fI = opsFila('IMSS-0412');
 ok(fI[22] === true && /Área IMSS: Farmacia/.test(fI[29]) && fI[34] === 'Lic. Ramírez · Mat. 99887766', 'Operaciones: W ✓, el área en AD y quién recibió con matrícula en AI');
 
+titulo('Lo que ya recibió la sucursal sale de "Lo que llevo"');
+hRes.datos.push((() => { const f = new Array(encT.length).fill(''); const o = { Folio: 'E-PV-0029', Estatus: 'NUEVO', 'Descripción': 'CORTES', Bultos: 1, Origen: 'Ecatepec · PV', 'Origen (prefijo)': 'E-PV', Destino: 'Oficinas · Coordinación PV', 'Destino (prefijo)': 'CPV', 'Eliminación solicitada': 'NO' }; encT.forEach((h, i) => { if (o[h] != null) f[i] = o[h]; }); return f; })());
+post({ accion: 'recolectar', token: tJL, codigos: ['E-PV-0029'] });
+robot();
+ok(E.estT('E-PV-0029') === 'RECOLECTADO' && post({ accion: 'inicio', token: tJL }).lleva.some(l => l.codigo === 'E-PV-0029'), 'Recolectado: lo lleva Jose Luis');
+hRes.datos.find(f => f[0] === 'E-PV-0029')[encT.indexOf('Estatus')] = 'EN_RECEPCION';
+robot();
+ok(!post({ accion: 'inicio', token: tJL }).lleva.some(l => l.codigo === 'E-PV-0029'), 'La recepción le dio entrada (EN_RECEPCION): ya no le aparece');
+ok(filasDe('APP_Recolecciones').find(r => r.Codigo === 'E-PV-0029').Estado === 'YA NO LO TRAE (EN_RECEPCION)', 'Queda anotado por qué salió');
+
 titulo('Vehículo: motivo al cambiar y en taller');
 post({ accion: 'vehiculo', token: tJL, vehiculo: 'Saviero LKC-752-D' });
 post({ accion: 'vehiculo', token: tJL, vehiculo: 'FED 2 14KGC4', motivo: 'Llanta ponchada' });
@@ -241,6 +251,7 @@ const API = 'https://script.google.com/macros/s/APP-PRUEBA/exec';
   ok(/Monto: \$3,798\.00/.test(await texto(p)), 'WhatsApp del efectivo con su monto');
   await p.click('text=Ahora no'); await p.waitForTimeout(500);
   ok(filasDe('APP_Cierres').some(c => c.ID === 'C-PV-0021' && c.Monto === 3798), 'Efectivo entregado con su monto');
+  if (!(await p.locator('.parada').count())) { await p.click('[aria-label="Volver"]'); await p.waitForTimeout(600); }
   await p.click('.parada:has-text("IMSS")'); await p.waitForTimeout(500);
   await p.click('.marca.imss >> text=Con acuse'); await p.waitForTimeout(500);
   t = await texto(p);
@@ -299,6 +310,12 @@ const API = 'https://script.google.com/macros/s/APP-PRUEBA/exec';
   await p.click('text=Ahora no'); await p.waitForTimeout(1200);
   ok(/Registrado por ti hoy/i.test(await texto(p)) && !(await p.evaluate(() => document.body.classList.contains('fac'))), 'Sale en su inicio (azul)');
   await foto(p, 'gestoria-inicio-con-registrar');
+  await p.click('.grande >> text=Escanear'); await p.waitForTimeout(800);
+  await p.fill('#inCodigo', 'V-RB-0031'); await p.click('form.teclear .b'); await p.waitForTimeout(900);
+  await p.click('.btn >> text=Listo'); await p.waitForTimeout(600);
+  t = await texto(p);
+  ok(/¿Avisar por WhatsApp\?/.test(t) && /RECOLECTADO · V-RB-0031/.test(t) && /De: Vertiz/.test(t), 'Al terminar de recolectar: WhatsApp con de dónde a dónde');
+  if (/¿Avisar por WhatsApp\?/.test(t)) { await foto(p, 'gestoria-recoleccion-whatsapp'); await p.click('text=Ahora no'); await p.waitForTimeout(800); }
   await p.click('.chip >> text=cambiar'); await p.waitForTimeout(400); await p.click('text=Saviero LKC-752-D'); await p.waitForTimeout(300);
   ok(/¿Por qué cambias de vehículo\?/.test(await texto(p)), 'Al cambiar de vehículo pregunta el motivo');
   await p.selectOption('#selMotVeh', 'Lluvia');
