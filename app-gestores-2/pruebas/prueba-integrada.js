@@ -24,6 +24,8 @@ let err = null; try { APP.correr('conectarOperaciones', URL_OPS, 'app.gestores',
 ok(err && err.codigo === 'API-01', 'PIN equivocado: API-01');
 APP.correr('conectarOperaciones', URL_OPS, 'app.gestores', 'PIN-APP-1');
 
+// Hoja con columnas en otro orden (INSTALAR agregó 'Telefono' al final): el robot debe escribir por nombre
+{ const h = appL.getSheetByName('APP_Pedidos'); const e = h.datos[0]; const i = e.indexOf('Telefono'); e.splice(i, 1); e.push('Telefono'); }
 titulo('Gestores y primer día');
 const jl = APP.correr('altaGestor', 'Jose Luis', 'Jose Luis', 'joseluis');
 const an = APP.correr('altaGestor', 'Antonio', 'Antonio', 'antonio');
@@ -32,6 +34,7 @@ tJL = APP.post({ accion: 'cambiarClave', token: tJL, actual: jl.clave, nueva: 'j
 const tAN = APP.post({ accion: 'login', usuario: 'antonio', clave: an.clave }).token;
 let r = robot();
 ok(r.errores.length === 0, 'Primera vuelta del robot sin errores ' + (r.errores.join(' | ')));
+ok(filasDe('APP_Pedidos').every(f => /^#/.test(f.ID) && f.Metodo === 'Logística Interna' || f.Metodo === 'Recolección') && filasDe('APP_Pedidos')[0].Cliente === 'Cliente Uno', 'APP_Pedidos: cada dato en su columna aunque el orden de la hoja cambie');
 ok(filasDe('APP_Pedidos').length === 4, 'APP_Pedidos: 4 pedidos (3 de Jose Luis, 1 de Antonio; el de Miriam no tiene usuario)');
 ok(filasDe('APP_Problemas').some(p => p.Codigo === 'ROB-02' && /Miriam/.test(p.Detalle)), 'Avisa que "Miriam" no tiene usuario (ROB-02)');
 let ini = APP.post({ accion: 'inicio', token: tJL });
