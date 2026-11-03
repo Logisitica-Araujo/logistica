@@ -119,6 +119,29 @@ titulo('Poner contraseña elegida por la administradora');
   ok(err && /al menos/.test(err.message), 'No acepta contraseñas cortas');
 }
 
+titulo('Cambiar contraseña escribiéndola en la hoja (columna NuevaContraseña)');
+{
+  const { E, L } = preparar();
+  const alta = E.correr('altaGestor', 'Jose Luis', 'Jose Luis', 'joseluis');
+  const t = E.post({ accion: 'login', usuario: 'joseluis', clave: alta.clave }).token;
+  const sh = hoja(L, 'APP_Usuarios'), enc = sh.datos[0];
+  const cN = enc.indexOf('NuevaContraseña'), cD = enc.indexOf('DebeCambiar');
+  ok(cN >= 0, 'INSTALAR agrega la columna NuevaContraseña');
+  sh.datos[1][cD] = false;
+  sh.datos[1][cN] = 'Ruta-2026';
+  E.ctx.onEdit({ source: L, range: sh.getRange(2, cN + 1) });
+  ok(sh.datos[1][cN] === '' && /cambiada/.test(sh.notas['2,' + (cN + 1)]), 'Se cifra al momento, la celda queda vacía y con nota');
+  ok(!/Ruta-2026/.test(JSON.stringify(sh.datos)), 'La contraseña no queda escrita en ninguna parte de la hoja');
+  ok(E.post({ accion: 'yo', token: t }).codigo === 'CEL-06', 'La sesión anterior se cierra');
+  const r = E.post({ accion: 'login', usuario: 'joseluis', clave: 'Ruta-2026' });
+  ok(r.ok && r.debeCambiar === false, 'Entra con la nueva (DebeCambiar en FALSE: no le pide cambiarla)');
+  sh.datos[1][cN] = '123';
+  E.ctx.onEdit({ source: L, range: sh.getRange(2, cN + 1) });
+  ok(sh.datos[1][cN] === '' && /NO se cambió/.test(sh.notas['2,' + (cN + 1)]), 'Contraseña corta: no se aplica y lo dice en la nota');
+  sh.datos[1][cN] = 'Otra-clave-1';
+  ok(E.correr('_procesarClavesNuevas') === 1 && E.post({ accion: 'login', usuario: 'joseluis', clave: 'Otra-clave-1' }).ok, 'Si la edición no la procesó, el robot la aplica');
+}
+
 titulo('Seguridad');
 {
   const { E } = preparar();

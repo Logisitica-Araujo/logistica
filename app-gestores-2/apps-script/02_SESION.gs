@@ -205,6 +205,46 @@ function ponerClave(usuario, clave, debeCambiar) {
   _log('administradora', 'PONE_CLAVE', u.Numero + ' · ' + u.Usuario);
 }
 
+/* ==================== Cambiar contraseña desde la hoja ====================
+   La administradora escribe la contraseña en la columna "NuevaContraseña" de APP_Usuarios.
+   Al momento se cifra, se borra de la celda y se cierra la sesión anterior del gestor.
+   La casilla "DebeCambiar" de ese renglón decide si al entrar le pide crear la suya.
+   Si por algo no se procesó al escribirla, el robot la procesa en su siguiente vuelta. */
+
+function onEdit(e) {
+  try {
+    if (!e || !e.range) return;
+    var sh = e.range.getSheet();
+    if (sh.getName() !== APPG.H.USUARIOS || e.range.getRow() < 2) return;
+    var enc = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(function (h) { return String(h).trim(); });
+    var col = enc.indexOf('NuevaContraseña') + 1;
+    if (col < 1 || e.range.getColumn() > col || e.range.getLastColumn() < col) return;
+    __APPG_LIBRO = e.source;                    // en una edición no se puede abrir el archivo por ID
+    _procesarClavesNuevas();
+  } catch (err) { /* el robot lo reintenta */ }
+}
+
+/** Busca contraseñas escritas en "NuevaContraseña", las aplica y limpia la celda. Devuelve cuántas. */
+function _procesarClavesNuevas() {
+  var t = _tabla(APPG.H.USUARIOS);
+  var col;
+  try { col = t.col('NuevaContraseña'); } catch (e) { return 0; }
+  var n = 0;
+  t.filas.forEach(function (f) {
+    var clave = String(f['NuevaContraseña'] == null ? '' : f['NuevaContraseña']).trim();
+    if (!clave) return;
+    var celda = t.sh.getRange(f._fila, col);
+    try {
+      ponerClave(f.Usuario, clave, _si(f.DebeCambiar));
+      celda.setValue('').setNote('Contraseña cambiada ' + _ahora('dd/MM HH:mm') + '. La anterior ya no sirve.');
+      n++;
+    } catch (e) {
+      celda.setValue('').setNote('NO se cambió: ' + e.message + ' Escríbela otra vez.');
+    }
+  });
+  return n;
+}
+
 function bajaGestor(usuario) {
   var u = _buscarUsuario(usuario);
   if (!u) throw new Error('No existe el usuario ' + usuario + '.');

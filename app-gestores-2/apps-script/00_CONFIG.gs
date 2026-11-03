@@ -10,7 +10,7 @@
  ***********************************************************************/
 
 var APPG = {
-  VERSION: '0.3.0',
+  VERSION: '0.3.1',
   ZONA: 'America/Mexico_City',
 
   /* Nombres de las pestañas del archivo de la app. */
@@ -35,7 +35,7 @@ var APPG = {
   ENC: {
     APP_Config:        ['Clave', 'Valor', 'Descripción'],
     APP_Usuarios:      ['Numero', 'Nombre', 'NombreEnOperaciones', 'Usuario', 'ClaveCifrada', 'Rol', 'Activo',
-                        'DebeCambiar', 'VersionSesion', 'Alta', 'UltimoAcceso', 'Notas', 'VehiculoHoy', 'FechaVehiculo'],
+                        'DebeCambiar', 'VersionSesion', 'Alta', 'UltimoAcceso', 'Notas', 'VehiculoHoy', 'FechaVehiculo', 'NuevaContraseña'],
     APP_Vehiculos:     ['Vehiculo', 'Tipo', 'Placa', 'Activo'],
     APP_Motivos:       ['Tipo', 'Motivo', 'PideComentario', 'Activo'],
     APP_Documentos:    ['Categoria', 'Titulo', 'Tipo', 'Contenido', 'Activo', 'Orden'],

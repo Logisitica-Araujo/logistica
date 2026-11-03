@@ -34,6 +34,7 @@ function robot(forzar) {
     paso('cierres', function () { return _robotCierres(ruta); });
     paso('recolecciones', _robotRecolecciones);
     paso('limpieza', _robotLimpieza);
+    paso('contraseñas', _procesarClavesNuevas);
   } finally {
     _ponerConfig('ULTIMA_VUELTA_ROBOT', _ahora());
     _ponerConfig('ULTIMO_ERROR_ROBOT', errores.length ? _ahora('dd/MM HH:mm') + ' · ' + errores.join(' | ') : '');

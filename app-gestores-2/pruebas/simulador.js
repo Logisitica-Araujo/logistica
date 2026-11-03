@@ -49,6 +49,8 @@ function crearEntorno(opciones) {
     setValue(v) { const m = []; for (let i = 0; i < this.nr; i++) { m.push(new Array(this.nc).fill(v)); } return this.setValues(m); }
     clearContent() { return this.setValue(''); }
     setFontWeight() { return this; } setBackground() { return this; } setFontColor() { return this; }
+    setNote(n) { this.sh.notas = this.sh.notas || {}; this.sh.notas[this.r + ',' + this.c] = n; return this; }
+    getRow() { return this.r; } getColumn() { return this.c; } getLastColumn() { return this.c + this.nc - 1; } getSheet() { return this.sh; }
     insertCheckboxes() { return this; }
   }
 
