@@ -9,6 +9,7 @@
 - **Robot:** ahora pasa las recolecciones ANTES que los cierres (si alguien recoge y entrega en el mismo minuto, el traspaso ya está RECOLECTADO).
 - **OPERACIONES `04_Backend_App.gs`:** acciones `reasignarGestor` (columna I) y `corregirCierre` (quita la casilla vieja, pone la nueva, el renglón viejo de APP_Entregas queda "(CORREGIDO)").
 - **App 2.1.0:** `v2/perfiles.js` nuevo; service worker `gestores2-v5`.
+- **Sonidos nuevos** (elegidos el 3-nov): tarea nueva = tres notas que suben · traspaso por recoger = doble marimba · escaneo correcto = doble bip · no se pudo escanear = toc-toc · entrega = ta-da · error = tres notas bajan · retorno/no entregué = dos notas iguales · volvió la señal = whoosh. Cada uno con su vibración.
 - **Pruebas:** `pruebas.js` 60/60, `prueba-integrada.js` 65/65, `prueba-celular.js` 29/29, `prueba-perfiles.js` 85/85 (nuevo).
 
 ## 0.2.0 · 2-nov-2026 · Etapas 2 y 3: robot, conexión y la app del celular

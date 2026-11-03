@@ -83,25 +83,53 @@ function toast(msg, tipo) {
   document.body.appendChild(t);
   setTimeout(function () { if (t.parentNode) t.remove(); }, tipo === 'err' ? 5000 : 2800);
 }
-function falla(e) { toast((e && e.message ? e.message : String(e)) + (e && e.codigo ? ' (' + e.codigo + ')' : ''), 'err'); beep('malo'); }
+function falla(e) { toast((e && e.message ? e.message : String(e)) + (e && e.codigo ? ' (' + e.codigo + ')' : ''), 'err'); sonido('error'); }
 function cargando(t) { quitarCargando(); var d = document.createElement('div'); d.className = 'cargando'; d.id = 'cargando'; d.innerHTML = '<div class="spinner"></div><span>' + esc(t || 'Un momento…') + '</span>'; document.body.appendChild(d); }
 function quitarCargando() { var d = $('cargando'); if (d) d.remove(); }
-var AC = null;
-function beep(tipo) {
+/* ---------- Sonidos (elegidos el 3-nov: tarea=B · traspaso=C · escaneo=D · escaneoMal=B · entregado=B · error=A · noEntregado=B · subido=A)
+   Se generan en el celular (no hay archivos de audio). Timbres: marimba, campana, suave. ---------- */
+var SONIDOS = {
+  tarea:       { vibra: [120, 60, 120, 60, 220], notas: [{ f: 523, d: .5, tipo: 'marimba' }, { f: 659, t: .12, d: .5, tipo: 'marimba' }, { f: 784, t: .24, d: .7, tipo: 'marimba' }, { f: 1047, t: .36, d: .9, tipo: 'marimba', v: .9 }] },
+  traspaso:    { vibra: [220, 100, 220], notas: [{ f: 440, d: .6, tipo: 'marimba' }, { f: 659, t: .16, d: .8, tipo: 'marimba' }] },
+  escaneo:     { vibra: [30, 40, 30], notas: [{ f: 1568, d: .07, tipo: 'suave' }, { f: 2093, t: .08, d: .1, tipo: 'suave' }] },
+  escaneoMal:  { vibra: [60, 60, 60], notas: [{ f: 220, d: .2, tipo: 'marimba' }, { f: 220, t: .14, d: .25, tipo: 'marimba' }] },
+  entregado:   { vibra: [80, 60, 200], notas: [{ f: 784, d: .5, tipo: 'campana', v: .8 }, { f: 1568, t: .16, d: 1.4, tipo: 'campana' }] },
+  error:       { vibra: [100, 60, 100, 60, 100], notas: [{ f: 659, d: .2, tipo: 'suave' }, { f: 523, t: .16, d: .2, tipo: 'suave' }, { f: 349, t: .32, d: .45, tipo: 'suave' }] },
+  noEntregado: { vibra: [50, 50, 50], notas: [{ f: 587, d: .3, tipo: 'marimba' }, { f: 587, t: .14, d: .35, tipo: 'marimba' }] },
+  subido:      { vibra: [40], notas: [{ f: 400, hasta: 1200, d: .35, tipo: 'suave', v: .7 }] }
+};
+var AC = null, SALIDA_AUDIO = null;
+function sonido(nombre) {
+  var sn = SONIDOS[nombre] || SONIDOS.escaneo;
   try {
-    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (!AC) {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      var comp = AC.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
+      SALIDA_AUDIO = AC.createGain(); SALIDA_AUDIO.gain.value = 0.9; SALIDA_AUDIO.connect(comp); comp.connect(AC.destination);
+    }
     if (AC.state === 'suspended') AC.resume();
-    var notas = tipo === 'malo' ? [[220, 0, .3, 'square']] : tipo === 'aviso' ? [[880, 0, .16, 'sine'], [1175, .2, .2, 'sine'], [880, .5, .16, 'sine'], [1175, .7, .22, 'sine']] : [[1180, 0, .13, 'sine']];
-    notas.forEach(function (n) {
-      var o = AC.createOscillator(), g = AC.createGain(); o.type = n[3]; o.frequency.value = n[0];
-      o.connect(g); g.connect(AC.destination);
-      var t0 = AC.currentTime + n[1];
-      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.3, t0 + .015); g.gain.exponentialRampToValueAtTime(0.0001, t0 + n[2]);
-      o.start(t0); o.stop(t0 + n[2] + .02);
-    });
-    if (navigator.vibrate) navigator.vibrate(tipo === 'malo' ? [70, 50, 70] : tipo === 'aviso' ? [200, 100, 200, 100, 300] : 35);
+    var t0 = AC.currentTime + 0.03;
+    sn.notas.forEach(function (n) { notaAudio(n, t0); });
   } catch (e) {}
+  try { if (navigator.vibrate && sn.vibra) navigator.vibrate(sn.vibra); } catch (e) {}
 }
+function notaAudio(n, t0) {
+  var t = t0 + (n.t || 0), d = n.d || 0.25, v = (n.v || 1) * 0.5;
+  var parciales = { marimba: [[1, 1], [4, 0.18], [10, 0.05]], campana: [[1, 1], [2.76, 0.4], [5.4, 0.18], [8.9, 0.06]], suave: [[1, 1], [2, 0.12]] }[n.tipo] || [[1, 1]];
+  var filtro = AC.createBiquadFilter(); filtro.type = 'lowpass'; filtro.frequency.value = 9000; filtro.connect(SALIDA_AUDIO);
+  parciales.forEach(function (p) {
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(n.f * p[0], t);
+    if (n.hasta) o.frequency.exponentialRampToValueAtTime(n.hasta * p[0], t + d * 0.8);
+    var dec = n.tipo === 'campana' ? d / Math.sqrt(p[0]) : n.tipo === 'marimba' ? d / p[0] : d;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(v * p[1], t + (n.tipo === 'suave' ? 0.02 : 0.004));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.05, dec));
+    o.connect(g); g.connect(filtro); o.start(t); o.stop(t + d + 0.05);
+  });
+}
+/* Compatibilidad: beep() = escaneo correcto, beep('malo') = no se pudo, beep('aviso') = tarea nueva. */
+function beep(tipo) { sonido(tipo === 'malo' ? 'escaneoMal' : tipo === 'aviso' ? 'tarea' : tipo || 'escaneo'); }
 
 /* ==================== Servidor ==================== */
 function srv(accion, datos) {
@@ -182,16 +210,20 @@ function actualizar(primera) {
 }
 
 function detectarNuevos(d) {
-  var ids = d.pedidos.map(function (p) { return 'P' + p.id; }).concat(d.lleva.map(function (l) { return 'L' + l.codigo; }));
+  var rec = d.perfil && d.perfil.area === 'FACTURACION' ? (d.porRecoger || []) : [];
+  var ids = d.pedidos.map(function (p) { return 'P' + p.id; }).concat(d.lleva.map(function (l) { return 'L' + l.codigo; }), rec.map(function (r) { return 'R' + r.folio; }));
   var antes = S.vistos;
   S.vistos = ids;
   if (!antes) return [];
-  return d.pedidos.filter(function (p) { return antes.indexOf('P' + p.id) < 0; }).map(function (p) { return 'Pedido ' + p.id + ' · ' + p.cliente; });
+  var huboRec = antes.some(function (x) { return x.charAt(0) === 'R'; }) || !rec.length;   // la primera vez que llega la lista de "por recoger" no suena
+  return d.pedidos.filter(function (p) { return antes.indexOf('P' + p.id) < 0; }).map(function (p) { return { tipo: 'tarea', texto: 'Pedido ' + p.id + ' · ' + p.cliente }; })
+    .concat(huboRec ? rec.filter(function (r) { return antes.indexOf('R' + r.folio) < 0; }).map(function (r) { return { tipo: 'traspaso', texto: 'Traspaso ' + r.folio + ' por recoger · va a ' + r.destino }; }) : []);
 }
 
 function avisarNuevos(lista) {
-  S.aviso = { texto: lista.length === 1 ? lista[0] : lista.length + ' pedidos nuevos', hora: Date.now() };
-  beep('aviso');
+  var hayPedido = lista.some(function (x) { return x.tipo === 'tarea'; });
+  S.aviso = { texto: lista.length === 1 ? lista[0].texto : lista.length + (hayPedido ? ' tareas nuevas' : ' traspasos por recoger'), hora: Date.now() };
+  sonido(hayPedido ? 'tarea' : 'traspaso');
   if (document.hidden && window.Notification && Notification.permission === 'granted' && navigator.serviceWorker) {
     navigator.serviceWorker.ready.then(function (r) { r.showNotification('Nueva tarea', { body: S.aviso.texto, icon: '../iconos/icono-192.png', vibrate: [200, 100, 200], tag: 'tarea' }); }).catch(function () {});
   }
@@ -347,7 +379,7 @@ function nav(act) {
     b('pedidos', IC.lista, 'Pendientes', 'vistaPedidos()') + b('manual', IC.libro, 'Manual', 'vistaManual()') + '</nav>';
 }
 function pedirAvisos() {
-  beep();
+  sonido('tarea');
   if (!window.Notification) return toast('Este celular no permite avisos; sonará con la app abierta.');
   Notification.requestPermission().then(function () { vistaInicio(); });
 }
@@ -514,7 +546,7 @@ function enviarCierre() {
     if (c.comoNumero) datos.comoNumero = c.comoNumero;
     var etiqueta = c.id + ' · ' + ({ ENTREGADO: 'Entregado', RETORNO: 'Retorno', CANCELADO: 'Cancelado', PAQUETERIA: 'Paquetería', NO_ENTREGADO: 'No entregado' })[c.resultado];
     if (c.comoNumero) {
-      return srv('cerrar', datos).then(function () { quitarCargando(); beep(); S.cierre = null; DB.del('borrador'); toast(etiqueta + ' · a nombre de ' + c.comoNombre, 'ok'); admGestor(c.comoNumero); });
+      return srv('cerrar', datos).then(function () { quitarCargando(); sonido(entrega ? 'entregado' : 'noEntregado'); S.cierre = null; DB.del('borrador'); toast(etiqueta + ' · a nombre de ' + c.comoNombre, 'ok'); admGestor(c.comoNumero); });
     }
     return encolar('cerrar', datos, etiqueta).then(function () {
       // fuera de la lista al instante, aunque no haya señal
@@ -522,7 +554,7 @@ function enviarCierre() {
       S.datos.lleva = S.datos.lleva.filter(function (p) { return clave(p.codigo) !== clave(c.id); });
       if (entrega) S.datos.hoy.entregados++; else if (c.resultado !== 'PAQUETERIA') S.datos.hoy.noEntregados++;
       DB.set('inicio', S.datos); DB.del('borrador');
-      quitarCargando(); beep();
+      quitarCargando(); sonido(entrega ? 'entregado' : 'noEntregado');
       var hecho = c; S.cierre = null;
       var parada = S.volverParada && armarParadas().porK[S.volverParada];
       if (entrega && c.tipo === 'PEDIDO' && !fac) vistaListo(hecho);
@@ -592,14 +624,17 @@ function subirCola() {
       if (it.accion === 'recolectar') avisarRecoleccionesSubidas(d);
       return siguiente();
     }, function (e) {
-      if (e.red) throw e;                                  // sin señal: se intenta luego, en orden
+      if (e.red) { S.huboSinRed = true; throw e; }        // sin señal: se intenta luego, en orden
       it.error = '[' + e.codigo + '] ' + e.message; it.intentos++;
       DB.encolar(it);
       toast(it.etiqueta + ': ' + e.message + ' (' + e.codigo + ')', 'err');
       return siguiente();
     });
   }
-  return siguiente().catch(function () {}).then(function () { S.subiendo = false; pintarEstado(); });
+  return siguiente().catch(function () {}).then(function () {
+    S.subiendo = false; pintarEstado();
+    if (S.huboSinRed && !S.cola.length) { S.huboSinRed = false; sonido('subido'); toast('Volvió la señal: ya se subió todo', 'ok'); }
+  });
 }
 function verCola() {
   if (!S.cola.length) return toast('Todo está subido.', 'ok');
@@ -633,7 +668,7 @@ function alLeer(texto) {
   if (!codigo) return;
   if (S.modoScan === 'entregar') return entregarLeido(codigo);
   if (S.leidos.some(function (l) { return clave(l.codigo) === clave(codigo); }) || S.datos.lleva.some(function (l) { return clave(l.codigo) === clave(codigo); })) {
-    beep('malo'); return toast('Ya leíste ' + codigo);
+    sonido('escaneoMal'); return toast('Ya leíste ' + codigo);
   }
   var l = { codigo: codigo, estado: 'esp', texto: 'Registrando…' };
   S.leidos.unshift(l); pintarLeidos(); beep();
@@ -654,7 +689,7 @@ function aplicarResultados(res, items) {
     l.codigo = r.codigo;
     if (r.ok) { l.estado = 'ok'; l.texto = 'Va a ' + (r.destino || '—') + (r.direccion ? ' · ' + r.direccion : '') + (r.enPedidos ? ' · ya está en tus pedidos' : ''); }
     else if (r.pideDestino) { l.estado = 'esp'; l.texto = r.mensaje; l.pideDestino = true; }
-    else { l.estado = 'mal'; l.texto = r.mensaje; if (!r.repetido) beep('malo'); }
+    else { l.estado = 'mal'; l.texto = r.mensaje; if (!r.repetido) sonido('escaneoMal'); }
   });
   pintarLeidos();
 }
@@ -687,7 +722,7 @@ function entregarLeido(codigo) {
   if (i >= 0) { beep(); pararEscaner(); S.volverA = 'lleva'; return abrirCierre(S.datos.lleva[i].tipo === 'TRASPASO' ? 'TRASPASO' : 'RECOLECCION', i, 'ENTREGADO'); }
   var j = S.datos.pedidos.findIndex(function (p) { return clave(p.id) === k; });
   if (j >= 0) { beep(); pararEscaner(); S.volverA = 'pedidos'; return abrirCierre('PEDIDO', j, 'ENTREGADO'); }
-  beep('malo'); toast(codigo + ' no está en lo que llevas. Recolecta primero.', 'err');
+  sonido('escaneoMal'); toast(codigo + ' no está en lo que llevas. Recolecta primero.', 'err');
 }
 
 /* ---------- lector de códigos (motor del celular o zxing-cpp) ---------- */

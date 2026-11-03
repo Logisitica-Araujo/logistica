@@ -190,7 +190,7 @@ function entregarParada() {
       S.datos.pedidos = S.datos.pedidos.filter(function (x) { return !ids[clave(x.id)]; });
       S.datos.lleva = S.datos.lleva.filter(function (x) { return !ids[clave(x.codigo)]; });
       S.datos.hoy.entregados += items.length; DB.set('inicio', S.datos);
-      quitarCargando(); beep(); toast(etiqueta, 'ok'); S.parada = null;
+      quitarCargando(); sonido('entregado'); toast(etiqueta, 'ok'); S.parada = null;
       var queda = armarParadas().porK[p.k];
       if (queda && (queda.items.length || queda.recoger.length)) vistaParada(p.k); else vistaInicio();
       subirCola();
