@@ -3,7 +3,7 @@
 const { crearEntorno } = require('./simulador');
 const path = require('path');
 const fs = require('fs');
-const D = path.join(__dirname, '..', 'apps-script');
+const D = path.join(__dirname, '..', '1-SCRIPTS-PARA-PEGAR');
 const ARCHIVOS = fs.readdirSync(D).filter(f => f.endsWith('.gs')).sort().map(f => path.join(D, f));
 
 let fallas = 0, total = 0;

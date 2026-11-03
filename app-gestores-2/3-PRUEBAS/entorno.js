@@ -3,7 +3,7 @@ const { crearEntorno } = require('./simulador');
 const path = require('path');
 const fs = require('fs');
 
-const DIR_APP = path.join(__dirname, '..', 'apps-script');
+const DIR_APP = path.join(__dirname, '..', '1-SCRIPTS-PARA-PEGAR');
 const DIR_OPS = process.env.OPS || path.join(__dirname, '..', '..', '..', 'operaciones', 'apps-script');
 const gs = d => fs.readdirSync(d).filter(f => f.endsWith('.gs')).sort().map(f => path.join(d, f));
 if (!fs.existsSync(DIR_OPS)) { console.log('No encuentro el código de OPERACIONES en ' + DIR_OPS + ' (usa OPS=...)'); process.exit(1); }
@@ -53,8 +53,11 @@ const hHist = H(madre, 'APP_Traspasos_Hist', [['FechaHora', 'Folio', 'Gestor', '
 // La fórmula de ESTATUS (columna P), simplificada: se recalcula después de cada cambio.
 function formulaEstatus() {
   hOps.datos.slice(3).forEach(f => {
+    // V con su fórmula (lee APP_Entregas "ENTREGADO"): si ya no hay renglón ENTREGADO de ese pedido, queda vacía.
+    if (typeof f[21] === 'string' && f[21].charAt(0) === '=') f[21] = hEnt.datos.some(h => h[1] === f[0] && h[4] === 'ENTREGADO') ? '2026-11-04' : '';
     if (f[21]) f[15] = 'ENTREGADO'; else if (f[19]) f[15] = 'PEDIDO CANCELADO'; else if (f[17]) f[15] = 'PEDIDO RETORNADO';
     else if (f[7] === 'Recolección') f[15] = hHist.datos.some(h => h[1] === f[0] && h[4] === 'RECOLECTADO') ? 'RECOLECTADO POR GESTOR' : 'PENDIENTE PARA RECOLECTAR';
+    else if (f[7] === 'Logística Interna' && /ENTREGADO|CANCELADO|RETORNADO/.test(f[15])) f[15] = 'ENVIADO POR LOGÍSTICA INTERNA';   // se quitó la casilla
   });
 }
 

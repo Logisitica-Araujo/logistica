@@ -74,7 +74,7 @@ function _usuarioCache(usuario) {
   var u = _buscarUsuario(usuario);
   if (u) {
     var limpio = { Numero: u.Numero, Nombre: u.Nombre, NombreEnOperaciones: u.NombreEnOperaciones, Usuario: u.Usuario,
-                   Rol: u.Rol, Activo: u.Activo, VersionSesion: u.VersionSesion, DebeCambiar: u.DebeCambiar };
+                   Rol: u.Rol, Activo: u.Activo, VersionSesion: u.VersionSesion, DebeCambiar: u.DebeCambiar, Area: u.Area };
     try { cache.put(k, JSON.stringify(limpio), APPG.CACHE_USUARIO_SEG); } catch (e) {}
     return limpio;
   }
@@ -93,6 +93,12 @@ function _buscarUsuario(usuario) {
 
 function _olvidarUsuario(usuario) { CacheService.getScriptCache().remove('usr_' + _norm(usuario)); }
 
+/** Perfil de la persona: qué app ve. area = GESTORIA | FACTURACION; admin = ve Administración. */
+function _perfil(u) {
+  return { area: /factur/i.test(_norm(u.Area)) ? 'FACTURACION' : 'GESTORIA', admin: /admin/i.test(String(u.Rol || '')) };
+}
+function _esAdmin(u) { return _perfil(u).admin; }
+
 
 /* ==================== Acciones de la app ==================== */
 
@@ -106,9 +112,10 @@ function apiLogin(p) {
     throw _falla('APP-02', 'Demasiados intentos. Espera ' + APPG.BLOQUEO_MIN + ' minutos o pide a tu administradora que restablezca tu contraseña.');
   }
   var cfg = _config();
-  if (_si(cfg.APP_BLOQUEADA)) throw _falla('APP-07', String(cfg.MENSAJE_BLOQUEO || 'App en mantenimiento.'));
-
   var u = _buscarUsuario(usuario);
+  // En mantenimiento solo entra un administrador (para poder apagarlo desde la app).
+  if (_si(cfg.APP_BLOQUEADA) && !(u && _esAdmin(u))) throw _falla('APP-07', String(cfg.MENSAJE_BLOQUEO || 'App en mantenimiento.'));
+
   var bien = u && _si(u.Activo) && String(u.ClaveCifrada) === _cifrar(usuario, String(p.clave || ''));
   _agregar(APPG.H.SESIONES, { FechaHora: _ahora(), Usuario: usuario, NumeroGestor: u ? u.Numero : '',
                               Dispositivo: String(p.dispositivo || '').slice(0, 200), Resultado: bien ? 'ENTRÓ' : 'FALLÓ' });
@@ -121,7 +128,7 @@ function apiLogin(p) {
   u._t.sh.getRange(u._fila, u._t.col('UltimoAcceso')).setValue(_ahora());
   _log(u.Nombre, 'LOGIN', String(p.dispositivo || '').slice(0, 120));
   return { token: _crearToken(u.Usuario, u.VersionSesion || 1), nombre: u.Nombre, numero: u.Numero,
-           debeCambiar: _si(u.DebeCambiar) };
+           debeCambiar: _si(u.DebeCambiar), perfil: _perfil(u) };
 }
 
 /** cambiarClave {token, actual, nueva} → {token} (token nuevo; los demás celulares siguen dentro) */
@@ -144,11 +151,17 @@ function apiYo(p) {
   var u = _exigirSesion(p.token);
   var cfg = _config();
   return {
-    numero: u.Numero, nombre: u.Nombre, debeCambiar: _si(u.DebeCambiar),
+    numero: u.Numero, nombre: u.Nombre, debeCambiar: _si(u.DebeCambiar), perfil: _perfil(u),
     reglas: {
       exigirFotoEntrega: _si(cfg.EXIGIR_FOTO_ENTREGA), exigirFirmaEntrega: _si(cfg.EXIGIR_FIRMA_ENTREGA),
       exigirQuienRecibio: _si(cfg.EXIGIR_QUIEN_RECIBIO), exigirFotoNoEntrega: _si(cfg.EXIGIR_FOTO_NOENTREGA),
-      palabrasExigenFirma: String(cfg.PALABRAS_EXIGEN_FIRMA || '').split('|').map(function (x) { return x.trim(); }).filter(String)
+      palabrasExigenFirma: _lista(cfg.PALABRAS_EXIGEN_FIRMA),
+      exigirAcuseImss: cfg.EXIGIR_ACUSE_IMSS === '' || cfg.EXIGIR_ACUSE_IMSS == null ? true : _si(cfg.EXIGIR_ACUSE_IMSS),
+      areasImss: _lista(cfg.AREAS_IMSS || 'Farmacia | Almacén | Urgencias | Otro'),
+      palabrasImss: _lista(cfg.PALABRAS_IMSS || 'IMSS'),
+      palabrasEfectivo: _lista(cfg.PALABRAS_EFECTIVO || 'Efectivo | $'),
+      palabrasDocumentos: _lista(cfg.PALABRAS_DOCUMENTOS || 'Factura | Cortes | Documento'),
+      motivosCambioVehiculo: _lista(cfg.MOTIVOS_CAMBIO_VEHICULO || 'Llanta ponchada | Falla mecánica | Lluvia | Carga grande | Otro')
     },
     versionServidor: APPG.VERSION
   };
@@ -157,7 +170,7 @@ function apiYo(p) {
 
 /* ==================== Administración (desde el menú) ==================== */
 
-function altaGestor(nombre, nombreEnOps, usuario) {
+function altaGestor(nombre, nombreEnOps, usuario, area) {
   usuario = String(usuario || '').trim().toLowerCase();
   if (!/^[a-z0-9._-]{3,30}$/.test(usuario)) throw new Error('El usuario debe tener de 3 a 30 letras o números, sin espacios ni acentos.');
   if (!String(nombre || '').trim() || !String(nombreEnOps || '').trim()) throw new Error('Faltan el nombre o el nombre en Operaciones.');
@@ -170,7 +183,7 @@ function altaGestor(nombre, nombreEnOps, usuario) {
   _agregar(APPG.H.USUARIOS, {
     Numero: numero, Nombre: String(nombre).trim(), NombreEnOperaciones: String(nombreEnOps).trim(), Usuario: usuario,
     ClaveCifrada: _cifrar(usuario, clave), Rol: 'Gestor', Activo: true, DebeCambiar: true, VersionSesion: 1,
-    Alta: _ahora(), UltimoAcceso: '', Notas: ''
+    Alta: _ahora(), UltimoAcceso: '', Notas: '', Area: /factur/i.test(_norm(area)) ? 'Facturación' : 'Gestoría'
   });
   _log('administradora', 'ALTA_GESTOR', numero + ' · ' + usuario);
   return { numero: numero, usuario: usuario, clave: clave };
@@ -217,6 +230,12 @@ function onEdit(e) {
     var sh = e.range.getSheet();
     if (sh.getName() !== APPG.H.USUARIOS || e.range.getRow() < 2) return;
     var enc = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(function (h) { return String(h).trim(); });
+    // Cualquier cambio (Área, Rol, Activo…) se nota en la app en su siguiente actualización, no en 5 minutos.
+    var cu = enc.indexOf('Usuario') + 1;
+    if (cu > 0) {
+      var us = sh.getRange(e.range.getRow(), cu, e.range.getNumRows(), 1).getValues();
+      us.forEach(function (r) { if (r[0]) _olvidarUsuario(r[0]); });
+    }
     var col = enc.indexOf('NuevaContraseña') + 1;
     if (col < 1 || e.range.getColumn() > col || e.range.getLastColumn() < col) return;
     __APPG_LIBRO = e.source;                    // en una edición no se puede abrir el archivo por ID

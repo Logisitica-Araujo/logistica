@@ -99,6 +99,20 @@ function INSTALAR() {
     hecho.push('Documentos iniciales cargados (protocolos y pólizas).');
   }
 
+  /* 4b) Listas desplegables en APP_Usuarios: Area (Gestoría / Facturación) y Rol (Gestor / Administrador).
+         Los renglones sin área quedan en Gestoría. */
+  try {
+    var us = _tabla(APPG.H.USUARIOS), filasU = Math.max(us.sh.getMaxRows() - 1, 1);
+    var dv = function (lista) { return SpreadsheetApp.newDataValidation().requireValueInList(lista, true).setAllowInvalid(false).build(); };
+    us.sh.getRange(2, us.col('Area'), filasU, 1).setDataValidation(dv(APPG.AREAS));
+    us.sh.getRange(2, us.col('Rol'), filasU, 1).setDataValidation(dv(APPG.ROLES));
+    var sinArea = 0;
+    us.filas.forEach(function (f) { if (!String(f.Area || '').trim()) { us.sh.getRange(f._fila, us.col('Area')).setValue('Gestoría'); sinArea++; } });
+    if (sinArea) hecho.push('APP_Usuarios: ' + sinArea + ' persona(s) quedaron en Área = Gestoría. Cambia a "Facturación" a quien haga traslados (Alejandro, Belarmino).');
+    var ve = _tabla(APPG.H.VEHICULOS);
+    ve.sh.getRange(2, ve.col('EnTaller'), Math.max(ve.sh.getMaxRows() - 1, 1), 1).setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build());
+  } catch (e) { hecho.push('No pude poner las listas de Área/Rol: ' + e.message); }
+
   /* 5) Proteger lo que no se edita a mano. Solo AVISO: Google pregunta
         "¿seguro?" antes de dejar editar; no bloquea a la administradora. */
   Object.keys(APPG.ENC).forEach(function (nombre) {
@@ -127,8 +141,9 @@ function menuNuevoGestor() {
   var enOps = _preguntar(ui, 'Nuevo gestor (2 de 3)',
     'Nombre EXACTO como aparece en la columna I de Operaciones\n(lista de gestores de la hoja "Datos", columna A):'); if (!enOps) return;
   var usuario = _preguntar(ui, 'Nuevo gestor (3 de 3)', 'Usuario para entrar (corto, sin espacios, ej. joseluis):'); if (!usuario) return;
+  var fac = ui.alert('¿Es del área de Facturación?', 'Sí = Facturación (traslados: traspasos, efectivo, documentos, IMSS).\nNo = Gestoría (pedidos a domicilio y recolecciones).', ui.ButtonSet.YES_NO);
   try {
-    var r = altaGestor(nombre, enOps, usuario);
+    var r = altaGestor(nombre, enOps, usuario, fac === ui.Button.YES ? 'Facturación' : 'Gestoría');
     ui.alert('Gestor dado de alta',
       'Número: ' + r.numero + '\nUsuario: ' + r.usuario + '\nContraseña temporal: ' + r.clave +
       '\n\nDásela EN PERSONA. Al entrar por primera vez la app le pide cambiarla.\nEsta contraseña no se vuelve a mostrar.',

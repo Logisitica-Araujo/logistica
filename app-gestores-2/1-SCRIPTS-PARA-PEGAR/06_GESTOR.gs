@@ -11,6 +11,26 @@
 var APPG_RESULTADOS = ['ENTREGADO', 'RETORNO', 'CANCELADO', 'PAQUETERIA', 'NO_ENTREGADO'];
 
 function _hoyTxt() { return _ahora('yyyy-MM-dd'); }
+
+/** ¿Qué es? IMSS (entrega en un área del IMSS), EFECTIVO, DOCUMENTO o '' (traspaso o pedido normal). */
+function _clase(texto, cfg, esPedidoImss) {
+  var t = _norm(texto);
+  var tiene = function (lista) { return _lista(lista).some(function (w) { return w && t.indexOf(_norm(w)) >= 0; }); };
+  if (esPedidoImss) return 'IMSS';
+  if (tiene(cfg.PALABRAS_EFECTIVO || 'Efectivo | $')) return 'EFECTIVO';
+  if (tiene(cfg.PALABRAS_DOCUMENTOS || 'Factura | Cortes | Documento')) return 'DOCUMENTO';
+  return '';
+}
+function _esImss(f, cfg) {
+  var t = _norm([f.Area, f.SubArea, f.Cliente].join(' '));
+  return _lista(cfg.PALABRAS_IMSS || 'IMSS').some(function (w) { return w && t.indexOf(_norm(w)) >= 0; });
+}
+/** "$2,654.00 + $1,144.00" → 3798. 0 si no trae montos. */
+function _montoEsperado(texto) {
+  var m, total = 0, re = /\$\s?([\d,]+(?:\.\d{1,2})?)/g, s = String(texto || '');
+  while ((m = re.exec(s))) total += Number(m[1].replace(/,/g, '')) || 0;
+  return Math.round(total * 100) / 100;
+}
 function _lista(v) { return String(v || '').split('|').map(function (x) { return x.trim(); }).filter(String); }
 
 /* ==================== inicio ==================== */
@@ -20,6 +40,7 @@ function apiInicio(p) {
   var u = _buscarUsuario(s.Usuario);
   var cfg = _config();
   var hoy = _hoyTxt();
+  var perfil = _perfil(u);
 
   /* Vehículos y quién trae cuál hoy */
   var ocupados = {};
@@ -29,7 +50,7 @@ function apiInicio(p) {
   var vehiculos = _tabla(APPG.H.VEHICULOS).filas.filter(function (v) { return _si(v.Activo); }).map(function (v) {
     var tipo = String(v.Tipo || 'AUTO').toUpperCase();
     return { nombre: String(v.Vehiculo), tipo: tipo, placa: String(v.Placa || ''),
-             ocupadoPor: tipo === 'NINGUNO' ? '' : (ocupados[_norm(v.Vehiculo)] || '') };
+             ocupadoPor: tipo === 'NINGUNO' ? '' : (ocupados[_norm(v.Vehiculo)] || ''), enTaller: _si(v.EnTaller) };
   });
 
   /* Lo que cerró (para no volver a mostrarlo mientras Operaciones se entera) */
@@ -41,7 +62,7 @@ function apiInicio(p) {
     var est = String(c.Estado);
     var reciente = _fechaMs(c.EnviadoEn || c.FechaHora) > hace15;
     if (String(c.Resultado) === 'PAQUETERIA' || est === 'PENDIENTE' || (est === 'ENVIADO' && reciente) || est === 'LOCAL') ocultar[k] = true;
-    if (String(c.NumeroGestor) === String(u.Numero) && _fechaTxt(c.FechaHora) === hoy) {
+    if (String(c.NumeroGestor) === String(u.Numero) && _fechaTxt(c.FechaHora) === hoy && est !== 'ANULADO' && est !== 'CORREGIDO') {
       if (c.Resultado === 'ENTREGADO') hoyCuenta.entregados++;
       else if (c.Resultado !== 'PAQUETERIA') hoyCuenta.noEntregados++;
     }
@@ -52,7 +73,8 @@ function apiInicio(p) {
   }).map(function (f) {
     return { id: String(f.ID), fila: Number(f.Fila), cliente: String(f.Cliente), direccion: String(f.Direccion),
              telefono: String(f.Telefono || ''), notas: String(f.Notas || ''), area: String(f.Area), subarea: String(f.SubArea),
-             metodo: String(f.Metodo), eta: String(f.ETA || ''), estatus: String(f.Estatus || '') };
+             metodo: String(f.Metodo), eta: String(f.ETA || ''), estatus: String(f.Estatus || ''),
+             clase: _clase([f.Notas, f.SubArea].join(' '), cfg, _esImss(f, cfg)), esperado: _montoEsperado(f.Notas) };
   });
 
   var sucursales = _tabla(APPG.H.SUCURSALES).filas.filter(function (x) { return _si(x.Activo); }).map(function (x) {
@@ -70,7 +92,8 @@ function apiInicio(p) {
     lleva.push({ codigo: String(r.Codigo), tipo: String(r.Tipo), origen: String(r.Origen), destino: String(r.Destino),
                  contenido: String(r.Contenido), fecha: _fechaTxt(r.FechaHora, 'yyyy-MM-dd HH:mm'),
                  estado: _estadoAmigable(r.EstadoFuente, r.Enviado),
-                 destinoSucursal: suc ? suc.nombre : '', destinoDireccion: suc ? suc.direccion : '', destinoMaps: suc ? suc.maps : '' });
+                 destinoSucursal: suc ? suc.nombre : '', destinoDireccion: suc ? suc.direccion : '', destinoMaps: suc ? suc.maps : '',
+                 destinoId: suc ? suc.id : '', clase: _clase([r.Contenido, r.Destino].join(' '), cfg, false), esperado: _montoEsperado(r.Contenido) });
   });
 
   var motivos = { RETORNO: [], CANCELADO: [], TRASPASO: [] };
@@ -83,7 +106,8 @@ function apiInicio(p) {
   Object.keys(cfg).forEach(function (k) { if (/^WA_MSG_/.test(k)) wa[k.replace('WA_MSG_', '')] = String(cfg[k]).replace(/\\n/g, '\n'); });
 
   return {
-    gestor: { numero: u.Numero, nombre: u.Nombre },
+    gestor: { numero: u.Numero, nombre: u.Nombre }, perfil: perfil,
+    porRecoger: perfil.area === 'FACTURACION' ? _porRecoger() : [],
     vehiculo: _fechaTxt(u.FechaVehiculo) === hoy && u.VehiculoHoy ? String(u.VehiculoHoy) : '',
     vehiculos: vehiculos,
     checklist: { MOTO: _lista(cfg.CHECK_MOTO), AUTO: _lista(cfg.CHECK_AUTO) },
@@ -102,6 +126,7 @@ function apiVehiculo(p) {
   var nombre = String(p.vehiculo || '').trim();
   var v = _tabla(APPG.H.VEHICULOS).filas.filter(function (x) { return _si(x.Activo) && _norm(x.Vehiculo) === _norm(nombre); })[0];
   if (!v) throw _falla('CAP-06', 'Ese vehículo no está en la lista.');
+  if (_si(v.EnTaller)) throw _falla('CAP-06', nombre + ' está en taller. Elige otro.');
   var hoy = _hoyTxt();
   if (String(v.Tipo).toUpperCase() !== 'NINGUNO') {
     var otro = u._t.filas.filter(function (f) {
@@ -110,10 +135,14 @@ function apiVehiculo(p) {
     if (otro) throw _falla('CAP-06', otro.Nombre + ' ya trae ' + nombre + ' hoy. Elige otro o pídele que lo cambie.');
   }
   var antes = _fechaTxt(u.FechaVehiculo) === hoy ? String(u.VehiculoHoy || '') : '';
+  var desde = _fechaTxt(u.FechaVehiculo, 'yyyy-MM-dd HH:mm').slice(11);
   u._t.sh.getRange(u._fila, u._t.col('VehiculoHoy')).setValue(String(v.Vehiculo));
   u._t.sh.getRange(u._fila, u._t.col('FechaVehiculo')).setValue(_ahora('yyyy-MM-dd HH:mm'));
   var falta = (p.checklist || []).filter(function (c) { return c && c.ok === false; }).map(function (c) { return c.texto; });
-  _log(u.Nombre, antes ? 'CAMBIA_VEHICULO' : 'VEHICULO', (antes ? antes + ' → ' : '') + v.Vehiculo + (falta.length ? ' · le falta: ' + falta.join(', ') : ''));
+  var motivo = String(p.motivo || '').slice(0, 120);
+  var nota = antes && antes !== String(v.Vehiculo) ? antes + ' de ' + desde + ' a ' + _ahora('HH:mm') + ' → ' + v.Vehiculo + (motivo ? ' · ' + motivo : '') : '';
+  try { u._t.sh.getRange(u._fila, u._t.col('VehiculoNota')).setValue(nota ? nota : (falta.length ? 'Le faltó: ' + falta.join(', ') : '')); } catch (e) { }
+  _log(u.Nombre, antes ? 'CAMBIA_VEHICULO' : 'VEHICULO', (antes ? antes + ' → ' : '') + v.Vehiculo + (motivo ? ' · motivo: ' + motivo : '') + (falta.length ? ' · le falta: ' + falta.join(', ') : ''));
   if (falta.length) _problema('CAP-06', u.Nombre, 'Salió en ' + v.Vehiculo + ' sin: ' + falta.join(', '));
   return { vehiculo: String(v.Vehiculo) };
 }
@@ -122,9 +151,48 @@ function apiVehiculo(p) {
 /* p = { idLocal, tipo: PEDIDO|TRASPASO|RECOLECCION, id, fila, resultado, motivo, comentario, recibio,
          foto (base64 JPEG), firma (base64 PNG), lat, lng, horaCelular } */
 function apiCerrar(p) {
+  var u = _quienCierra(p);
+  var cfg = _config();
+  return _cerrarUno(u, cfg, p, null);
+}
+
+/** La administradora puede cerrar a nombre de otro (p.comoNumero). Cualquier otro cierra lo suyo. */
+function _quienCierra(p) {
   var s = _exigirSesion(p.token);
   var u = _buscarUsuario(s.Usuario);
+  if (p.comoNumero && String(p.comoNumero) !== String(u.Numero)) {
+    if (!_esAdmin(u)) throw _falla('APP-02', 'Solo un administrador puede cerrar a nombre de otro.');
+    var otro = u._t.filas.filter(function (f) { return String(f.Numero) === String(p.comoNumero); })[0];
+    if (!otro) throw _falla('APP-01', 'No existe el gestor ' + p.comoNumero + '.');
+    otro._t = u._t; otro._por = u.Nombre;
+    return otro;
+  }
+  return u;
+}
+
+/* cerrarVarios = varias entregas en la misma parada con UNA foto (perfil Facturación).
+   p = { items: [{idLocal, tipo, id, fila, clase}], resultado: 'ENTREGADO', foto, sucursal, comentario, recibio, lat, lng, horaCelular } */
+function apiCerrarVarios(p) {
+  var u = _quienCierra(p);
   var cfg = _config();
+  var items = (p.items || []).slice(0, 40);
+  if (!items.length) throw _falla('APP-01', 'No marcaste nada para entregar.');
+  var urlFoto = '';
+  if (p.foto) {
+    var primero = String(items[0].id || 'entrega').replace(/[\\/:*?"<>|]/g, '-');
+    var hayPedido = items.some(function (x) { return String(x.tipo).toUpperCase() === 'PEDIDO'; });
+    urlFoto = _guardarImagen(p.foto, 'image/jpeg', primero + (items.length > 1 ? ' y ' + (items.length - 1) + ' más' : ''),
+                             cfg[hayPedido ? 'CARPETA_ENTREGADO' : 'CARPETA_TRASPASOS'], u.Nombre);
+  }
+  var hechos = items.map(function (x) {
+    var q = Object.assign({}, p, x, { foto: null, resultado: p.resultado || 'ENTREGADO' });
+    try { return _cerrarUno(u, cfg, q, urlFoto); }
+    catch (e) { return { idCierre: x.idLocal, error: e.message, codigo: e.codigo || 'APP-01' }; }
+  });
+  return { cierres: hechos, urlFoto: urlFoto };
+}
+
+function _cerrarUno(u, cfg, p, urlFotoYa) {
   var idLocal = String(p.idLocal || '').trim();
   if (!/^[A-Za-z0-9_-]{8,60}$/.test(idLocal)) throw _falla('APP-01', 'Falta el identificador del cierre (actualiza la app).');
 
@@ -143,15 +211,34 @@ function apiCerrar(p) {
   /* Reglas (las mismas que valida el celular; aquí por si alguien se las salta) */
   // En traspasos nada es obligatorio. En pedidos: motivo en retorno/cancelado y las fotos que diga APP_Config.
   if (tipo === 'PEDIDO' && (res === 'RETORNO' || res === 'CANCELADO') && !String(p.motivo || '').trim()) throw _falla('CAP-05', 'Elige el motivo.');
-  if (tipo === 'PEDIDO' && res === 'ENTREGADO' && _si(cfg.EXIGIR_FOTO_ENTREGA) && !p.foto) throw _falla('CAP-04', 'Falta la foto de la fachada.');
-  if (tipo === 'PEDIDO' && (res === 'RETORNO' || res === 'CANCELADO') && _si(cfg.EXIGIR_FOTO_NOENTREGA) && !p.foto) throw _falla('CAP-04', 'Falta la foto de evidencia.');
-  if (tipo === 'PEDIDO' && res === 'ENTREGADO' && _si(cfg.EXIGIR_QUIEN_RECIBIO) && !String(p.recibio || '').trim()) throw _falla('CAP-08', 'Anota quién recibió.');
+  var clase = String(p.clase || '').toUpperCase();
+  var tieneFoto = !!(p.foto || urlFotoYa);
+  if (clase === 'IMSS' && res === 'ENTREGADO' && apiYoReglas_(cfg).exigirAcuseImss && !tieneFoto) throw _falla('CAP-04', 'Falta la foto del acuse sellado.');
+  if (tipo === 'PEDIDO' && clase !== 'IMSS' && res === 'ENTREGADO' && _si(cfg.EXIGIR_FOTO_ENTREGA) && !tieneFoto) throw _falla('CAP-04', 'Falta la foto de la fachada.');
+  if (tipo === 'PEDIDO' && (res === 'RETORNO' || res === 'CANCELADO') && _si(cfg.EXIGIR_FOTO_NOENTREGA) && !tieneFoto) throw _falla('CAP-04', 'Falta la foto de evidencia.');
+  if (tipo === 'PEDIDO' && clase !== 'IMSS' && res === 'ENTREGADO' && _si(cfg.EXIGIR_QUIEN_RECIBIO) && !String(p.recibio || '').trim()) throw _falla('CAP-08', 'Anota quién recibió.');
+
+  /* IMSS: el área queda en "dónde entregó" y en el comentario (Operaciones AD); la matrícula va con quién recibió.
+     Efectivo: el monto (opcional) va en su columna y en el comentario; si no cuadra con lo que decía, se avisa. */
+  var recibio = String(p.recibio || '').trim();
+  if (p.matricula) recibio = (recibio ? recibio + ' · ' : '') + 'Mat. ' + String(p.matricula).trim();
+  var comentario = String(p.comentario || '').trim();
+  var donde = String(p.sucursal || p.areaImss || '').slice(0, 80);
+  if (clase === 'IMSS' && p.areaImss) comentario = 'Área IMSS: ' + p.areaImss + (comentario ? ' · ' + comentario : '');
+  var monto = p.monto === '' || p.monto == null ? '' : Number(String(p.monto).replace(/[$,\s]/g, ''));
+  if (monto !== '' && !isFinite(monto)) throw _falla('CAP-09', 'El monto no es un número.');
+  if (monto !== '') comentario = (comentario ? comentario + ' · ' : '') + 'Monto entregado: $' + monto.toFixed(2);
+  var esperado = Number(p.esperado) || 0;
+  if (monto !== '' && esperado && Math.abs(monto - esperado) > 0.009) {
+    _problema('CAP-09', u.Nombre, id + ': entregó $' + monto.toFixed(2) + ' y el sobre decía $' + esperado.toFixed(2) + '. Nota: ' + (p.comentario || '—'));
+  }
+  if (u._por) comentario = (comentario ? comentario + ' · ' : '') + 'Cerrado por ' + u._por;
 
   /* Fotos a Drive (si una carpeta falla, va a la de respaldo y queda en APP_Problemas) */
   var nombreArchivo = id.replace(/[\\/:*?"<>|]/g, '-');
   var carpeta = tipo === 'PEDIDO' ? ({ ENTREGADO: 'CARPETA_ENTREGADO', RETORNO: 'CARPETA_RETORNO', CANCELADO: 'CARPETA_CANCELADO', PAQUETERIA: 'CARPETA_ENTREGADO' })[res]
                                   : 'CARPETA_TRASPASOS';
-  var urlFoto = p.foto ? _guardarImagen(p.foto, 'image/jpeg', nombreArchivo + (res === 'PAQUETERIA' ? ' PAQUETERIA' : ''), cfg[carpeta], u.Nombre) : '';
+  var urlFoto = urlFotoYa || (p.foto ? _guardarImagen(p.foto, 'image/jpeg', nombreArchivo + (res === 'PAQUETERIA' ? ' PAQUETERIA' : ''), cfg[carpeta], u.Nombre) : '');
   var urlFirma = p.firma ? _guardarImagen(p.firma, 'image/png', nombreArchivo + ' FIRMA', cfg.CARPETA_FIRMAS, u.Nombre) : '';
 
   var ped = tipo === 'PEDIDO' ? _tabla(APPG.H.PEDIDOS).filas.filter(function (f) { return _norm(f.ID) === _norm(id); })[0] : null;
@@ -160,10 +247,10 @@ function apiCerrar(p) {
   _agregar(APPG.H.CIERRES, {
     IdCierre: idLocal, FechaHora: _ahora(), HoraCelular: String(p.horaCelular || '').slice(0, 19), NumeroGestor: u.Numero, Gestor: u.Nombre,
     Vehiculo: _fechaTxt(u.FechaVehiculo) === _hoyTxt() ? String(u.VehiculoHoy || '') : '', Tipo: tipo, ID: id,
-    Fila: ped ? Number(ped.Fila) : (Number(p.fila) || ''), Resultado: res, Motivo: String(p.motivo || ''), Comentario: String(p.comentario || '').slice(0, 1000),
-    Recibio: String(p.recibio || '').slice(0, 120), Lat: p.lat || '', Lng: p.lng || '', URLFoto: urlFoto, URLFirma: urlFirma,
+    Fila: ped ? Number(ped.Fila) : (Number(p.fila) || ''), Resultado: res, Motivo: String(p.motivo || ''), Comentario: comentario.slice(0, 1000),
+    Recibio: recibio.slice(0, 120), Lat: p.lat || '', Lng: p.lng || '', URLFoto: urlFoto, URLFirma: urlFirma,
     Estado: estado, Intentos: 0, UltimoError: '', EnviadoEn: '', Cliente: ped ? String(ped.Cliente) : '', Direccion: ped ? String(ped.Direccion) : '',
-    DondeEntrego: tipo === 'PEDIDO' ? '' : String(p.sucursal || '').slice(0, 80)
+    DondeEntrego: donde, Monto: monto === '' ? '' : monto, Clase: clase, Corregido: ''
   });
 
   /* Lo que lleva (traspaso o recolección) sale de su lista al entregar */
@@ -178,6 +265,33 @@ function apiCerrar(p) {
   }
   _log(u.Nombre, 'CIERRE', tipo + ' ' + id + ' · ' + res + (p.motivo ? ' · ' + p.motivo : ''));
   return { idCierre: idLocal, urlFoto: urlFoto };
+}
+function apiYoReglas_(cfg) { return { exigirAcuseImss: cfg.EXIGIR_ACUSE_IMSS === '' || cfg.EXIGIR_ACUSE_IMSS == null ? true : _si(cfg.EXIGIR_ACUSE_IMSS) }; }
+
+/* ==================== por recoger (perfil Facturación) ==================== */
+/* Traspasos que esperan en una sucursal a que alguien pase por ellos (Estatus NUEVO o EN_LOGISTICA).
+   Lo calcula el robot cada vuelta y lo deja en memoria; si no está, se lee una vez. */
+function _porRecoger() {
+  var c = CacheService.getScriptCache().get('porRecoger');
+  if (c) { try { return JSON.parse(c); } catch (e) { } }
+  try { return _calcularPorRecoger(); } catch (e) { return []; }
+}
+function _calcularPorRecoger() {
+  var t = _tnTabla();
+  var out = [];
+  var cE = t.c('Estatus'), cF = t.c('Folio'), cD = t.c('Destino'), cO = t.c('Origen'), cDesc = t.c('Descripción');
+  var cEl = t.enc.indexOf('Eliminación solicitada');
+  for (var i = 0; i < t.datos.length && out.length < 300; i++) {
+    var v = t.datos[i], est = String(v[cE]).trim().toUpperCase();
+    if (est !== 'NUEVO' && est !== 'EN_LOGISTICA') continue;
+    if (cEl >= 0 && String(v[cEl]).trim().toUpperCase() === 'SI') continue;
+    var folio = String(v[cF]).trim(); if (!folio) continue;
+    var pref = folio.replace(/-\d+$/, '');
+    out.push({ folio: folio, sucursalId: est === 'EN_LOGISTICA' ? 'OFI' : _tnSucursalDe(pref), origen: String(v[cO]), destino: String(v[cD]),
+               contenido: String(v[cDesc]).slice(0, 80), estatus: est });
+  }
+  try { CacheService.getScriptCache().put('porRecoger', JSON.stringify(out), 300); } catch (e) { }
+  return out;
 }
 
 /* ==================== recolectar ==================== */

@@ -1,5 +1,17 @@
 # Registro de cambios · App Gestores 2
 
+## 0.4.0 · 3-nov-2026 · Perfiles: Gestoría, Facturación (traslados) y Administrador
+- **APP_Usuarios:** columnas nuevas **Area** (Gestoría / Facturación, con lista) y **VehiculoNota**; Rol con lista (Gestor / Administrador). INSTALAR deja en Gestoría a quien no tenga área.
+- **Facturación (app verde):** ruta por parada, entregar varios con una foto (`cerrarVarios`), efectivo con monto opcional y aviso si no cuadra (`CAP-09`), IMSS con área, foto del acuse (obligatoria, `EXIGIR_ACUSE_IMSS`) y matrícula, "por recoger" en cada sucursal (lo calcula el robot).
+- **Administrador (app oscura):** acción `admin` con Hoy, Un gestor, Buscar, Corregir, Reasignar, Por revisar, Equipo, Vehículos y Ajustes. Nuevo `08_ADMIN.gs`. Puede cerrar a nombre de un gestor y entrar en mantenimiento.
+- **Vehículos:** motivo al cambiar a medio día; columna **EnTaller** en APP_Vehiculos.
+- **APP_Cierres:** columnas Monto, Clase y Corregido. Estados nuevos ANULADO y CORREGIDO.
+- **Robot:** ahora pasa las recolecciones ANTES que los cierres (si alguien recoge y entrega en el mismo minuto, el traspaso ya está RECOLECTADO).
+- **OPERACIONES `04_Backend_App.gs`:** acciones `reasignarGestor` (columna I) y `corregirCierre` (quita la casilla vieja, pone la nueva, el renglón viejo de APP_Entregas queda "(CORREGIDO)").
+- **App 2.1.0:** `v2/perfiles.js` nuevo; service worker `gestores2-v5`.
+- **Sonidos nuevos** (elegidos el 3-nov): tarea nueva = tres notas que suben · traspaso por recoger = doble marimba · escaneo correcto = doble bip · no se pudo escanear = toc-toc · entrega = ta-da · error = tres notas bajan · retorno/no entregué = dos notas iguales · volvió la señal = whoosh. Cada uno con su vibración.
+- **Pruebas:** `pruebas.js` 60/60, `prueba-integrada.js` 65/65, `prueba-celular.js` 29/29, `prueba-perfiles.js` 85/85 (nuevo).
+
 ## 0.2.0 · 2-nov-2026 · Etapas 2 y 3: robot, conexión y la app del celular
 - **Servidor (App Gestores · Datos):** nuevos `04_OPERACIONES.gs` (habla con la API), `05_TRASPASOS.gs` (Sistema de Traspasos), `06_GESTOR.gs` (inicio, vehículo, cerrar, recolectar, problema, documentos) y `07_ROBOT.gs` (cada minuto: pedidos, cierres, recolecciones y limpieza de lo ya entregado). Cambian `00_CONFIG`, `01_INSTALAR`, `03_API` y `09_PRUEBAS`.
 - **Fotos** a las carpetas de siempre; si una carpeta no acepta (Firmas), van a "App Gestores · Respaldo fotos" y queda en APP_Problemas (`DRV-01`).
@@ -7,7 +19,7 @@
 - **API de OPERACIONES** (repositorio OPERACIONES, misma rama): `04_Backend_App.gs` nuevo, rol App, el Gestor solo cierra sus pedidos, memoria de 60 s.
 - **App del celular** en `v2/`: entrar una vez, vehículo y revisión, inicio con avisos y sonido, pedidos, entregar con cámara dentro de la app, firma, no entregué, paquetería, WhatsApp, escáner para recolectar y entregar, lo que llevo, manual, fila sin señal y borrador si se cierra la app.
 - **Pruebas:** `pruebas.js` 45/45, `prueba-integrada.js` 61/61 (código real de OPERACIONES), `prueba-celular.js` 23/23 (navegador real).
-- Puesta en marcha: [MIERCOLES.md](MIERCOLES.md).
+- Puesta en marcha: [PUESTA_EN_MARCHA.md](2-MANUALES/PUESTA_EN_MARCHA.md).
 
 ## 0.1.0 · 29-oct-2026 · Etapa 1: el archivo de la app y el inicio de sesión
 - **Archivos nuevos** (proyecto de Apps Script de "App Gestores · Datos"): `00_CONFIG.gs`, `01_INSTALAR.gs`, `02_SESION.gs`, `03_API.gs`, `09_PRUEBAS.gs`.

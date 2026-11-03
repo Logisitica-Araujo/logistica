@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.0.1';
+var VERSION_APP = '2.1.0';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -83,25 +83,53 @@ function toast(msg, tipo) {
   document.body.appendChild(t);
   setTimeout(function () { if (t.parentNode) t.remove(); }, tipo === 'err' ? 5000 : 2800);
 }
-function falla(e) { toast((e && e.message ? e.message : String(e)) + (e && e.codigo ? ' (' + e.codigo + ')' : ''), 'err'); beep('malo'); }
+function falla(e) { toast((e && e.message ? e.message : String(e)) + (e && e.codigo ? ' (' + e.codigo + ')' : ''), 'err'); sonido('error'); }
 function cargando(t) { quitarCargando(); var d = document.createElement('div'); d.className = 'cargando'; d.id = 'cargando'; d.innerHTML = '<div class="spinner"></div><span>' + esc(t || 'Un momento…') + '</span>'; document.body.appendChild(d); }
 function quitarCargando() { var d = $('cargando'); if (d) d.remove(); }
-var AC = null;
-function beep(tipo) {
+/* ---------- Sonidos (elegidos el 3-nov: tarea=B · traspaso=C · escaneo=D · escaneoMal=B · entregado=B · error=A · noEntregado=B · subido=A)
+   Se generan en el celular (no hay archivos de audio). Timbres: marimba, campana, suave. ---------- */
+var SONIDOS = {
+  tarea:       { vibra: [120, 60, 120, 60, 220], notas: [{ f: 523, d: .5, tipo: 'marimba' }, { f: 659, t: .12, d: .5, tipo: 'marimba' }, { f: 784, t: .24, d: .7, tipo: 'marimba' }, { f: 1047, t: .36, d: .9, tipo: 'marimba', v: .9 }] },
+  traspaso:    { vibra: [220, 100, 220], notas: [{ f: 440, d: .6, tipo: 'marimba' }, { f: 659, t: .16, d: .8, tipo: 'marimba' }] },
+  escaneo:     { vibra: [30, 40, 30], notas: [{ f: 1568, d: .07, tipo: 'suave' }, { f: 2093, t: .08, d: .1, tipo: 'suave' }] },
+  escaneoMal:  { vibra: [60, 60, 60], notas: [{ f: 220, d: .2, tipo: 'marimba' }, { f: 220, t: .14, d: .25, tipo: 'marimba' }] },
+  entregado:   { vibra: [80, 60, 200], notas: [{ f: 784, d: .5, tipo: 'campana', v: .8 }, { f: 1568, t: .16, d: 1.4, tipo: 'campana' }] },
+  error:       { vibra: [100, 60, 100, 60, 100], notas: [{ f: 659, d: .2, tipo: 'suave' }, { f: 523, t: .16, d: .2, tipo: 'suave' }, { f: 349, t: .32, d: .45, tipo: 'suave' }] },
+  noEntregado: { vibra: [50, 50, 50], notas: [{ f: 587, d: .3, tipo: 'marimba' }, { f: 587, t: .14, d: .35, tipo: 'marimba' }] },
+  subido:      { vibra: [40], notas: [{ f: 400, hasta: 1200, d: .35, tipo: 'suave', v: .7 }] }
+};
+var AC = null, SALIDA_AUDIO = null;
+function sonido(nombre) {
+  var sn = SONIDOS[nombre] || SONIDOS.escaneo;
   try {
-    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (!AC) {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      var comp = AC.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
+      SALIDA_AUDIO = AC.createGain(); SALIDA_AUDIO.gain.value = 0.9; SALIDA_AUDIO.connect(comp); comp.connect(AC.destination);
+    }
     if (AC.state === 'suspended') AC.resume();
-    var notas = tipo === 'malo' ? [[220, 0, .3, 'square']] : tipo === 'aviso' ? [[880, 0, .16, 'sine'], [1175, .2, .2, 'sine'], [880, .5, .16, 'sine'], [1175, .7, .22, 'sine']] : [[1180, 0, .13, 'sine']];
-    notas.forEach(function (n) {
-      var o = AC.createOscillator(), g = AC.createGain(); o.type = n[3]; o.frequency.value = n[0];
-      o.connect(g); g.connect(AC.destination);
-      var t0 = AC.currentTime + n[1];
-      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.3, t0 + .015); g.gain.exponentialRampToValueAtTime(0.0001, t0 + n[2]);
-      o.start(t0); o.stop(t0 + n[2] + .02);
-    });
-    if (navigator.vibrate) navigator.vibrate(tipo === 'malo' ? [70, 50, 70] : tipo === 'aviso' ? [200, 100, 200, 100, 300] : 35);
+    var t0 = AC.currentTime + 0.03;
+    sn.notas.forEach(function (n) { notaAudio(n, t0); });
   } catch (e) {}
+  try { if (navigator.vibrate && sn.vibra) navigator.vibrate(sn.vibra); } catch (e) {}
 }
+function notaAudio(n, t0) {
+  var t = t0 + (n.t || 0), d = n.d || 0.25, v = (n.v || 1) * 0.5;
+  var parciales = { marimba: [[1, 1], [4, 0.18], [10, 0.05]], campana: [[1, 1], [2.76, 0.4], [5.4, 0.18], [8.9, 0.06]], suave: [[1, 1], [2, 0.12]] }[n.tipo] || [[1, 1]];
+  var filtro = AC.createBiquadFilter(); filtro.type = 'lowpass'; filtro.frequency.value = 9000; filtro.connect(SALIDA_AUDIO);
+  parciales.forEach(function (p) {
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(n.f * p[0], t);
+    if (n.hasta) o.frequency.exponentialRampToValueAtTime(n.hasta * p[0], t + d * 0.8);
+    var dec = n.tipo === 'campana' ? d / Math.sqrt(p[0]) : n.tipo === 'marimba' ? d / p[0] : d;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(v * p[1], t + (n.tipo === 'suave' ? 0.02 : 0.004));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.05, dec));
+    o.connect(g); g.connect(filtro); o.start(t); o.stop(t + d + 0.05);
+  });
+}
+/* Compatibilidad: beep() = escaneo correcto, beep('malo') = no se pudo, beep('aviso') = tarea nueva. */
+function beep(tipo) { sonido(tipo === 'malo' ? 'escaneoMal' : tipo === 'aviso' ? 'tarea' : tipo || 'escaneo'); }
 
 /* ==================== Servidor ==================== */
 function srv(accion, datos) {
@@ -140,7 +168,7 @@ function arrancar() {
   setInterval(pintarEstado, 15000);
   if (!S.token) return vistaLogin();
   DB.get('inicio').then(function (d) {
-    if (d) { S.datos = d; S.vistos = d._vistos || null; decidirPrimeraVista(); }
+    if (d) { S.datos = d; S.vistos = d._vistos || null; aplicarTema(); decidirPrimeraVista(); }
     else cargando('Cargando tu día…');
     actualizar(true);
   });
@@ -168,10 +196,12 @@ function actualizar(primera) {
     d._vistos = S.vistos;
     if (d.vehiculo) guardar('dia', hoyTxt());
     S.datos = d; DB.set('inicio', d);
+    if (typeof aplicarTema === 'function') aplicarTema();
     if (primera || !S.vista) decidirPrimeraVista();
     else if (S.vista === 'inicio') vistaInicio();
     else if (S.vista === 'pedidos') vistaPedidos();
     else if (S.vista === 'lleva') vistaLleva();
+    else if (S.vista === 'parada' && S.parada) vistaParada(S.parada.k);
     if (nuevos.length && !primera) avisarNuevos(nuevos);
   }).catch(function (e) {
     quitarCargando();
@@ -180,16 +210,20 @@ function actualizar(primera) {
 }
 
 function detectarNuevos(d) {
-  var ids = d.pedidos.map(function (p) { return 'P' + p.id; }).concat(d.lleva.map(function (l) { return 'L' + l.codigo; }));
+  var rec = d.perfil && d.perfil.area === 'FACTURACION' ? (d.porRecoger || []) : [];
+  var ids = d.pedidos.map(function (p) { return 'P' + p.id; }).concat(d.lleva.map(function (l) { return 'L' + l.codigo; }), rec.map(function (r) { return 'R' + r.folio; }));
   var antes = S.vistos;
   S.vistos = ids;
   if (!antes) return [];
-  return d.pedidos.filter(function (p) { return antes.indexOf('P' + p.id) < 0; }).map(function (p) { return 'Pedido ' + p.id + ' · ' + p.cliente; });
+  var huboRec = antes.some(function (x) { return x.charAt(0) === 'R'; }) || !rec.length;   // la primera vez que llega la lista de "por recoger" no suena
+  return d.pedidos.filter(function (p) { return antes.indexOf('P' + p.id) < 0; }).map(function (p) { return { tipo: 'tarea', texto: 'Pedido ' + p.id + ' · ' + p.cliente }; })
+    .concat(huboRec ? rec.filter(function (r) { return antes.indexOf('R' + r.folio) < 0; }).map(function (r) { return { tipo: 'traspaso', texto: 'Traspaso ' + r.folio + ' por recoger · va a ' + r.destino }; }) : []);
 }
 
 function avisarNuevos(lista) {
-  S.aviso = { texto: lista.length === 1 ? lista[0] : lista.length + ' pedidos nuevos', hora: Date.now() };
-  beep('aviso');
+  var hayPedido = lista.some(function (x) { return x.tipo === 'tarea'; });
+  S.aviso = { texto: lista.length === 1 ? lista[0].texto : lista.length + (hayPedido ? ' tareas nuevas' : ' traspasos por recoger'), hora: Date.now() };
+  sonido(hayPedido ? 'tarea' : 'traspaso');
   if (document.hidden && window.Notification && Notification.permission === 'granted' && navigator.serviceWorker) {
     navigator.serviceWorker.ready.then(function (r) { r.showNotification('Nueva tarea', { body: S.aviso.texto, icon: '../iconos/icono-192.png', vibrate: [200, 100, 200], tag: 'tarea' }); }).catch(function () {});
   }
@@ -249,7 +283,7 @@ function cambiarClave(ev) {
   }).catch(function (e) { quitarCargando(); falla(e); });
 }
 function salir(motivo) {
-  S.token = null; borrar('token'); borrar('dia'); DB.del('inicio'); S.datos = null; S.vistos = null;
+  S.token = null; borrar('token'); borrar('dia'); DB.del('inicio'); S.datos = null; S.vistos = null; S.enAdmin = false; aplicarTema();
   vistaLogin(motivo || '');
 }
 function cerrarSesion() {
@@ -266,9 +300,9 @@ function vistaVehiculo(primera) {
     '<div class="cab-nombre"><small>Hola, ' + esc(d.gestor.nombre) + '</small><b>¿Con qué sales hoy?</b></div></div><div class="cuerpo">';
   d.vehiculos.forEach(function (v, i) {
     var sel = S.vehSel === v.nombre;
-    html += '<button class="veh' + (sel ? ' sel' : '') + '" ' + (v.ocupadoPor ? 'disabled' : '') + ' onclick="elegirVeh(' + i + ')">' +
+    html += '<button class="veh' + (sel ? ' sel' : '') + '" ' + (v.ocupadoPor || v.enTaller ? 'disabled' : '') + ' onclick="elegirVeh(' + i + ')">' +
       '<span class="ic">' + (v.tipo === 'MOTO' ? 'M' : v.tipo === 'NINGUNO' ? '—' : 'C') + '</span><span class="tx"><b>' + esc(v.nombre) + '</b><span>' +
-      (v.ocupadoPor ? 'Lo trae ' + esc(v.ocupadoPor) : v.tipo === 'MOTO' ? 'Moto' : v.tipo === 'NINGUNO' ? 'A pie o transporte público' : 'Auto') + '</span></span><span class="radio"></span></button>';
+      (v.enTaller ? 'En taller' : v.ocupadoPor ? 'Lo trae ' + esc(v.ocupadoPor) : v.tipo === 'MOTO' ? 'Moto' : v.tipo === 'NINGUNO' ? 'A pie o transporte público' : 'Auto') + '</span></span><span class="radio"></span></button>';
   });
   var v = d.vehiculos.filter(function (x) { return x.nombre === S.vehSel; })[0];
   if (v && v.tipo !== 'NINGUNO') {
@@ -279,18 +313,24 @@ function vistaVehiculo(primera) {
       html += '<p class="opc">Si te falta algo, avisa a tu supervisor antes de salir.</p></div>';
     }
   }
-  html += '</div><div class="pie"><button class="btn" ' + (S.vehSel ? '' : 'disabled') + ' onclick="guardarVehiculo()">Salir a ruta</button></div>';
+  if (d.vehiculo && S.vehSel && S.vehSel !== d.vehiculo && leer('dia') === hoyTxt()) {
+    var mot = (d.reglas && d.reglas.motivosCambioVehiculo) || [];
+    html += '<div class="bloque"><div class="cab-b"><label class="et" for="selMotVeh" style="flex:1">¿Por qué cambias de vehículo?</label><span class="opc">opcional</span></div>' +
+      '<select class="campo" id="selMotVeh" onchange="S.motVeh=this.value"><option value="">— Elige —</option>' + mot.map(function (m) { return '<option' + (S.motVeh === m ? ' selected' : '') + '>' + esc(m) + '</option>'; }).join('') + '</select></div>';
+  }
+  html += '</div><div class="pie"><button class="btn" ' + (S.vehSel ? '' : 'disabled') + ' onclick="guardarVehiculo()">' + (d.vehiculo && leer('dia') === hoyTxt() ? 'Cambiar de vehículo' : 'Salir a ruta') + '</button></div>';
   pintar(html);
 }
 function elegirVeh(i) { S.vehSel = S.datos.vehiculos[i].nombre; vistaVehiculo(S.vista === 'vehiculo' && !S.datos.vehiculo); }
 function guardarVehiculo() {
   var checklist = Array.prototype.map.call(document.querySelectorAll('.check input'), function (c) { return { texto: c.dataset.t, ok: c.checked }; });
+  var motivo = $('selMotVeh') ? $('selMotVeh').value : ''; S.motVeh = '';
   cargando('Guardando…');
-  srv('vehiculo', { vehiculo: S.vehSel, checklist: checklist }).then(function () {
+  srv('vehiculo', { vehiculo: S.vehSel, checklist: checklist, motivo: motivo }).then(function () {
     quitarCargando(); S.datos.vehiculo = S.vehSel; guardar('dia', hoyTxt()); DB.set('inicio', S.datos); vistaInicio(); actualizar();
   }).catch(function (e) {
     quitarCargando();
-    if (e.red) { S.datos.vehiculo = S.vehSel; guardar('dia', hoyTxt()); encolar('vehiculo', { vehiculo: S.vehSel, checklist: checklist }, 'Vehículo ' + S.vehSel); vistaInicio(); }
+    if (e.red) { S.datos.vehiculo = S.vehSel; guardar('dia', hoyTxt()); encolar('vehiculo', { vehiculo: S.vehSel, checklist: checklist, motivo: motivo }, 'Vehículo ' + S.vehSel); vistaInicio(); }
     else falla(e);
   });
 }
@@ -306,13 +346,16 @@ function estadoTexto() {
 function pintarEstado() { var e = $('estado'); if (!e) return; var x = estadoTexto(); e.innerHTML = '<i class="' + (x.amb ? 'amb' : '') + '"></i>' + esc(x.t); }
 
 function vistaInicio() {
-  S.vista = 'inicio'; pararEscaner();
+  S.enAdmin = false;
+  if (S.datos && esFac()) return vistaRuta();
+  S.vista = 'inicio'; pararEscaner(); aplicarTema();
   var d = S.datos; if (!d) return;
   var x = estadoTexto();
   var aviso = S.aviso && Date.now() - S.aviso.hora < 30 * 60000 ? S.aviso : null;
   var conTarjeta = !!aviso || (window.Notification && Notification.permission === 'default');
   var html = '<div class="cab' + (conTarjeta ? ' con-tarjeta' : '') + '"><div class="cab-fila"><img src="../iconos/icono-192.png" alt="">' +
-    '<div class="cab-nombre"><small>' + saludo() + '</small><b>' + esc(d.gestor.nombre) + '</b></div>' +
+    '<div class="cab-nombre"><small>' + saludo() + ' · Gestoría</small><b>' + esc(d.gestor.nombre) + '</b></div>' +
+    (perfil().admin ? '<button class="btn-ic" onclick="entrarAdmin()" aria-label="Administración">' + ICP.escudo + '</button>' : '') +
     '<button class="btn-ic" onclick="vistaYo()" aria-label="Mi cuenta">' + IC.campana + (aviso ? '<span class="punto"></span>' : '') + '</button></div>' +
     '<div class="chips"><button class="chip" onclick="vistaVehiculo(false)">' + esc(d.vehiculo || 'Sin vehículo') + ' · cambiar</button>' +
     '<span class="chip" id="estado" onclick="verCola()"><i class="' + (x.amb ? 'amb' : '') + '"></i>' + esc(x.t) + '</span></div></div>';
@@ -330,17 +373,19 @@ function vistaInicio() {
 function saludo() { var h = new Date().getHours(); return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches'; }
 function haceTxt(t) { var m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'ahora' : 'hace ' + m + ' min'; }
 function nav(act) {
+  if (S.datos && esFac()) return navFac(act === 'pedidos' ? 'lleva' : act);
   var b = function (id, ic, t, fn) { return '<button class="' + (act === id ? 'act' : '') + '" onclick="' + fn + '">' + ic + t + '</button>'; };
   return '<nav class="nav" aria-label="Secciones">' + b('inicio', IC.casa, 'Inicio', 'vistaInicio()') + b('escaner', IC.scan.replace(/30/g, '22'), 'Escanear', "vistaEscaner('recolectar')") +
     b('pedidos', IC.lista, 'Pendientes', 'vistaPedidos()') + b('manual', IC.libro, 'Manual', 'vistaManual()') + '</nav>';
 }
 function pedirAvisos() {
-  beep();
+  sonido('tarea');
   if (!window.Notification) return toast('Este celular no permite avisos; sonará con la app abierta.');
   Notification.requestPermission().then(function () { vistaInicio(); });
 }
 function vistaYo() {
   modal('<h2>' + esc(S.datos.gestor.nombre) + ' · ' + esc(S.datos.gestor.numero) + '</h2><p>App ' + VERSION_APP + ' · servidor ' + esc(S.datos.version) + '</p>' +
+    (perfil().admin ? '<button class="btn" onclick="cerrarModal();entrarAdmin()">Administración</button>' : '') +
     '<button class="btn linea" onclick="cerrarModal();verCola()">Lo que falta subir (' + S.cola.length + ')</button>' +
     '<button class="btn linea" onclick="cerrarModal();vistaCambiarClave(false)">Cambiar contraseña</button>' +
     '<button class="btn linea" onclick="cerrarModal();reportar()">Reportar un problema</button>' +
@@ -399,9 +444,10 @@ function abrirCierre(tipo, i, resultado) {
   var x = tipo === 'PEDIDO' ? S.datos.pedidos[i] : S.datos.lleva[i];
   if (!x) return;
   S.volverA = tipo === 'PEDIDO' ? 'pedidos' : 'lleva';
+  if (S.vista !== 'parada') S.volverParada = null;
   S.cierre = { tipo: tipo, resultado: resultado, id: tipo === 'PEDIDO' ? x.id : x.codigo, fila: x.fila || '', cliente: x.cliente || x.destino || '',
                direccion: x.direccion || x.contenido || '', exigeFirma: false, foto: null, firma: null, recibio: '', motivo: '', comentario: '',
-               sucursal: x.destinoSucursal || '' };
+               sucursal: x.destinoSucursal || '', clase: x.clase || '', esperado: x.esperado || 0, areaImss: '', matricula: '', monto: '' };
   pintarCierre();
 }
 function reglaFoto(c) {
@@ -415,8 +461,15 @@ function pintarCierre() {
   var c = S.cierre, entrega = c.resultado === 'ENTREGADO', paq = c.resultado === 'PAQUETERIA';
   var titulo = entrega ? 'Entregar' : paq ? 'Entregado a paquetería' : 'No entregué';
   var pideFoto = reglaFoto(c), firmaObl = entrega && c.exigeFirma, recObl = entrega && (c.exigeFirma || S.datos.reglas.exigirQuienRecibio);
+  var fac = esFac() && !c.comoNumero ? bloqueCierreFac(c, 1) : null;
+  if (fac) titulo = fac.titulo;
   var html = '<div class="barra"><button class="volver" onclick="cancelarCierre()" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>' + titulo + '</b>' +
     '<small><span class="mono" style="color:var(--azul);font-weight:600">' + esc(c.id) + '</span> · ' + esc(c.cliente) + '</small></div></div><div class="cuerpo">';
+  if (c.comoNumero) html += '<div class="aviso warn">Lo estás cerrando a nombre de <b>' + esc(c.comoNombre) + '</b>. Queda anotado que fuiste tú.</div>';
+  if (fac) {
+    html += fac.html + '<p class="nota">Se guarda en tu celular a cada paso.</p></div><div class="pie"><button class="btn verde" onclick="enviarCierre()">' + fac.boton + '</button></div>';
+    pintar(html); guardarBorrador(); return;
+  }
   var n = 1;
   if (!entrega && !paq) {
     var esPedido = c.tipo === 'PEDIDO';
@@ -459,6 +512,9 @@ function preservar() {
   if ($('inComent')) c.comentario = $('inComent').value;
   if ($('inRecibio')) c.recibio = $('inRecibio').value;
   if ($('selSuc')) c.sucursal = $('selSuc').value;
+  if ($('selArea')) c.areaImss = $('selArea').value;
+  if ($('inMatricula')) c.matricula = $('inMatricula').value;
+  if ($('inMonto')) c.monto = $('inMonto').value.trim();
   var f = leerFirma(); if (f) c.firma = f;
 }
 function tipoNoEntrega(t) { preservar(); S.cierre.resultado = t; S.cierre.motivo = ''; pintarCierre(); }
@@ -467,28 +523,42 @@ function elegirMotivo(j) {
   var c = S.cierre, lista = S.datos.motivos[c.tipo === 'PEDIDO' ? c.resultado : 'TRASPASO'] || [];
   c.motivo = lista[j] ? lista[j].motivo : ''; pintarCierre();
 }
-function cancelarCierre() { S.cierre = null; DB.del('borrador'); if (S.volverA === 'lleva') vistaLleva(); else vistaPedidos(); }
+function cancelarCierre() {
+  var c = S.cierre; S.cierre = null; DB.del('borrador');
+  if (c && c.comoNumero) return admGestor(c.comoNumero);
+  if (S.volverParada) return vistaParada(S.volverParada);
+  if (S.volverA === 'lleva') vistaLleva(); else vistaPedidos();
+}
 
 function enviarCierre() {
   preservar();
   var c = S.cierre, entrega = c.resultado === 'ENTREGADO';
   if (c.tipo === 'PEDIDO' && !entrega && c.resultado !== 'PAQUETERIA' && !c.motivo) return falla(errCod('CAP-05', 'Elige el motivo.'));
   if (reglaFoto(c) && !c.foto) return falla(errCod('CAP-04', 'Falta la foto.'));
-  if (c.tipo === 'PEDIDO' && entrega && S.datos.reglas.exigirQuienRecibio && !String(c.recibio).trim()) return falla(errCod('CAP-08', 'Anota quién recibió.'));
+  if (c.tipo === 'PEDIDO' && entrega && c.clase !== 'IMSS' && S.datos.reglas.exigirQuienRecibio && !String(c.recibio).trim()) return falla(errCod('CAP-08', 'Anota quién recibió.'));
+  var fac = esFac() && !c.comoNumero;
+  if (fac) { var ef = revisarCierreFac(c); if (ef) return falla(ef); }
   cargando('Guardando…');
   obtenerGPS().then(function (g) {
     var datos = { idLocal: idLocal(), tipo: c.tipo, id: c.id, fila: c.fila, resultado: c.resultado, motivo: c.motivo, comentario: c.comentario,
                   recibio: c.recibio, foto: c.foto, firma: c.firma, sucursal: c.sucursal || '', lat: g.lat, lng: g.lng, horaCelular: horaTxt() };
+    if (fac) { datos.clase = c.clase || ''; datos.areaImss = c.areaImss || ''; datos.matricula = c.matricula || ''; datos.monto = c.monto || ''; datos.esperado = c.esperado || 0; }
+    if (c.comoNumero) datos.comoNumero = c.comoNumero;
     var etiqueta = c.id + ' · ' + ({ ENTREGADO: 'Entregado', RETORNO: 'Retorno', CANCELADO: 'Cancelado', PAQUETERIA: 'Paquetería', NO_ENTREGADO: 'No entregado' })[c.resultado];
+    if (c.comoNumero) {
+      return srv('cerrar', datos).then(function () { quitarCargando(); sonido(entrega ? 'entregado' : 'noEntregado'); S.cierre = null; DB.del('borrador'); toast(etiqueta + ' · a nombre de ' + c.comoNombre, 'ok'); admGestor(c.comoNumero); });
+    }
     return encolar('cerrar', datos, etiqueta).then(function () {
       // fuera de la lista al instante, aunque no haya señal
       S.datos.pedidos = S.datos.pedidos.filter(function (p) { return clave(p.id) !== clave(c.id); });
       S.datos.lleva = S.datos.lleva.filter(function (p) { return clave(p.codigo) !== clave(c.id); });
       if (entrega) S.datos.hoy.entregados++; else if (c.resultado !== 'PAQUETERIA') S.datos.hoy.noEntregados++;
       DB.set('inicio', S.datos); DB.del('borrador');
-      quitarCargando(); beep();
+      quitarCargando(); sonido(entrega ? 'entregado' : 'noEntregado');
       var hecho = c; S.cierre = null;
-      if (entrega && c.tipo === 'PEDIDO') vistaListo(hecho); else { toast(etiqueta + ' · guardado', 'ok'); vistaInicio(); }
+      var parada = S.volverParada && armarParadas().porK[S.volverParada];
+      if (entrega && c.tipo === 'PEDIDO' && !fac) vistaListo(hecho);
+      else { toast(etiqueta + ' · guardado', 'ok'); if (parada && (parada.items.length || parada.recoger.length)) vistaParada(S.volverParada); else vistaInicio(); }
       subirCola();
     });
   }).catch(function (e) { quitarCargando(); falla(e); });
@@ -554,14 +624,17 @@ function subirCola() {
       if (it.accion === 'recolectar') avisarRecoleccionesSubidas(d);
       return siguiente();
     }, function (e) {
-      if (e.red) throw e;                                  // sin señal: se intenta luego, en orden
+      if (e.red) { S.huboSinRed = true; throw e; }        // sin señal: se intenta luego, en orden
       it.error = '[' + e.codigo + '] ' + e.message; it.intentos++;
       DB.encolar(it);
       toast(it.etiqueta + ': ' + e.message + ' (' + e.codigo + ')', 'err');
       return siguiente();
     });
   }
-  return siguiente().catch(function () {}).then(function () { S.subiendo = false; pintarEstado(); });
+  return siguiente().catch(function () {}).then(function () {
+    S.subiendo = false; pintarEstado();
+    if (S.huboSinRed && !S.cola.length) { S.huboSinRed = false; sonido('subido'); toast('Volvió la señal: ya se subió todo', 'ok'); }
+  });
 }
 function verCola() {
   if (!S.cola.length) return toast('Todo está subido.', 'ok');
@@ -595,7 +668,7 @@ function alLeer(texto) {
   if (!codigo) return;
   if (S.modoScan === 'entregar') return entregarLeido(codigo);
   if (S.leidos.some(function (l) { return clave(l.codigo) === clave(codigo); }) || S.datos.lleva.some(function (l) { return clave(l.codigo) === clave(codigo); })) {
-    beep('malo'); return toast('Ya leíste ' + codigo);
+    sonido('escaneoMal'); return toast('Ya leíste ' + codigo);
   }
   var l = { codigo: codigo, estado: 'esp', texto: 'Registrando…' };
   S.leidos.unshift(l); pintarLeidos(); beep();
@@ -616,7 +689,7 @@ function aplicarResultados(res, items) {
     l.codigo = r.codigo;
     if (r.ok) { l.estado = 'ok'; l.texto = 'Va a ' + (r.destino || '—') + (r.direccion ? ' · ' + r.direccion : '') + (r.enPedidos ? ' · ya está en tus pedidos' : ''); }
     else if (r.pideDestino) { l.estado = 'esp'; l.texto = r.mensaje; l.pideDestino = true; }
-    else { l.estado = 'mal'; l.texto = r.mensaje; if (!r.repetido) beep('malo'); }
+    else { l.estado = 'mal'; l.texto = r.mensaje; if (!r.repetido) sonido('escaneoMal'); }
   });
   pintarLeidos();
 }
@@ -649,7 +722,7 @@ function entregarLeido(codigo) {
   if (i >= 0) { beep(); pararEscaner(); S.volverA = 'lleva'; return abrirCierre(S.datos.lleva[i].tipo === 'TRASPASO' ? 'TRASPASO' : 'RECOLECCION', i, 'ENTREGADO'); }
   var j = S.datos.pedidos.findIndex(function (p) { return clave(p.id) === k; });
   if (j >= 0) { beep(); pararEscaner(); S.volverA = 'pedidos'; return abrirCierre('PEDIDO', j, 'ENTREGADO'); }
-  beep('malo'); toast(codigo + ' no está en lo que llevas. Recolecta primero.', 'err');
+  sonido('escaneoMal'); toast(codigo + ' no está en lo que llevas. Recolecta primero.', 'err');
 }
 
 /* ---------- lector de códigos (motor del celular o zxing-cpp) ---------- */
@@ -797,7 +870,10 @@ function dispararFoto() {
 }
 function luzFoto() { if (!camFoto || !camFoto.track) return; var p = !camFoto.luz; camFoto.track.applyConstraints({ advanced: [{ torch: p }] }).then(function () { camFoto.luz = p; $('camLuz').textContent = p ? 'Apagar' : 'Luz'; }).catch(function () {}); }
 function cerrarCamFoto() { if (camFoto && camFoto.stream) camFoto.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} }); camFoto = null; var c = $('camFoto'); if (c) c.remove(); }
-function ponerFoto(f) { if (!S.cierre) return; S.cierre.foto = f; beep(); pintarCierre(); }
+function ponerFoto(f) {
+  if (!S.cierre && S.vista === 'parada' && S.parada) { S.parada.foto = f; beep(); return vistaParada(S.parada.k); }
+  if (!S.cierre) return; S.cierre.foto = f; beep(); pintarCierre();
+}
 function fotoDeArchivo() {
   preservar(); guardarBorrador();
   elegirArchivo(function (f) {

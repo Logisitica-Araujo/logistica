@@ -1,5 +1,5 @@
 // Simulador mínimo de Google Apps Script para probar el servidor en Node.
-// (Copia del de APP GESTORES/pruebas, con lo que necesita App Gestores 2: firmas HMAC, base64 web, archivo activo.)
+// (Copia del de APP GESTORES 1 (la vieja)/pruebas, con lo que necesita App Gestores 2: firmas HMAC, base64 web, archivo activo.)
 const vm = require('vm');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -50,7 +50,7 @@ function crearEntorno(opciones) {
     clearContent() { return this.setValue(''); }
     setFontWeight() { return this; } setBackground() { return this; } setFontColor() { return this; }
     setNote(n) { this.sh.notas = this.sh.notas || {}; this.sh.notas[this.r + ',' + this.c] = n; return this; }
-    getRow() { return this.r; } getColumn() { return this.c; } getLastColumn() { return this.c + this.nc - 1; } getSheet() { return this.sh; }
+    getRow() { return this.r; } getNumRows() { return this.nr; } getColumn() { return this.c; } getLastColumn() { return this.c + this.nc - 1; } getSheet() { return this.sh; }
     insertCheckboxes() { return this; }
   }
 
@@ -144,7 +144,7 @@ function crearEntorno(opciones) {
       ProtectionType: { SHEET: 'SHEET' },
       create(n) { return libroNuevo(n); },
       getUi() { throw new Error('sin UI'); },
-      flush() {}, newDataValidation() { const b = { requireValueInList() { return b; }, setAllowInvalid() { return b; }, build() { return {}; } }; return b; }
+      flush() {}, newDataValidation() { const b = { requireValueInList() { return b; }, requireCheckbox() { return b; }, setAllowInvalid() { return b; }, build() { return {}; } }; return b; }
     },
     CacheService: { getScriptCache: () => cache },
     PropertiesService: { getScriptProperties: () => props },

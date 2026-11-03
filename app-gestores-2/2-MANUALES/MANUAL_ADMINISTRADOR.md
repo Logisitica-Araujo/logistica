@@ -5,6 +5,29 @@
 
 ---
 
+## 0. Perfiles (versión 0.4.0): quién ve qué app
+
+En **APP_Usuarios** dos columnas deciden la app de cada persona (o desde la app: Administración → Equipo):
+
+| Columna | Valor | Qué ve |
+|---|---|---|
+| **Area** | Gestoría (azul) | Pedidos a domicilio, recolecciones y traspasos (Jose Luis, Antonio, Miriam…). |
+| **Area** | Facturación (verde) | **Traslados**: su ruta ordenada por parada (sucursal, área del IMSS, oficina), entregar varias cosas juntas con una foto, efectivo con monto opcional, entregas al IMSS con foto del acuse sellado, y lo que espera a ser recogido en cada sucursal (Alejandro, Belarmino…). |
+| **Rol** | Administrador | Además de su app, el botón del escudo abre **Administración** (pantalla oscura). |
+
+Cambiar a alguien de área: escoge el valor en la lista de la columna Area, o en la app **Administración → Equipo → Pasar a Facturación / Pasar a Gestoría**. Su app cambia en menos de 1 minuto.
+
+### Administración en la app
+- **Hoy:** totales del día, "Atender ahora" (cierres que no llegaron, avisos, quién no ha entrado) y el equipo separado por área.
+- **Un gestor:** sus pendientes (Reasignar · Cerrar por él), lo que lleva, lo que hizo hoy, quitarle el vehículo, contraseña.
+- **Buscar:** cualquier pedido o folio con su historial, foto y dónde se cerró. Desde ahí **Corregir**: datos, cambiar resultado o reabrir. Siempre pide "por qué" y deja quién y cuándo.
+- **Por revisar:** reintentar o descartar cierres que no llegaron, y marcar avisos como resueltos.
+- **Equipo:** área, contraseña (temporal o la que escribas), sacar sesión, hacer administrador, nombre en Operaciones, baja y alta.
+- **Vehículos:** quién trae cuál, de cuál a cuál cambió y por qué, en taller (nadie lo puede elegir), liberar.
+- **Ajustes:** reglas de fotos, acuse del IMSS, áreas del IMSS, motivos, mensaje de WhatsApp, direcciones de sucursales, revisión antes de salir y modo mantenimiento (tú sí puedes entrar).
+
+Reasignar y corregir un cierre que ya llegó a Operaciones necesitan el `04_Backend_App.gs` nuevo en OPERACIONES.
+
 ## 1. Qué es cada cosa
 
 | Pieza | Qué es | Dónde está | Quién la toca |
