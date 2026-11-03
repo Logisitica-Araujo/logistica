@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.2.0';
+var VERSION_APP = '2.2.1';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -366,7 +366,8 @@ function vistaInicio() {
     '<button class="grande" onclick="vistaEscaner(\'recolectar\')"><span class="ic">' + IC.scan + '</span><span><b>Escanear</b><small>Recolecta o entrega con la cámara</small></span></button>' +
     '<button class="mosaico" onclick="vistaPedidos()"><span class="fila"><span style="color:var(--azul)">' + IC.casa + '</span><span class="num">' + d.pedidos.length + '</span></span><b>Pedidos a domicilio</b></button>' +
     '<button class="mosaico" onclick="vistaLleva()"><span class="fila"><span style="color:var(--verde)">' + IC.caja + '</span><span class="num">' + d.lleva.length + '</span></span><b>Lo que llevo</b></button>' +
-    '</div><span class="etiqueta">Hoy</span><div class="hoy"><div><b style="color:var(--verde)">' + d.hoy.entregados + '</b><span>Entregados</span></div>' +
+    '<button class="grande linea registrar" onclick="vistaLibre()"><span><b>+ Registrar entrega</b><small>Algo que no estaba en tu lista: documentos, medicamento, efectivo…</small></span></button>' +
+    '</div>' + bloqueLibresHoy() + '<span class="etiqueta">Hoy</span><div class="hoy"><div><b style="color:var(--verde)">' + d.hoy.entregados + '</b><span>Entregados</span></div>' +
     '<div><b style="color:var(--azul)">' + d.hoy.recolectados + '</b><span>Recolectados</span></div><div><b style="color:var(--rojo)">' + d.hoy.noEntregados + '</b><span>No entregados</span></div></div></div>' + nav('inicio');
   pintar(html);
 }

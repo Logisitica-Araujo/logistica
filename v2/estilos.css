@@ -309,3 +309,6 @@ body.adm{--azul:#111A2E;--azul-osc:#0A1020;--azul-suave:#E6E9F0;--azul-claro:#AE
 .pildora{border:1.5px solid var(--borde2);background:#fff;border-radius:999px;padding:8px 13px;font-size:14px;font-weight:600}
 .pildora.sel{background:var(--azul);border-color:var(--azul);color:#fff;font-weight:700}
 .fila2{display:grid;grid-template-columns:1.4fr 1fr;gap:8px}
+.rejilla .grande.registrar{min-height:auto;padding:14px 18px;border-radius:18px}
+.rejilla .grande.registrar b{font-size:16.5px}
+.rejilla .grande.registrar small{font-size:12.5px}
