@@ -103,14 +103,7 @@ function vistaRuta() {
         (p.recoger.length > 20 ? '<div>… y ' + (p.recoger.length - 20) + ' más</div>' : '') + '</div></details>';
     });
   }
-  var libres = listaLibresHoy();
-  if (libres.length) {
-    html += '<span class="etiqueta">Registrado por ti hoy (sin asignar)</span>';
-    libres.forEach(function (x, i) {
-      html += '<button class="libre" onclick="waLibre(' + i + ')"><span class="tag n">' + esc(x.id) + '</span><span class="tx"><b>' + esc(x.detalle) + ' · ' + esc(x.donde) + '</b><small>' + esc(x.hora) +
-        (x.recibio ? ' · Recibió ' + esc(x.recibio) : '') + (x.monto ? ' · ' + dinero(x.monto) : '') + (x.local ? ' · por subir' : '') + '</small></span><span class="wa-txt">WhatsApp</span></button>';
-    });
-  }
+  html += bloqueLibresHoy();
   html += '<span class="etiqueta">Hoy</span><div class="hoy"><div><b style="color:var(--verde)">' + d.hoy.entregados + '</b><span>Entregados</span></div>' +
     '<div><b style="color:var(--azul)">' + d.hoy.recolectados + '</b><span>Recogidos</span></div><div><b style="color:var(--rojo)">' + d.hoy.noEntregados + '</b><span>No entregados</span></div></div></div>' + navFac('inicio');
   pintar(html);
@@ -632,6 +625,17 @@ function admSegm(b) { b.parentNode.querySelectorAll('button').forEach(function (
 /* =====================================================================
  *  FACTURACIÓN · ENTREGA SIN ASIGNAR (T5–T7) y WhatsApp después de entregar
  * ===================================================================== */
+/** "Registrado por ti hoy": lo usan Facturación (ruta) y Gestoría (inicio). */
+function bloqueLibresHoy() {
+  var libres = listaLibresHoy(), html = '';
+  if (!libres.length) return '';
+  html += '<span class="etiqueta">Registrado por ti hoy (sin asignar)</span>';
+  libres.forEach(function (x, i) {
+    html += '<button class="libre" onclick="waLibre(' + i + ')"><span class="tag n">' + esc(x.id) + '</span><span class="tx"><b>' + esc(x.detalle) + ' · ' + esc(x.donde) + '</b><small>' + esc(x.hora) +
+      (x.recibio ? ' · Recibió ' + esc(x.recibio) : '') + (x.monto ? ' · ' + dinero(x.monto) : '') + (x.local ? ' · por subir' : '') + '</small></span><span class="wa-txt">WhatsApp</span></button>';
+  });
+  return html;
+}
 var QUE_LIBRE = ['Medicamento', 'Facturas', 'Documentos', 'Efectivo', 'Insumos', 'Otro'];
 
 /** Lo registrado hoy: lo que ya está en el servidor + lo que sigue en la fila del celular. */
@@ -728,10 +732,10 @@ function msgEntrega(o) {
 function vistaWA(o) {
   S.vista = 'listo'; S.wa = { msg: o.msg, foto: o.foto, id: o.id };
   pintar('<div class="listo"><div class="verde-top"><span class="palomita">' + IC.palomita + '</span><b>' + esc(o.titulo) + '</b><span>' + esc(o.sub) + '</span></div>' +
-    '<div class="cuerpo"><b>¿Avisar por WhatsApp?</b><p class="nota" style="text-align:left;margin:0">Tú eliges a quién: a quien te lo pidió, a Facturación o al grupo.</p>' +
+    '<div class="cuerpo"><b>¿Avisar por WhatsApp?</b><p class="nota" style="text-align:left;margin:0">Tú eliges a quién: a quien te lo pidió, al cliente o al grupo.</p>' +
     '<div class="wa-burbuja"><div>' + (o.foto ? '<img src="' + o.foto + '" alt="">' : '') + '<pre>' + esc(o.msg) + '</pre></div></div>' +
     (o.foto ? '<label class="check"><input type="checkbox" id="waFoto" checked> Incluir la foto</label>' : '') + '</div>' +
-    '<div class="pie"><button class="btn wa" onclick="mandarWA()">Enviar por WhatsApp</button><button class="btn linea" onclick="' + o.volver + '">Ahora no · volver a mi ruta</button></div></div>');
+    '<div class="pie"><button class="btn wa" onclick="mandarWA()">Enviar por WhatsApp</button><button class="btn linea" onclick="' + o.volver + '">Ahora no · volver</button></div></div>');
 }
 function waLibre(i) {
   var x = listaLibresHoy()[i]; if (!x) return;

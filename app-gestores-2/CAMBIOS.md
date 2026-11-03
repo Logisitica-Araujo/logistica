@@ -5,7 +5,8 @@
 - Se guarda **solo en la app**: APP_Cierres con Tipo `LIBRE` y Estado `LOCAL` (no va a Operaciones). Se ve en Administración → Hoy y Buscar. Ajuste nuevo `CARPETA_LIBRES` para sus fotos (vacío = la de traspasos).
 - **WhatsApp** al terminar cualquier entrega de Facturación (parada con varios, efectivo, IMSS, sin asignar), con lo capturado y la foto.
 - **Vehículos:** "Sin vehículo", "A pie", etc. siempre los pueden elegir varios a la vez.
-- App 2.2.0 (service worker `gestores2-v6`). Pruebas: `prueba-perfiles.js` 96/96.
+- **También para Gestoría** (app 2.2.1): "+ Registrar entrega" en su inicio, con su lista "Registrado por ti hoy". No cambia ningún script.
+- App 2.2.1 (service worker `gestores2-v7`). Pruebas: `prueba-perfiles.js` 99/99.
 
 ## 0.4.0 · 3-nov-2026 · Perfiles: Gestoría, Facturación (traslados) y Administrador
 - **APP_Usuarios:** columnas nuevas **Area** (Gestoría / Facturación, con lista) y **VehiculoNota**; Rol con lista (Gestor / Administrador). INSTALAR deja en Gestoría a quien no tenga área.
