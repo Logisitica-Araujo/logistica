@@ -1,5 +1,16 @@
 # Registro de cambios · App Gestores 2
 
+## 0.4.0 · 3-nov-2026 · Perfiles: Gestoría, Facturación (traslados) y Administrador
+- **APP_Usuarios:** columnas nuevas **Area** (Gestoría / Facturación, con lista) y **VehiculoNota**; Rol con lista (Gestor / Administrador). INSTALAR deja en Gestoría a quien no tenga área.
+- **Facturación (app verde):** ruta por parada, entregar varios con una foto (`cerrarVarios`), efectivo con monto opcional y aviso si no cuadra (`CAP-09`), IMSS con área, foto del acuse (obligatoria, `EXIGIR_ACUSE_IMSS`) y matrícula, "por recoger" en cada sucursal (lo calcula el robot).
+- **Administrador (app oscura):** acción `admin` con Hoy, Un gestor, Buscar, Corregir, Reasignar, Por revisar, Equipo, Vehículos y Ajustes. Nuevo `08_ADMIN.gs`. Puede cerrar a nombre de un gestor y entrar en mantenimiento.
+- **Vehículos:** motivo al cambiar a medio día; columna **EnTaller** en APP_Vehiculos.
+- **APP_Cierres:** columnas Monto, Clase y Corregido. Estados nuevos ANULADO y CORREGIDO.
+- **Robot:** ahora pasa las recolecciones ANTES que los cierres (si alguien recoge y entrega en el mismo minuto, el traspaso ya está RECOLECTADO).
+- **OPERACIONES `04_Backend_App.gs`:** acciones `reasignarGestor` (columna I) y `corregirCierre` (quita la casilla vieja, pone la nueva, el renglón viejo de APP_Entregas queda "(CORREGIDO)").
+- **App 2.1.0:** `v2/perfiles.js` nuevo; service worker `gestores2-v5`.
+- **Pruebas:** `pruebas.js` 60/60, `prueba-integrada.js` 65/65, `prueba-celular.js` 29/29, `prueba-perfiles.js` 85/85 (nuevo).
+
 ## 0.2.0 · 2-nov-2026 · Etapas 2 y 3: robot, conexión y la app del celular
 - **Servidor (App Gestores · Datos):** nuevos `04_OPERACIONES.gs` (habla con la API), `05_TRASPASOS.gs` (Sistema de Traspasos), `06_GESTOR.gs` (inicio, vehículo, cerrar, recolectar, problema, documentos) y `07_ROBOT.gs` (cada minuto: pedidos, cierres, recolecciones y limpieza de lo ya entregado). Cambian `00_CONFIG`, `01_INSTALAR`, `03_API` y `09_PRUEBAS`.
 - **Fotos** a las carpetas de siempre; si una carpeta no acepta (Firmas), van a "App Gestores · Respaldo fotos" y queda en APP_Problemas (`DRV-01`).

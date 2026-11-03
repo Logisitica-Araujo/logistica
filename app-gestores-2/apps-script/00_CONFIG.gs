@@ -10,7 +10,7 @@
  ***********************************************************************/
 
 var APPG = {
-  VERSION: '0.3.1',
+  VERSION: '0.4.0',
   ZONA: 'America/Mexico_City',
 
   /* Nombres de las pestañas del archivo de la app. */
@@ -35,15 +35,16 @@ var APPG = {
   ENC: {
     APP_Config:        ['Clave', 'Valor', 'Descripción'],
     APP_Usuarios:      ['Numero', 'Nombre', 'NombreEnOperaciones', 'Usuario', 'ClaveCifrada', 'Rol', 'Activo',
-                        'DebeCambiar', 'VersionSesion', 'Alta', 'UltimoAcceso', 'Notas', 'VehiculoHoy', 'FechaVehiculo', 'NuevaContraseña'],
-    APP_Vehiculos:     ['Vehiculo', 'Tipo', 'Placa', 'Activo'],
+                        'DebeCambiar', 'VersionSesion', 'Alta', 'UltimoAcceso', 'Notas', 'VehiculoHoy', 'FechaVehiculo', 'NuevaContraseña',
+                        'Area', 'VehiculoNota'],
+    APP_Vehiculos:     ['Vehiculo', 'Tipo', 'Placa', 'Activo', 'EnTaller'],
     APP_Motivos:       ['Tipo', 'Motivo', 'PideComentario', 'Activo'],
     APP_Documentos:    ['Categoria', 'Titulo', 'Tipo', 'Contenido', 'Activo', 'Orden'],
     APP_Pedidos:       ['ID', 'Fila', 'NumeroGestor', 'Gestor', 'Cliente', 'Direccion', 'Telefono', 'Notas', 'Area', 'SubArea',
                         'Metodo', 'Estatus', 'ETA', 'Actualizado'],
     APP_Cierres:       ['IdCierre', 'FechaHora', 'HoraCelular', 'NumeroGestor', 'Gestor', 'Vehiculo', 'Tipo', 'ID', 'Fila',
                         'Resultado', 'Motivo', 'Comentario', 'Recibio', 'Lat', 'Lng', 'URLFoto', 'URLFirma',
-                        'Estado', 'Intentos', 'UltimoError', 'EnviadoEn', 'Cliente', 'Direccion', 'DondeEntrego'],
+                        'Estado', 'Intentos', 'UltimoError', 'EnviadoEn', 'Cliente', 'Direccion', 'DondeEntrego', 'Monto', 'Clase', 'Corregido'],
     APP_Recolecciones: ['FechaHora', 'NumeroGestor', 'Gestor', 'Vehiculo', 'Codigo', 'Tipo', 'Origen', 'Destino',
                         'Contenido', 'Estado', 'EstadoFuente', 'Actualizado', 'Enviado', 'DestinoPrefijo'],
     APP_Sesiones:      ['FechaHora', 'Usuario', 'NumeroGestor', 'Dispositivo', 'Resultado'],
@@ -51,6 +52,14 @@ var APPG = {
     APP_Problemas:     ['Numero', 'FechaHora', 'Codigo', 'Quien', 'Detalle', 'Resuelto'],
     APP_Sucursales:    ['Sucursal', 'ID', 'Direccion', 'URLMaps', 'Activo']
   },
+
+  /* Perfiles. Columna "Area" de APP_Usuarios: decide qué app ve cada quien.
+       Gestoría    → pedidos a domicilio, recolecciones y traspasos (Jose Luis, Antonio, Miriam…)
+       Facturación → traslados entre sucursales: traspasos, efectivo, documentos, insumos y entregas al IMSS
+                     (Alejandro, Belarmino…), con su ruta ordenada por parada.
+     Columna "Rol": Gestor o Administrador (el Administrador además ve la sección Administración). */
+  AREAS: ['Gestoría', 'Facturación'],
+  ROLES: ['Gestor', 'Administrador'],
 
   /* Pestañas que la administradora SÍ edita a mano. Las demás se protegen. */
   EDITABLES: ['APP_Config', 'APP_Usuarios', 'APP_Vehiculos', 'APP_Motivos', 'APP_Documentos', 'APP_Problemas', 'APP_Sucursales'],
@@ -81,6 +90,12 @@ var APPG = {
     ['CHECK_MOTO', 'Licencia de conducir | Casco | Guantes | Impermeable (temporada de lluvia) | Tarjeta de circulación | Póliza de seguro | Kit de herramientas | Kit de siniestro', 'Revisión antes de salir en moto'],
     ['CHECK_AUTO', 'Licencia de conducir | Póliza de seguro | Tarjeta de circulación | Gato hidráulico | Llanta de refacción | Cables pasa corriente | Kit de herramientas | Kit de siniestro', 'Revisión antes de salir en auto'],
     ['WA_MSG_ENTREGADO', 'PEDIDO ENTREGADO\\n{id} · {cliente}\\nRecibió: {recibio}\\nGestor: {gestor}\\n{fecha} {hora}', 'Mensaje de WhatsApp al entregar'],
+    ['AREAS_IMSS', 'Farmacia | Almacén | Urgencias | Hospitalización | Dirección | Otro', 'Áreas del IMSS para elegir al entregar (perfil Facturación)'],
+    ['EXIGIR_ACUSE_IMSS', true, 'TRUE/FALSE — foto del acuse sellado obligatoria en entregas al IMSS'],
+    ['PALABRAS_IMSS', 'IMSS', 'Si el área, subárea o cliente del pedido trae una de estas palabras, se entrega como IMSS'],
+    ['PALABRAS_EFECTIVO', 'Efectivo | Dinero | Cobro | $', 'Si el contenido trae una de estas palabras, se entrega como efectivo (pide monto, opcional)'],
+    ['PALABRAS_DOCUMENTOS', 'Factura | Cortes | Corte | Documento | Contrato | Receta', 'Si el contenido trae una de estas palabras, se marca como documento'],
+    ['MOTIVOS_CAMBIO_VEHICULO', 'Llanta ponchada | Falla mecánica | Lluvia | Carga grande | Se lo pasé a otro gestor | Otro', 'Motivos para cambiar de vehículo a medio día'],
     ['APP_BLOQUEADA', false, 'TRUE = nadie puede entrar (mantenimiento)'],
     ['MENSAJE_BLOQUEO', 'App en mantenimiento. Intenta más tarde.', 'Texto que ven los gestores si está bloqueada'],
     ['ULTIMA_VUELTA_ROBOT', '', 'La escribe el robot. No editar.'],

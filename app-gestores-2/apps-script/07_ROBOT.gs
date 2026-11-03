@@ -4,9 +4,9 @@
  * ---------------------------------------------------------------------
  * EL ROBOT. Corre cada minuto (en ROBOT_HORARIO) y hace, en orden:
  *   1. Trae de OPERACIONES los pedidos abiertos con gestor → APP_Pedidos.
- *   2. Lleva los cierres PENDIENTES: pedidos a la API, traspasos al Sistema de Traspasos.
- *   3. Avisa las recolecciones nuevas: traspasos → RECOLECTADO en el sistema
+ *   2. Avisa las recolecciones nuevas: traspasos → RECOLECTADO en el sistema
  *      ("Recolectado por gestoría" en el rastreo); pedidos → APP_Traspasos_Hist vía API.
+ *   3. Lleva los cierres PENDIENTES: pedidos a la API, traspasos al Sistema de Traspasos.
  *   4. Limpia: quita de la lista del gestor lo que ya terminó en su fuente
  *      (traspaso: columna Estatus de RES_Traspasos; pedido: ESTATUS de Operaciones).
  *   5. Anota la hora en APP_Config → ULTIMA_VUELTA_ROBOT.
@@ -31,10 +31,16 @@ function robot(forzar) {
   try {
     var ruta = null;
     paso('pedidos', function () { ruta = _robotPedidos(); return ruta.length; });
-    paso('cierres', function () { return _robotCierres(ruta); });
+    // Primero las recolecciones: si alguien recoge y entrega en el mismo minuto, el traspaso ya
+    // tiene que estar "RECOLECTADO" en el sistema cuando llegue su entrega.
     paso('recolecciones', _robotRecolecciones);
+    paso('cierres', function () { return _robotCierres(ruta); });
     paso('limpieza', _robotLimpieza);
     paso('contraseñas', _procesarClavesNuevas);
+    paso('porRecoger', function () {
+      var hay = _tabla(APPG.H.USUARIOS).filas.some(function (u) { return _si(u.Activo) && _perfil(u).area === 'FACTURACION'; });
+      return hay ? _calcularPorRecoger().length : 0;
+    });
   } finally {
     _ponerConfig('ULTIMA_VUELTA_ROBOT', _ahora());
     _ponerConfig('ULTIMO_ERROR_ROBOT', errores.length ? _ahora('dd/MM HH:mm') + ' · ' + errores.join(' | ') : '');

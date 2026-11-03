@@ -403,6 +403,11 @@ Errores que cometen personas. No son fallas del sistema, pero el sistema ayuda a
 - **Caso real:** C-PV-0009 ($3,287) y C-PV-0017 ($3,798) se entregaron sin nombre de quién recibió.
 - **Decisión (2-nov):** en traspasos no se pide firma ni quién recibió; solo dónde se entregó y foto opcional.
 
+### CAP-09 · El monto de efectivo no cuadra (perfil Facturación)
+- **Qué pasa:** el gestor escribió cuánto entregó y no es lo que decía el sobre (el traspaso trae el monto en su descripción, ej. "$2,654.00 + $1,144.00").
+- **Qué hace la app:** le pide una nota y deja un aviso en APP_Problemas (Administración → Por revisar) con los dos montos.
+- **Solución:** habla con el gestor y con la sucursal; cuando quede claro, márcalo como resuelto con lo que se hizo.
+
 ---
 
 ## 12. Errores de diseño o de proceso (DIS)

@@ -223,3 +223,72 @@ label.et{font-size:13.5px;font-weight:700}
 .doc summary::-webkit-details-marker{display:none}
 .doc .cuerpo-doc{padding:0 14px 14px;white-space:pre-line;color:var(--texto2)}
 @media (prefers-reduced-motion:reduce){.spinner{animation-duration:2s}}
+
+/* ==================== Perfiles (0.4 / 2.1) ==================== */
+/* Facturación · traslados: verde. Se cambia el "azul" de toda la app para que se note de lejos. */
+body.fac{--azul:#1E5E3A;--azul-osc:#164A2D;--azul-suave:#E5F4EA;--azul-claro:#CDEBD9}
+/* Administración: oscuro. */
+body.adm{--azul:#111A2E;--azul-osc:#0A1020;--azul-suave:#E6E9F0;--azul-claro:#AEB8CC}
+:root{--azul2:#0B3D91}
+.tag.fac{color:#1E5E3A;background:#E5F4EA;align-self:flex-start}
+.tag.a{align-self:auto}
+
+/* ruta por parada */
+.parada{display:flex;gap:12px;align-items:flex-start;text-align:left;background:#fff;border:1px solid var(--borde);border-radius:16px;padding:12px 14px;width:100%;color:var(--texto)}
+.pnum{width:28px;height:28px;border-radius:50%;background:var(--azul);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+.ptx{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0}
+.ptx b{font-size:15.5px}
+.ptx small{font-size:12.5px;color:var(--texto2)}
+.pchips{display:flex;gap:6px;flex-wrap:wrap}
+.pchip{font-size:11.5px;font-weight:700;border-radius:999px;padding:3px 8px;margin-right:6px}
+.pchips .pchip{margin-right:0}
+.pchip.v{color:#1E5E3A;background:#E5F4EA} .pchip.a{color:#0B3D91;background:#E2EAF8} .pchip.n{color:#9A5400;background:#FFF1DE}
+.pchip.r{color:#B42318;background:#FDF0EE} .pchip.g{color:#3D4757;background:#EEF2F8}
+.marca{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--borde);border-radius:14px;padding:10px 12px}
+.marca input{width:22px;height:22px;accent-color:var(--verde);flex:none}
+.marca .tx{flex:1;display:flex;flex-direction:column;min-width:0}
+.marca .tx b{font-size:13.5px}
+.marca .tx span{font-size:12.5px;color:var(--texto2)}
+.marca.efe{background:#FFF4E2;border-color:#F2D3A0} .marca.efe .tx span{color:#9A5400}
+.marca.imss{background:#FDF0EE;border-color:#F3D0CB}
+.b.chico{height:38px;padding:0 12px;font-size:13px;flex:none}
+.segm{display:flex;gap:4px;background:#E6EAF1;border-radius:12px;padding:4px}
+.segm button{flex:1;border:0;background:none;border-radius:9px;padding:9px 0;font-size:13.5px;font-weight:600;color:var(--gris)}
+.segm button.act{background:#fff;color:var(--azul);font-weight:800;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.sobre{background:#FFF4E2;border:1px solid #F2D3A0;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:2px}
+.sobre small{font-size:12px;font-weight:700;letter-spacing:.8px;color:#9A5400}
+.sobre b{font-size:28px;font-weight:800;color:#6B3B00}
+.sobre span{font-size:12.5px;color:#9A5400}
+.campo.grande-num{font-size:20px;font-weight:700}
+.ok-txt{font-size:12.5px;color:var(--verde);font-weight:700}
+
+/* administración */
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.kpis.k3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.kpis>*{background:#fff;border:1px solid var(--borde);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;text-align:left;color:var(--texto)}
+.kpis b{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
+.kpis span{font-size:12.5px;color:var(--gris)}
+.atender{border-color:#F2D3A0;background:#FFFBF3}
+.fila-at{display:flex;gap:10px;align-items:flex-start;border:0;background:none;text-align:left;padding:4px 0;font-size:14px;color:var(--texto)}
+.fila-at .pt{width:8px;height:8px;border-radius:50%;background:var(--naranja);margin-top:7px;flex:none}
+.persona{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--borde);border-radius:16px;padding:12px 14px;width:100%;text-align:left;color:var(--texto)}
+.persona .ini{width:40px;height:40px;border-radius:12px;background:#E2EAF8;color:#0B3D91;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+.persona .ini.fac{background:#E5F4EA;color:#1E5E3A}
+.persona .tx{flex:1;display:flex;flex-direction:column;min-width:0}
+.persona .tx small{font-size:12.5px;color:var(--texto2)}
+.persona .der{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+.persona .der small{font-size:11.5px;color:var(--gris)}
+.hecho{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid var(--borde);border-radius:14px;padding:10px 12px;width:100%;text-align:left;color:var(--texto)}
+.hecho .tx{flex:1;display:flex;flex-direction:column;min-width:0}
+.hecho .tx small{font-size:12.5px;color:var(--texto2)}
+.hecho .hora{font-size:12.5px;color:var(--gris)}
+.historial{border-left:2px solid var(--borde2);padding-left:10px;display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--texto2)}
+.historial .hora{font-family:var(--mono);color:var(--gris)}
+.nav.nav5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.clave-grande{font-size:30px;font-weight:700;text-align:center;letter-spacing:2px;padding:14px;background:#EEF2F8;border-radius:14px;margin:12px 0}
+.check.sw{border-bottom:1px solid #EEF1F6;padding:4px 0}
+.check.sw:last-child{border-bottom:0}
+.bloque.peligro{background:#FDF0EE;border-color:#F3D0CB}
+.bloque.peligro input{accent-color:var(--rojo)}
+.card.resalta{border:2px solid var(--azul)}
+.cuerpo>.tag{align-self:flex-start}

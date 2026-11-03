@@ -22,7 +22,9 @@ var APPG_ACCIONES = {
   cerrar:       { fn: function (p) { return apiCerrar(p); } },
   recolectar:   { fn: function (p) { return apiRecolectar(p); } },
   problema:     { fn: function (p) { return apiProblema(p); } },
-  documentos:   { fn: function (p) { return apiDocumentos(p); } }
+  documentos:   { fn: function (p) { return apiDocumentos(p); } },
+  cerrarVarios: { fn: function (p) { return apiCerrarVarios(p); } },
+  admin:        { fn: function (p) { return apiAdmin(p); }, admin: true }
 };
 var APPG_PROXIMAS = [];
 
@@ -49,9 +51,12 @@ function manejar(p) {
       if (APPG_PROXIMAS.indexOf(accion) >= 0) return { ok: false, codigo: 'APP-09', mensaje: 'Esta función llega en la siguiente versión.' };
       return { ok: false, codigo: 'APP-01', mensaje: 'Acción desconocida: ' + accion };
     }
-    if (!a.sinSesion) {
+    if (!a.sinSesion && !a.admin) {
       var cfg = _config();
-      if (_si(cfg.APP_BLOQUEADA)) return { ok: false, codigo: 'APP-07', mensaje: String(cfg.MENSAJE_BLOQUEO || 'App en mantenimiento.') };
+      if (_si(cfg.APP_BLOQUEADA)) {
+        var quien = null; try { quien = _exigirSesion(p.token); } catch (e) { }
+        if (!quien || !_esAdmin(quien)) return { ok: false, codigo: 'APP-07', mensaje: String(cfg.MENSAJE_BLOQUEO || 'App en mantenimiento.') };
+      }
     }
     var r = a.fn(p) || {};
     r.ok = true;

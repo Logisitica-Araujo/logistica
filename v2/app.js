@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.0.1';
+var VERSION_APP = '2.1.0';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -140,7 +140,7 @@ function arrancar() {
   setInterval(pintarEstado, 15000);
   if (!S.token) return vistaLogin();
   DB.get('inicio').then(function (d) {
-    if (d) { S.datos = d; S.vistos = d._vistos || null; decidirPrimeraVista(); }
+    if (d) { S.datos = d; S.vistos = d._vistos || null; aplicarTema(); decidirPrimeraVista(); }
     else cargando('Cargando tu día…');
     actualizar(true);
   });
@@ -168,10 +168,12 @@ function actualizar(primera) {
     d._vistos = S.vistos;
     if (d.vehiculo) guardar('dia', hoyTxt());
     S.datos = d; DB.set('inicio', d);
+    if (typeof aplicarTema === 'function') aplicarTema();
     if (primera || !S.vista) decidirPrimeraVista();
     else if (S.vista === 'inicio') vistaInicio();
     else if (S.vista === 'pedidos') vistaPedidos();
     else if (S.vista === 'lleva') vistaLleva();
+    else if (S.vista === 'parada' && S.parada) vistaParada(S.parada.k);
     if (nuevos.length && !primera) avisarNuevos(nuevos);
   }).catch(function (e) {
     quitarCargando();
@@ -249,7 +251,7 @@ function cambiarClave(ev) {
   }).catch(function (e) { quitarCargando(); falla(e); });
 }
 function salir(motivo) {
-  S.token = null; borrar('token'); borrar('dia'); DB.del('inicio'); S.datos = null; S.vistos = null;
+  S.token = null; borrar('token'); borrar('dia'); DB.del('inicio'); S.datos = null; S.vistos = null; S.enAdmin = false; aplicarTema();
   vistaLogin(motivo || '');
 }
 function cerrarSesion() {
@@ -266,9 +268,9 @@ function vistaVehiculo(primera) {
     '<div class="cab-nombre"><small>Hola, ' + esc(d.gestor.nombre) + '</small><b>¿Con qué sales hoy?</b></div></div><div class="cuerpo">';
   d.vehiculos.forEach(function (v, i) {
     var sel = S.vehSel === v.nombre;
-    html += '<button class="veh' + (sel ? ' sel' : '') + '" ' + (v.ocupadoPor ? 'disabled' : '') + ' onclick="elegirVeh(' + i + ')">' +
+    html += '<button class="veh' + (sel ? ' sel' : '') + '" ' + (v.ocupadoPor || v.enTaller ? 'disabled' : '') + ' onclick="elegirVeh(' + i + ')">' +
       '<span class="ic">' + (v.tipo === 'MOTO' ? 'M' : v.tipo === 'NINGUNO' ? '—' : 'C') + '</span><span class="tx"><b>' + esc(v.nombre) + '</b><span>' +
-      (v.ocupadoPor ? 'Lo trae ' + esc(v.ocupadoPor) : v.tipo === 'MOTO' ? 'Moto' : v.tipo === 'NINGUNO' ? 'A pie o transporte público' : 'Auto') + '</span></span><span class="radio"></span></button>';
+      (v.enTaller ? 'En taller' : v.ocupadoPor ? 'Lo trae ' + esc(v.ocupadoPor) : v.tipo === 'MOTO' ? 'Moto' : v.tipo === 'NINGUNO' ? 'A pie o transporte público' : 'Auto') + '</span></span><span class="radio"></span></button>';
   });
   var v = d.vehiculos.filter(function (x) { return x.nombre === S.vehSel; })[0];
   if (v && v.tipo !== 'NINGUNO') {
@@ -279,18 +281,24 @@ function vistaVehiculo(primera) {
       html += '<p class="opc">Si te falta algo, avisa a tu supervisor antes de salir.</p></div>';
     }
   }
-  html += '</div><div class="pie"><button class="btn" ' + (S.vehSel ? '' : 'disabled') + ' onclick="guardarVehiculo()">Salir a ruta</button></div>';
+  if (d.vehiculo && S.vehSel && S.vehSel !== d.vehiculo && leer('dia') === hoyTxt()) {
+    var mot = (d.reglas && d.reglas.motivosCambioVehiculo) || [];
+    html += '<div class="bloque"><div class="cab-b"><label class="et" for="selMotVeh" style="flex:1">¿Por qué cambias de vehículo?</label><span class="opc">opcional</span></div>' +
+      '<select class="campo" id="selMotVeh" onchange="S.motVeh=this.value"><option value="">— Elige —</option>' + mot.map(function (m) { return '<option' + (S.motVeh === m ? ' selected' : '') + '>' + esc(m) + '</option>'; }).join('') + '</select></div>';
+  }
+  html += '</div><div class="pie"><button class="btn" ' + (S.vehSel ? '' : 'disabled') + ' onclick="guardarVehiculo()">' + (d.vehiculo && leer('dia') === hoyTxt() ? 'Cambiar de vehículo' : 'Salir a ruta') + '</button></div>';
   pintar(html);
 }
 function elegirVeh(i) { S.vehSel = S.datos.vehiculos[i].nombre; vistaVehiculo(S.vista === 'vehiculo' && !S.datos.vehiculo); }
 function guardarVehiculo() {
   var checklist = Array.prototype.map.call(document.querySelectorAll('.check input'), function (c) { return { texto: c.dataset.t, ok: c.checked }; });
+  var motivo = $('selMotVeh') ? $('selMotVeh').value : ''; S.motVeh = '';
   cargando('Guardando…');
-  srv('vehiculo', { vehiculo: S.vehSel, checklist: checklist }).then(function () {
+  srv('vehiculo', { vehiculo: S.vehSel, checklist: checklist, motivo: motivo }).then(function () {
     quitarCargando(); S.datos.vehiculo = S.vehSel; guardar('dia', hoyTxt()); DB.set('inicio', S.datos); vistaInicio(); actualizar();
   }).catch(function (e) {
     quitarCargando();
-    if (e.red) { S.datos.vehiculo = S.vehSel; guardar('dia', hoyTxt()); encolar('vehiculo', { vehiculo: S.vehSel, checklist: checklist }, 'Vehículo ' + S.vehSel); vistaInicio(); }
+    if (e.red) { S.datos.vehiculo = S.vehSel; guardar('dia', hoyTxt()); encolar('vehiculo', { vehiculo: S.vehSel, checklist: checklist, motivo: motivo }, 'Vehículo ' + S.vehSel); vistaInicio(); }
     else falla(e);
   });
 }
@@ -306,13 +314,16 @@ function estadoTexto() {
 function pintarEstado() { var e = $('estado'); if (!e) return; var x = estadoTexto(); e.innerHTML = '<i class="' + (x.amb ? 'amb' : '') + '"></i>' + esc(x.t); }
 
 function vistaInicio() {
-  S.vista = 'inicio'; pararEscaner();
+  S.enAdmin = false;
+  if (S.datos && esFac()) return vistaRuta();
+  S.vista = 'inicio'; pararEscaner(); aplicarTema();
   var d = S.datos; if (!d) return;
   var x = estadoTexto();
   var aviso = S.aviso && Date.now() - S.aviso.hora < 30 * 60000 ? S.aviso : null;
   var conTarjeta = !!aviso || (window.Notification && Notification.permission === 'default');
   var html = '<div class="cab' + (conTarjeta ? ' con-tarjeta' : '') + '"><div class="cab-fila"><img src="../iconos/icono-192.png" alt="">' +
-    '<div class="cab-nombre"><small>' + saludo() + '</small><b>' + esc(d.gestor.nombre) + '</b></div>' +
+    '<div class="cab-nombre"><small>' + saludo() + ' · Gestoría</small><b>' + esc(d.gestor.nombre) + '</b></div>' +
+    (perfil().admin ? '<button class="btn-ic" onclick="entrarAdmin()" aria-label="Administración">' + ICP.escudo + '</button>' : '') +
     '<button class="btn-ic" onclick="vistaYo()" aria-label="Mi cuenta">' + IC.campana + (aviso ? '<span class="punto"></span>' : '') + '</button></div>' +
     '<div class="chips"><button class="chip" onclick="vistaVehiculo(false)">' + esc(d.vehiculo || 'Sin vehículo') + ' · cambiar</button>' +
     '<span class="chip" id="estado" onclick="verCola()"><i class="' + (x.amb ? 'amb' : '') + '"></i>' + esc(x.t) + '</span></div></div>';
@@ -330,6 +341,7 @@ function vistaInicio() {
 function saludo() { var h = new Date().getHours(); return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches'; }
 function haceTxt(t) { var m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'ahora' : 'hace ' + m + ' min'; }
 function nav(act) {
+  if (S.datos && esFac()) return navFac(act === 'pedidos' ? 'lleva' : act);
   var b = function (id, ic, t, fn) { return '<button class="' + (act === id ? 'act' : '') + '" onclick="' + fn + '">' + ic + t + '</button>'; };
   return '<nav class="nav" aria-label="Secciones">' + b('inicio', IC.casa, 'Inicio', 'vistaInicio()') + b('escaner', IC.scan.replace(/30/g, '22'), 'Escanear', "vistaEscaner('recolectar')") +
     b('pedidos', IC.lista, 'Pendientes', 'vistaPedidos()') + b('manual', IC.libro, 'Manual', 'vistaManual()') + '</nav>';
@@ -341,6 +353,7 @@ function pedirAvisos() {
 }
 function vistaYo() {
   modal('<h2>' + esc(S.datos.gestor.nombre) + ' · ' + esc(S.datos.gestor.numero) + '</h2><p>App ' + VERSION_APP + ' · servidor ' + esc(S.datos.version) + '</p>' +
+    (perfil().admin ? '<button class="btn" onclick="cerrarModal();entrarAdmin()">Administración</button>' : '') +
     '<button class="btn linea" onclick="cerrarModal();verCola()">Lo que falta subir (' + S.cola.length + ')</button>' +
     '<button class="btn linea" onclick="cerrarModal();vistaCambiarClave(false)">Cambiar contraseña</button>' +
     '<button class="btn linea" onclick="cerrarModal();reportar()">Reportar un problema</button>' +
@@ -399,9 +412,10 @@ function abrirCierre(tipo, i, resultado) {
   var x = tipo === 'PEDIDO' ? S.datos.pedidos[i] : S.datos.lleva[i];
   if (!x) return;
   S.volverA = tipo === 'PEDIDO' ? 'pedidos' : 'lleva';
+  if (S.vista !== 'parada') S.volverParada = null;
   S.cierre = { tipo: tipo, resultado: resultado, id: tipo === 'PEDIDO' ? x.id : x.codigo, fila: x.fila || '', cliente: x.cliente || x.destino || '',
                direccion: x.direccion || x.contenido || '', exigeFirma: false, foto: null, firma: null, recibio: '', motivo: '', comentario: '',
-               sucursal: x.destinoSucursal || '' };
+               sucursal: x.destinoSucursal || '', clase: x.clase || '', esperado: x.esperado || 0, areaImss: '', matricula: '', monto: '' };
   pintarCierre();
 }
 function reglaFoto(c) {
@@ -415,8 +429,15 @@ function pintarCierre() {
   var c = S.cierre, entrega = c.resultado === 'ENTREGADO', paq = c.resultado === 'PAQUETERIA';
   var titulo = entrega ? 'Entregar' : paq ? 'Entregado a paquetería' : 'No entregué';
   var pideFoto = reglaFoto(c), firmaObl = entrega && c.exigeFirma, recObl = entrega && (c.exigeFirma || S.datos.reglas.exigirQuienRecibio);
+  var fac = esFac() && !c.comoNumero ? bloqueCierreFac(c, 1) : null;
+  if (fac) titulo = fac.titulo;
   var html = '<div class="barra"><button class="volver" onclick="cancelarCierre()" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>' + titulo + '</b>' +
     '<small><span class="mono" style="color:var(--azul);font-weight:600">' + esc(c.id) + '</span> · ' + esc(c.cliente) + '</small></div></div><div class="cuerpo">';
+  if (c.comoNumero) html += '<div class="aviso warn">Lo estás cerrando a nombre de <b>' + esc(c.comoNombre) + '</b>. Queda anotado que fuiste tú.</div>';
+  if (fac) {
+    html += fac.html + '<p class="nota">Se guarda en tu celular a cada paso.</p></div><div class="pie"><button class="btn verde" onclick="enviarCierre()">' + fac.boton + '</button></div>';
+    pintar(html); guardarBorrador(); return;
+  }
   var n = 1;
   if (!entrega && !paq) {
     var esPedido = c.tipo === 'PEDIDO';
@@ -459,6 +480,9 @@ function preservar() {
   if ($('inComent')) c.comentario = $('inComent').value;
   if ($('inRecibio')) c.recibio = $('inRecibio').value;
   if ($('selSuc')) c.sucursal = $('selSuc').value;
+  if ($('selArea')) c.areaImss = $('selArea').value;
+  if ($('inMatricula')) c.matricula = $('inMatricula').value;
+  if ($('inMonto')) c.monto = $('inMonto').value.trim();
   var f = leerFirma(); if (f) c.firma = f;
 }
 function tipoNoEntrega(t) { preservar(); S.cierre.resultado = t; S.cierre.motivo = ''; pintarCierre(); }
@@ -467,19 +491,31 @@ function elegirMotivo(j) {
   var c = S.cierre, lista = S.datos.motivos[c.tipo === 'PEDIDO' ? c.resultado : 'TRASPASO'] || [];
   c.motivo = lista[j] ? lista[j].motivo : ''; pintarCierre();
 }
-function cancelarCierre() { S.cierre = null; DB.del('borrador'); if (S.volverA === 'lleva') vistaLleva(); else vistaPedidos(); }
+function cancelarCierre() {
+  var c = S.cierre; S.cierre = null; DB.del('borrador');
+  if (c && c.comoNumero) return admGestor(c.comoNumero);
+  if (S.volverParada) return vistaParada(S.volverParada);
+  if (S.volverA === 'lleva') vistaLleva(); else vistaPedidos();
+}
 
 function enviarCierre() {
   preservar();
   var c = S.cierre, entrega = c.resultado === 'ENTREGADO';
   if (c.tipo === 'PEDIDO' && !entrega && c.resultado !== 'PAQUETERIA' && !c.motivo) return falla(errCod('CAP-05', 'Elige el motivo.'));
   if (reglaFoto(c) && !c.foto) return falla(errCod('CAP-04', 'Falta la foto.'));
-  if (c.tipo === 'PEDIDO' && entrega && S.datos.reglas.exigirQuienRecibio && !String(c.recibio).trim()) return falla(errCod('CAP-08', 'Anota quién recibió.'));
+  if (c.tipo === 'PEDIDO' && entrega && c.clase !== 'IMSS' && S.datos.reglas.exigirQuienRecibio && !String(c.recibio).trim()) return falla(errCod('CAP-08', 'Anota quién recibió.'));
+  var fac = esFac() && !c.comoNumero;
+  if (fac) { var ef = revisarCierreFac(c); if (ef) return falla(ef); }
   cargando('Guardando…');
   obtenerGPS().then(function (g) {
     var datos = { idLocal: idLocal(), tipo: c.tipo, id: c.id, fila: c.fila, resultado: c.resultado, motivo: c.motivo, comentario: c.comentario,
                   recibio: c.recibio, foto: c.foto, firma: c.firma, sucursal: c.sucursal || '', lat: g.lat, lng: g.lng, horaCelular: horaTxt() };
+    if (fac) { datos.clase = c.clase || ''; datos.areaImss = c.areaImss || ''; datos.matricula = c.matricula || ''; datos.monto = c.monto || ''; datos.esperado = c.esperado || 0; }
+    if (c.comoNumero) datos.comoNumero = c.comoNumero;
     var etiqueta = c.id + ' · ' + ({ ENTREGADO: 'Entregado', RETORNO: 'Retorno', CANCELADO: 'Cancelado', PAQUETERIA: 'Paquetería', NO_ENTREGADO: 'No entregado' })[c.resultado];
+    if (c.comoNumero) {
+      return srv('cerrar', datos).then(function () { quitarCargando(); beep(); S.cierre = null; DB.del('borrador'); toast(etiqueta + ' · a nombre de ' + c.comoNombre, 'ok'); admGestor(c.comoNumero); });
+    }
     return encolar('cerrar', datos, etiqueta).then(function () {
       // fuera de la lista al instante, aunque no haya señal
       S.datos.pedidos = S.datos.pedidos.filter(function (p) { return clave(p.id) !== clave(c.id); });
@@ -488,7 +524,9 @@ function enviarCierre() {
       DB.set('inicio', S.datos); DB.del('borrador');
       quitarCargando(); beep();
       var hecho = c; S.cierre = null;
-      if (entrega && c.tipo === 'PEDIDO') vistaListo(hecho); else { toast(etiqueta + ' · guardado', 'ok'); vistaInicio(); }
+      var parada = S.volverParada && armarParadas().porK[S.volverParada];
+      if (entrega && c.tipo === 'PEDIDO' && !fac) vistaListo(hecho);
+      else { toast(etiqueta + ' · guardado', 'ok'); if (parada && (parada.items.length || parada.recoger.length)) vistaParada(S.volverParada); else vistaInicio(); }
       subirCola();
     });
   }).catch(function (e) { quitarCargando(); falla(e); });
@@ -797,7 +835,10 @@ function dispararFoto() {
 }
 function luzFoto() { if (!camFoto || !camFoto.track) return; var p = !camFoto.luz; camFoto.track.applyConstraints({ advanced: [{ torch: p }] }).then(function () { camFoto.luz = p; $('camLuz').textContent = p ? 'Apagar' : 'Luz'; }).catch(function () {}); }
 function cerrarCamFoto() { if (camFoto && camFoto.stream) camFoto.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} }); camFoto = null; var c = $('camFoto'); if (c) c.remove(); }
-function ponerFoto(f) { if (!S.cierre) return; S.cierre.foto = f; beep(); pintarCierre(); }
+function ponerFoto(f) {
+  if (!S.cierre && S.vista === 'parada' && S.parada) { S.parada.foto = f; beep(); return vistaParada(S.parada.k); }
+  if (!S.cierre) return; S.cierre.foto = f; beep(); pintarCierre();
+}
 function fotoDeArchivo() {
   preservar(); guardarBorrador();
   elegirArchivo(function (f) {
