@@ -65,16 +65,20 @@ function _robotPedidos() {
   });
   _avisarDesconocidos(desconocidos);
 
-  /* Solo se reescribe si algo cambió (se compara una huella). */
-  var huella = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, JSON.stringify(filas)));
+  /* Se escribe por NOMBRE de columna (si INSTALAR agregó columnas al final, el orden de la hoja
+     ya no es el de APPG.ENC). Solo se reescribe si algo cambió (se compara una huella). */
+  var sh = _hoja(APPG.H.PEDIDOS);
+  var real = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(function (h) { return String(h).trim(); });
+  var enc = APPG.ENC.APP_Pedidos;
+  var huella = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, real.join('|') + '#' + JSON.stringify(filas)));
   var props = PropertiesService.getScriptProperties();
   if (props.getProperty('HUELLA_PEDIDOS') !== huella) {
-    var sh = _hoja(APPG.H.PEDIDOS);
-    var enc = APPG.ENC.APP_Pedidos;
     var ahora = _ahora();
-    filas.forEach(function (f) { f[enc.indexOf('Actualizado')] = ahora; });
-    if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, enc.length).clearContent();
-    if (filas.length) sh.getRange(2, 1, filas.length, enc.length).setValues(filas);
+    var salida = filas.map(function (f) {
+      return real.map(function (h) { var k = enc.indexOf(h); return h === 'Actualizado' ? ahora : (k >= 0 ? f[k] : ''); });
+    });
+    if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, real.length).clearContent();
+    if (salida.length) sh.getRange(2, 1, salida.length, real.length).setValues(salida);
     props.setProperty('HUELLA_PEDIDOS', huella);
   }
   return r.pedidos;
