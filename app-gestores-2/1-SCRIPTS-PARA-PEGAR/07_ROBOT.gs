@@ -7,8 +7,9 @@
  *   2. Avisa las recolecciones nuevas: traspasos → RECOLECTADO en el sistema
  *      ("Recolectado por gestoría" en el rastreo); pedidos → APP_Traspasos_Hist vía API.
  *   3. Lleva los cierres PENDIENTES: pedidos a la API, traspasos al Sistema de Traspasos.
- *   4. Limpia: quita de la lista del gestor lo que ya terminó en su fuente
- *      (traspaso: columna Estatus de RES_Traspasos; pedido: ESTATUS de Operaciones).
+ *   4. Limpia: quita de la lista del gestor lo que ya terminó en su fuente o ya no trae
+ *      (traspaso: columna Estatus de RES_Traspasos — terminado, o en recepción/otro estatus
+ *      después de que él lo recolectó; pedido: ESTATUS de Operaciones).
  *   5. Anota la hora en APP_Config → ULTIMA_VUELTA_ROBOT.
  * Si un paso falla, los demás siguen; el error queda en ULTIMO_ERROR_ROBOT y APP_Log.
  *
@@ -202,6 +203,9 @@ function _robotLimpieza() {
       var tn = _tnBuscar(String(r.Codigo));
       fuente = tn ? tn.estatus : 'NO EXISTE';
       if (tn && APPG_TN.TERMINADOS.indexOf(tn.estatus) >= 0) cerrar = 'CERRADO EN DESTINO';
+      // Ya se marcó RECOLECTADO por este gestor y ahora el sistema dice otra cosa (EN_RECEPCION, EN_LOGISTICA,
+      // NUEVO…): alguien más ya lo recibió o lo tiene. Ya no lo trae él → sale de su lista.
+      else if (tn && String(r.Enviado) === 'SI' && tn.estatus !== 'RECOLECTADO' && tn.estatus !== 'UBICADO') cerrar = 'YA NO LO TRAE (' + tn.estatus + ')';
     } else if (String(r.Tipo) === 'PEDIDO' && Object.prototype.hasOwnProperty.call(estados, String(r.Codigo))) {
       fuente = estados[String(r.Codigo)] || 'NO EXISTE EN OPERACIONES';
       if (/ENTREGADO|CANCELADO|RETORNADO/i.test(fuente)) cerrar = 'CERRADO';

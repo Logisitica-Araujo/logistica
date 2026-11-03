@@ -388,6 +388,8 @@ function _estadoAmigable(fuente, enviado) {
   if (String(enviado) === 'NO') return 'Registrando en el sistema…';
   if (/RECOLECTADO/.test(f)) return 'En camino · ya sale en el rastreo';
   if (/EN_RECEPCION/.test(f)) return 'En recepción';
+  if (/NO EXISTE EN OPERACIONES/.test(f)) return 'No está abierto en Operaciones';
+  if (/ANOTADO/.test(f)) return 'Recolectado · anotado en Operaciones';
   if (/NO RECOLECTABLE|NO EXISTE/.test(f)) return 'No está en el Sistema de Traspasos';
   if (/ALERTA/.test(f)) return 'Lleva días sin entregarse';
   return f ? f.replace(/_/g, ' ').toLowerCase() : '';

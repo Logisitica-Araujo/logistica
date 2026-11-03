@@ -312,3 +312,5 @@ body.adm{--azul:#111A2E;--azul-osc:#0A1020;--azul-suave:#E6E9F0;--azul-claro:#AE
 .rejilla .grande.registrar{min-height:auto;padding:14px 18px;border-radius:18px}
 .rejilla .grande.registrar b{font-size:16.5px}
 .rejilla .grande.registrar small{font-size:12.5px}
+.b.wa-b{color:var(--wa);border-color:#9FD5C9;font-weight:700}
+.leido .b.wa-b{height:36px;font-size:13px;flex:none}

@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.2.1';
+var VERSION_APP = '2.3.0';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -159,7 +159,19 @@ function marcarRed(hay) { var antes = S.hayRed; S.hayRed = hay; if (hay) S.ultim
 
 /* ==================== Arranque ==================== */
 function arrancar() {
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+  if ('serviceWorker' in navigator) {
+    // Versión nueva de la app: se instala sola y la pantalla se recarga en un momento seguro (no a media captura).
+    var habia = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register('sw.js').then(function (reg) {
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) reg.update().catch(function () {}); });
+      setInterval(function () { reg.update().catch(function () {}); }, 30 * 60000);
+    }).catch(function () {});
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!habia) return;
+      var recargar = function () { if (['inicio', 'pedidos', 'lleva', 'login', 'manual', 'adm'].indexOf(S.vista) >= 0 && !S.cierre) location.reload(); else setTimeout(recargar, 5000); };
+      recargar();
+    });
+  }
   S.token = leer('token');
   DB.cola().then(function (c) { S.cola = c || []; });
   window.addEventListener('online', function () { subirCola(); actualizar(); });
@@ -435,7 +447,8 @@ function vistaLleva() {
       (l.estado ? '<div class="t2" style="color:var(--azul);font-weight:600">' + esc(l.estado) + '</div>' : '') + '</div>' +
       '<div class="botones"><button class="b verde" onclick="abrirCierre(\'' + (tras ? 'TRASPASO' : 'RECOLECCION') + '\',' + i + ',\'ENTREGADO\')">Entregar</button>' +
       '<button class="b" onclick="abrirCierre(\'' + (tras ? 'TRASPASO' : 'RECOLECCION') + '\',' + i + ',\'NO_ENTREGADO\')">No entregué</button>' +
-      (l.destinoMaps || l.destinoDireccion ? '<a class="b" href="' + esc(l.destinoMaps || ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(l.destinoDireccion))) + '" target="_blank" rel="noopener">' + IC.mapa + 'Mapa</a>' : '<span></span>') + '</div></div>';
+      (l.destinoMaps || l.destinoDireccion ? '<a class="b" href="' + esc(l.destinoMaps || ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(l.destinoDireccion))) + '" target="_blank" rel="noopener">' + IC.mapa + 'Mapa</a>' : '<span></span>') + '</div>' +
+      '<button class="b wa-b" onclick="waLleva(' + i + ')">Enviar por WhatsApp</button></div>';
   });
   pintar(html + '</div>' + nav(''));
 }
@@ -561,8 +574,8 @@ function enviarCierre() {
       if (entrega && c.tipo === 'PEDIDO' && !fac) vistaListo(hecho);
       else {
         var volver = parada && (parada.items.length || parada.recoger.length) ? "vistaParada('" + esc(S.volverParada) + "')" : 'vistaInicio()';
-        if (fac && entrega) waDespuesDeCierre(hecho, volver);
-        else { toast(etiqueta + ' · guardado', 'ok'); if (parada && (parada.items.length || parada.recoger.length)) vistaParada(S.volverParada); else vistaInicio(); }
+        if (!parada && !S.volverParada && !fac) volver = c.tipo === 'PEDIDO' ? 'vistaPedidos()' : 'vistaLleva()';
+        waDespuesDeCierre(hecho, volver);   // todos: entrega, retorno, cancelado o no entregué → opción de WhatsApp
       }
       subirCola();
     });
@@ -664,7 +677,13 @@ function vistaEscaner(modo) {
   pintarLeidos();
   S.escaner = abrirCamara('visor', 'ctrlCam', alLeer, function (m) { var v = $('visor'); if (v) v.innerHTML = '<div class="visor-err">' + esc(m) + '</div>'; });
 }
-function salirEscaner() { pararEscaner(); S.leidos = []; vistaInicio(); }
+function salirEscaner() {
+  pararEscaner();
+  var ok = (S.leidos || []).filter(function (l) { return l.estado === 'ok'; });
+  S.leidos = [];
+  if (S.modoScan === 'recolectar' && ok.length) return waRecoleccion(ok.slice().reverse(), 'vistaInicio()');   // lo recolectado: opción de mandarlo por WhatsApp
+  vistaInicio();
+}
 function pararEscaner() { if (S.escaner) { S.escaner.parar(); S.escaner = null; } }
 function teclear(ev) { ev.preventDefault(); var v = $('inCodigo').value.trim(); if (v) { $('inCodigo').value = ''; alLeer(v, true); } }
 
@@ -692,7 +711,7 @@ function aplicarResultados(res, items) {
   res.forEach(function (r, i) {
     var l = items[i] || {};
     l.codigo = r.codigo;
-    if (r.ok) { l.estado = 'ok'; l.texto = 'Va a ' + (r.destino || '—') + (r.direccion ? ' · ' + r.direccion : '') + (r.enPedidos ? ' · ya está en tus pedidos' : ''); }
+    if (r.ok) { l.origen = r.origen; l.destino = r.destino + (r.direccion ? ' (' + r.direccion + ')' : ''); l.contenido = r.contenido; l.estado = 'ok'; l.texto = 'Va a ' + (r.destino || '—') + (r.direccion ? ' · ' + r.direccion : '') + (r.enPedidos ? ' · ya está en tus pedidos' : ''); }
     else if (r.pideDestino) { l.estado = 'esp'; l.texto = r.mensaje; l.pideDestino = true; }
     else { l.estado = 'mal'; l.texto = r.mensaje; if (!r.repetido) sonido('escaneoMal'); }
   });
@@ -704,7 +723,8 @@ function pintarLeidos() {
   if (S.modoScan !== 'recolectar') { c.innerHTML = ''; return; }
   c.innerHTML = (S.leidos || []).slice(0, 12).map(function (l, i) {
     return '<div class="leido ' + l.estado + '"><span class="ic">' + (l.estado === 'ok' ? '✓' : l.estado === 'mal' ? '!' : '…') + '</span><span class="tx"><b>' + esc(l.codigo) + '</b><span>' + esc(l.texto) + '</span></span>' +
-      (l.pideDestino ? '<button class="b" onclick="pedirDestino(' + i + ')">Destino</button>' : '') + '</div>';
+      (l.pideDestino ? '<button class="b" onclick="pedirDestino(' + i + ')">Destino</button>' : '') +
+      (l.estado === 'ok' ? '<button class="b wa-b" onclick="waLeido(' + i + ')">WhatsApp</button>' : '') + '</div>';
   }).join('');
 }
 function pedirDestino(i) {
@@ -876,6 +896,7 @@ function dispararFoto() {
 function luzFoto() { if (!camFoto || !camFoto.track) return; var p = !camFoto.luz; camFoto.track.applyConstraints({ advanced: [{ torch: p }] }).then(function () { camFoto.luz = p; $('camLuz').textContent = p ? 'Apagar' : 'Luz'; }).catch(function () {}); }
 function cerrarCamFoto() { if (camFoto && camFoto.stream) camFoto.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} }); camFoto = null; var c = $('camFoto'); if (c) c.remove(); }
 function ponerFoto(f) {
+  if (!S.cierre && S.vista === 'listo' && S.waOpts) { S.waOpts.foto = f; beep(); return vistaWA(S.waOpts); }
   if (!S.cierre && S.vista === 'libre' && S.libre) { S.libre.foto = f; beep(); return vistaLibre(); }
   if (!S.cierre && S.vista === 'parada' && S.parada) { S.parada.foto = f; beep(); return vistaParada(S.parada.k); }
   if (!S.cierre) return; S.cierre.foto = f; beep(); pintarCierre();
