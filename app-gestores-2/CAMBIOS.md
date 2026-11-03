@@ -1,5 +1,12 @@
 # Registro de cambios · App Gestores 2
 
+## 0.4.1 · 3-nov-2026 · Entregas sin asignar y WhatsApp en Facturación
+- **"+ Registrar entrega"** (perfil Facturación): lo que entregan sin que esté en su ruta. Qué (Medicamento, Facturas, Documentos, Efectivo con monto opcional, Insumos, Otro), dónde (IMSS unidad y área, sucursal u otro lugar), foto, quién recibió, matrícula, quién lo pidió. Folio `E-MMDD-` + iniciales + número (ej. E-1103-A1), funciona sin señal.
+- Se guarda **solo en la app**: APP_Cierres con Tipo `LIBRE` y Estado `LOCAL` (no va a Operaciones). Se ve en Administración → Hoy y Buscar. Ajuste nuevo `CARPETA_LIBRES` para sus fotos (vacío = la de traspasos).
+- **WhatsApp** al terminar cualquier entrega de Facturación (parada con varios, efectivo, IMSS, sin asignar), con lo capturado y la foto.
+- **Vehículos:** "Sin vehículo", "A pie", etc. siempre los pueden elegir varios a la vez.
+- App 2.2.0 (service worker `gestores2-v6`). Pruebas: `prueba-perfiles.js` 96/96.
+
 ## 0.4.0 · 3-nov-2026 · Perfiles: Gestoría, Facturación (traslados) y Administrador
 - **APP_Usuarios:** columnas nuevas **Area** (Gestoría / Facturación, con lista) y **VehiculoNota**; Rol con lista (Gestor / Administrador). INSTALAR deja en Gestoría a quien no tenga área.
 - **Facturación (app verde):** ruta por parada, entregar varios con una foto (`cerrarVarios`), efectivo con monto opcional y aviso si no cuadra (`CAP-09`), IMSS con área, foto del acuse (obligatoria, `EXIGIR_ACUSE_IMSS`) y matrícula, "por recoger" en cada sucursal (lo calcula el robot).

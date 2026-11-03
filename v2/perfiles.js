@@ -87,7 +87,8 @@ function vistaRuta() {
     '<span class="chip" id="estado" onclick="verCola()"><i class="' + (x.amb ? 'amb' : '') + '"></i>' + esc(x.t) + '</span></div></div>' +
     '<div class="cuerpo con-nav">';
   if (aviso) html += '<div class="aviso">' + esc(aviso.texto) + '</div>';
-  html += '<button class="grande" onclick="vistaEscaner(\'recolectar\')"><span class="ic">' + IC.scan + '</span><span><b>Escanear</b><small>Recoger o entregar traspasos, efectivo y documentos</small></span></button>' +
+  html += '<div class="dos-grandes"><button class="grande" onclick="vistaEscaner(\'recolectar\')"><span><b>Escanear</b><small>Recoger o entregar lo asignado</small></span></button>' +
+    '<button class="grande linea" onclick="vistaLibre()"><span><b>+ Registrar entrega</b><small>Algo que no estaba en tu ruta</small></span></button></div>' +
     '<span class="etiqueta">Tu ruta de hoy · por parada</span>';
   if (!R.paradas.length) html += '<div class="vacio"><b>No llevas nada por entregar</b><span>Escanea lo que recojas; aparece aquí agrupado por la sucursal o área a donde va.</span></div>';
   R.paradas.forEach(function (p, n) {
@@ -100,6 +101,14 @@ function vistaRuta() {
       html += '<details class="doc"><summary><span class="pchip a">RECOGER ' + p.recoger.length + '</span>' + esc(p.nombre) + '</summary><div class="cuerpo-doc">' +
         p.recoger.slice(0, 20).map(function (r) { return '<div><b class="mono">' + esc(r.folio) + '</b> · va a ' + esc(r.destino) + (r.contenido ? ' · ' + esc(r.contenido) : '') + '</div>'; }).join('') +
         (p.recoger.length > 20 ? '<div>… y ' + (p.recoger.length - 20) + ' más</div>' : '') + '</div></details>';
+    });
+  }
+  var libres = listaLibresHoy();
+  if (libres.length) {
+    html += '<span class="etiqueta">Registrado por ti hoy (sin asignar)</span>';
+    libres.forEach(function (x, i) {
+      html += '<button class="libre" onclick="waLibre(' + i + ')"><span class="tag n">' + esc(x.id) + '</span><span class="tx"><b>' + esc(x.detalle) + ' · ' + esc(x.donde) + '</b><small>' + esc(x.hora) +
+        (x.recibio ? ' · Recibió ' + esc(x.recibio) : '') + (x.monto ? ' · ' + dinero(x.monto) : '') + (x.local ? ' · por subir' : '') + '</small></span><span class="wa-txt">WhatsApp</span></button>';
     });
   }
   html += '<span class="etiqueta">Hoy</span><div class="hoy"><div><b style="color:var(--verde)">' + d.hoy.entregados + '</b><span>Entregados</span></div>' +
@@ -190,9 +199,12 @@ function entregarParada() {
       S.datos.pedidos = S.datos.pedidos.filter(function (x) { return !ids[clave(x.id)]; });
       S.datos.lleva = S.datos.lleva.filter(function (x) { return !ids[clave(x.codigo)]; });
       S.datos.hoy.entregados += items.length; DB.set('inicio', S.datos);
-      quitarCargando(); sonido('entregado'); toast(etiqueta, 'ok'); S.parada = null;
+      quitarCargando(); sonido('entregado'); S.parada = null;
       var queda = armarParadas().porK[p.k];
-      if (queda && (queda.items.length || queda.recoger.length)) vistaParada(p.k); else vistaInicio();
+      var volver = queda && (queda.items.length || queda.recoger.length) ? "vistaParada('" + esc(p.k) + "')" : 'vistaInicio()';
+      var lista = marc.map(function (x) { return x.id + (x.texto ? ' · ' + x.texto : ''); });
+      vistaWA({ titulo: 'Entregado en ' + p.nombre, sub: items.length + (items.length > 1 ? ' cosas · ya salieron de tu ruta' : ' · ya salió de tu ruta'), foto: st.foto, id: p.nombre, volver: volver,
+                msg: msgEntrega({ id: p.nombre, detalle: '\n• ' + lista.join('\n• '), donde: p.nombre, recibio: st.recibio, nota: st.comentario }) });
       subirCola();
     });
   }).catch(function (e) { quitarCargando(); falla(e); });
@@ -615,3 +627,121 @@ function admTexto(k, t, a, largo) {
     : '<input class="campo" id="aj_' + k + '" value="' + esc(a[k]) + '" onchange="admHacer(\'ajuste\',{clave:\'' + k + '\',valor:this.value})">');
 }
 function admSegm(b) { b.parentNode.querySelectorAll('button').forEach(function (x) { x.classList.remove('act'); }); b.classList.add('act'); }
+
+
+/* =====================================================================
+ *  FACTURACIÓN · ENTREGA SIN ASIGNAR (T5–T7) y WhatsApp después de entregar
+ * ===================================================================== */
+var QUE_LIBRE = ['Medicamento', 'Facturas', 'Documentos', 'Efectivo', 'Insumos', 'Otro'];
+
+/** Lo registrado hoy: lo que ya está en el servidor + lo que sigue en la fila del celular. */
+function listaLibresHoy() {
+  var serv = (S.datos && S.datos.libresHoy) || [], vistos = {};
+  serv.forEach(function (x) { vistos[x.id] = true; });
+  var loc = S.cola.filter(function (c) { return c.accion === 'cerrar' && c.datos.tipo === 'LIBRE' && !vistos[c.datos.id]; }).map(function (c) {
+    return { id: c.datos.id, que: c.datos.que, detalle: c.datos.que + (c.datos.detalle ? ' · ' + c.datos.detalle : ''), donde: c.datos.donde, recibio: c.datos.recibio,
+             monto: c.datos.monto, hora: String(c.creado).slice(11, 16), local: true, foto: !!c.datos.foto };
+  });
+  return serv.concat(loc).concat((S.libresSubidos || []).filter(function (x) { return !vistos[x.id] && !loc.some(function (l) { return l.id === x.id; }); }));
+}
+function folioLibre() {
+  var d = new Date(), mmdd = ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
+  var ini = iniciales(S.datos.gestor.nombre) || 'G';
+  var n = listaLibresHoy().length + 1, f;
+  do { f = 'E-' + mmdd + '-' + ini + n++; } while (listaLibresHoy().some(function (x) { return x.id === f; }));
+  return f;
+}
+function vistaLibre() {
+  pararEscaner();
+  if (!S.libre) S.libre = { que: '', detalle: '', dondeTipo: 'IMSS', unidad: '', area: '', sucursal: '', otro: '', foto: null, recibio: '', matricula: '', pidio: '', monto: '', comentario: '' };
+  S.vista = 'libre';
+  var x = S.libre, r = S.datos.reglas || {};
+  var areas = r.areasImss && r.areasImss.length ? r.areasImss : ['Farmacia', 'Almacén', 'Urgencias', 'Otro'];
+  var html = '<div class="barra"><button class="volver" onclick="S.libre=null;vistaInicio()" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>Registrar entrega</b><small>Algo que no estaba en tu ruta</small></div></div><div class="cuerpo">' +
+    '<div class="bloque"><div class="cab-b"><span class="paso' + (x.que ? ' ok' : '') + '">1</span><b>¿Qué entregaste?</b></div><div class="pildoras">' +
+    QUE_LIBRE.map(function (q) { return '<button class="pildora' + (x.que === q ? ' sel' : '') + '" onclick="libPres();S.libre.que=\'' + q + '\';vistaLibre()">' + q + '</button>'; }).join('') + '</div>' +
+    '<input class="campo" id="lbDet" placeholder="Detalle (ej. 3 cajas, receta 37F…)" value="' + esc(x.detalle) + '" autocomplete="off">' +
+    (x.que === 'Efectivo' ? '<label class="et" for="lbMonto">Monto <span class="opc">(opcional)</span></label><input class="campo grande-num" id="lbMonto" inputmode="decimal" placeholder="0.00" value="' + esc(x.monto) + '" autocomplete="off">' : '') + '</div>' +
+    '<div class="bloque"><div class="cab-b"><span class="paso' + (libDonde() ? ' ok' : '') + '">2</span><b>¿Dónde?</b></div><div class="segm">' +
+    [['IMSS', 'IMSS'], ['SUCURSAL', 'Sucursal'], ['OTRO', 'Otro lugar']].map(function (o) { return '<button class="' + (x.dondeTipo === o[0] ? 'act' : '') + '" onclick="libPres();S.libre.dondeTipo=\'' + o[0] + '\';vistaLibre()">' + o[1] + '</button>'; }).join('') + '</div>' +
+    (x.dondeTipo === 'IMSS' ? '<input class="campo" id="lbUni" placeholder="Unidad (ej. HGZ 32, UMF 7)" value="' + esc(x.unidad) + '" autocomplete="off">' +
+        '<select class="campo" id="lbArea"><option value="">— Área —</option>' + areas.map(function (a) { return '<option' + (a === x.area ? ' selected' : '') + '>' + esc(a) + '</option>'; }).join('') + '</select>'
+     : x.dondeTipo === 'SUCURSAL' ? '<select class="campo" id="lbSuc"><option value="">— Elige la sucursal —</option>' + (S.datos.sucursales || []).map(function (sc) { return '<option' + (sc.nombre === x.sucursal ? ' selected' : '') + '>' + esc(sc.nombre) + '</option>'; }).join('') + '</select>'
+     : '<input class="campo" id="lbOtro" placeholder="Dónde (ej. Notaría 12, Banco…)" value="' + esc(x.otro) + '" autocomplete="off">') + '</div>' +
+    bloqueFoto(x, 3, 'Foto (acuse, sello o entrega)', 'Que se vea el sello o a quién se lo diste', false) +
+    '<div class="bloque"><div class="cab-b"><span class="paso' + (x.recibio ? ' ok' : '') + '">4</span><b>¿Quién recibió?</b><span class="opc">opcional</span></div>' +
+    '<div class="fila2"><input class="campo" id="lbRec" placeholder="Nombre" value="' + esc(x.recibio) + '" autocomplete="off"><input class="campo" id="lbMat" placeholder="Matrícula" value="' + esc(x.matricula) + '" autocomplete="off"></div>' +
+    '<input class="campo" id="lbPidio" placeholder="¿Quién te lo pidió? (opcional)" value="' + esc(x.pidio) + '" autocomplete="off">' +
+    '<input class="campo" id="lbNota" placeholder="Nota (opcional)" value="' + esc(x.comentario) + '" autocomplete="off"></div>' +
+    '</div><div class="pie"><button class="btn verde" onclick="guardarLibre()">Guardar entrega</button></div>';
+  pintar(html);
+}
+function libPres() {
+  var x = S.libre; if (!x) return;
+  var v = function (id) { return $(id) ? $(id).value : null; };
+  [['lbDet', 'detalle'], ['lbMonto', 'monto'], ['lbUni', 'unidad'], ['lbArea', 'area'], ['lbSuc', 'sucursal'], ['lbOtro', 'otro'], ['lbRec', 'recibio'], ['lbMat', 'matricula'], ['lbPidio', 'pidio'], ['lbNota', 'comentario']]
+    .forEach(function (k) { var y = v(k[0]); if (y != null) x[k[1]] = y.trim(); });
+}
+function libDonde() {
+  var x = S.libre;
+  if (x.dondeTipo === 'IMSS') return x.unidad || x.area ? 'IMSS ' + [x.unidad, x.area].filter(String).join(' · ') : '';
+  if (x.dondeTipo === 'SUCURSAL') return x.sucursal;
+  return x.otro;
+}
+function guardarLibre() {
+  libPres();
+  var x = S.libre;
+  if (!x.que) return falla(errCod('CAP-01', 'Elige qué entregaste.'));
+  var donde = libDonde();
+  if (!donde) return falla(errCod('CAP-01', 'Escribe dónde lo entregaste.'));
+  if (x.que === 'Efectivo' && x.monto && !isFinite(Number(String(x.monto).replace(/[$,\s]/g, '')))) return falla(errCod('CAP-09', 'El monto no es un número.'));
+  cargando('Guardando…');
+  obtenerGPS().then(function (g) {
+    var folio = folioLibre();
+    var datos = { idLocal: idLocal(), tipo: 'LIBRE', id: folio, resultado: 'ENTREGADO', que: x.que, detalle: x.detalle, donde: donde, areaImss: x.dondeTipo === 'IMSS' ? x.area : '',
+                  foto: x.foto, recibio: x.recibio, matricula: x.matricula, pidio: x.pidio, comentario: x.comentario, monto: x.que === 'Efectivo' ? x.monto : '',
+                  lat: g.lat, lng: g.lng, horaCelular: horaTxt() };
+    return encolar('cerrar', datos, folio + ' · ' + x.que + ' · ' + donde).then(function () {
+      S.libresSubidos = (S.libresSubidos || []).concat([{ id: folio, que: x.que, detalle: x.que + (x.detalle ? ' · ' + x.detalle : ''), donde: donde, recibio: x.recibio, monto: datos.monto, hora: horaTxt().slice(11, 16), foto: !!x.foto }]);
+      S.datos.hoy.entregados++; DB.set('inicio', S.datos);
+      quitarCargando(); sonido('entregado');
+      var o = { id: folio, que: x.que, detalle: x.detalle, donde: donde, recibio: x.recibio, matricula: x.matricula, monto: datos.monto, pidio: x.pidio, foto: x.foto, nota: x.comentario };
+      S.libre = null; subirCola();
+      vistaWA({ titulo: 'Entrega guardada', sub: folio + ' · ya la ve Administración', msg: msgEntrega(o), foto: o.foto, id: folio, volver: 'vistaInicio()' });
+    });
+  }).catch(function (e) { quitarCargando(); falla(e); });
+}
+/* El mensaje de WhatsApp con lo capturado. */
+function msgEntrega(o) {
+  var ahora = new Date(), L = ['ENTREGA REALIZADA · ' + o.id];
+  if (o.que || o.detalle) L.push('Qué: ' + [o.que, o.detalle].filter(Boolean).join(' · '));
+  if (o.monto) L.push('Monto: ' + dinero(Number(String(o.monto).replace(/[$,\s]/g, ''))));
+  if (o.donde) L.push('Dónde: ' + o.donde);
+  if (o.recibio || o.matricula) L.push('Recibió: ' + (o.recibio || '—') + (o.matricula ? ' (Mat. ' + o.matricula + ')' : ''));
+  if (o.pidio) L.push('Lo pidió: ' + o.pidio);
+  if (o.nota) L.push('Nota: ' + o.nota);
+  L.push('Entregó: ' + S.datos.gestor.nombre);
+  L.push(ahora.toLocaleDateString('es-MX') + ' · ' + ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }));
+  return L.join('\n');
+}
+/** Pantalla "listo" con el botón de WhatsApp (entregas de Facturación). */
+function vistaWA(o) {
+  S.vista = 'listo'; S.wa = { msg: o.msg, foto: o.foto, id: o.id };
+  pintar('<div class="listo"><div class="verde-top"><span class="palomita">' + IC.palomita + '</span><b>' + esc(o.titulo) + '</b><span>' + esc(o.sub) + '</span></div>' +
+    '<div class="cuerpo"><b>¿Avisar por WhatsApp?</b><p class="nota" style="text-align:left;margin:0">Tú eliges a quién: a quien te lo pidió, a Facturación o al grupo.</p>' +
+    '<div class="wa-burbuja"><div>' + (o.foto ? '<img src="' + o.foto + '" alt="">' : '') + '<pre>' + esc(o.msg) + '</pre></div></div>' +
+    (o.foto ? '<label class="check"><input type="checkbox" id="waFoto" checked> Incluir la foto</label>' : '') + '</div>' +
+    '<div class="pie"><button class="btn wa" onclick="mandarWA()">Enviar por WhatsApp</button><button class="btn linea" onclick="' + o.volver + '">Ahora no · volver a mi ruta</button></div></div>');
+}
+function waLibre(i) {
+  var x = listaLibresHoy()[i]; if (!x) return;
+  vistaWA({ titulo: 'Entrega ' + x.id, sub: x.hora + (x.local ? ' · por subir' : ' · guardada'), id: x.id, foto: null, volver: 'vistaInicio()',
+            msg: msgEntrega({ id: x.id, detalle: x.detalle, donde: x.donde, recibio: x.recibio, monto: x.monto }) });
+}
+/** Después de una entrega asignada (IMSS, efectivo, traspaso): mensaje con lo que se capturó. */
+function waDespuesDeCierre(c, volver) {
+  var o = { id: c.id, que: c.clase === 'IMSS' ? 'Entrega IMSS' : c.clase ? ({ EFECTIVO: 'Efectivo', DOCUMENTO: 'Documentos', INSUMO: 'Insumos', TRASPASO: 'Traspaso' })[c.clase] || '' : (c.tipo === 'PEDIDO' ? 'Pedido' : 'Traspaso'),
+            detalle: c.clase === 'IMSS' ? c.cliente : c.direccion, donde: c.clase === 'IMSS' ? [c.cliente, c.areaImss].filter(Boolean).join(' · ') : (c.sucursal || c.cliente),
+            recibio: c.recibio, matricula: c.matricula, monto: c.clase === 'EFECTIVO' ? c.monto : '', nota: c.comentario, foto: c.foto };
+  vistaWA({ titulo: 'Entrega registrada', sub: c.id + ' · ya salió de tu ruta', msg: msgEntrega(o), foto: c.foto, id: c.id, volver: volver });
+}

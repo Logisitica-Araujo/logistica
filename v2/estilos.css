@@ -292,3 +292,20 @@ body.adm{--azul:#111A2E;--azul-osc:#0A1020;--azul-suave:#E6E9F0;--azul-claro:#AE
 .bloque.peligro input{accent-color:var(--rojo)}
 .card.resalta{border:2px solid var(--azul)}
 .cuerpo>.tag{align-self:flex-start}
+
+/* entrega sin asignar (Facturación) */
+.dos-grandes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.dos-grandes .grande{grid-column:auto;min-height:88px;padding:14px;border-radius:18px}
+.dos-grandes .grande b{font-size:16.5px}
+.dos-grandes .grande small{font-size:12.5px}
+.grande.linea{background:#fff;color:var(--azul);border:2px solid var(--azul)}
+.grande.linea small{color:var(--texto2)}
+.libre{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--borde);border-radius:16px;padding:12px 14px;width:100%;text-align:left;color:var(--texto)}
+.libre .tx{flex:1;display:flex;flex-direction:column;min-width:0}
+.libre .tx b{font-size:14px}
+.libre .tx small{font-size:12px;color:var(--gris)}
+.wa-txt{font-size:12px;font-weight:700;color:var(--wa);flex:none}
+.pildoras{display:flex;flex-wrap:wrap;gap:6px}
+.pildora{border:1.5px solid var(--borde2);background:#fff;border-radius:999px;padding:8px 13px;font-size:14px;font-weight:600}
+.pildora.sel{background:var(--azul);border-color:var(--azul);color:#fff;font-weight:700}
+.fila2{display:grid;grid-template-columns:1.4fr 1fr;gap:8px}
