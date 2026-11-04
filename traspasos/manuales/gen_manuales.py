@@ -1,7 +1,7 @@
 import os
 D=os.path.dirname(os.path.abspath(__file__))
 IMG='file://'+D+'/img/'
-VER='Versión 1.5 · Octubre 2026'
+VER='Versión 1.6 · Noviembre 2026'
 
 CSS='''
 @page{size:Letter;margin:18mm 16mm 18mm 16mm}
@@ -105,6 +105,16 @@ def doc(titulo,para,resumen,secciones):
 INTRO_COMUN='''<p class="lead">La página de <b>Traspasos</b> sustituye el archivo de Excel. Cada traspaso tiene un <b>folio único</b> por área (por ejemplo <b>NR-0001</b>), una <b>etiqueta con código de barras por bulto</b> y una <b>línea de tiempo</b> con cada movimiento: quién lo creó, quién lo llevó y quién lo recibió.</p>
 <p>Todo queda <b>centralizado</b> en un solo lugar, se registra <b>automáticamente</b> al escanear y se guarda <b>en línea</b>. No se pierde si se apaga la computadora.</p>'''
 
+HIST_TXT=('<h3>Lo que ya no se ve: el historial</h3>'
+ '<p>Para que la página sea rápida y clara, en tus listas se ve <b>todo lo que sigue en camino</b> (sin importar la fecha) y lo <b>entregado de los últimos 60 días</b>. Lo más viejo <b>no se borra</b>: deja de mostrarse, pero se puede consultar siempre.</p>'
+ +fig('x00_aviso60','El aviso de arriba de la lista y el botón para abrir el historial.')+
+ paso(1,'Clic en 🔎 Buscar en el historial','Se abre el panel de búsqueda.')+
+ paso(2,'Elige las fechas','Con los atajos <b>Este mes · Mes pasado · Últimos 3 meses · Este año</b>, o con <b>Elegir fechas</b> (Desde / Hasta). Cuenta la fecha en que se <b>creó</b> el traspaso.')+
+ paso(3,'Filtra si quieres','Por <b>Destino</b>, <b>Estatus</b> o <b>Texto</b> (descripción, persona, gestor o guía; ej. "NADRO"). Clic en <b>Buscar</b>.')+
+ paso(4,'Abre el que necesitas','Los resultados salen con la etiqueta <b>HISTORIAL</b>. Clic en uno y ves toda su historia. <b>✕ Cerrar</b> regresa a la lista normal.')+
+ fig('x01_historial','Buscar en el historial: atajos de fechas, filtros y resultados.')+
+ nota('info','Solo lo tuyo','Cada área encuentra únicamente los traspasos que <b>envió o recibió</b>. Si sabes el folio exacto, el <b>🔎 Buscar folio</b> de arriba lo encuentra directo, sea de la fecha que sea.'))
+
 # ===================== SUCURSALES =====================
 suc=[
 ('Qué es y cómo entrar','la página, tu área y los avisos', INTRO_COMUN+
@@ -117,7 +127,7 @@ suc=[
  nota('warn','Salir','Usa <b>Salir</b> solo si Logística te lo pide. Si sales, tendrás que volver a elegir tu área.')),
 ('Mi bandeja','lo que entra y lo que sale',
  '<p><b>Entrantes</b>: todo lo que llega a tu sucursal, para PV o para Rebotica. Cualquiera de la sucursal lo puede recibir; cada traspaso trae su etiqueta <span class="tag pv">PARA PV</span> o <span class="tag rb">PARA REBOTICA</span> para saber a quién entregarlo.</p><p><b>Salientes</b>: lo que sale de tu área. Las fichas de colores de arriba filtran por estatus. Haz clic en un traspaso para ver su detalle.</p>'+
- fig('s02_bandeja','Mi bandeja → Entrantes.')+fig('s02b_salientes','Mi bandeja → Salientes, con el estatus de cada traspaso.')),
+ fig('s02_bandeja','Mi bandeja → Entrantes.')+fig('s02b_salientes','Mi bandeja → Salientes, con el estatus de cada traspaso.')+HIST_TXT),
 ('Crear un traspaso','4 pasos, folio y etiquetas automáticos',
  paso(1,'Nuevo traspaso → escanea tu credencial','Es obligatorio: queda registrado quién lo creó. El número de la credencial se ve como ●●●● y después solo aparece tu nombre. Con la pistola no hace falta presionar Enter.')+
  fig('s03_credencial','Paso 1: credencial. Si no tienes, abre "¿Sin credencial? Teclea usuario y NIP".')+
@@ -218,7 +228,7 @@ ofi=[
  nota('info','Campana 🔔 y ❓ Ayuda','La campana solo muestra los <b>avisos nuevos</b>; al verlos desaparecen. El botón ❓ abre este manual en PDF, siempre en su versión más reciente.')+
  nota('info','🔎 Buscar folio','Arriba, junto a ❓ y 🔔. Escribe o <b>escanea</b> un folio y Enter: se abre su <b>línea de tiempo</b> completa (dónde está, quién lo creó, quién lo llevó y quién lo recibió). También sirve con pedidos de Botican (#15996).')+
  nota('ok','En Oficinas no se escanea credencial','Para crear y para recibir se usa la cuenta abierta en tu computadora: queda registrado con tu correo. La credencial solo se escanea para identificar a quien se lleva los traspasos (gestor).')+
- fig('o01_bandeja','Mi bandeja de un área de Oficinas.')),
+ fig('o01_bandeja','Mi bandeja de un área de Oficinas.')+HIST_TXT),
 ('Crear un traspaso','sin credencial',
  paso(1,'Nuevo traspaso','Empieza directo en el destino: no pide credencial.')+
  fig('o02_nuevo','Nuevo traspaso en Oficinas: se usa la cuenta abierta.')+
@@ -334,6 +344,7 @@ rec=[
  nota('info','"Ver más que todavía no llegan al stand"','Abajo, escondido: lo que un área creó pero todavía no trae al stand. Solo llévalo si te lo dan en la mano.')),
 ('En resguardo','qué hay en el stand',
  fig('r04_resguardo','En resguardo: lo que está en el stand y lo que falta por salir de Oficinas.')+
+ nota('info','Historial','En <b>En resguardo</b> está también <b>🔎 Buscar en el historial</b>: Recepción puede buscar cualquier traspaso por fechas, origen, destino, estatus o texto, aunque ya no se vea en las listas (más de 60 días).')+
  tabla(['Lista','Qué es'],[
   ['<b>En el stand</b>','Lo que alguien dejó y registró aquí.'],
   ['<b>Por salir de Oficinas</b>','Lo que las áreas crearon para fuera de Oficinas y todavía no sale (aunque nadie lo haya dejado registrado).']],['45mm',''])+
@@ -383,7 +394,7 @@ adm=[
  nota('ok','Solicitudes aunque trabajes como tu área','Si alguien pide una cancelación o un cambio de destino, el botón <b>Modo administrador</b> muestra un <b>número rojo</b> con las pendientes, suena la campanita y sale un aviso, aunque estés trabajando como Logística u otra área. Al entrar al modo administrador se abre directo en <b>Solicitudes</b>.')+
  nota('warn','Recepción Oficinas','En la computadora del patio no aparece el botón de administrador.')),
 ('Ver y buscar','todos los traspasos y su historia',
- '<h3>Todos los traspasos</h3><p>En movimiento y entregados de los últimos 45 días. Las fichas de estatus filtran la tabla; clic en una fila para abrirla.</p>'+fig('a01_todos','Todos los traspasos.')+
+ '<h3>Todos los traspasos</h3><p>Todo lo que sigue en camino y lo entregado de los últimos <b>60 días</b>. Las fichas de estatus filtran la tabla; clic en una fila para abrirla.</p>'+fig('a01_todos','Todos los traspasos.')+'<h3>Historial (más de 60 días)</h3><p>Con <b>🔎 Buscar en el historial</b> buscas en <b>todos</b> los traspasos, de cualquier fecha y de cualquier área: atajos de fechas, Desde / Hasta, <b>Origen</b>, <b>Destino</b>, <b>Estatus</b> y <b>Texto</b>. Muestra hasta 300 resultados, del más reciente al más viejo.</p>'+fig('x02_historial_admin','Historial en Modo administrador (con filtro de Origen).')+nota('info','Cambiar los 60 días','En <b>CFG_Ajustes</b> agrega el parámetro <b>dias_visibles</b> con el número de días que quieran. Sin tocar código.')+
  '<h3>Buscador</h3><p>Escribe o escanea un folio y presiona Enter: abre su historia completa, aunque sea viejo. También busca por guía, persona, gestor o descripción.</p>'+
  '<h3>Pedidos de Botican</h3><p>En el Buscador escribe el pedido con <b>#</b> (ej. <b>#15996</b>) y Enter: sale su línea de tiempo con la etiqueta <b>BOTICAN</b> (quién lo recolectó, cuándo y con qué acuse).</p>'+fig('a05_botican','Historia de un pedido de Botican.','chico')),
 ('Corregir y eliminar','acciones de administrador',
