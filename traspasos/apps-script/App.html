@@ -187,6 +187,7 @@ function aplicarSesion(ctx, cat) {
   S.rec = { quien: null, quienId: null, lote: [], fb: null, enviando: false };
   S.scan = { modo: 'RECIBIR', lote: [], fb: null, gestor: null, log: [], enviando: false };
   S.wiz = wizNuevo();
+  S.hist = nuevoHist();
   $('#hdr').hidden = false;
   render();
   refrescar(true);
@@ -369,6 +370,55 @@ function chips(lista, accion, sel) {
 }
 
 /* ---------- Mi bandeja ---------- */
+/* ---------- Historial: lo que ya no se muestra (más de N días) se busca por fechas y filtros ---------- */
+function fechaISO(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function rangoHist(k) {
+  var h = new Date(), d = new Date(h);
+  if (k === 'mes') d = new Date(h.getFullYear(), h.getMonth(), 1);
+  else if (k === 'pasado') { d = new Date(h.getFullYear(), h.getMonth() - 1, 1); h = new Date(h.getFullYear(), h.getMonth(), 0); }
+  else if (k === 'anio') d = new Date(h.getFullYear(), 0, 1);
+  else d.setMonth(d.getMonth() - 3);
+  return { desde: fechaISO(d), hasta: fechaISO(h) };
+}
+function nuevoHist() { var r = rangoHist('3m'); return { abierto: false, rango: '3m', desde: r.desde, hasta: r.hasta, destino: '', origen: '', estatus: '', texto: '', res: null, cargando: false, err: null }; }
+function leerHist() {
+  var h = S.hist, v = function (id) { var el = $('#hist-' + id); return el ? el.value : ''; };
+  if ($('#hist-desde')) { h.desde = v('desde'); h.hasta = v('hasta'); h.destino = v('destino'); h.origen = v('origen'); h.estatus = v('estatus'); h.texto = v('texto'); }
+}
+function buscarHist() {
+  var h = S.hist; leerHist(); h.cargando = true; h.err = null; render();
+  srv('apiHistorial', S.token, { desde: h.desde, hasta: h.hasta, destino: h.destino, origen: h.origen, estatus: h.estatus, texto: h.texto })
+    .then(function (r) { h.res = r; h.cargando = false; render(); })
+    .catch(function (e) { h.err = e.message; h.cargando = false; render(); });
+}
+function fCorta(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso; }
+/** Aviso + botón (cerrado) o panel de filtros con resultados (abierto). todoVe = administración o Recepción. */
+function histHTML(todoVe) {
+  var h = S.hist || (S.hist = nuevoHist()), dias = (S.data && S.data.diasVisibles) || 60;
+  if (!h.abierto) return '<div class="aviso60"><span>📅 Ves lo que está <b>en camino</b> (siempre) y lo <b>entregado en los últimos ' + dias + ' días</b>. Lo más viejo no se borra: búscalo en el historial.</span>' +
+    '<button type="button" class="btn primary" data-a="histabrir">🔎 Buscar en el historial</button></div>';
+  var areas = Object.keys(S.A).filter(function (id) { return S.A[id].activa !== false; }).sort(function (a, b) { return nom(a).localeCompare(nom(b)); });
+  var opA = function (sel) { return '<option value="">Todos</option>' + areas.map(function (id) { return '<option value="' + esc(id) + '"' + (sel === id ? ' selected' : '') + '>' + esc(nom(id)) + '</option>'; }).join(''); };
+  var opE = '<option value="">Todos</option>' + Object.keys(S.E).filter(function (k) { return k !== 'ELIMINADO' || S.ctx.admin; }).map(function (k) { return '<option value="' + k + '"' + (h.estatus === k ? ' selected' : '') + '>' + esc(S.E[k]) + '</option>'; }).join('');
+  var chip = function (k, t) { return '<button type="button" class="hchip' + (h.rango === k ? ' on' : '') + '" data-a="histrango" data-v="' + k + '">' + t + '</button>'; };
+  var desc = [];
+  if (h.destino) desc.push('destino ' + nom(h.destino)); if (h.origen) desc.push('origen ' + nom(h.origen)); if (h.estatus) desc.push(S.E[h.estatus] || h.estatus); if (h.texto) desc.push('"' + h.texto + '"');
+  var res = h.cargando ? '<div class="cargando">Buscando en el historial…</div>'
+    : h.err ? '<div class="feedback err">' + esc(h.err) + '</div>'
+    : h.res ? '<div class="hres"><b>' + h.res.total + ' traspaso' + (h.res.total === 1 ? '' : 's') + ' · ' + fCorta(h.desde) + ' al ' + fCorta(h.hasta) + (desc.length ? ' · ' + esc(desc.join(' · ')) : '') + '</b><span class="htag">HISTORIAL</span></div>' +
+        (h.res.total > h.res.lista.length ? '<div class="muted" style="font-size:13px;margin:-4px 0 8px">Se muestran los ' + h.res.lista.length + ' más recientes; reduce las fechas para ver los demás.</div>' : '') +
+        '<div class="list" style="margin-bottom:22px">' + (h.res.lista.length ? h.res.lista.map(function (t) { return tcard(t); }).join('') : '<div class="empty">No hay traspasos con esos filtros.</div>') + '</div>'
+    : '';
+  return '<div class="hist"><div class="hres" style="margin:0"><h3>🔎 Buscar en el historial</h3><button type="button" class="btn ghost" data-a="histcerrar">✕ Cerrar</button></div>' +
+    '<div class="muted" style="font-size:13px;margin-bottom:6px">' + (todoVe ? 'Busca en <b>todos</b> los traspasos, de cualquier fecha.' : 'Busca en <b>todos</b> los traspasos de tu área (enviados o recibidos), de cualquier fecha.') + '</div>' +
+    '<div class="chipr">' + chip('mes', 'Este mes') + chip('pasado', 'Mes pasado') + chip('3m', 'Últimos 3 meses') + chip('anio', 'Este año') + chip('elegir', 'Elegir fechas') + '</div>' +
+    '<form class="hrow" data-form="hist"><label class="f">Desde<input class="t" type="date" id="hist-desde" value="' + esc(h.desde) + '"></label><label class="f">Hasta<input class="t" type="date" id="hist-hasta" value="' + esc(h.hasta) + '"></label>' +
+    (todoVe ? '<label class="f">Origen<select class="t" id="hist-origen">' + opA(h.origen) + '</select></label>' : '') +
+    '<label class="f">Destino<select class="t" id="hist-destino">' + opA(h.destino) + '</select></label><label class="f">Estatus<select class="t" id="hist-estatus">' + opE + '</select></label>' +
+    '<label class="f" style="flex:2">Texto (descripción, persona, gestor, guía)<input class="t" id="hist-texto" value="' + esc(h.texto) + '" placeholder="ej. NADRO" autocomplete="off"></label>' +
+    '<button class="btn primary" type="submit" style="height:44px">Buscar</button></form></div>' + res;
+}
+
 function vBandeja() {
   var m = me(), A = S.A;
   var ent = S.data.traspasos.filter(function (t) { return R.esEntrante(t, m, A) || (t.ubic === m && t.estatus === 'UBICADO'); });
@@ -379,7 +429,7 @@ function vBandeja() {
   var nota = (a.tipo === 'SUCURSAL' || a.tipo === 'FORANEA')
     ? '<b>Entrantes</b>: todo lo que llega a ' + esc(a.sucNombre) + ' (PV y Rebotica). Cualquiera lo puede recibir; cada traspaso dice para quién es. <b>Salientes</b>: lo que sale de ' + esc(nom(m)) + '.'
     : 'Solo ves los traspasos que van para <b>' + esc(nom(m)) + '</b> o que salieron de aquí.';
-  return '<h1>Mi bandeja</h1><p class="sub">' + nota + ' Para recibir o entregar usa el <b>Escáner</b>.</p>' +
+  return '<h1>Mi bandeja</h1><p class="sub">' + nota + ' Para recibir o entregar usa el <b>Escáner</b>.</p>' + histHTML(false) +
     '<div class="seg"><button type="button" data-a="dir" data-v="in" aria-pressed="' + (S.dir === 'in') + '">Entrantes (' + ent.length + ')</button><button type="button" data-a="dir" data-v="out" aria-pressed="' + (S.dir === 'out') + '">Salientes (' + sal.length + ')</button></div>' +
     chips(src, 'filtro', S.filtro) +
     '<div class="list">' + (lista.length ? lista.map(function (t) { return tcard(t, S.dir === 'out'); }).join('') : '<div class="empty">No hay traspasos aquí.</div>') + '</div>';
@@ -525,7 +575,7 @@ function etiquetaHTML(t, b, rp, pantalla) {
  */
 var PUNTO = 0.125;
 /** Versión de la página (sale en ❓ Ayuda). Sirve para saber si ya se publicó lo último. */
-var VERSION_PAGINA = '2026-11-04 · encabezado B';
+var VERSION_PAGINA = '2026-11-04 · historial';
 function bcHTML(code, anchoMm, altoMm) {
   return '<div class="bcw"><svg class="bc" data-code="' + esc(code) + '" data-w="' + anchoMm + '" data-h="' + altoMm + '"></svg></div>';
 }
@@ -1131,7 +1181,7 @@ function vResguardo() {
         return '<div class="muted" style="font-size:12.5px;font-weight:900;letter-spacing:.06em;margin:10px 0 6px">' + esc(nom(dst).toUpperCase()) + ' (' + grupos[dst].length + ')</div><div class="list">' + grupos[dst].map(function (t) { return tarjeta(t, lugar); }).join('') + '</div>';
       }).join('') : '<div class="empty">Nada.</div>');
   };
-  return '<h1>En resguardo</h1><p class="sub">Todo lo que debe salir de Oficinas con un gestor. El gestor le da salida en <b>📤 Recoger</b> con su credencial.</p>' +
+  return '<h1>En resguardo</h1><p class="sub">Todo lo que debe salir de Oficinas con un gestor. El gestor le da salida en <b>📤 Recoger</b> con su credencial.</p>' + histHTML(true) +
     (tarde.length ? '<div class="feedback err">⚠ ' + tarde.length + ' traspaso(s) llevan más de ' + lim + ' h sin salida. Si ya no están aquí, quizá un gestor se los llevó sin escanear: avisa a Logística.</div>' : '') +
     seccion('En el stand', 'Registrados aquí (dejados o con etiqueta impresa en el Centro de Impresión).', stand, 'Creado') +
     seccion('Por salir de Oficinas', 'Creados por un área de Oficinas (o por distribuir de Logística) que todavía no se registran aquí. Pueden estar en camino al stand.', porSalir, 'Creado');
@@ -1177,7 +1227,7 @@ function recConfirmar() {
 function vTodos() {
   var all = S.data.traspasos;
   var lista = all.filter(function (t) { return !S.filtro || t.estatus === S.filtro; }).sort(orden);
-  return '<h1>Todos los traspasos</h1><p class="sub">En movimiento y entregados de los últimos 45 días. Para uno más viejo, búscalo por folio en el Buscador. Clic en un traspaso para editarlo, moverlo o eliminarlo.</p>' +
+  return '<h1>Todos los traspasos</h1><p class="sub">En movimiento y entregados de los últimos ' + ((S.data && S.data.diasVisibles) || 60) + ' días. Clic en un traspaso para editarlo, moverlo o eliminarlo.</p>' + histHTML(true) +
     chips(all, 'filtro', S.filtro) +
     '<div class="tablewrap"><table><thead><tr><th>Folio</th><th>Estatus</th><th>Origen</th><th>Destino</th><th>Bultos</th><th>Creado</th><th>Últ. actualización</th></tr></thead><tbody>' +
     lista.map(function (t) { return '<tr class="click" data-a="open" data-v="' + esc(t.folio) + '"><td class="num">' + esc(t.folio) + '</td><td>' + badge(t) + '</td><td>' + esc(nom(t.origen)) + '</td><td>' + esc(nom(t.destino)) + '</td><td class="num">' + t.bultos + '</td><td>' + esc(fh(t.fecha, t.hora)) + '</td><td>' + esc(fh(t.act)) + '</td></tr>'; }).join('') +
@@ -1190,7 +1240,7 @@ function vBuscar() {
   }).slice(0, 60) : [];
   return '<h1>Buscador</h1><p class="sub">Escribe o escanea un folio (o un pedido de Botican, ej. #15975) y presiona Enter para ver su historia completa. También busca por guía, persona, gestor o descripción.</p>' +
     '<form class="searchbar" data-form="buscar"><input id="busq" value="' + esc(S.q) + '" placeholder="NR-0041" autocomplete="off"><button class="btn gold" type="submit">Buscar</button></form>' +
-    (q ? (res.length ? '<div class="list">' + res.map(function (t) { return tcard(t); }).join('') + '</div>' : '<div class="empty">Nada en los últimos 45 días. Si es un folio exacto, presiona Enter para buscarlo en todo el historial.</div>') : '');
+    (q ? (res.length ? '<div class="list">' + res.map(function (t) { return tcard(t); }).join('') + '</div>' : '<div class="empty">Nada en los últimos ' + ((S.data && S.data.diasVisibles) || 60) + ' días. Si es un folio exacto, presiona Enter para buscarlo en todo el historial, o usa "Buscar en el historial" en Todos los traspasos.</div>') : '');
 }
 function vSolicitudes() {
   var s = S.data.solicitudes;
@@ -1367,6 +1417,9 @@ document.addEventListener('click', function (e) {
     case 'botrecargar': return cargarBotican();
     case 'dir': S.dir = v; S.filtro = null; break;
     case 'filtro': S.filtro = S.filtro === v ? null : v; break;
+    case 'histabrir': S.hist = S.hist || nuevoHist(); S.hist.abierto = true; break;
+    case 'histcerrar': S.hist = nuevoHist(); break;
+    case 'histrango': { leerHist(); S.hist.rango = v; if (v !== 'elegir') { var rg = rangoHist(v); S.hist.desde = rg.desde; S.hist.hasta = rg.hasta; } break; }
     case 'ayuda': S.ayuda = !S.ayuda; S.bell = false; break;
     case 'bell':
       S.bell = !S.bell; S.sonidos = false; S.ayuda = false;
@@ -1583,6 +1636,7 @@ document.addEventListener('input', function (e) {
   }, pistola ? 120 : 900);
 });
 document.addEventListener('submit', function (e) {
+  if (e.target.getAttribute('data-form') === 'hist') { e.preventDefault(); S.hist.rango = S.hist.rango === 'elegir' ? 'elegir' : S.hist.rango; buscarHist(); return; }
   if (e.target.getAttribute('data-form') === 'hbuscar') {
     e.preventDefault();
     var q = String($('#hbusq').value || '').trim();

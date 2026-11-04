@@ -119,9 +119,12 @@ function apiDatos(token) {
     const c = _ctx(token);
     const A = _areas();
     const todos = _traspasos().filter(function (t) { return t.estatus !== 'ELIMINADO'; });
-    const hace = new Date(Date.now() - 45 * 86400000);
-    const corte = Utilities.formatDate(hace, TR.ZONA, 'yyyy-MM-dd');
-    const reciente = function (t) { return t.estatus !== 'ENTREGADO' || String(t.act || t.fecha) >= corte; };
+    // En pantalla: lo que sigue en camino (siempre) y lo terminado de los últimos N días (CFG_Ajustes → dias_visibles, 60).
+    // Lo más viejo no se borra: se consulta con apiHistorial o con el buscador de folio.
+    const dias = Number(_ajuste('dias_visibles', 60)) || 60;
+    const corte = Utilities.formatDate(new Date(Date.now() - dias * 86400000), TR.ZONA, 'yyyy-MM-dd');
+    const terminado = function (t) { return t.estatus === 'ENTREGADO' || t.estatus === 'INCIDENCIA'; };
+    const reciente = function (t) { return !terminado(t) || String(t.act || t.fecha) >= corte; };
 
     // El código de la credencial nunca sale a la pantalla.
     const limpiar = function (t) { const o = {}; Object.keys(t).forEach(function (k) { if (k !== '_fila' && k !== 'cred') o[k] = t[k]; }); o.por = String(o.por || '').split(' · ')[0]; return o; };
@@ -164,7 +167,39 @@ function apiDatos(token) {
         });
     }
 
-    return { traspasos: mios, activos: activos, avisos: avisos, solicitudes: solicitudes, cajas: _cajasVisibles(), ahora: _ahoraTxt() };
+    return { traspasos: mios, activos: activos, avisos: avisos, solicitudes: solicitudes, cajas: _cajasVisibles(), ahora: _ahoraTxt(), diasVisibles: dias };
+  });
+}
+
+/**
+ * Historial: busca en TODOS los traspasos (también los que ya no se muestran), por fechas de creación.
+ * f = { desde:'yyyy-MM-dd', hasta:'yyyy-MM-dd', destino, origen, estatus, texto }
+ * Cada área solo encuentra lo que envió o recibió; administración y Recepción buscan en todo.
+ */
+function apiHistorial(token, f) {
+  return _api(function () {
+    const c = _ctx(token);
+    const A = _areas();
+    f = f || {};
+    const desde = String(f.desde || '').slice(0, 10), hasta = String(f.hasta || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(desde) || !/^\d{4}-\d{2}-\d{2}$/.test(hasta)) throw new Error('Elige las fechas Desde y Hasta.');
+    if (desde > hasta) throw new Error('La fecha Desde no puede ser después de Hasta.');
+    const todoVe = c.admin || c.area === TR.AREA_ADMIN || c.area === 'REC';
+    const dest = String(f.destino || '').toUpperCase(), orig = String(f.origen || '').toUpperCase(), est = String(f.estatus || '').toUpperCase();
+    const txt = _norm(f.texto || '');
+    const lista = _traspasos().filter(function (t) {
+      if (t.estatus === 'ELIMINADO' && !c.admin) return false;
+      const fe = String(t.fecha || '').slice(0, 10);
+      if (fe < desde || fe > hasta) return false;
+      if (!todoVe && t.origen !== c.area && !R.mismaSuc(A, t.destino, c.area) && t.ubic !== c.area) return false;
+      if (dest && t.destino !== dest) return false;
+      if (orig && t.origen !== orig) return false;
+      if (est && t.estatus !== est) return false;
+      if (txt && _norm([t.folio, t.desc, t.por, t.gestor, t.guia, t.paqueteria, t.recibio].join(' ')).indexOf(txt) < 0) return false;
+      return true;
+    }).sort(function (a, b) { return String(b.fecha + ' ' + b.hora).localeCompare(String(a.fecha + ' ' + a.hora)); });
+    const limpiar = function (t) { const o = {}; Object.keys(t).forEach(function (k) { if (k !== '_fila' && k !== 'cred') o[k] = t[k]; }); o.por = String(o.por || '').split(' · ')[0]; return o; };
+    return { total: lista.length, lista: lista.slice(0, 300).map(limpiar), todoVe: todoVe };
   });
 }
 
