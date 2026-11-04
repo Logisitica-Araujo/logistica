@@ -331,7 +331,7 @@ function renderHeader() {
       (S.sonidos ? '<div class="stack" style="gap:6px">' + Object.keys(SONIDOS).map(function (k) {
         return '<button type="button" class="btn" style="justify-content:flex-start" data-a="oir" data-v="' + k + '">▶ ' + esc(SONIDOS[k].nombre) + '</button>';
       }).join('') + '</div>' : '') + '</div>' : '') + '</div>';
-  $('#header').innerHTML = '<div class="brand">' + logo + 'Traspasos</div><div class="hder">' +
+  $('#header').innerHTML = '<div class="brand">' + logo + '<div class="titulo"><b>Traspasos</b><small>Control de envíos entre sucursales y oficinas</small></div></div><div class="hder">' +
     cambioModo() + '<div class="who"><span class="p">' + esc(S.ctx.areaNombre) + '</span><span class="u">' + esc(S.ctx.email) + (min < 60 * 24 * 30 ? ' · sesión: cierra en ' + Math.floor(min / 60) + ' h ' + ('0' + (min % 60)).slice(-2) + ' min' : '') + (me() === 'REC' ? ' · 🔒 equipo fijo' : ' · <a href="#" data-a="salir">Salir</a>') + '</span></div>' +
     (esVistaAdmin() ? '' : '<form class="hsearch" data-form="hbuscar" role="search"><input id="hbusq" autocomplete="off" placeholder="🔎 Buscar folio" aria-label="Buscar folio"></form>') +
     ayudaHTML() + bell + '<nav class="tabs">' + tabs.map(function (x) {
@@ -525,7 +525,7 @@ function etiquetaHTML(t, b, rp, pantalla) {
  */
 var PUNTO = 0.125;
 /** Versión de la página (sale en ❓ Ayuda). Sirve para saber si ya se publicó lo último. */
-var VERSION_PAGINA = '2026-11-04 · logo grande';
+var VERSION_PAGINA = '2026-11-04 · encabezado';
 function bcHTML(code, anchoMm, altoMm) {
   return '<div class="bcw"><svg class="bc" data-code="' + esc(code) + '" data-w="' + anchoMm + '" data-h="' + altoMm + '"></svg></div>';
 }
