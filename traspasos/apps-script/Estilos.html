@@ -32,15 +32,16 @@ header.app{background:var(--surface);border-bottom:3px solid var(--brand)}
 header.app .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding-block:12px}
 .brand{font-size:22px;font-weight:900;display:flex;align-items:center;gap:10px}
 .logo{min-width:54px;height:34px;padding:0 8px;border:2px dashed var(--muted);border-radius:8px;display:grid;place-items:center;font-size:11px;color:var(--muted);font-weight:800;letter-spacing:.08em}
-.logo-img{height:140px;width:auto;border-radius:6px}
-header.app .wrap{flex-wrap:nowrap;align-items:center;max-width:1440px}
-.hder nav.tabs{flex-basis:100%;justify-content:flex-end;margin-left:0}
-.hder{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:12px 16px}
+.logo-img{height:120px;width:auto;border-radius:6px}
+/* Encabezado: logo y título al centro; abajo, controles y pestañas centrados */
+header.app .wrap{flex-wrap:wrap;justify-content:center;max-width:1440px}
+header.app .brand{width:100%;justify-content:center;padding:4px 0 12px;border-bottom:1px solid var(--line)}
+.hder nav.tabs{flex-basis:100%;justify-content:center;margin-left:0}
+.hder{width:100%;min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:12px 16px}
 .brand .titulo{display:flex;flex-direction:column;justify-content:center;padding-left:18px;margin-left:6px;border-left:3px solid var(--brand);line-height:1.15}
 .brand .titulo b{font-size:30px;font-weight:900;color:#0A2A3F;letter-spacing:.01em}
 .brand .titulo small{font-size:13px;font-weight:700;color:var(--muted);max-width:190px}
-@media (max-width:1500px){.logo-img{height:112px}.brand .titulo b{font-size:25px}.brand .titulo{padding-left:12px}.hder{gap:10px 10px}.hsearch input{width:150px}}
-@media (max-width:820px){header.app .wrap{flex-wrap:wrap}.logo-img{height:90px}}
+@media (max-width:820px){.logo-img{height:84px}.brand .titulo b{font-size:24px}}
 .who{display:flex;flex-direction:column;line-height:1.25}
 .who .p{font-weight:800}
 .who .u{font-size:13px;color:var(--muted)}
