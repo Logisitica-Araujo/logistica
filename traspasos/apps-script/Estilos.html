@@ -1,9 +1,10 @@
 <style>
 /* Letra: Nunito (redondeada, amable y profesional). Colores de estatus: vienen de CAT_Estatus. */
 :root{
-  --bg:#F1F4F7; --surface:#FFFFFF; --surface-2:#F6F8FA; --ink:#1B2733; --muted:#5D6C7A; --line:#DCE3E9;
-  --accent:#0E7C66; --accent-ink:#FFFFFF; --accent-soft:#DDF1EB;
-  --admin-bg:#14181D; --admin-ink:#F3E3B5; --admin-gold:#E2AE3A;
+  --bg:#EEF6FA; --surface:#FFFFFF; --surface-2:#F6F8FA; --ink:#1B2733; --muted:#5D6C7A; --line:#DCE3E9;
+  /* Azules del logo FADERMEX (#00AEEF). El de botones es un poco más oscuro para que el texto blanco se lea bien. */
+  --brand:#00AEEF; --accent:#0086C4; --accent-ink:#FFFFFF; --accent-soft:#E0F5FD;
+  --admin-bg:#0A2A3F; --admin-ink:#DFF4FD; --admin-gold:#00AEEF;
   --ok:#1E8E3E; --ok-bg:#E2F4E7; --err:#C8232D; --err-bg:#FDE6E7; --warn:#A86A00; --warn-bg:#FFF2D2;
   --pv:#0E6E5C; --pv-bg:#D3F1E8; --rb:#A3195B; --rb-bg:#FBDDEB;
   --bot:#7A3E9D; --bot-bg:#F1E6F8;
@@ -27,20 +28,23 @@ button,input,select,textarea{font:inherit;color:inherit}
 .adminbar strong{letter-spacing:.12em;font-weight:900;color:var(--admin-gold)}
 
 /* Encabezado */
-header.app{background:var(--surface);border-bottom:1px solid var(--line)}
+header.app{background:var(--surface);border-bottom:3px solid var(--brand)}
 header.app .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding-block:12px}
 .brand{font-size:22px;font-weight:900;display:flex;align-items:center;gap:10px}
 .logo{min-width:54px;height:34px;padding:0 8px;border:2px dashed var(--muted);border-radius:8px;display:grid;place-items:center;font-size:11px;color:var(--muted);font-weight:800;letter-spacing:.08em}
-.logo-img{height:36px;width:auto;border-radius:6px}
+.logo-img{height:104px;width:auto;border-radius:6px}
+header.app .wrap{flex-wrap:nowrap;align-items:center}
+.hder{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px}
+@media (max-width:820px){header.app .wrap{flex-wrap:wrap}.logo-img{height:72px}}
 .who{display:flex;flex-direction:column;line-height:1.25}
 .who .p{font-weight:800}
 .who .u{font-size:13px;color:var(--muted)}
 nav.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
 nav.tabs button{border:none;background:none;padding:8px 13px;border-radius:10px;cursor:pointer;font-weight:700;color:var(--muted);display:flex;gap:6px;align-items:center}
 nav.tabs button:hover{background:var(--surface-2);color:var(--ink)}
-nav.tabs button.destacado{border:2px solid var(--admin-gold);color:#7A5A00;background:#FFF6DC}
-nav.tabs button.destacado[aria-current="page"]{background:var(--admin-gold);border-color:var(--admin-gold);color:#1a1405}
-nav.tabs button[aria-current="page"]{background:var(--accent);color:#fff;box-shadow:0 2px 6px rgba(14,124,102,.35)}
+nav.tabs button.destacado{border:2px solid var(--brand);color:#005F8A;background:#E0F5FD}
+nav.tabs button.destacado[aria-current="page"]{background:var(--brand);border-color:var(--brand);color:#04263A}
+nav.tabs button[aria-current="page"]{background:var(--accent);color:#fff;box-shadow:0 2px 6px rgba(0,134,196,.35)}
 .count{background:var(--err);color:#fff;border-radius:999px;font-size:11px;padding:1px 7px;font-weight:800}
 .bellwrap{position:relative}
 .bell{position:relative;border:1px solid var(--line);background:var(--surface);border-radius:12px;width:42px;height:42px;display:grid;place-items:center;cursor:pointer}
@@ -105,7 +109,7 @@ textarea.t{min-height:84px;resize:vertical}
 .btn{border:1px solid var(--line);background:var(--surface);padding:9px 16px;border-radius:10px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:8px;justify-content:center}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .btn.danger{background:var(--err);border-color:var(--err);color:#fff}
-.btn.gold{background:var(--admin-gold);border-color:var(--admin-gold);color:#1a1405}
+.btn.gold{background:var(--admin-gold);border-color:var(--admin-gold);color:#04263A}
 .btn.ghost{border-color:transparent;background:none;color:var(--muted)}
 .btn:hover:not(:disabled){filter:brightness(.96);border-color:var(--muted)}
 .btn:active:not(:disabled){transform:scale(.97)}
