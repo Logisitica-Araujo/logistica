@@ -576,7 +576,7 @@ function etiquetaHTML(t, b, rp, pantalla) {
  */
 var PUNTO = 0.125;
 /** Versión de la página (sale en ❓ Ayuda). Sirve para saber si ya se publicó lo último. */
-var VERSION_PAGINA = '2026-11-05 · pedidos a domicilio';
+var VERSION_PAGINA = '2026-11-05 · pedidos a domicilio 2';
 function bcHTML(code, anchoMm, altoMm) {
   return '<div class="bcw"><svg class="bc" data-code="' + esc(code) + '" data-w="' + anchoMm + '" data-h="' + altoMm + '"></svg></div>';
 }
@@ -1061,9 +1061,9 @@ var MODOS_RECOL = {
   BOT: { pend: 'apiBoticanPendientes', recol: 'apiBoticanRecolectar', titulo: 'Recolección pedidos BOTICAN', tag: 'BOTICAN', tagCls: 'tagbot', ph: '#15975', listo: 'Elaborado', listos: 'elaborado(s)',
          leyendo: 'Leyendo la bitácora de Botican…',
          sub: 'Sustituye la bitácora en papel. El gestor escanea su credencial, se marcan (o escanean) los pedidos <b>Elaborados</b> que se lleva y confirma. Su credencial funciona como firma: queda su nombre, la hora y la lista.' },
-  DOM: { pend: 'apiDomicilioPendientes', recol: 'apiDomicilioRecolectar', titulo: 'Recolección pedidos a domicilio', tag: 'DOMICILIO', tagCls: 'tagdom', ph: 'NRREM-00008606', listo: 'Listo para recolección', listos: 'listo(s)',
+  DOM: { pend: 'apiDomicilioPendientes', recol: 'apiDomicilioRecolectar', titulo: 'Recolección pedidos a domicilio', tag: 'DOMICILIO', tagCls: 'tagdom', ph: 'NRREM-00008606', listo: 'Elaborado', listos: 'elaborado(s)',
          leyendo: 'Leyendo Pedidos Logística…',
-         sub: 'Pedidos a domicilio de esta sucursal. El gestor escanea su credencial, marca (o escanea) los pedidos <b>Listos para recolección</b> que se lleva y confirma. Su credencial funciona como firma: queda su nombre, la hora y la lista en Pedidos Logística.' }
+         sub: 'Solo los pedidos a domicilio de esta sucursal. El gestor escanea su credencial, marca (o escanea) los pedidos <b>Elaborados</b> (ya listos) que se lleva y confirma. Su credencial funciona como firma: queda su nombre, la hora y la lista en Pedidos Logística.' }
 };
 function modoRecol() { return MODOS_RECOL[(S.bot && S.bot.modo) || 'BOT']; }
 function abrirBotican(modo) {

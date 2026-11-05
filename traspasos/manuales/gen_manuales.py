@@ -193,10 +193,10 @@ suc=[
  fig('b02_acuse','Acuse de la recolección. Puede pasar el siguiente gestor.')+
  nota('info','Foráneos','También se recolectan. Logística decide después la forma de envío.')),
 ('PV: Recolección pedidos a domicilio','Nueva Roma, Vertiz, Doctores, Ecatepec y Coapa',
- '<p>Solo en la computadora del <b>PV</b> de Nueva Roma, Vertiz, Doctores, Ecatepec y Coapa (Rebotica no la tiene). Funciona igual que la de Botican: el gestor firma con su credencial los pedidos a domicilio que se lleva. La lista sale de <b>Pedidos Logistica-Fadermex 2026</b> (hoja <b>Envios</b>) y muestra <b>solo los pedidos de tu sucursal</b>.</p>'+
+ '<p>Solo en la computadora del <b>PV</b> de Nueva Roma, Vertiz, Doctores, Ecatepec y Coapa (Rebotica no la tiene). Cada PV ve <b>únicamente los pedidos de su sucursal</b>: Nueva Roma PV solo ve los de Nueva Roma, Vertiz PV solo los de Vertiz, y así. Funciona igual que la de Botican: el gestor firma con su credencial los pedidos a domicilio que se lleva. La lista sale de <b>Pedidos Logistica-Fadermex 2026</b> (hoja <b>Envios</b>) y muestra <b>solo los pedidos de tu sucursal</b>.</p>'+
  paso(1,'Pestaña azul "🛵 Recolección pedidos a domicilio"','El número indica cuántos pedidos están listos.')+
  paso(2,'El gestor escanea su credencial','Funciona como firma: queda su nombre, la hora y la lista. En pantalla solo sale su nombre.')+
- paso(3,'Marca o escanea los pedidos que se lleva','Salen los pedidos <b>Listos para recolección</b> (los que ya tienen fecha en "Pedido listo para recolección"). Los <b>En elaboración</b> salen en gris y no se pueden marcar. También se puede teclear el identificador (ej. <b>NRREM-00008579</b>).')+
+ paso(3,'Marca o escanea los pedidos que se lleva','Salen como <b>Elaborado</b> los pedidos ya listos (los que tienen fecha en "Pedido listo para recolección"). Los que siguen en producción salen como <b>En elaboración</b>, en gris, y no se pueden marcar. También se puede teclear el identificador (ej. <b>NRREM-00008579</b>).')+
  fig('d01_domicilio','Un pedido marcado y otro escaneado; el gestor ya firmó con su credencial.')+
  paso(4,'Confirmar recolección','Se genera el acuse <b>RP-0001</b>. En Pedidos Logística se escribe la fecha y hora en <b>"✎ Fecha de recolección"</b> y el gestor en <b>"Recolectado por:"</b>. No se cambia el Estatus ni la casilla de Check. Lo recolectado desaparece de la lista.')+
  fig('d02_acuse','Acuse de la recolección. Puede pasar el siguiente gestor.')+

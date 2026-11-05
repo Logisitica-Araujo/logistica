@@ -162,7 +162,7 @@ function apiDomicilioRecolectar(token, d) {
                  'Lugar': p.lugar, 'Sucursal': p.suc, 'Área': c.area, 'Gestor': g.nombre, 'Credencial': g.via, 'Registró (cuenta)': c.email };
       }));
       _tb(TR.H.MOV).agregarVarias(pedidos.map(function (k) {
-        return _movObj({ folio: k }, 'RECOLECTADO EN SUCURSAL (DOMICILIO)', 'LISTO PARA RECOLECCIÓN', 'RECOLECCION_GESTOR',
+        return _movObj({ folio: k }, 'RECOLECTADO EN SUCURSAL (DOMICILIO)', 'ELABORADO', 'RECOLECCION_GESTOR',
           { donde: c.area, persona: g.nombre, cred: g.via, medio: 'PEDIDO A DOMICILIO · ' + suc, equipo: c.area,
             detalle: 'Acuse ' + acuse + ' · ' + pedidos.length + ' pedido(s) · ' + (porId[k].contacto || '') });
       }));
