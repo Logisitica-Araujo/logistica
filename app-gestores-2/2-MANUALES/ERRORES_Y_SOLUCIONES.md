@@ -403,6 +403,11 @@ Errores que cometen personas. No son fallas del sistema, pero el sistema ayuda a
 - **Caso real:** C-PV-0009 ($3,287) y C-PV-0017 ($3,798) se entregaron sin nombre de quién recibió.
 - **Decisión (2-nov):** en traspasos no se pide firma ni quién recibió; solo dónde se entregó y foto opcional.
 
+### DIS-03 · Registraron como "entrega sin asignar" algo que era un pedido
+- **Caso real (4–5 nov):** en Operaciones el gestor se escribió **"JoseLuis"** y en APP_Usuarios estaba **"Jose Luis"**. Sus pedidos no le aparecieron, y él los entregó con "+ Registrar entrega" (así no se marca Operaciones).
+- **Qué hace la app:** el robot ya reconoce el nombre aunque cambie un espacio, acento o comillas (0.4.3). Y si alguien registra "sin asignar" algo con un número de pedido o TAREA, llega este aviso.
+- **Solución:** revisa en Operaciones la columna I de ese pedido y en APP_Usuarios la columna NombreEnOperaciones. Para pasar la entrega a Operaciones, pídemelo o usa Administración → Buscar.
+
 ### CAP-09 · El monto de efectivo no cuadra (perfil Facturación)
 - **Qué pasa:** el gestor escribió cuánto entregó y no es lo que decía el sobre (el traspaso trae el monto en su descripción, ej. "$2,654.00 + $1,144.00").
 - **Qué hace la app:** le pide una nota y deja un aviso en APP_Problemas (Administración → Por revisar) con los dos montos.

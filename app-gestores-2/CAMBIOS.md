@@ -1,5 +1,10 @@
 # Registro de cambios · App Gestores 2
 
+## 0.4.3 · 5-nov-2026 · Nombre del gestor sin importar espacios
+- **Robot:** reconoce al gestor aunque en Operaciones esté escrito distinto ("JoseLuis" / "Jose Luis", acentos, comillas) y manda a Operaciones el nombre tal como está en la columna I.
+- **Aviso DIS-03:** si alguien registra como "entrega sin asignar" algo con número de pedido o TAREA, llega a Administración → Por revisar.
+- Caso del 4–5 nov corregido a mano: #16112, #16113, #16114 y TAREA # 15247 pasados a Operaciones con su evidencia.
+
 ## 0.4.2 · 3-nov-2026 · WhatsApp en todo y traspasos que ya recibió la sucursal
 - **WhatsApp** con la información (y foto, o "Agregar una foto") al terminar de **recolectar** (de dónde → a dónde, qué, quién lo lleva), al **entregar** traspasos y recolecciones, en **retorno, cancelado y no entregué** (con el motivo), en cada folio leído del escáner y en cada tarjeta de "Lo que llevo". Para todos los perfiles.
 - **Robot:** si un traspaso que recolectó el gestor cambia en el Sistema de Traspasos a otro estatus (ej. EN_RECEPCION), sale de "Lo que llevo" (Estado `YA NO LO TRAE (…)`).

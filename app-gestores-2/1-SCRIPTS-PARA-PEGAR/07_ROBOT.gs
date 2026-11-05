@@ -58,13 +58,13 @@ function _robotPedidos() {
   // Varios usuarios pueden tener el mismo nombre en Operaciones (ej. el gestor y un usuario de prueba): todos ven sus pedidos.
   _tabla(APPG.H.USUARIOS).filas.forEach(function (u) {
     if (!_si(u.Activo) || !u.NombreEnOperaciones) return;
-    var k = _norm(u.NombreEnOperaciones);
+    var k = _claveNombre(u.NombreEnOperaciones);
     (porNombre[k] = porNombre[k] || []).push(u);
   });
   var desconocidos = {};
   var filas = [];
   r.pedidos.forEach(function (p) {
-    var us = porNombre[_norm(p.gestor)];
+    var us = porNombre[_claveNombre(p.gestor)];
     if (!us) { desconocidos[p.gestor] = (desconocidos[p.gestor] || 0) + 1; return; }
     us.forEach(function (u) {
       filas.push([p.id, p.fila, u.Numero, u.Nombre, p.nombre, p.direccion, p.telefono || '', [p.incidencia, p.motivo].filter(String).join(' · '),
@@ -106,15 +106,15 @@ function _avisarDesconocidos(mapa) {
 function _robotCierres(ruta) {
   var t = _tabla(APPG.H.CIERRES);
   var pend = t.filas.filter(function (c) { return String(c.Estado) === 'PENDIENTE'; }).slice(0, APPG_ROBOT.CIERRES_POR_VUELTA);
-  var filaPorId = {};
-  (ruta || []).forEach(function (p) { filaPorId[_norm(p.id)] = p.fila; });
+  var filaPorId = {}, gestorPorId = {};
+  (ruta || []).forEach(function (p) { filaPorId[_norm(p.id)] = p.fila; gestorPorId[_norm(p.id)] = p.gestor; });
   var n = 0;
   pend.forEach(function (c) {
     var res;
     try {
       if (String(c.Tipo) === 'TRASPASO') res = _robotCierreTraspaso(c);
       else res = _ops('cierreGestor', {
-        fila: Number(c.Fila) || filaPorId[_norm(c.ID)] || 0, id: String(c.ID), gestor: _nombreEnOps(c.NumeroGestor), vehiculo: String(c.Vehiculo),
+        fila: Number(c.Fila) || filaPorId[_norm(c.ID)] || 0, id: String(c.ID), gestor: _gestorParaOps(gestorPorId[_norm(c.ID)], c.NumeroGestor), vehiculo: String(c.Vehiculo),
         resultado: String(c.Resultado), motivo: String(c.Motivo), comentario: String(c.Comentario), recibio: String(c.Recibio),
         lat: c.Lat, lng: c.Lng, urlFoto: String(c.URLFoto), urlFirma: String(c.URLFirma), cliente: String(c.Cliente), direccion: String(c.Direccion),
         fecha: _horaReal(c)
@@ -226,6 +226,13 @@ function _robotLimpieza() {
 }
 
 /* ---------- utilidades ---------- */
+/** "Jose Luis", "JoseLuis", "jose luis", 'Antonio "A"' → misma clave (sin espacios, acentos ni comillas). */
+function _claveNombre(v) { return _norm(v).replace(/[^a-z0-9]/g, ''); }
+/** El nombre tal como está HOY en la columna I de Operaciones, si es el de este gestor (aunque cambie un espacio). */
+function _gestorParaOps(enOps, numero) {
+  var mio = _nombreEnOps(numero);
+  return enOps && _claveNombre(enOps) === _claveNombre(mio) ? String(enOps) : mio;
+}
 function _dentroDeHorario(txt) {
   var m = /^(\d{1,2})\s*-\s*(\d{1,2})$/.exec(String(txt || '6-22').trim());
   if (!m) return true;
