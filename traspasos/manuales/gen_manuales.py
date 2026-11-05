@@ -365,7 +365,7 @@ rec=[
  paso(3,'Imprime','<b>🖨 Imprimir etiqueta</b> imprime las de ese folio (una por bulto). <b>Imprimir todas</b> imprime las de toda el área de una vez.')+
  fig('r05_impresion','Centro de Impresión con los traspasos de Contabilidad.')+
  paso(4,'Pega cada etiqueta en su bulto','')+
- nota('info','📦 Cajas para Morelia','Arriba salen las cajas que armó Logística y esperan su guía. Toca <b>🖨 Imprimir etiqueta de caja</b> y pégala en la caja. El número en la pestaña dice cuántas hay.')+
+ nota('info','📦 Cajas para Morelia','Arriba salen las cajas que armó Logística y esperan su guía. Toca <b>🖨 Imprimir etiqueta de caja</b> y pégala en la caja. El número en la pestaña dice cuántas hay. En cuanto la caja tiene guía (ya va en ruta), <b>sale de la lista</b>. Si aun así necesitas su etiqueta, búscala en <b>🔎 Buscar folio</b> (ej. CJ-0001) → Imprimir etiqueta de caja.')+
  nota('info','Al imprimir','Lo que va fuera de Oficinas pasa a <b>En Recepción Oficinas</b>: el paquete ya está en el stand. En cuanto un gestor lo recoge, sale de la lista. Si una etiqueta sale mal, usa <b>Imprimir otra vez</b>.')+
  nota('warn','Al imprimir en Chrome','Impresora <b>Argox</b>, <b>Márgenes: Ninguno</b>, <b>Escala: 100%</b>.')),
 ('Sonidos y mensajes','',

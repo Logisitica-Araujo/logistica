@@ -576,7 +576,7 @@ function etiquetaHTML(t, b, rp, pantalla) {
  */
 var PUNTO = 0.125;
 /** Versión de la página (sale en ❓ Ayuda). Sirve para saber si ya se publicó lo último. */
-var VERSION_PAGINA = '2026-11-05 · pedidos a domicilio 2';
+var VERSION_PAGINA = '2026-11-05 · cajas en ruta';
 function bcHTML(code, anchoMm, altoMm) {
   return '<div class="bcw"><svg class="bc" data-code="' + esc(code) + '" data-w="' + anchoMm + '" data-h="' + altoMm + '"></svg></div>';
 }
@@ -1040,14 +1040,14 @@ function vCentroImpresion() {
           '<td><button class="btn' + (t.impresoEnRec ? '' : ' primary') + '" type="button" data-a="impUno" data-v="' + esc(t.folio) + '"' + (im.ocupado ? ' disabled' : '') + '>🖨 ' + (t.impresoEnRec ? 'Imprimir otra vez' : 'Imprimir etiqueta') + '</button></td></tr>';
       }).join('') + '</tbody></table></div>';
   }
-  // Cajas para Morelia que armó Logística (esperando guía): su etiqueta se imprime aquí.
-  // También las que ya tienen guía (en camino) hasta que Morelia las reciba: a veces se registra la guía antes de imprimir.
-  var cajas = (S.data.cajas || []).filter(function (c) { return c.estatus === 'ARMADA' || c.estatus === 'ENVIADA'; });
+  // Cajas para Morelia que armó Logística y siguen esperando guía: su etiqueta se imprime aquí.
+  // En cuanto tienen guía (en ruta) ya no salen. Si una en ruta necesita etiqueta: 🔎 Buscar folio → CJ-0001.
+  var cajas = (S.data.cajas || []).filter(function (c) { return c.estatus === 'ARMADA'; });
   var cajasH = cajas.length ? '<div class="panel stack" style="margin-bottom:16px"><b style="font-size:17px">📦 Cajas para Morelia (' + cajas.length + ')</b>' +
-    '<div class="muted" style="font-size:13px;margin-top:-6px">Las armó Logística. Imprime la etiqueta y pégala en la caja antes de que salga.</div>' +
+    '<div class="muted" style="font-size:13px;margin-top:-6px">Las armó Logística. Imprime la etiqueta y pégala en la caja antes de que salga. En cuanto la caja tiene guía (en ruta), sale de esta lista.</div>' +
     cajas.map(function (c) {
       return '<div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding-top:10px"><div><span class="num" style="font-size:17px">' + esc(c.folio) + '</span> · para <b>' + esc(c.destino) + '</b> · ' + c.traspasos.length + ' traspaso(s), ' + c.bultos + ' bulto(s)' +
-        (c.estatus === 'ENVIADA' ? ' <span class="badge" style="color:#0B6C80;background:#DAF2F7">ya tiene guía' + (c.guia ? ' ' + esc(c.guia) : '') + '</span>' : ' <span class="badge" style="color:#8A5A00;background:#FFF2D2">esperando guía</span>') +
+        ' <span class="badge" style="color:#8A5A00;background:#FFF2D2">esperando guía</span>' +
         '<div class="muted" style="font-size:12.5px">' + esc(c.traspasos.join(', ')) + '</div></div>' +
         '<button class="btn primary" type="button" data-a="cajaprint" data-v="' + esc(c.folio) + '">🖨 Imprimir etiqueta de caja</button></div>';
     }).join('') + '</div>' : '';
