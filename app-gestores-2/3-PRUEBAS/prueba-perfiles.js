@@ -99,6 +99,9 @@ post({ accion: 'cerrar', token: tJL, idLocal: 'jl000016109', tipo: 'PEDIDO', id:
 robot();
 ok(opsFila('#16109')[22] === true && filasDe('APP_Cierres').find(c => c.IdCierre === 'jl000016109').Estado === 'ENVIADO', 'Y su entrega sí llega a Operaciones (W ✓)');
 
+ok(post({ accion: 'cerrar', token: tJL, idLocal: 'libre0000099', tipo: 'LIBRE', id: 'E-1105-JL9', que: 'Medicamento', detalle: 'Entrega de pedido #16200', donde: 'Napoles' }).ok &&
+   filasDe('APP_Problemas').some(x => x.Codigo === 'DIS-03' && /#16200/.test(x.Detalle)), 'Si registra "sin asignar" algo con número de pedido, avisa a Administración (DIS-03)');
+
 titulo('Vehículo: motivo al cambiar y en taller');
 post({ accion: 'vehiculo', token: tJL, vehiculo: 'Saviero LKC-752-D' });
 post({ accion: 'vehiculo', token: tJL, vehiculo: 'FED 2 14KGC4', motivo: 'Llanta ponchada' });
@@ -118,7 +121,7 @@ titulo('Administración: permisos y Hoy');
 const noAdm = post({ accion: 'admin', token: tJL, que: 'hoy' });
 ok(!noAdm.ok && noAdm.codigo === 'APP-02', 'Un gestor no puede entrar a Administración');
 const hoy = post({ accion: 'admin', token: tAD, que: 'hoy' });
-ok(hoy.ok && hoy.equipo.length === 4 && hoy.totales.entregados === 5, 'Hoy: equipo y totales (' + hoy.totales.entregados + ' entregados)');
+ok(hoy.ok && hoy.equipo.length === 4 && hoy.totales.entregados === 6, 'Hoy: equipo y totales (' + hoy.totales.entregados + ' entregados)');
 ok(hoy.atender.some(a => /CAP-09/.test(a.texto) || /P-0/.test(a.texto)), 'Atender ahora: muestra el aviso del monto');
 ok(hoy.equipo.find(g => g.usuario === 'alejandro').area === 'FACTURACION', 'Distingue el área de cada quien');
 

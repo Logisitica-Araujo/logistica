@@ -226,6 +226,14 @@ function _cerrarUno(u, cfg, p, urlFotoYa) {
     p.sucursal = String(p.donde);
     if (p.pidio) p.comentario = (p.comentario ? p.comentario + ' · ' : '') + 'Lo pidió: ' + String(p.pidio).slice(0, 80);
   }
+  /* Si en una entrega "sin asignar" escriben un número de pedido o TAREA, casi seguro el pedido no le apareció
+     en su lista (nombre distinto en Operaciones, lo asignaron a otro…). Se avisa a Administración el mismo día. */
+  if (tipo === 'LIBRE') {
+    var txtLibre = [p.detalle, p.comentario, p.donde].join(' ');
+    var mPed = /(TAREA\s*#\s*\d+|#\s?\d{4,6}|NRREM-\d+)/i.exec(txtLibre);
+    if (mPed) _problema('DIS-03', u.Nombre, 'Registró como "entrega sin asignar" algo que parece el pedido ' + mPed[1].replace(/\s+/g, ' ') +
+      '. Revisa en Operaciones a quién está asignado (columna I) y que su nombre sea igual al de APP_Usuarios. Entrega: ' + id + ' · ' + txtLibre.slice(0, 160));
+  }
   if (['PEDIDO', 'TRASPASO', 'RECOLECCION', 'LIBRE'].indexOf(tipo) < 0) throw _falla('APP-01', 'Tipo de cierre desconocido.');
   if (APPG_RESULTADOS.indexOf(res) < 0) throw _falla('APP-01', 'Resultado desconocido.');
   if (!id) throw _falla('APP-01', 'Falta el número de pedido o folio.');
