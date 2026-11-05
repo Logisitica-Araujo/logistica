@@ -167,7 +167,7 @@ function apiDatos(token) {
         });
     }
 
-    return { traspasos: mios, activos: activos, avisos: avisos, solicitudes: solicitudes, cajas: _cajasVisibles(), ahora: _ahoraTxt(), diasVisibles: dias };
+    return { traspasos: mios, activos: activos, avisos: avisos, solicitudes: solicitudes, cajas: _cajasVisibles(), ahora: _ahoraTxt(), diasVisibles: dias, domicilio: _domicilioActivo(c.area) };
   });
 }
 
@@ -212,6 +212,11 @@ function apiDetalle(token, folio) {
       const b = _detalleBotican(folio);
       if (!b) throw new Error('El pedido ' + folio + ' todavía no tiene movimientos (aún no se recolecta).');
       return b;
+    }
+    // Pedido a domicilio de un PV (NRREM-00008579): solo si no es un traspaso.
+    if (!_buscarT(folio)) {
+      const pd = _detalleDomicilio(folio);
+      if (pd) return pd;
     }
     // Caja para Morelia (CJ-0001): sus traspasos, guía y estatus.
     if (/^CJ-\d+$/.test(R.limpio(folio))) {

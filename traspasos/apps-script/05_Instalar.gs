@@ -89,6 +89,8 @@ function instalar() {
     ['revisar_avisos_cada_seg', 45, 'Cada cuántos segundos la página revisa si hay traspasos nuevos para el área.'],
     ['pin_administrador', '', 'PIN para entrar al Modo administrador. Vacío = sin PIN. Recomendado si tu cuenta está abierta en una computadora compartida.'],
     ['botican_archivo', 'https://docs.google.com/spreadsheets/d/1a3n7z962Ik6c1YrcD7RxkJEAWWK6a9xuA5LDrr2sffc/edit', 'Archivo con la bitácora de pedidos Botican (hoja Envios). Ahí se escribe el gestor en "Recolección de Gestor".'],
+    ['domicilio_archivo', 'https://docs.google.com/spreadsheets/d/1lv35lbab-GCrv-H81xjBh2CpfO2F-EUIIN3kcWHSsHU/edit', 'Archivo "Pedidos Logistica-Fadermex 2026" (hoja Envios). Ahí se escribe la fecha y el gestor en "✎ Fecha de recolección" y "Recolectado por:".'],
+    ['domicilio_sucursales', 'Nueva Roma, Vertiz, Doctores, Ecatepec, Coapa', 'Sucursales cuyo PV tiene la pestaña "Recolección pedidos a domicilio" (separadas por coma).'],
     ['carpeta_manuales', 'https://drive.google.com/drive/folders/1ZGOY7huAekZEnC_B9i_AY4oL84pMS_hl', 'Carpeta de Drive con los manuales en PDF (solo la ven los administradores, para actualizarlos).'],
     ['manual_sucursales', '', 'Link de Drive del PDF "Manual de Sucursales" (PV, Rebotica, Botican, Morelia). Sale en el botón ❓ Ayuda.'],
     ['manual_oficinas_recepcion', '', 'Link de Drive del PDF "Manual de Oficinas y Recepción". Sale en el botón ❓ Ayuda de Oficinas, Logística y Recepción.'],
@@ -129,6 +131,9 @@ function instalar() {
   if (_crearHojaRecolBotican()) hechos.push('Se creó la hoja RES_RecoleccionesBotican (acuses de recolección de pedidos Botican).');
   try { const L = _leerEnvios(); hechos.push('Conexión con la bitácora de Botican (Envios): OK, ' + L.filas.length + ' pedidos recientes.'); }
   catch (e) { hechos.push('⚠ No pude leer la bitácora de Botican: ' + e.message); }
+  if (_crearHojaRecolDomicilio()) hechos.push('Se creó la hoja RES_RecoleccionesDomicilio (acuses de recolección de pedidos a domicilio en los PV).');
+  try { const L = _leerDomicilio(); hechos.push('Conexión con Pedidos Logística (Envios): OK, ' + L.filas.length + ' pedidos recientes.'); }
+  catch (e) { hechos.push('⚠ No pude leer Pedidos Logística (Envios): ' + e.message); }
   if (_crearActivador()) hechos.push('Activado: cada ' + TR.OPS.CADA_MIN + ' min se revisan las guías en "Operaciones".');
   try { if (_crearActivadorEdicion()) hechos.push('Activado: al escribir en "Operaciones" (columnas folio / paquetería / guía) el traspaso se actualiza al momento.'); }
   catch (e) { hechos.push('⚠ No pude crear el activador "al editar Operaciones": ' + e.message); }

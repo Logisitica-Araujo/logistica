@@ -1,7 +1,7 @@
 import os
 D=os.path.dirname(os.path.abspath(__file__))
 IMG='file://'+D+'/img/'
-VER='Versión 1.6 · Noviembre 2026'
+VER='Versión 1.7 · Noviembre 2026'
 
 CSS='''
 @page{size:Letter;margin:18mm 16mm 18mm 16mm}
@@ -123,7 +123,7 @@ suc=[
  fig('s01_entrada','Pantalla de entrada: tus áreas están activas; las de otras sucursales, bloqueadas.')+
  nota('info','La campana 🔔','avisa cuando algo nuevo viene para tu sucursal: un traspaso nuevo, uno en camino o uno que quedó en otro lugar. El número rojo indica los avisos sin ver. Al abrirla solo salen los <b>avisos nuevos</b>; ya vistos, desaparecen.')+
  nota('info','Botón ❓ Ayuda','Arriba, junto a la campana. Abre este manual en PDF, siempre en su versión más reciente.')+fig('h01_ayuda','El botón ❓ Ayuda abre el manual de tu área.','mini')+
- nota('info','🔎 Buscar folio','Arriba, junto a ❓ y 🔔. Escribe o <b>escanea</b> un folio y Enter: se abre su <b>línea de tiempo</b> completa (dónde está, quién lo creó, quién lo llevó y quién lo recibió). También sirve con pedidos de Botican (#15996).')+fig('s17_buscador_campo','El buscador está arriba, en el encabezado.')+fig('s17_buscador','Resultado: la historia completa del traspaso.','chico')+
+ nota('info','🔎 Buscar folio','Arriba, junto a ❓ y 🔔. Escribe o <b>escanea</b> un folio y Enter: se abre su <b>línea de tiempo</b> completa (dónde está, quién lo creó, quién lo llevó y quién lo recibió). También sirve con pedidos de Botican (#15996) y con pedidos a domicilio (NRREM-00008579).')+fig('s17_buscador_campo','El buscador está arriba, en el encabezado.')+fig('s17_buscador','Resultado: la historia completa del traspaso.','chico')+
  nota('warn','Salir','Usa <b>Salir</b> solo si Logística te lo pide. Si sales, tendrás que volver a elegir tu área.')),
 ('Mi bandeja','lo que entra y lo que sale',
  '<p><b>Entrantes</b>: todo lo que llega a tu sucursal, para PV o para Rebotica. Cualquiera de la sucursal lo puede recibir; cada traspaso trae su etiqueta <span class="tag pv">PARA PV</span> o <span class="tag rb">PARA REBOTICA</span> para saber a quién entregarlo.</p><p><b>Salientes</b>: lo que sale de tu área. Las fichas de colores de arriba filtran por estatus. Haz clic en un traspaso para ver su detalle.</p>'+
@@ -170,7 +170,7 @@ suc=[
 ('Alertas del escáner','qué hacer cuando sale rojo',
  '<p>La página revisa cada escaneo al momento y <b>cada situación tiene su sonido</b>. Con unos días de uso, el oído los reconoce sin mirar la pantalla.</p>'+tabla(['Sonido','Cuándo suena'],[
   ['<b>Dos notas rápidas que suben</b>','Escaneo correcto o credencial reconocida.'],
-  ['<b>Dos campanas que suben y se quedan sonando</b>','Se guardó: recepción, salida, traspaso creado o recolección de Botican.'],
+  ['<b>Dos campanas que suben y se quedan sonando</b>','Se guardó: recepción, salida, traspaso creado o recolección de pedidos (Botican o a domicilio).'],
   ['<b>Dos toques iguales</b>','Ojo: ya estaba en la lista, alguien se saltó un paso o solo se guardó una parte.'],
   ['<b>Tres campanas que bajan</b>','Error: no se puede hacer lo que intentaste. Lee el mensaje en rojo.'],
   ['<b>Campanita de tres notas</b>','Llegó un aviso nuevo a la campana 🔔.']],['70mm',''])+
@@ -192,6 +192,15 @@ suc=[
  paso(4,'Confirmar recolección','Se genera el acuse <b>RB-0001</b>. En la bitácora de Botican se escribe el gestor en <b>"Recolección de Gestor"</b> y el estatus cambia solo a <b>🧍 RECOLECCIÓN DE GESTOR</b>. Lo recolectado desaparece de la lista.')+
  fig('b02_acuse','Acuse de la recolección. Puede pasar el siguiente gestor.')+
  nota('info','Foráneos','También se recolectan. Logística decide después la forma de envío.')),
+('PV: Recolección pedidos a domicilio','Nueva Roma, Vertiz, Doctores, Ecatepec y Coapa',
+ '<p>Solo en la computadora del <b>PV</b> de Nueva Roma, Vertiz, Doctores, Ecatepec y Coapa (Rebotica no la tiene). Funciona igual que la de Botican: el gestor firma con su credencial los pedidos a domicilio que se lleva. La lista sale de <b>Pedidos Logistica-Fadermex 2026</b> (hoja <b>Envios</b>) y muestra <b>solo los pedidos de tu sucursal</b>.</p>'+
+ paso(1,'Pestaña azul "🛵 Recolección pedidos a domicilio"','El número indica cuántos pedidos están listos.')+
+ paso(2,'El gestor escanea su credencial','Funciona como firma: queda su nombre, la hora y la lista. En pantalla solo sale su nombre.')+
+ paso(3,'Marca o escanea los pedidos que se lleva','Salen los pedidos <b>Listos para recolección</b> (los que ya tienen fecha en "Pedido listo para recolección"). Los <b>En elaboración</b> salen en gris y no se pueden marcar. También se puede teclear el identificador (ej. <b>NRREM-00008579</b>).')+
+ fig('d01_domicilio','Un pedido marcado y otro escaneado; el gestor ya firmó con su credencial.')+
+ paso(4,'Confirmar recolección','Se genera el acuse <b>RP-0001</b>. En Pedidos Logística se escribe la fecha y hora en <b>"✎ Fecha de recolección"</b> y el gestor en <b>"Recolectado por:"</b>. No se cambia el Estatus ni la casilla de Check. Lo recolectado desaparece de la lista.')+
+ fig('d02_acuse','Acuse de la recolección. Puede pasar el siguiente gestor.')+
+ nota('info','¿No sale un pedido?','Revisa en Pedidos Logística que tenga la <b>Sucursal</b> correcta (ej. "NUEVA ROMA PV"), que tenga fecha en <b>"Pedido listo para recolección"</b> y que <b>"Recolectado por:"</b> esté vacío. Luego presiona <b>↻ Actualizar</b>. Los pedidos de Oficinas no salen aquí.')),
 ('Detalle, editar y cancelar','la historia de cada traspaso',
  '<p>Haz clic en cualquier traspaso para ver su <b>línea de tiempo</b>: cada movimiento con fecha, hora, persona y lugar.</p>'+
  fig('s11_detalle','Detalle y línea de tiempo.','chico')+
@@ -226,7 +235,7 @@ ofi=[
 ('Qué es y cómo entrar','Oficinas trabaja con la cuenta abierta', INTRO_COMUN+
  paso(1,'Abre la página y elige tu área','Contabilidad, Compras, Logística… Solo están activas las áreas de tu cuenta.')+
  nota('info','Campana 🔔 y ❓ Ayuda','La campana solo muestra los <b>avisos nuevos</b>; al verlos desaparecen. El botón ❓ abre este manual en PDF, siempre en su versión más reciente.')+
- nota('info','🔎 Buscar folio','Arriba, junto a ❓ y 🔔. Escribe o <b>escanea</b> un folio y Enter: se abre su <b>línea de tiempo</b> completa (dónde está, quién lo creó, quién lo llevó y quién lo recibió). También sirve con pedidos de Botican (#15996).')+
+ nota('info','🔎 Buscar folio','Arriba, junto a ❓ y 🔔. Escribe o <b>escanea</b> un folio y Enter: se abre su <b>línea de tiempo</b> completa (dónde está, quién lo creó, quién lo llevó y quién lo recibió). También sirve con pedidos de Botican (#15996) y con pedidos a domicilio (NRREM-00008579).')+
  nota('ok','En Oficinas no se escanea credencial','Para crear y para recibir se usa la cuenta abierta en tu computadora: queda registrado con tu correo. La credencial solo se escanea para identificar a quien se lleva los traspasos (gestor).')+
  fig('o01_bandeja','Mi bandeja de un área de Oficinas.')+HIST_TXT),
 ('Crear un traspaso','sin credencial',
@@ -251,7 +260,7 @@ ofi=[
  '<h3>Entregar al gestor</h3>'+paso(1,'Escáner → "Entregar a gestor"','Escanea la credencial de quien se lo lleva; luego escanea, teclea o toca en la lista <b>"Creados aquí, por entregar"</b>, y <b>Confirmar salida</b>.')+
  '<h3>Sonidos</h3>'+tabla(['Sonido','Cuándo suena'],[
   ['<b>Dos notas rápidas que suben</b>','Escaneo correcto o credencial reconocida.'],
-  ['<b>Dos campanas que suben y se quedan sonando</b>','Se guardó: recepción, salida, traspaso creado o recolección de Botican.'],
+  ['<b>Dos campanas que suben y se quedan sonando</b>','Se guardó: recepción, salida, traspaso creado o recolección de pedidos (Botican o a domicilio).'],
   ['<b>Dos toques iguales</b>','Ojo: ya estaba en la lista, alguien se saltó un paso o solo se guardó una parte.'],
   ['<b>Tres campanas que bajan</b>','Error: no se puede hacer lo que intentaste. Lee el mensaje en rojo.'],
   ['<b>Campanita de tres notas</b>','Llegó un aviso nuevo a la campana 🔔.']],['70mm',''])),
@@ -396,7 +405,7 @@ adm=[
 ('Ver y buscar','todos los traspasos y su historia',
  '<h3>Todos los traspasos</h3><p>Todo lo que sigue en camino y lo entregado de los últimos <b>60 días</b>. Las fichas de estatus filtran la tabla; clic en una fila para abrirla.</p>'+fig('a01_todos','Todos los traspasos.')+'<h3>Historial (más de 60 días)</h3><p>Con <b>🔎 Buscar en el historial</b> buscas en <b>todos</b> los traspasos, de cualquier fecha y de cualquier área: atajos de fechas, Desde / Hasta, <b>Origen</b>, <b>Destino</b>, <b>Estatus</b> y <b>Texto</b>. Muestra hasta 300 resultados, del más reciente al más viejo.</p>'+fig('x02_historial_admin','Historial en Modo administrador (con filtro de Origen).')+nota('info','Cambiar los 60 días','En <b>CFG_Ajustes</b> agrega el parámetro <b>dias_visibles</b> con el número de días que quieran. Sin tocar código.')+
  '<h3>Buscador</h3><p>Escribe o escanea un folio y presiona Enter: abre su historia completa, aunque sea viejo. También busca por guía, persona, gestor o descripción.</p>'+
- '<h3>Pedidos de Botican</h3><p>En el Buscador escribe el pedido con <b>#</b> (ej. <b>#15996</b>) y Enter: sale su línea de tiempo con la etiqueta <b>BOTICAN</b> (quién lo recolectó, cuándo y con qué acuse).</p>'+fig('a05_botican','Historia de un pedido de Botican.','chico')),
+ '<h3>Pedidos de Botican y a domicilio</h3><p>En el Buscador escribe el pedido de Botican con <b>#</b> (ej. <b>#15996</b>) o el pedido a domicilio (ej. <b>NRREM-00008579</b>) y Enter: sale su línea de tiempo con la etiqueta <b>BOTICAN</b> o <b>DOMICILIO</b> (quién lo recolectó, cuándo y con qué acuse).</p>'+fig('a05_botican','Historia de un pedido de Botican.','chico')),
 ('Corregir y eliminar','acciones de administrador',
  '<p>Dentro de un traspaso, en <b>Acciones de administrador</b>:</p>'+
  tabla(['Acción','Para qué'],[
@@ -424,7 +433,7 @@ adm=[
   ['<b>CAT_Paqueterias / CAT_Motivos</b>','Listas de paqueterías y de motivos (reimpresión, eliminación, incidencia).'],
   ['<b>RES_Traspasos (columnas nuevas)</b>','<b>Incidencia</b>: qué pasó al recibir roto o incompleto. <b>Editado</b>: quién lo editó y cuándo (solo una vez). <b>Bultos pendientes</b> y <b>Pendientes en</b>: cuántos bultos se quedaron (el gestor se llevó una parte) y dónde (sucursal o REC).'],
   ['<b>RES_Solicitudes (columnas nuevas)</b>','<b>Tipo</b> (CANCELACIÓN o CAMBIO DE DESTINO), <b>Destino nuevo</b>, <b>Lado</b> (ORIGEN o DESTINO), <b>Responsable (área)</b> y <b>Cuenta</b>.'],
-  ['<b>CFG_Ajustes</b>','Duración de sesión (0 = no se cierra), <b>pin_administrador</b>, logo, tamaño general de etiqueta, columnas de Operaciones (A, K, M), cada cuánto revisar avisos, <b>botican_archivo</b> (bitácora de Botican) y los <b>manuales</b> (ver abajo).']],['48mm',''])+
+  ['<b>CFG_Ajustes</b>','Duración de sesión (0 = no se cierra), <b>pin_administrador</b>, logo, tamaño general de etiqueta, columnas de Operaciones (A, K, M), cada cuánto revisar avisos, <b>botican_archivo</b> (bitácora de Botican), <b>domicilio_archivo</b> y <b>domicilio_sucursales</b> (pedidos a domicilio de los PV) y los <b>manuales</b> (ver abajo).']],['48mm',''])+
  '<h3>Manuales (botón ❓ Ayuda)</h3><p>Los PDF viven en una carpeta de Drive (<b>carpeta_manuales</b>) y sus links en CFG_Ajustes: <b>manual_sucursales</b>, <b>manual_oficinas_recepcion</b>, <b>manual_administradores</b> y <b>manual_proceso</b>. Cada área ve el suyo; los administradores ven todos y la carpeta.</p>'+
  nota('ok','Actualizar un manual sin cambiar el link','En Drive: clic derecho en el PDF → <b>Información del archivo → Administrar versiones → Subir versión nueva</b>. El link no cambia y todas las áreas ven la nueva versión al instante.')+
  nota('info','Hojas RES_','Son los registros que escribe la página (traspasos, movimientos, escaneos, etiquetas, avisos, solicitudes, cajas). Se consultan, no se editan.')),
@@ -437,6 +446,7 @@ adm=[
   ['<b>Salida por Recepción</b>','Todo lo de Oficinas que va fuera sale por Recepción: el gestor le da salida en Recoger aunque nadie lo haya dejado. Si pasa de <b>horas_alerta_sin_salida</b> (36 h), avisa a Logística, al área y a administración.'],
   ['<b>Recepción en kiosco</b>','Ver <b>MODO_KIOSCO.md</b>: usuario de Windows aparte, Chrome bloqueado y pantalla completa. Para sacarla de Recepción: Alt + F4 y abrir la dirección de la página con <b>/SALIR</b> al final (…/exec/SALIR).'],
   ['<b>Botican</b>','La pestaña de Botican lee y escribe en <b>LOGISTICA BOTICAN 2026 → Envios</b>: escribe el gestor en "Recolección de Gestor" (no mover ni renombrar esa columna). El acuse queda en <b>RES_RecoleccionesBotican</b>.'],
+  ['<b>Pedidos a domicilio (PV)</b>','La pestaña de los PV lee y escribe en <b>Pedidos Logistica-Fadermex 2026 → Envios</b>: solo escribe <b>"✎ Fecha de recolección"</b> y <b>"Recolectado por:"</b> (las columnas se buscan por su encabezado; no renombrarlas). Las sucursales con pestaña están en <b>domicilio_sucursales</b>. El acuse queda en <b>RES_RecoleccionesDomicilio</b>.'],
   ['<b>Operaciones</b>','Al escribir en las columnas A (folio), K (paquetería) o M (guía), los traspasos de Morelia pasan a Enviado por paquetería. Además se revisa cada 10 minutos.'],
   ['<b>Actualizar la página</b>','Pegar el código nuevo → correr <b>Instalar / reparar</b> → Implementar → Administrar implementaciones → ✏️ → <b>Nueva versión</b>. La URL no cambia.']],['42mm',''])),
 ('Problemas comunes','',
