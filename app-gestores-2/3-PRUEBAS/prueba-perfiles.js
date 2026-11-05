@@ -91,6 +91,14 @@ robot();
 ok(!post({ accion: 'inicio', token: tJL }).lleva.some(l => l.codigo === 'E-PV-0029'), 'La recepción le dio entrada (EN_RECEPCION): ya no le aparece');
 ok(filasDe('APP_Recolecciones').find(r => r.Codigo === 'E-PV-0029').Estado === 'YA NO LO TRAE (EN_RECEPCION)', 'Queda anotado por qué salió');
 
+titulo('Nombre escrito distinto en Operaciones ("JoseLuis" vs "Jose Luis")');
+hOps.datos.push(fila35({ 1: '#16109', 2: 'BOTICAN', 4: 'Yara Guzman', 5: 'Rafael Alducin 16', 8: 'Logística Interna', 9: 'JoseLuis', 16: 'ENVIADO POR LOGÍSTICA INTERNA', 19: false, 21: false, 23: false }));
+E.OPS.correr('opsw_cacheBorrar_'); robot();
+ok(post({ accion: 'inicio', token: tJL }).pedidos.some(p => p.id === '#16109'), 'Le aparece aunque en Operaciones diga "JoseLuis" (sin espacio)');
+post({ accion: 'cerrar', token: tJL, idLocal: 'jl000016109', tipo: 'PEDIDO', id: '#16109', resultado: 'ENTREGADO', foto: FOTO, recibio: 'Yara' });
+robot();
+ok(opsFila('#16109')[22] === true && filasDe('APP_Cierres').find(c => c.IdCierre === 'jl000016109').Estado === 'ENVIADO', 'Y su entrega sí llega a Operaciones (W ✓)');
+
 titulo('Vehículo: motivo al cambiar y en taller');
 post({ accion: 'vehiculo', token: tJL, vehiculo: 'Saviero LKC-752-D' });
 post({ accion: 'vehiculo', token: tJL, vehiculo: 'FED 2 14KGC4', motivo: 'Llanta ponchada' });
@@ -110,7 +118,7 @@ titulo('Administración: permisos y Hoy');
 const noAdm = post({ accion: 'admin', token: tJL, que: 'hoy' });
 ok(!noAdm.ok && noAdm.codigo === 'APP-02', 'Un gestor no puede entrar a Administración');
 const hoy = post({ accion: 'admin', token: tAD, que: 'hoy' });
-ok(hoy.ok && hoy.equipo.length === 4 && hoy.totales.entregados === 4, 'Hoy: equipo y totales (' + hoy.totales.entregados + ' entregados)');
+ok(hoy.ok && hoy.equipo.length === 4 && hoy.totales.entregados === 5, 'Hoy: equipo y totales (' + hoy.totales.entregados + ' entregados)');
 ok(hoy.atender.some(a => /CAP-09/.test(a.texto) || /P-0/.test(a.texto)), 'Atender ahora: muestra el aviso del monto');
 ok(hoy.equipo.find(g => g.usuario === 'alejandro').area === 'FACTURACION', 'Distingue el área de cada quien');
 
