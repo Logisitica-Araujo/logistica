@@ -1,5 +1,10 @@
 # Registro de cambios · App Gestores 2
 
+## 0.4.4 · 6-nov-2026 · Si usan "Registrar entrega" para un pedido suyo, se arregla solo
+- **Robot (paso nuevo `ligarLibres`):** si en una "entrega sin asignar" escribieron el número de un pedido o TAREA abierto a su nombre, la pasa sola a ese pedido (foto, quién recibió, ubicación, hora real) y Operaciones queda marcado. La "sin asignar" queda ANULADA con nota. Revisa los últimos 3 días.
+- **App 2.3.1:** en "+ Registrar entrega" avisa "¿Es un pedido que te asignaron? Entrégalo desde Pedidos (tienes N)" y, si escriben el número de uno de sus pedidos, ofrece "Entregarlo como pedido" con la foto y quién recibió ya puestos.
+- Caso del 6-nov corregido: #16139 pasado a Operaciones.
+
 ## 0.4.3 · 5-nov-2026 · Nombre del gestor sin importar espacios
 - **Robot:** reconoce al gestor aunque en Operaciones esté escrito distinto ("JoseLuis" / "Jose Luis", acentos, comillas) y manda a Operaciones el nombre tal como está en la columna I.
 - **Aviso DIS-03:** si alguien registra como "entrega sin asignar" algo con número de pedido o TAREA, llega a Administración → Por revisar.

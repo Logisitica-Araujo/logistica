@@ -661,7 +661,10 @@ function vistaLibre() {
   S.vista = 'libre';
   var x = S.libre, r = S.datos.reglas || {};
   var areas = r.areasImss && r.areasImss.length ? r.areasImss : ['Farmacia', 'Almacén', 'Urgencias', 'Otro'];
+  var nPed = (S.datos.pedidos || []).length;
   var html = '<div class="barra"><button class="volver" onclick="S.libre=null;vistaInicio()" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>Registrar entrega</b><small>Algo que no estaba en tu ruta</small></div></div><div class="cuerpo">' +
+    (nPed ? '<div class="aviso warn"><b>¿Es un pedido o TAREA que te asignaron?</b> Entrégalo desde <b>' + (esFac() ? 'tu ruta' : 'Pedidos a domicilio') + '</b> (tienes ' + nPed + '), así se marca en Operaciones. Esto es solo para lo que NO te asignaron.' +
+      (esFac() ? '' : '<button class="b" style="margin-top:8px;width:100%" onclick="S.libre=null;vistaPedidos()">Ver mis pedidos</button>') + '</div>' : '') +
     '<div class="bloque"><div class="cab-b"><span class="paso' + (x.que ? ' ok' : '') + '">1</span><b>¿Qué entregaste?</b></div><div class="pildoras">' +
     QUE_LIBRE.map(function (q) { return '<button class="pildora' + (x.que === q ? ' sel' : '') + '" onclick="libPres();S.libre.que=\'' + q + '\';vistaLibre()">' + q + '</button>'; }).join('') + '</div>' +
     '<input class="campo" id="lbDet" placeholder="Detalle (ej. 3 cajas, receta 37F…)" value="' + esc(x.detalle) + '" autocomplete="off">' +
@@ -692,9 +695,28 @@ function libDonde() {
   if (x.dondeTipo === 'SUCURSAL') return x.sucursal;
   return x.otro;
 }
+/** ¿Lo que escribió es uno de sus pedidos asignados? Devuelve el índice o -1. */
+function pedidoEnTexto(x) {
+  var txt = clave([x.detalle, x.comentario, x.pidio, x.otro].join(' '));
+  if (!txt) return -1;
+  return (S.datos.pedidos || []).findIndex(function (p) { var k = clave(p.id); return k.length >= 4 && txt.indexOf(k) >= 0; });
+}
+function entregarComoPedido(j) {
+  var x = S.libre; cerrarModal();
+  S.libre = null; abrirCierre('PEDIDO', j, 'ENTREGADO');
+  if (x) { S.cierre.foto = x.foto; S.cierre.recibio = x.recibio; S.cierre.comentario = x.comentario; pintarCierre(); }
+}
 function guardarLibre() {
   libPres();
   var x = S.libre;
+  var j = x.noEsPedido ? -1 : pedidoEnTexto(x);
+  if (j >= 0) {
+    var ped = S.datos.pedidos[j];
+    return modal('<h2>Ese es tu pedido ' + esc(ped.id) + '</h2><p>' + esc(ped.cliente) + ' · ' + esc(ped.direccion) + '</p>' +
+      '<div class="aviso">Entrégalo como pedido para que se marque en Operaciones. Se pasa tu foto y quién recibió.</div>' +
+      '<button class="btn verde" onclick="entregarComoPedido(' + j + ')">Entregarlo como pedido</button>' +
+      '<button class="btn linea" onclick="cerrarModal();S.libre.noEsPedido=true;guardarLibre()">No, es otra cosa</button>');
+  }
   if (!x.que) return falla(errCod('CAP-01', 'Elige qué entregaste.'));
   var donde = libDonde();
   if (!donde) return falla(errCod('CAP-01', 'Escribe dónde lo entregaste.'));

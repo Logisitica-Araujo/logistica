@@ -35,6 +35,7 @@ function robot(forzar) {
     // Primero las recolecciones: si alguien recoge y entrega en el mismo minuto, el traspaso ya
     // tiene que estar "RECOLECTADO" en el sistema cuando llegue su entrega.
     paso('recolecciones', _robotRecolecciones);
+    paso('ligarLibres', function () { return _robotLigarLibres(ruta); });
     paso('cierres', function () { return _robotCierres(ruta); });
     paso('limpieza', _robotLimpieza);
     paso('contraseñas', _procesarClavesNuevas);
@@ -221,6 +222,47 @@ function _robotLimpieza() {
       _problema('DIS-02', String(r.Gestor), r.Tipo + ' ' + r.Codigo + ' lleva más de ' + dias + ' días sin entregarse (' + (fuente || r.Tipo) + ').');
       t.sh.getRange(r._fila, t.col('EstadoFuente')).setValue((fuente || '') + ' · ALERTA');
     }
+  });
+  return n;
+}
+
+/* ---------- 2b. "Entrega sin asignar" que en realidad era un pedido suyo ----------
+   Si el gestor usó "+ Registrar entrega" y escribió el número de un pedido o TAREA que está abierto
+   en Operaciones A SU NOMBRE, se convierte solo en la entrega de ese pedido (con su foto, quién recibió,
+   ubicación y hora real) y Operaciones queda marcado. La "sin asignar" queda ANULADA con la nota. */
+function _robotLigarLibres(ruta) {
+  if (!ruta || !ruta.length) return 0;
+  var t = _tabla(APPG.H.CIERRES);
+  var hace3 = Date.now() - 3 * 86400000;
+  var libres = t.filas.filter(function (c) { return String(c.Tipo) === 'LIBRE' && String(c.Estado) === 'LOCAL' && _fechaMs(c.FechaHora) > hace3; });
+  if (!libres.length) return 0;
+  var abiertos = {};
+  ruta.forEach(function (p) { abiertos[_tnClave(p.id)] = p; });
+  var yaCerrados = {};
+  t.filas.forEach(function (c) { if (String(c.Tipo) === 'PEDIDO' && ['ANULADO', 'CORREGIDO'].indexOf(String(c.Estado)) < 0) yaCerrados[_tnClave(c.ID)] = true; });
+  var n = 0;
+  libres.forEach(function (c) {
+    var txt = [c.ID, c.Comentario, c.Cliente, c.Direccion, c.Recibio].join(' ');
+    var re = /(TAREA\s*#\s*\d+|NRREM-?\s?\d+|#\s?\d{4,6})/gi, m, p = null;
+    while ((m = re.exec(txt)) && !p) {
+      var k = _tnClave(m[1]), cand = abiertos[k];
+      if (cand && !yaCerrados[k] && _claveNombre(cand.gestor) === _claveNombre(_nombreEnOps(c.NumeroGestor))) p = cand;
+    }
+    if (!p) return;
+    var o = {};
+    APPG.ENC.APP_Cierres.forEach(function (h) { o[h] = c[h]; });
+    o.IdCierre = 'lig' + Utilities.getUuid().replace(/-/g, '').slice(0, 16);
+    o.FechaHora = _ahora(); o.Tipo = 'PEDIDO'; o.ID = String(p.id); o.Fila = Number(p.fila); o.Resultado = 'ENTREGADO';
+    o.Estado = 'PENDIENTE'; o.Intentos = 0; o.UltimoError = ''; o.EnviadoEn = ''; o.DondeEntrego = ''; o.Monto = ''; o.Clase = '';
+    o.Cliente = String(p.nombre || ''); o.Direccion = String(p.direccion || '');
+    o.Comentario = 'Lo registró como entrega sin asignar (' + c.ID + ')' + (c.Comentario ? ' · ' + c.Comentario : '');
+    o.Corregido = 'Ligado solo desde ' + c.IdCierre;
+    _agregar(APPG.H.CIERRES, o);
+    t.sh.getRange(c._fila, t.col('Estado')).setValue('ANULADO');
+    t.sh.getRange(c._fila, t.col('Corregido')).setValue('Pasado solo al pedido ' + p.id + ' ' + _ahora('dd/MM HH:mm'));
+    yaCerrados[_tnClave(p.id)] = true;
+    _log('robot', 'LIGA_LIBRE', c.ID + ' → ' + p.id + ' · ' + c.Gestor);
+    n++;
   });
   return n;
 }

@@ -102,6 +102,16 @@ ok(opsFila('#16109')[22] === true && filasDe('APP_Cierres').find(c => c.IdCierre
 ok(post({ accion: 'cerrar', token: tJL, idLocal: 'libre0000099', tipo: 'LIBRE', id: 'E-1105-JL9', que: 'Medicamento', detalle: 'Entrega de pedido #16200', donde: 'Napoles' }).ok &&
    filasDe('APP_Problemas').some(x => x.Codigo === 'DIS-03' && /#16200/.test(x.Detalle)), 'Si registra "sin asignar" algo con número de pedido, avisa a Administración (DIS-03)');
 
+titulo('"Entrega sin asignar" que era su pedido: se liga sola');
+hOps.datos.push(fila35({ 1: '#16150', 2: 'BOTICAN', 4: 'Diana Gonzalez', 5: 'Manuel López Cotilla 1535', 8: 'Logística Interna', 9: 'JoseLuis', 16: 'ENVIADO POR LOGÍSTICA INTERNA', 19: false, 21: false, 23: false }));
+E.OPS.correr('opsw_cacheBorrar_'); robot();
+post({ accion: 'cerrar', token: tJL, idLocal: 'libre0016150', tipo: 'LIBRE', id: 'E-1106-JL1', que: 'Medicamento', detalle: '', comentario: 'Entrega de pedido #16150', donde: 'Manuel López cotilla 1535', recibio: 'Paris', foto: FOTO });
+E.OPS.correr('opsw_cacheBorrar_'); robot(); E.formulaEstatus();
+const lig = filasDe('APP_Cierres').find(c => c.ID === '#16150');
+ok(lig && lig.Tipo === 'PEDIDO' && lig.Recibio === 'Paris' && lig.URLFoto && lig.Estado === 'ENVIADO', 'El robot la pasa al pedido #16150 con su foto y quién recibió');
+ok(opsFila('#16150')[22] === true, 'Operaciones: #16150 entregado (W ✓)');
+ok(filasDe('APP_Cierres').find(c => c.IdCierre === 'libre0016150').Estado === 'ANULADO', 'La "sin asignar" queda anulada (no cuenta doble)');
+
 titulo('Vehículo: motivo al cambiar y en taller');
 post({ accion: 'vehiculo', token: tJL, vehiculo: 'Saviero LKC-752-D' });
 post({ accion: 'vehiculo', token: tJL, vehiculo: 'FED 2 14KGC4', motivo: 'Llanta ponchada' });
@@ -121,7 +131,7 @@ titulo('Administración: permisos y Hoy');
 const noAdm = post({ accion: 'admin', token: tJL, que: 'hoy' });
 ok(!noAdm.ok && noAdm.codigo === 'APP-02', 'Un gestor no puede entrar a Administración');
 const hoy = post({ accion: 'admin', token: tAD, que: 'hoy' });
-ok(hoy.ok && hoy.equipo.length === 4 && hoy.totales.entregados === 6, 'Hoy: equipo y totales (' + hoy.totales.entregados + ' entregados)');
+ok(hoy.ok && hoy.equipo.length === 4 && hoy.totales.entregados === 7, 'Hoy: equipo y totales (' + hoy.totales.entregados + ' entregados)');
 ok(hoy.atender.some(a => /CAP-09/.test(a.texto) || /P-0/.test(a.texto)), 'Atender ahora: muestra el aviso del monto');
 ok(hoy.equipo.find(g => g.usuario === 'alejandro').area === 'FACTURACION', 'Distingue el área de cada quien');
 
@@ -291,7 +301,7 @@ const API = 'https://script.google.com/macros/s/APP-PRUEBA/exec';
   t = await texto(p);
   ok(/Entrega guardada/.test(t) && /Qué: Medicamento · 3 cajas/.test(t) && /Dónde: IMSS HGZ 32 · Farmacia/.test(t) && /Lo pidió: Karla/.test(t), 'WhatsApp con todo lo capturado');
   await foto(p, 'facturacion-libre-whatsapp');
-  const lib = filasDe('APP_Cierres').find(c => c.Tipo === 'LIBRE');
+  const lib = filasDe('APP_Cierres').find(c => c.Tipo === 'LIBRE' && c.Gestor === 'Alejandro');
   ok(lib && /^E-\d{4}-A\d+$/.test(lib.ID) && lib.Estado === 'LOCAL' && lib.Clase === 'MEDICAMENTO' && lib.DondeEntrego === 'IMSS HGZ 32 · Farmacia' && /Lo pidió: Karla/.test(lib.Comentario), 'Queda solo en la app (' + (lib && lib.ID) + '), no va a Operaciones');
   await p.click('text=Ahora no'); await p.waitForTimeout(1200);
   ok(/Registrado por ti hoy/i.test(await texto(p)), 'En su ruta: "Registrado por ti hoy"');
