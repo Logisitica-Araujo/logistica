@@ -1,5 +1,16 @@
 # Registro de cambios · App Gestores 2
 
+## 0.5.0 · 9-nov-2026 · Reglas de Logística del 7-nov (recolección BOTICAN) · EN PRUEBA
+- **Nuevo `10_BOTICAN.gs`:** lee "LOGISTICA BOTICAN 2026" (APP_Config → `ID_BOTICAN`): Envios, Feriados y Rutas. Horarios y feriados NO están en el código.
+- **Fecha compromiso** igual que el portal: G + 2 días hábiles a la misma hora (3 si G es antes del 9-nov); sin sábados, domingos ni Feriados; inhábil → desde el siguiente hábil 9:00; Coapa (lun/mié/vie) y Ecatepec (mar/jue) desde la visita 9:00 (mismo día si G antes de 13:00).
+- **Semáforo** verde/amarillo/rojo/gris y texto "Vence: mié 11 nov, 10:20". Lista "Por recolectar · BOTICAN" ordenada por fecha compromiso.
+- **Ruta del momento** en el inicio (pestaña Rutas; hasta 15 min después de su hora), con Coapa lun/mié/vie y Ecatepec mar/jue.
+- **Duplicados:** al escanear un pedido ya recolectado por alguien → aviso con quién y cuándo ("No registrar" / "Es otro bulto"). Si no existe en Envios ni en Operaciones → aviso y número parecido. Avisos `DIS-04` y `DIS-05`. Sin señal se registra y el servidor avisa.
+- **Envios columna H:** al registrar la recolección de un pedido BOTICAN, el robot escribe la hora SOLO si H está vacía y sin fórmula (`BOT_ESCRIBIR_H`).
+- **APP_Recolecciones:** columna nueva **Nota** al final (A–N sin cambios).
+- **Más rápido:** al abrir/actualizar la app el servidor trae lo nuevo de Operaciones (máx. cada 20 s); OPERACIONES guarda su memoria 20 s (antes 60).
+- App 2.4.0 (service worker `gestores2-v10`). Pruebas: `prueba-botican.js` 53/53 (nueva), `pruebas.js` 60/60, `prueba-integrada.js` 65/65, `prueba-perfiles.js` 109/109, `prueba-celular.js` 32/32.
+
 ## 0.4.4 · 6-nov-2026 · Si usan "Registrar entrega" para un pedido suyo, se arregla solo
 - **Robot (paso nuevo `ligarLibres`):** si en una "entrega sin asignar" escribieron el número de un pedido o TAREA abierto a su nombre, la pasa sola a ese pedido (foto, quién recibió, ubicación, hora real) y Operaciones queda marcado. La "sin asignar" queda ANULADA con nota. Revisa los últimos 3 días.
 - **App 2.3.1:** en "+ Registrar entrega" avisa "¿Es un pedido que te asignaron? Entrégalo desde Pedidos (tienes N)" y, si escriben el número de uno de sus pedidos, ofrece "Entregarlo como pedido" con la foto y quién recibió ya puestos.

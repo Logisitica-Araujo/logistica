@@ -314,3 +314,33 @@ body.adm{--azul:#111A2E;--azul-osc:#0A1020;--azul-suave:#E6E9F0;--azul-claro:#AE
 .rejilla .grande.registrar small{font-size:12.5px}
 .b.wa-b{color:var(--wa);border-color:#9FD5C9;font-weight:700}
 .leido .b.wa-b{height:36px;font-size:13px;flex:none}
+
+/* recolección BOTICAN (reglas 7-nov) */
+.ruta-bot{display:flex;flex-direction:column;gap:7px;text-align:left;background:#fff;border:2px solid var(--azul);border-radius:18px;padding:14px;width:100%;color:var(--texto)}
+.rb-fila{display:flex;align-items:center;gap:8px}
+.rb-fila small{font-size:12px;color:var(--gris)}
+.rb-tag{font-size:11px;font-weight:800;letter-spacing:.6px;color:#fff;background:var(--azul);border-radius:999px;padding:3px 9px}
+.rb-tag.gris{background:var(--gris)}
+.rb-tit{font-size:18px;line-height:1.25}
+.rb-extra{font-size:13px;color:var(--texto2)}
+.rb-sub{font-size:12px;font-weight:700;letter-spacing:.8px;color:var(--gris);margin-top:2px}
+.rb-ped{display:flex;align-items:center;gap:8px;font-size:13.5px}
+.rb-ped span:last-child{color:var(--texto2)}
+.rb-mas{font-size:13px;font-weight:700;color:var(--azul)}
+.sem{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.sem-res{display:flex;gap:6px;flex-wrap:wrap}
+.sr{font-size:11.5px;font-weight:700;border-radius:999px;padding:4px 9px}
+.sr.r{background:var(--rojo-suave);color:var(--rojo)} .sr.a{background:#FFF6D9;color:#8A5A00} .sr.v{background:var(--verde-suave);color:var(--verde)} .sr.g{background:#EEF1F6;color:var(--gris)}
+.ped-bot{background:#fff;border:1px solid var(--borde);border-left:6px solid var(--borde);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.ped-bot.gris{opacity:.85}
+.pb-fila{display:flex;align-items:center;gap:8px}
+.pb-fila .mono{color:var(--azul)}
+.pb-fila .espacio{flex:1}
+.pb-fila small{font-size:12px;color:var(--gris)}
+.pb-tag{font-size:11px;font-weight:800}
+.pb-vence{font-size:14.5px}
+.ped-bot small{font-size:12.5px;color:var(--texto2)}
+.tabla-mini{background:#F7F8FB;border:1px solid var(--borde);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:6px;font-size:14px;margin:8px 0}
+.tabla-mini div{display:flex;gap:8px}
+.tabla-mini div>span:first-child{color:var(--gris);min-width:78px}
+.pie.con-nav-pie{bottom:calc(64px + var(--safe-b))}

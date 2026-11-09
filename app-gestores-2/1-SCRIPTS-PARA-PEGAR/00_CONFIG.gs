@@ -10,7 +10,7 @@
  ***********************************************************************/
 
 var APPG = {
-  VERSION: '0.4.1',
+  VERSION: '0.5.0',
   ZONA: 'America/Mexico_City',
 
   /* Nombres de las pestañas del archivo de la app. */
@@ -46,7 +46,7 @@ var APPG = {
                         'Resultado', 'Motivo', 'Comentario', 'Recibio', 'Lat', 'Lng', 'URLFoto', 'URLFirma',
                         'Estado', 'Intentos', 'UltimoError', 'EnviadoEn', 'Cliente', 'Direccion', 'DondeEntrego', 'Monto', 'Clase', 'Corregido'],
     APP_Recolecciones: ['FechaHora', 'NumeroGestor', 'Gestor', 'Vehiculo', 'Codigo', 'Tipo', 'Origen', 'Destino',
-                        'Contenido', 'Estado', 'EstadoFuente', 'Actualizado', 'Enviado', 'DestinoPrefijo'],
+                        'Contenido', 'Estado', 'EstadoFuente', 'Actualizado', 'Enviado', 'DestinoPrefijo', 'Nota'],
     APP_Sesiones:      ['FechaHora', 'Usuario', 'NumeroGestor', 'Dispositivo', 'Resultado'],
     APP_Log:           ['FechaHora', 'Quien', 'Accion', 'Detalle'],
     APP_Problemas:     ['Numero', 'FechaHora', 'Codigo', 'Quien', 'Detalle', 'Resuelto'],
@@ -96,6 +96,8 @@ var APPG = {
     ['PALABRAS_EFECTIVO', 'Efectivo | Dinero | Cobro | $', 'Si el contenido trae una de estas palabras, se entrega como efectivo (pide monto, opcional)'],
     ['PALABRAS_DOCUMENTOS', 'Factura | Cortes | Corte | Documento | Contrato | Receta', 'Si el contenido trae una de estas palabras, se marca como documento'],
     ['MOTIVOS_CAMBIO_VEHICULO', 'Llanta ponchada | Falla mecánica | Lluvia | Carga grande | Se lo pasé a otro gestor | Otro', 'Motivos para cambiar de vehículo a medio día'],
+    ['ID_BOTICAN', '1a3n7z962Ik6c1YrcD7RxkJEAWWK6a9xuA5LDrr2sffc', 'Archivo LOGISTICA BOTICAN 2026 (Envios, Feriados, Rutas). Vacío = no se muestra la recolección BOTICAN'],
+    ['BOT_ESCRIBIR_H', true, 'TRUE = al recolectar un pedido BOTICAN se escribe la hora en Envios columna H (solo si está vacía y sin fórmula)'],
     ['APP_BLOQUEADA', false, 'TRUE = nadie puede entrar (mantenimiento)'],
     ['MENSAJE_BLOQUEO', 'App en mantenimiento. Intenta más tarde.', 'Texto que ven los gestores si está bloqueada'],
     ['ULTIMA_VUELTA_ROBOT', '', 'La escribe el robot. No editar.'],

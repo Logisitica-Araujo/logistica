@@ -39,6 +39,7 @@ function robot(forzar) {
     paso('cierres', function () { return _robotCierres(ruta); });
     paso('limpieza', _robotLimpieza);
     paso('contraseñas', _procesarClavesNuevas);
+    if (String(cfg.ID_BOTICAN || '').trim()) paso('botican', _robotBotican);
     paso('porRecoger', function () {
       var hay = _tabla(APPG.H.USUARIOS).filas.some(function (u) { return _si(u.Activo) && _perfil(u).area === 'FACTURACION'; });
       return hay ? _calcularPorRecoger().length : 0;
@@ -177,6 +178,11 @@ function _robotRecolecciones() {
     } else if (String(r.Tipo) === 'PEDIDO') {
       var a = _ops('recoleccion', { id: String(r.Codigo), gestor: _nombreEnOps(r.NumeroGestor), vehiculo: String(r.Vehiculo), fecha: _fechaTxt(r.FechaHora, 'yyyy-MM-dd HH:mm').replace(' ', 'T') });
       ok = a.ok; nota = a.ok ? 'ANOTADO' : '[' + a.codigo + '] ' + a.mensaje;
+      // Envios (BOTICAN) columna H: la hora de recolección, solo si está vacía y sin fórmula.
+      if (String(_config().ID_BOTICAN || '').trim()) {
+        try { var h = _btEscribirH(String(r.Codigo), r.FechaHora); if (h === 'escrita') _log('robot', 'BOT_H', r.Codigo + ' · ' + r.FechaHora); }
+        catch (e) { _log('robot', 'BOT_H_ERROR', r.Codigo + ' · ' + e.message); }
+      }
     }
     if (ok) { t.sh.getRange(r._fila, t.col('Enviado')).setValue('SI'); n++; }
     t.sh.getRange(r._fila, t.col('EstadoFuente')).setValue(nota);

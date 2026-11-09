@@ -87,7 +87,7 @@ function vistaRuta() {
     '<span class="chip" id="estado" onclick="verCola()"><i class="' + (x.amb ? 'amb' : '') + '"></i>' + esc(x.t) + '</span></div></div>' +
     '<div class="cuerpo con-nav">';
   if (aviso) html += '<div class="aviso">' + esc(aviso.texto) + '</div>';
-  html += '<div class="dos-grandes"><button class="grande" onclick="vistaEscaner(\'recolectar\')"><span><b>Escanear</b><small>Recoger o entregar lo asignado</small></span></button>' +
+  html += tarjetaRutaBotican(true) + '<div class="dos-grandes"><button class="grande" onclick="vistaEscaner(\'recolectar\')"><span><b>Escanear</b><small>Recoger o entregar lo asignado</small></span></button>' +
     '<button class="grande linea" onclick="vistaLibre()"><span><b>+ Registrar entrega</b><small>Algo que no estaba en tu ruta</small></span></button></div>' +
     '<span class="etiqueta">Tu ruta de hoy · por parada</span>';
   if (!R.paradas.length) html += '<div class="vacio"><b>No llevas nada por entregar</b><span>Escanea lo que recojas; aparece aquí agrupado por la sucursal o área a donde va.</span></div>';
@@ -800,4 +800,105 @@ function waLeido(i) { var l = S.leidos[i]; if (l) { pararEscaner(); waRecoleccio
 function waLleva(i) {
   var l = S.datos.lleva[i]; if (!l) return;
   waRecoleccion([{ codigo: l.codigo, origen: l.origen, destino: l.destino + (l.destinoDireccion ? ' (' + l.destinoDireccion + ')' : ''), contenido: l.contenido }], 'vistaLleva()');
+}
+
+
+/* =====================================================================
+ *  RECOLECCIÓN BOTICAN (reglas de Logística del 7-nov-2026)
+ *  Ruta del momento (pestaña Rutas), pedidos por fecha compromiso con semáforo,
+ *  y avisos al escanear un pedido ya recolectado o que no existe.
+ * ===================================================================== */
+var SEM = { rojo: ['#B42318', 'VENCIDO', 'Venció'], amarillo: ['#E0A100', 'VENCE PRONTO', 'Vence'], verde: ['#1E7E45', 'EN TIEMPO', 'Vence'], gris: ['#A0A8B6', 'EN ELABORACIÓN', ''] };
+function puntoSem(s) { return '<span class="sem" style="background:' + SEM[s][0] + '"></span>'; }
+
+/** Tarjeta "Ruta del momento" del inicio. compacta = para la pantalla de Facturación. */
+function tarjetaRutaBotican(compacta) {
+  var b = S.datos && S.datos.botican;
+  if (!b) return '';
+  if (b.error) return '<div class="aviso warn">' + esc(b.error) + '</div>';
+  var lista = (b.porRecolectar || []).filter(function (p) { return p.enRuta; });
+  var html = '<button class="ruta-bot" onclick="vistaBotican()">';
+  if (b.ruta) {
+    html += '<span class="rb-fila"><span class="rb-tag">RUTA DEL MOMENTO</span><small>' + (b.ruta.enMin > 0 ? 'sale en ' + b.ruta.enMin + ' min' : 'saliendo') + '</small></span>' +
+      '<b class="rb-tit">Ruta ' + esc(b.ruta.hora) + ' · ' + esc(String(b.ruta.sucursales).replace(/\s*·\s*/g, ', ')) + '</b>' +
+      (b.ruta.extra ? '<small class="rb-extra">Hoy también: <b>' + esc(b.ruta.extra) + '</b></small>' : '');
+  } else {
+    html += '<span class="rb-fila"><span class="rb-tag gris">SIN RUTA</span></span><b class="rb-tit">' + (b.habilHoy ? 'Ya salieron todas las rutas de hoy' : 'Hoy no hay ruta' + (b.feriadoHoy ? ' · ' + esc(b.feriadoHoy) : ' (día inhábil)')) + '</b>';
+  }
+  if (!compacta) {
+    html += '<span class="rb-sub">POR RECOLECTAR · BOTICAN (' + lista.length + ')</span>';
+    lista.slice(0, 3).forEach(function (p) {
+      html += '<span class="rb-ped">' + puntoSem(p.semaforo) + '<b class="mono">' + esc(p.id) + '</b><span>' + SEM[p.semaforo][2] + ': ' + esc(p.vence) + '</span></span>';
+    });
+    if (!lista.length) html += '<span class="rb-ped"><span>Nada pendiente de recoger por ahora.</span></span>';
+  } else if (lista.length) {
+    var rojos = lista.filter(function (p) { return p.semaforo === 'rojo'; }).length;
+    html += '<span class="rb-ped">' + puntoSem(rojos ? 'rojo' : lista[0].semaforo) + '<span>' + lista.length + ' pedido(s) BOTICAN por recolectar' + (rojos ? ' · ' + rojos + ' vencido(s)' : '') + '</span></span>';
+  }
+  return html + '<span class="rb-mas">Ver todos ›</span></button>';
+}
+
+/** R2 · Por recolectar, ordenados por fecha compromiso. */
+function vistaBotican() {
+  S.vista = 'botican'; pararEscaner();
+  var b = (S.datos && S.datos.botican) || {}, lista = b.porRecolectar || [];
+  var cuenta = { rojo: 0, amarillo: 0, verde: 0 };
+  lista.forEach(function (p) { cuenta[p.semaforo]++; });
+  var html = '<div class="barra"><button class="volver" onclick="vistaInicio()" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>Por recolectar · BOTICAN</b><small>Los que vencen primero, arriba</small></div></div><div class="cuerpo con-nav">';
+  if (b.ruta) html += '<div class="aviso">Ruta del momento: <b>' + esc(b.ruta.hora) + ' · ' + esc(b.ruta.sucursales) + '</b>' + (b.ruta.extra ? ' · hoy también ' + esc(b.ruta.extra) : '') + '</div>';
+  html += '<div class="sem-res">' + (cuenta.rojo ? '<span class="sr r">● ' + cuenta.rojo + ' vencido' + (cuenta.rojo > 1 ? 's' : '') + '</span>' : '') +
+    (cuenta.amarillo ? '<span class="sr a">● ' + cuenta.amarillo + ' vence pronto</span>' : '') + (cuenta.verde ? '<span class="sr v">● ' + cuenta.verde + ' en tiempo</span>' : '') +
+    ((b.elaboracion || []).length ? '<span class="sr g">● ' + b.elaboracion.length + ' en elaboración</span>' : '') + '</div>';
+  if (!lista.length) html += '<div class="vacio"><b>Nada por recolectar</b><span>Cuando Producción marque un pedido como listo, aparece aquí con su fecha compromiso.</span></div>';
+  lista.forEach(function (p) {
+    html += '<div class="ped-bot" style="border-left-color:' + SEM[p.semaforo][0] + '"><div class="pb-fila"><b class="mono">' + esc(p.id) + '</b><span class="pb-tag" style="color:' + SEM[p.semaforo][0] + '">' + SEM[p.semaforo][1] + '</span><span class="espacio"></span><small>' + esc(p.sucTxt) + (p.enRuta ? '' : ' · hoy no') + '</small></div>' +
+      '<b class="pb-vence"' + (p.semaforo === 'rojo' ? ' style="color:var(--rojo)"' : '') + '>' + SEM[p.semaforo][2] + ': ' + esc(p.vence) + '</b><small>' + esc(p.explicacion) + (p.area ? ' · ' + esc(p.area) : '') + '</small></div>';
+  });
+  (b.elaboracion || []).forEach(function (p) {
+    html += '<div class="ped-bot gris" style="border-left-color:' + SEM.gris[0] + '"><div class="pb-fila"><b class="mono">' + esc(p.id) + '</b><span class="pb-tag" style="color:var(--gris)">EN ELABORACIÓN</span></div><small>Producción aún no lo marca listo</small></div>';
+  });
+  html += '<p class="nota">Horarios y feriados: pestañas Rutas y Feriados de LOGISTICA BOTICAN 2026' + (b.proxFeriado ? ' · próximo feriado: ' + esc(b.proxFeriado) : '') + '.</p>';
+  pintar(html + '</div><div class="pie con-nav-pie"><button class="btn" onclick="vistaEscaner(\'recolectar\')">Escanear lo que recojo</button></div>' + nav(''));
+}
+
+/** R3 / R4 · Aviso al escanear: ya lo recolectó alguien, o no existe. */
+function avisoRecoleccion(l) {
+  var r = l && l.aviso; if (!r) return;
+  var i = S.leidos.indexOf(l);
+  if (r.duplicado) {
+    modal('<h2>' + esc(r.codigo) + ' ya fue recolectado</h2>' +
+      '<div class="tabla-mini"><div><span>Lo recogió</span><b>' + esc(r.quien) + '</b></div><div><span>Cuándo</span><b>' + esc(fechaBonita(r.cuando)) + '</b></div><div><span>Estado</span><span>' + esc(estadoRec(r.estado)) + '</span></div></div>' +
+      '<p>Si es el mismo paquete, no lo registres otra vez. Si es <b>otro bulto del mismo pedido</b>, regístralo y queda anotado como "bulto adicional".</p>' +
+      '<button class="btn" onclick="cerrarModal();decidirLeido(' + i + ',\'no\')">No registrar · es el mismo</button>' +
+      '<button class="btn linea" onclick="cerrarModal();decidirLeido(' + i + ',\'bulto\')">Es otro bulto · registrar</button>');
+  } else {
+    modal('<h2>No encuentro el ' + esc(r.codigo) + '</h2>' +
+      '<div class="tabla-mini"><div><span style="color:var(--rojo)">✕</span><span>No está en <b>Envios</b> de LOGISTICA BOTICAN 2026</span></div><div><span style="color:var(--rojo)">✕</span><span>No está en <b>Operaciones</b></span></div>' +
+      (r.sugerencia ? '<div><span>¿Quisiste decir?</span><b class="mono">' + esc(r.sugerencia) + '</b></div>' : '') + '</div>' +
+      '<p>Revisa el número en la etiqueta. Si de verdad no existe, pregunta en Producción antes de llevártelo.</p>' +
+      '<button class="btn" onclick="cerrarModal();decidirLeido(' + i + ',\'corregir\')">' + (r.sugerencia ? 'Usar ' + esc(r.sugerencia) : 'Corregir el número') + '</button>' +
+      '<button class="btn linea" onclick="cerrarModal();decidirLeido(' + i + ',\'forzar\')">Registrar de todos modos</button>');
+  }
+}
+function decidirLeido(i, que) {
+  var l = S.leidos[i]; if (!l) return;
+  var r = l.aviso;
+  if (que === 'no') { l.aviso = null; l.estado = 'mal'; l.texto = 'No se registró: ya lo había recolectado ' + r.quien; return pintarLeidos(); }
+  if (que === 'corregir') {
+    S.leidos.splice(i, 1); pintarLeidos();
+    if (r.sugerencia) return alLeer(r.sugerencia);
+    var c = $('inCodigo'); if (c) { c.value = r.codigo; c.focus(); c.select(); }
+    return;
+  }
+  l.aviso = null; l.estado = 'esp'; l.texto = 'Registrando…'; pintarLeidos();
+  mandarRecoleccion([{ codigo: r.codigo, forzar: true, bulto: que === 'bulto' }], [l]);
+}
+function fechaBonita(t) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/.exec(String(t || '')); if (!m) return t;
+  var d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'][d.getDay()] + ' ' + (+m[3]) + ' ' + ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][+m[2] - 1] + ', ' + m[4] + ':' + m[5];
+}
+function estadoRec(e) {
+  e = String(e || '');
+  return /ENTREGADO/.test(e) ? 'Ya lo entregó' : /EN RUTA/.test(e) ? 'Lo trae en este momento' : /CERRADO/.test(e) ? 'Ya llegó a su destino' : e.toLowerCase();
 }
