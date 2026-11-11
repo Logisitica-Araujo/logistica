@@ -408,6 +408,19 @@ Errores que cometen personas. No son fallas del sistema, pero el sistema ayuda a
 - **Qué hace la app:** el robot ya reconoce el nombre aunque cambie un espacio, acento o comillas (0.4.3). Y si alguien registra "sin asignar" algo con un número de pedido o TAREA, llega este aviso.
 - **Solución:** revisa en Operaciones la columna I de ese pedido y en APP_Usuarios la columna NombreEnOperaciones. Para pasar la entrega a Operaciones, pídemelo o usa Administración → Buscar.
 
+### DIS-04 · Un pedido se registró como recolectado otra vez
+- **Caso real:** el #16099 quedó 3 veces, por 3 gestores distintos.
+- **Qué hace la app (0.5.0):** al escanear avisa quién lo recolectó y cuándo. Si eligen "Es otro bulto" o no había señal, se registra con Nota y llega este aviso.
+- **Solución:** confirma con el gestor si era otro bulto. Si fue un error, corrígelo en Administración → Buscar.
+
+### DIS-05 · Recolectaron un pedido que no existe en Envios ni en Operaciones
+- **Qué hace la app:** avisa al escanear y sugiere un número parecido. Si lo registran de todos modos, llega este aviso.
+- **Solución:** revisa la etiqueta con Producción; corrige el número en APP_Recolecciones o pide que se dé de alta el pedido.
+
+### BOT-01 · No pude leer LOGISTICA BOTICAN 2026
+- **Causa:** `ID_BOTICAN` vacío o equivocado en APP_Config, o la cuenta del script no tiene acceso al archivo.
+- **Solución:** revisa el ID y que el dueño del script pueda abrir el archivo. Prueba con `PROBAR_BOTICAN` desde el editor.
+
 ### CAP-09 · El monto de efectivo no cuadra (perfil Facturación)
 - **Qué pasa:** el gestor escribió cuánto entregó y no es lo que decía el sobre (el traspaso trae el monto en su descripción, ej. "$2,654.00 + $1,144.00").
 - **Qué hace la app:** le pide una nota y deja un aviso en APP_Problemas (Administración → Por revisar) con los dos montos.

@@ -37,6 +37,8 @@ let sinRed = false;
     if (process.env.VER) console.log('API', JSON.parse(r.request().postData()).accion, res.ok, res.codigo || '');
     await r.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(res) });
   });
+  // Estas pruebas teclean folios: el "¿Es este?" (2.5.0) se confirma solo aquí. prueba-botican.js lo prueba a mano.
+  await ctx.addInitScript(() => { new MutationObserver(() => { const b = [...document.querySelectorAll('#modal .btn')].find(x => /Sí, es este/.test(x.textContent)); if (b) b.click(); }).observe(document, { childList: true, subtree: true }); });
   const page = await ctx.newPage();
   const errores = [];
   page.on('pageerror', e => errores.push(e.message));

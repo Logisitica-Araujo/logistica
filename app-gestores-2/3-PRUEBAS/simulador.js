@@ -37,6 +37,7 @@ function crearEntorno(opciones) {
     getDisplayValues() { return this.getValues().map(f => f.map(v => v instanceof Date ? v.toISOString() : String(v))); }
     setNumberFormat() { return this; } setFormula(f) { return this.setValue(f); } clearDataValidations() { return this; } setDataValidation() { return this; }
     getFormulas() { return this.getValues().map(f => f.map(() => '')); }
+    getFormula() { const v = this.getValue(); return typeof v === "string" && v.charAt(0) === "=" ? v : ""; }
     setValues(v) {
       if (v.length !== this.nr || v[0].length !== this.nc) throw new Error('setValues: tamaño no coincide ' + v.length + 'x' + v[0].length + ' vs ' + this.nr + 'x' + this.nc);
       for (let i = 0; i < this.nr; i++) {

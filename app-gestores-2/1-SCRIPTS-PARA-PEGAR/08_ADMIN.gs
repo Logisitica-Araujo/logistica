@@ -27,7 +27,8 @@ function apiAdmin(p) {
     hoy: _admHoy, gestor: _admGestor, buscar: _admBuscar, corregir: _admCorregir, reasignar: _admReasignar,
     problemas: _admProblemas, resolver: _admResolver, equipo: _admEquipo, equipoCambiar: _admEquipoCambiar, alta: _admAlta,
     vehiculos: _admVehiculos, vehiculoCambiar: _admVehiculoCambiar, liberar: _admLiberar,
-    ajustes: _admAjustes, ajuste: _admAjuste, motivo: _admMotivo, sucursal: _admSucursal
+    ajustes: _admAjustes, ajuste: _admAjuste, motivo: _admMotivo, sucursal: _admSucursal,
+    avisos: _admAvisos, avisoNuevo: _admAvisoNuevo, avisoQuitar: _admAvisoQuitar
   }[String(p.que || '')];
   if (!f) throw _falla('APP-01', 'Acción de administración desconocida: ' + p.que);
   return f(p, yo);

@@ -44,10 +44,13 @@ function _lista(v) { return String(v || '').split('|').map(function (x) { return
 
 function apiInicio(p) {
   var s = _exigirSesion(p.token);
+  _syncRapido();   // lo que asignaste en Operaciones llega aquí en segundos, sin esperar al robot
   var u = _buscarUsuario(s.Usuario);
   var cfg = _config();
   var hoy = _hoyTxt();
   var perfil = _perfil(u);
+  var botican = _boticanInicio(), pendientes = null;
+  try { pendientes = _pendientesInicio(u, botican); } catch (e) { _log('sistema', 'PENDIENTES', e.message); }
 
   /* Vehículos y quién trae cuál hoy */
   var ocupados = {};
@@ -115,6 +118,8 @@ function apiInicio(p) {
   return {
     gestor: { numero: u.Numero, nombre: u.Nombre }, perfil: perfil,
     porRecoger: perfil.area === 'FACTURACION' ? _porRecoger() : [],
+    botican: botican, pendientes: pendientes,
+    avisos: (function () { try { return _avisosInicio(u); } catch (e) { return []; } })(),
     libresHoy: cierres.filter(function (c) {
       return String(c.Tipo) === 'LIBRE' && String(c.NumeroGestor) === String(u.Numero) && _fechaTxt(c.FechaHora) === hoy && String(c.Estado) !== 'ANULADO';
     }).map(function (c) {
@@ -129,6 +134,26 @@ function apiInicio(p) {
     robot: String(cfg.ULTIMA_VUELTA_ROBOT || ''),
     hora: _ahora('yyyy-MM-dd HH:mm:ss'), version: APPG.VERSION
   };
+}
+
+/** Recolección BOTICAN para el inicio (null si no está configurada o no se pudo leer). */
+function _boticanInicio() {
+  if (!String(_config().ID_BOTICAN || '').trim()) return null;
+  try {
+    var rec = {}, hace = Date.now() - 30 * 86400000;
+    _tabla(APPG.H.RECOLECCIONES).filas.forEach(function (r) { if (String(r.Tipo) === 'PEDIDO' && _fechaMs(r.FechaHora) > hace) rec[_tnClave(r.Codigo)] = true; });
+    return _btParaInicio(rec);
+  } catch (e) { _log('sistema', 'BOT_INICIO', e.message); return { error: 'No pude leer LOGISTICA BOTICAN 2026 (BOT-01).' }; }
+}
+
+/** Trae lo nuevo de Operaciones al momento (como mucho una vez cada 20 s, y solo si nadie más lo está haciendo). */
+function _syncRapido() {
+  var cache = CacheService.getScriptCache();
+  if (cache.get('sync_rapido')) return;
+  cache.put('sync_rapido', '1', 20);
+  var candado = LockService.getScriptLock();
+  if (!candado.tryLock(100)) return;
+  try { _robotPedidos(); } catch (e) { /* el robot lo intenta en su vuelta */ } finally { candado.releaseLock(); }
 }
 
 /* ==================== vehiculo ==================== */
@@ -337,6 +362,12 @@ function apiRecolectar(p) {
   t.filas.forEach(function (r) { if (String(r.NumeroGestor) === String(u.Numero) && String(r.Estado) === 'EN RUTA') abiertos[_tnClave(r.Codigo)] = true; });
   var misPedidos = {};
   _tabla(APPG.H.PEDIDOS).filas.forEach(function (f) { if (String(f.NumeroGestor) === String(u.Numero)) misPedidos[_tnClave(f.ID)] = f; });
+  // Pedidos que ya recolectó cualquiera (últimos 30 días): para no registrarlos dos veces.
+  var apartados = _apartadosVigentes();
+  var yaRecolectados = {}, hace30 = Date.now() - 30 * 86400000;
+  t.filas.forEach(function (r) {
+    if (String(r.Tipo) === 'PEDIDO' && _fechaMs(r.FechaHora) > hace30 && !/ANULAD/.test(String(r.Estado))) yaRecolectados[_tnClave(r.Codigo)] = r;
+  });
 
   var resultados = lista.map(function (x) {
     var o = typeof x === 'object' && x ? x : { codigo: x };
@@ -344,6 +375,11 @@ function apiRecolectar(p) {
     var k = _tnClave(codigo);
     if (k.length < 3) return { codigo: codigo, ok: false, mensaje: 'Código muy corto. Revísalo.' };
     if (abiertos[k]) return { codigo: codigo, ok: false, repetido: true, mensaje: 'Ya lo habías leído.' };
+    // "Lo recojo yo": si otro lo apartó, se avisa (salvo que confirme que ya lo trae él).
+    var apOtro = apartados[k];
+    if (apOtro && String(apOtro.NumeroGestor) === String(u.Numero)) apOtro = null;
+    if (apOtro && !o.tomar && !o.forzar) return { codigo: codigo, ok: false, apartadoPor: String(apOtro.Gestor), desde: _fechaTxt(apOtro.Desde, 'yyyy-MM-dd HH:mm').slice(11),
+      hasta: _fechaTxt(apOtro.Hasta, 'yyyy-MM-dd HH:mm').slice(11), mensaje: codigo + ' lo apartó ' + apOtro.Gestor + '.' };
 
     var reg = { FechaHora: _ahora(), NumeroGestor: u.Numero, Gestor: u.Nombre, Vehiculo: vehiculo, Codigo: codigo,
                 Estado: 'EN RUTA', EstadoFuente: '', Actualizado: _ahora(), Enviado: 'NO' };
@@ -356,6 +392,30 @@ function apiRecolectar(p) {
       reg.DestinoPrefijo = tn.destinoPrefijo;
     } else if (codigo.charAt(0) === '#') {
       var mio = misPedidos[k];
+      /* Reglas del 7-nov: avisar si ya lo recolectó alguien, o si no existe en Envios (BOTICAN) ni en Operaciones. */
+      var previo = yaRecolectados[k], noExiste = false, sugerencia = '';
+      if (!previo && !mio) {
+        var enBot = String(_config().ID_BOTICAN || '').trim() ? _btExiste(codigo) : null;
+        if (enBot !== true) {
+          var enOps = null;
+          try { var eo = _ops('estadoPedidos', { ids: [codigo] }); if (eo.ok) enOps = !!String(eo.estados[codigo] || '').trim(); } catch (e) { }
+          if (enOps === false && enBot !== null) noExiste = true;
+          else if (enOps === false && enBot === null && !String(_config().ID_BOTICAN || '').trim()) noExiste = true;
+        }
+        if (noExiste) sugerencia = _btParecido(codigo);
+      }
+      if ((previo || noExiste) && !o.forzar) {
+        if (previo) return { codigo: codigo, ok: false, duplicado: true, quien: String(previo.Gestor), cuando: _fechaTxt(previo.FechaHora, 'yyyy-MM-dd HH:mm'),
+          estado: String(previo.Estado), mensaje: codigo + ' ya lo recolectó ' + previo.Gestor + ' (' + _fechaTxt(previo.FechaHora, 'yyyy-MM-dd HH:mm').slice(5) + ').' };
+        return { codigo: codigo, ok: false, noExiste: true, sugerencia: sugerencia, mensaje: 'No encuentro ' + codigo + ' en Envios (BOTICAN) ni en Operaciones.' };
+      }
+      if (previo) {
+        reg.Nota = (o.bulto ? 'Bulto adicional' : 'Registrado otra vez') + ' · antes lo recolectó ' + previo.Gestor + ' ' + _fechaTxt(previo.FechaHora, 'yyyy-MM-dd HH:mm') + (o.sinSenal ? ' · sin señal' : '');
+        _problema('DIS-04', u.Nombre, codigo + ' se registró otra vez como recolectado (' + reg.Nota + ').');
+      } else if (noExiste) {
+        reg.Nota = 'No existe en Envios ni en Operaciones · registrado de todos modos' + (o.sinSenal ? ' (sin señal)' : '');
+        _problema('DIS-05', u.Nombre, codigo + ' se recolectó pero no existe en Envios (BOTICAN) ni en Operaciones.' + (sugerencia ? ' ¿Será ' + sugerencia + '?' : ''));
+      }
       reg.Tipo = 'PEDIDO'; reg.Origen = o.origen || ''; reg.Destino = mio ? String(mio.Cliente) : (o.destino || '');
       reg.Contenido = mio ? String(mio.Direccion) : (o.contenido || '');
       if (mio) reg.Estado = 'EN RUTA (EN MIS PEDIDOS)';   // ya está en su lista de pedidos: se entrega desde ahí
@@ -363,8 +423,11 @@ function apiRecolectar(p) {
       if (!String(o.destino || '').trim()) return { codigo: codigo, ok: false, pideDestino: true, mensaje: 'No está en el Sistema de Traspasos. Escribe a dónde va.' };
       reg.Tipo = 'OTRO'; reg.Origen = String(o.origen || ''); reg.Destino = String(o.destino); reg.Contenido = String(o.contenido || '');
     }
+    if (apOtro) reg.Nota = (reg.Nota ? reg.Nota + ' · ' : '') + 'Lo había apartado ' + apOtro.Gestor;
     _agregar(APPG.H.RECOLECCIONES, reg);
     abiertos[k] = true;
+    var tomadoDe = _cerrarApartado(reg.Codigo, u);
+    if (tomadoDe) _log(u.Nombre, 'TOMA_APARTADO', reg.Codigo + ' · lo había apartado ' + tomadoDe);
     return { codigo: reg.Codigo, ok: true, tipo: reg.Tipo, origen: reg.Origen, destino: reg.Destino, contenido: reg.Contenido,
              enPedidos: reg.Estado !== 'EN RUTA', direccion: _direccionDe(reg.DestinoPrefijo),
              mensaje: reg.Tipo === 'TRASPASO' ? 'Recolectado · ya se ve en el rastreo en 1 minuto' : 'Recolectado' };

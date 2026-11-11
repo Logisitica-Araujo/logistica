@@ -1,5 +1,21 @@
 # Registro de cambios · App Gestores 2
 
+## 0.5.0 · 11-nov-2026 · Reglas de Logística del 7-nov, pendientes, rutas y avisos
+- **Nuevo `10_BOTICAN.gs`:** lee "LOGISTICA BOTICAN 2026" (APP_Config → `ID_BOTICAN`): Envios, Feriados y Rutas. Horarios y feriados NO están en el código.
+- **Fecha compromiso** igual que el portal: G + 2 días hábiles a la misma hora (3 si G es antes del 9-nov); sin sábados, domingos ni Feriados; inhábil → desde el siguiente hábil 9:00; Coapa (lun/mié/vie) y Ecatepec (mar/jue) desde la visita 9:00 (mismo día si G antes de 13:00).
+- **Semáforo** verde/amarillo/rojo/gris y texto "Vence: mié 11 nov, 10:20". Lista "Por recolectar · BOTICAN" ordenada por fecha compromiso.
+- **Ruta del momento** en el inicio (pestaña Rutas; hasta 15 min después de su hora), con Coapa lun/mié/vie y Ecatepec mar/jue.
+- **Duplicados:** al escanear un pedido ya recolectado por alguien → aviso con quién y cuándo ("No registrar" / "Es otro bulto"). Si no existe en Envios ni en Operaciones → aviso y número parecido. Avisos `DIS-04` y `DIS-05`. Sin señal se registra y el servidor avisa.
+- **Envios columna H:** al registrar la recolección de un pedido BOTICAN, el robot escribe la hora SOLO si H está vacía y sin fórmula (`BOT_ESCRIBIR_H`).
+- **APP_Recolecciones:** columna nueva **Nota** al final (A–N sin cambios).
+- **Más rápido:** al abrir/actualizar la app el servidor trae lo nuevo de Operaciones (máx. cada 20 s); OPERACIONES guarda su memoria 20 s (antes 60).
+- **Pendientes por recoger** (nuevo `11_PENDIENTES.gs`, pestaña nueva **APP_Apartados**): una sola lista por lugar con pedidos BOTICAN listos, pedidos FADERMEX "PENDIENTE PARA RECOLECTAR" (acción nueva `porRecolectar` de OPERACIONES) y traspasos NUEVO/EN_LOGISTICA. Lo que alguien ya lleva no sale.
+- **"Lo recojo yo"** (apartar): los demás lo ven "Va Fulano · desde 10:40"; se libera solo a las `APARTADO_HORAS` (2) o al soltarlo. Apartar NO registra: eso solo al escanear. Si otro escanea algo apartado: aviso "lo apartó X" con "Ya lo traigo yo" (queda anotado y a X le aparece "Lo recogió…").
+- **"¿Es este?"** al teclear un folio a mano (evita el error de dedo).
+- **Rutas (aviso visual):** pestaña Rutas con columnas opcionales C Hasta (ventana), D Ruta, E Realiza, F Qué lleva (A y B no cambian). La ruta del momento es la que está pasando (hasta 15 min después de su hora o ventana) o la siguiente. Pantalla "Rutas de hoy" con el recorrido en orden, quién la realiza, si entrega en Oficinas, visitas a Coapa/Ecatepec y la nota del viernes (lo de 16:00–17:00 sale el lunes). No cambian plazos ni quién puede recoger.
+- **Avisos** (nuevo `12_AVISOS.gs`, pestaña **APP_Avisos**): la administradora los manda desde Administración → Avisos (o escribiéndolos en la pestaña). Para todos, Gestoría, Facturación o una persona; con vigencia; "Importante" sale en rojo, suena y pide "Enterado". Se ve quién ya lo leyó.
+- App 2.6.0 (service worker `gestores2-v12`). Pruebas: `prueba-botican.js` 91/91 (nueva), `pruebas.js` 60/60, `prueba-integrada.js` 65/65, `prueba-perfiles.js` 109/109, `prueba-celular.js` 32/32.
+
 ## 0.4.4 · 6-nov-2026 · Si usan "Registrar entrega" para un pedido suyo, se arregla solo
 - **Robot (paso nuevo `ligarLibres`):** si en una "entrega sin asignar" escribieron el número de un pedido o TAREA abierto a su nombre, la pasa sola a ese pedido (foto, quién recibió, ubicación, hora real) y Operaciones queda marcado. La "sin asignar" queda ANULADA con nota. Revisa los últimos 3 días.
 - **App 2.3.1:** en "+ Registrar entrega" avisa "¿Es un pedido que te asignaron? Entrégalo desde Pedidos (tienes N)" y, si escriben el número de uno de sus pedidos, ofrece "Entregarlo como pedido" con la foto y quién recibió ya puestos.

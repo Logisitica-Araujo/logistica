@@ -72,6 +72,11 @@ const hMov = H(tras, 'RES_Movimientos', [['título'], ['ID', 'Fecha', 'Hora', 'F
 const hAv = H(tras, 'RES_Avisos', [['título'], ['Fecha', 'Hora', 'Para (área)', 'Folio', 'Mensaje', 'Visto']]);
 const estT = folio => hRes.datos.find(f => f[0] === folio)[encT.indexOf('Estatus')];
 
+// LOGISTICA BOTICAN 2026 (vacío; prueba-botican.js lo llena)
+const ID_BOT = '1a3n7z962Ik6c1YrcD7RxkJEAWWK6a9xuA5LDrr2sffc';
+const bot = OPS.libroNuevo('LOGISTICA BOTICAN 2026 (COPIA DE PRUEBA)', ID_BOT);
+['Envios', 'Feriados', 'Rutas'].forEach(n => H(bot, n, n === 'Envios' ? [[''], ['Estatus', 'Identificador']] : [['Fecha', 'Motivo']]));
+
 // Archivo de la app
 const appL = APP.libroNuevo('App Gestores · Datos', 'ARCHIVO_APP');
 APP.activar(appL);
@@ -89,6 +94,6 @@ const robot = () => { sincronizarRelojes(); const r = JSON.parse(APP.correr('rob
 const opsFila = id => hOps.datos.find(f => f[0] === id);
 
 
-  return { APP, OPS, appL, madre, tras, hOps, hEnt, hHist, hRes, hMov, hAv, encT, estT, hoja, filasDe, robot, opsFila, formulaEstatus, URL_OPS, FOTO, FIRMA };
+  return { APP, OPS, bot, appL, madre, tras, hOps, hEnt, hHist, hRes, hMov, hAv, encT, estT, hoja, filasDe, robot, opsFila, formulaEstatus, URL_OPS, FOTO, FIRMA };
 }
 module.exports = { crear };

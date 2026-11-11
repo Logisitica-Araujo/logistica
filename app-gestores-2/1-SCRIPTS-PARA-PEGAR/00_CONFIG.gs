@@ -10,7 +10,7 @@
  ***********************************************************************/
 
 var APPG = {
-  VERSION: '0.4.1',
+  VERSION: '0.5.0',
   ZONA: 'America/Mexico_City',
 
   /* Nombres de las pestañas del archivo de la app. */
@@ -26,7 +26,9 @@ var APPG = {
     SESIONES:      'APP_Sesiones',
     LOG:           'APP_Log',
     PROBLEMAS:     'APP_Problemas',
-    SUCURSALES:    'APP_Sucursales'
+    SUCURSALES:    'APP_Sucursales',
+    APARTADOS:     'APP_Apartados',
+    AVISOS:        'APP_Avisos'
   },
 
   /* Encabezados de cada pestaña, en orden. El código busca las columnas
@@ -46,11 +48,13 @@ var APPG = {
                         'Resultado', 'Motivo', 'Comentario', 'Recibio', 'Lat', 'Lng', 'URLFoto', 'URLFirma',
                         'Estado', 'Intentos', 'UltimoError', 'EnviadoEn', 'Cliente', 'Direccion', 'DondeEntrego', 'Monto', 'Clase', 'Corregido'],
     APP_Recolecciones: ['FechaHora', 'NumeroGestor', 'Gestor', 'Vehiculo', 'Codigo', 'Tipo', 'Origen', 'Destino',
-                        'Contenido', 'Estado', 'EstadoFuente', 'Actualizado', 'Enviado', 'DestinoPrefijo'],
+                        'Contenido', 'Estado', 'EstadoFuente', 'Actualizado', 'Enviado', 'DestinoPrefijo', 'Nota'],
     APP_Sesiones:      ['FechaHora', 'Usuario', 'NumeroGestor', 'Dispositivo', 'Resultado'],
     APP_Log:           ['FechaHora', 'Quien', 'Accion', 'Detalle'],
     APP_Problemas:     ['Numero', 'FechaHora', 'Codigo', 'Quien', 'Detalle', 'Resuelto'],
-    APP_Sucursales:    ['Sucursal', 'ID', 'Direccion', 'URLMaps', 'Activo']
+    APP_Sucursales:    ['Sucursal', 'ID', 'Direccion', 'URLMaps', 'Activo'],
+    APP_Apartados:     ['Codigo', 'Tipo', 'NumeroGestor', 'Gestor', 'Desde', 'Hasta', 'Estado', 'Cerrado', 'CerradoPor'],
+    APP_Avisos:        ['Id', 'FechaHora', 'Texto', 'Para', 'Importante', 'Hasta', 'Activo', 'Autor', 'Leidos']
   },
 
   /* Perfiles. Columna "Area" de APP_Usuarios: decide qué app ve cada quien.
@@ -62,7 +66,7 @@ var APPG = {
   ROLES: ['Gestor', 'Administrador'],
 
   /* Pestañas que la administradora SÍ edita a mano. Las demás se protegen. */
-  EDITABLES: ['APP_Config', 'APP_Usuarios', 'APP_Vehiculos', 'APP_Motivos', 'APP_Documentos', 'APP_Problemas', 'APP_Sucursales'],
+  EDITABLES: ['APP_Config', 'APP_Usuarios', 'APP_Vehiculos', 'APP_Motivos', 'APP_Documentos', 'APP_Problemas', 'APP_Sucursales', 'APP_Avisos'],
 
   /* Sucursales a donde se entregan traspasos. ID = el de CAT_Sucursales del Sistema de Traspasos
      (el folio D-RB-0005 va a la sucursal D). Direcciones tomadas de la app actual. */
@@ -96,6 +100,9 @@ var APPG = {
     ['PALABRAS_EFECTIVO', 'Efectivo | Dinero | Cobro | $', 'Si el contenido trae una de estas palabras, se entrega como efectivo (pide monto, opcional)'],
     ['PALABRAS_DOCUMENTOS', 'Factura | Cortes | Corte | Documento | Contrato | Receta', 'Si el contenido trae una de estas palabras, se marca como documento'],
     ['MOTIVOS_CAMBIO_VEHICULO', 'Llanta ponchada | Falla mecánica | Lluvia | Carga grande | Se lo pasé a otro gestor | Otro', 'Motivos para cambiar de vehículo a medio día'],
+    ['ID_BOTICAN', '1a3n7z962Ik6c1YrcD7RxkJEAWWK6a9xuA5LDrr2sffc', 'Archivo LOGISTICA BOTICAN 2026 (Envios, Feriados, Rutas). Vacío = no se muestra la recolección BOTICAN'],
+    ['BOT_ESCRIBIR_H', true, 'TRUE = al recolectar un pedido BOTICAN se escribe la hora en Envios columna H (solo si está vacía y sin fórmula)'],
+    ['APARTADO_HORAS', 2, '"Lo recojo yo": horas para que un apartado se libere solo si no lo escanean'],
     ['APP_BLOQUEADA', false, 'TRUE = nadie puede entrar (mantenimiento)'],
     ['MENSAJE_BLOQUEO', 'App en mantenimiento. Intenta más tarde.', 'Texto que ven los gestores si está bloqueada'],
     ['ULTIMA_VUELTA_ROBOT', '', 'La escribe el robot. No editar.'],

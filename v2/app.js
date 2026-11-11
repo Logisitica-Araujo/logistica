@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.3.1';
+var VERSION_APP = '2.6.0';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -214,6 +214,11 @@ function actualizar(primera) {
     else if (S.vista === 'pedidos') vistaPedidos();
     else if (S.vista === 'lleva') vistaLleva();
     else if (S.vista === 'parada' && S.parada) vistaParada(S.parada.k);
+    else if (S.vista === 'botican') vistaBotican();
+    else if (S.vista === 'pendientes') vistaPendientes();
+    else if (S.vista === 'rutas') vistaRutas();
+    else if (S.vista === 'avisos') vistaAvisos();
+    else if (S.vista === 'mios') vistaMios();
     if (nuevos.length && !primera) avisarNuevos(nuevos);
   }).catch(function (e) {
     quitarCargando();
@@ -224,11 +229,14 @@ function actualizar(primera) {
 function detectarNuevos(d) {
   var rec = d.perfil && d.perfil.area === 'FACTURACION' ? (d.porRecoger || []) : [];
   var ids = d.pedidos.map(function (p) { return 'P' + p.id; }).concat(d.lleva.map(function (l) { return 'L' + l.codigo; }), rec.map(function (r) { return 'R' + r.folio; }));
+  // Avisos de Logística nuevos (sin leer) también suenan.
+  (d.avisos || []).forEach(function (a) { if (!a.leido && a.vigente) ids.push('A' + a.id); });
   var antes = S.vistos;
   S.vistos = ids;
   if (!antes) return [];
   var huboRec = antes.some(function (x) { return x.charAt(0) === 'R'; }) || !rec.length;   // la primera vez que llega la lista de "por recoger" no suena
-  return d.pedidos.filter(function (p) { return antes.indexOf('P' + p.id) < 0; }).map(function (p) { return { tipo: 'tarea', texto: 'Pedido ' + p.id + ' · ' + p.cliente }; })
+  return (d.avisos || []).filter(function (x) { return !x.leido && x.vigente && antes.indexOf('A' + x.id) < 0; }).map(function (x) { return { tipo: 'tarea', texto: 'Aviso: ' + x.texto }; })
+    .concat(d.pedidos.filter(function (p) { return antes.indexOf('P' + p.id) < 0; }).map(function (p) { return { tipo: 'tarea', texto: 'Pedido ' + p.id + ' · ' + p.cliente }; }))
     .concat(huboRec ? rec.filter(function (r) { return antes.indexOf('R' + r.folio) < 0; }).map(function (r) { return { tipo: 'traspaso', texto: 'Traspaso ' + r.folio + ' por recoger · va a ' + r.destino }; }) : []);
 }
 
@@ -368,13 +376,13 @@ function vistaInicio() {
   var html = '<div class="cab' + (conTarjeta ? ' con-tarjeta' : '') + '"><div class="cab-fila"><img src="../iconos/icono-192.png" alt="">' +
     '<div class="cab-nombre"><small>' + saludo() + ' · Gestoría</small><b>' + esc(d.gestor.nombre) + '</b></div>' +
     (perfil().admin ? '<button class="btn-ic" onclick="entrarAdmin()" aria-label="Administración">' + ICP.escudo + '</button>' : '') +
-    '<button class="btn-ic" onclick="vistaYo()" aria-label="Mi cuenta">' + IC.campana + (aviso ? '<span class="punto"></span>' : '') + '</button></div>' +
+    '<button class="btn-ic" onclick="vistaAvisos()" aria-label="Avisos">' + IC.campana + (avisosSinLeer().length ? '<span class="cuenta-av">' + avisosSinLeer().length + '</span>' : aviso ? '<span class="punto"></span>' : '') + '</button></div>' +
     '<div class="chips"><button class="chip" onclick="vistaVehiculo(false)">' + esc(d.vehiculo || 'Sin vehículo') + ' · cambiar</button>' +
     '<span class="chip" id="estado" onclick="verCola()"><i class="' + (x.amb ? 'amb' : '') + '"></i>' + esc(x.t) + '</span></div></div>';
   if (aviso) html += '<div class="tarjeta-aviso"><span class="ic">' + IC.campana + '</span><span class="tx"><small>Nueva tarea · ' + haceTxt(aviso.hora) + '</small><b>' + esc(aviso.texto) + '</b></span><button class="b" onclick="S.aviso=null;vistaPedidos()">Ver</button></div>';
   else if (window.Notification && Notification.permission === 'default') html += '<div class="tarjeta-aviso bien"><span class="ic">' + IC.campana + '</span><span class="tx"><small>Avisos</small><b>Activa el sonido de tareas nuevas</b></span><button class="b" onclick="pedirAvisos()">Activar</button></div>';
 
-  html += '<div class="cuerpo con-nav"><div class="rejilla">' +
+  html += '<div class="cuerpo con-nav">' + bloqueAvisos() + tarjetaRutaBotican() + '<div class="rejilla">' +
     '<button class="grande" onclick="vistaEscaner(\'recolectar\')"><span class="ic">' + IC.scan + '</span><span><b>Escanear</b><small>Recolecta o entrega con la cámara</small></span></button>' +
     '<button class="mosaico" onclick="vistaPedidos()"><span class="fila"><span style="color:var(--azul)">' + IC.casa + '</span><span class="num">' + d.pedidos.length + '</span></span><b>Pedidos a domicilio</b></button>' +
     '<button class="mosaico" onclick="vistaLleva()"><span class="fila"><span style="color:var(--verde)">' + IC.caja + '</span><span class="num">' + d.lleva.length + '</span></span><b>Lo que llevo</b></button>' +
@@ -687,10 +695,12 @@ function salirEscaner() {
 function pararEscaner() { if (S.escaner) { S.escaner.parar(); S.escaner = null; } }
 function teclear(ev) { ev.preventDefault(); var v = $('inCodigo').value.trim(); if (v) { $('inCodigo').value = ''; alLeer(v, true); } }
 
-function alLeer(texto) {
+function alLeer(texto, tecleado) {
   var codigo = String(texto || '').trim().toUpperCase();
   if (!codigo) return;
   if (S.modoScan === 'entregar') return entregarLeido(codigo);
+  // Tecleado a mano: primero "¿Es este?" (evita el error de dedo). Escaneado: la etiqueta manda.
+  if (tecleado && S.modoScan === 'recolectar' && typeof confirmarTecleado === 'function' && confirmarTecleado(codigo)) return;
   if (S.leidos.some(function (l) { return clave(l.codigo) === clave(codigo); }) || S.datos.lleva.some(function (l) { return clave(l.codigo) === clave(codigo); })) {
     sonido('escaneoMal'); return toast('Ya leíste ' + codigo);
   }
@@ -702,7 +712,9 @@ function mandarRecoleccion(codigos, items) {
   srv('recolectar', { codigos: codigos }).then(function (d) { aplicarResultados(d.resultados, items); actualizar(); })
     .catch(function (e) {
       if (!e.red) { items.forEach(function (l) { l.estado = 'mal'; l.texto = e.message; }); return pintarLeidos(); }
-      encolar('recolectar', { codigos: codigos }, 'Recolección ' + codigos.join(', '));
+      // Sin señal no se puede revisar si ya lo recolectó alguien: se registra y el servidor avisa a Administración si era repetido.
+      var forz = codigos.map(function (c) { return Object.assign(typeof c === 'object' ? c : { codigo: c }, { forzar: true, sinSenal: true }); });
+      encolar('recolectar', { codigos: forz }, 'Recolección ' + forz.map(function (c) { return c.codigo; }).join(', '));
       items.forEach(function (l) { l.estado = 'esp'; l.texto = 'Sin señal · se registra solo al tener señal'; });
       pintarLeidos();
     });
@@ -711,7 +723,9 @@ function aplicarResultados(res, items) {
   res.forEach(function (r, i) {
     var l = items[i] || {};
     l.codigo = r.codigo;
-    if (r.ok) { l.origen = r.origen; l.destino = r.destino + (r.direccion ? ' (' + r.direccion + ')' : ''); l.contenido = r.contenido; l.estado = 'ok'; l.texto = 'Va a ' + (r.destino || '—') + (r.direccion ? ' · ' + r.direccion : '') + (r.enPedidos ? ' · ya está en tus pedidos' : ''); }
+    if (r.apartadoPor) { l.estado = 'mal'; l.texto = r.mensaje; l.aviso = r; sonido('escaneoMal'); avisoRecoleccion(l); return; }
+    if (r.duplicado || r.noExiste) { l.estado = 'mal'; l.texto = r.mensaje; l.aviso = r; sonido('escaneoMal'); avisoRecoleccion(l); return; }
+    if (r.ok) { l.aviso = null; l.origen = r.origen; l.destino = r.destino + (r.direccion ? ' (' + r.direccion + ')' : ''); l.contenido = r.contenido; l.estado = 'ok'; l.texto = 'Va a ' + (r.destino || '—') + (r.direccion ? ' · ' + r.direccion : '') + (r.enPedidos ? ' · ya está en tus pedidos' : ''); }
     else if (r.pideDestino) { l.estado = 'esp'; l.texto = r.mensaje; l.pideDestino = true; }
     else { l.estado = 'mal'; l.texto = r.mensaje; if (!r.repetido) sonido('escaneoMal'); }
   });
@@ -724,7 +738,8 @@ function pintarLeidos() {
   c.innerHTML = (S.leidos || []).slice(0, 12).map(function (l, i) {
     return '<div class="leido ' + l.estado + '"><span class="ic">' + (l.estado === 'ok' ? '✓' : l.estado === 'mal' ? '!' : '…') + '</span><span class="tx"><b>' + esc(l.codigo) + '</b><span>' + esc(l.texto) + '</span></span>' +
       (l.pideDestino ? '<button class="b" onclick="pedirDestino(' + i + ')">Destino</button>' : '') +
-      (l.estado === 'ok' ? '<button class="b wa-b" onclick="waLeido(' + i + ')">WhatsApp</button>' : '') + '</div>';
+      (l.estado === 'ok' ? '<button class="b wa-b" onclick="waLeido(' + i + ')">WhatsApp</button>' : '') +
+      (l.aviso ? '<button class="b" onclick="avisoRecoleccion(S.leidos[' + i + '])">Revisar</button>' : '') + '</div>';
   }).join('');
 }
 function pedirDestino(i) {

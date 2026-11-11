@@ -82,12 +82,13 @@ function vistaRuta() {
   var html = '<div class="cab"><div class="cab-fila"><img src="../iconos/icono-192.png" alt="">' +
     '<div class="cab-nombre"><small>' + saludo() + ' · Traslados</small><b>' + esc(d.gestor.nombre) + '</b></div>' +
     (perfil().admin ? '<button class="btn-ic" onclick="entrarAdmin()" aria-label="Administración">' + ICP.escudo + '</button>' : '') +
-    '<button class="btn-ic" onclick="vistaYo()" aria-label="Mi cuenta">' + IC.campana + (aviso ? '<span class="punto"></span>' : '') + '</button></div>' +
+    '<button class="btn-ic" onclick="vistaAvisos()" aria-label="Avisos">' + IC.campana + (avisosSinLeer().length ? '<span class="cuenta-av">' + avisosSinLeer().length + '</span>' : aviso ? '<span class="punto"></span>' : '') + '</button></div>' +
     '<div class="chips"><button class="chip" onclick="vistaVehiculo(false)">' + esc(d.vehiculo || 'Sin vehículo') + ' · cambiar</button>' +
     '<span class="chip" id="estado" onclick="verCola()"><i class="' + (x.amb ? 'amb' : '') + '"></i>' + esc(x.t) + '</span></div></div>' +
     '<div class="cuerpo con-nav">';
+  html += bloqueAvisos();
   if (aviso) html += '<div class="aviso">' + esc(aviso.texto) + '</div>';
-  html += '<div class="dos-grandes"><button class="grande" onclick="vistaEscaner(\'recolectar\')"><span><b>Escanear</b><small>Recoger o entregar lo asignado</small></span></button>' +
+  html += tarjetaRutaBotican(true) + '<div class="dos-grandes"><button class="grande" onclick="vistaEscaner(\'recolectar\')"><span><b>Escanear</b><small>Recoger o entregar lo asignado</small></span></button>' +
     '<button class="grande linea" onclick="vistaLibre()"><span><b>+ Registrar entrega</b><small>Algo que no estaba en tu ruta</small></span></button></div>' +
     '<span class="etiqueta">Tu ruta de hoy · por parada</span>';
   if (!R.paradas.length) html += '<div class="vacio"><b>No llevas nada por entregar</b><span>Escanea lo que recojas; aparece aquí agrupado por la sucursal o área a donde va.</span></div>';
@@ -305,7 +306,7 @@ function admHoy() {
   var f = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
   var cab = function (r) {
     return '<div class="cab"><div class="cab-fila"><div class="cab-nombre"><small>ADMINISTRACIÓN</small><b>Hoy · ' + esc(f) + '</b></div>' +
-      '<button class="chip" onclick="salirAdmin()">Mi app</button></div>' +
+      '<button class="chip" onclick="admAvisos()">Avisos</button><button class="chip" onclick="salirAdmin()">Mi app</button></div>' +
       (r ? '<div class="chips"><span class="chip"><i class="' + (r.robotSeg == null || r.robotSeg > 180 ? 'amb' : '') + '"></i>Robot ' + (r.robot ? 'hace ' + (r.robotSeg < 90 ? r.robotSeg + ' s' : Math.round(r.robotSeg / 60) + ' min') : 'sin datos') + '</span>' +
         (r.bloqueada ? '<span class="chip"><i class="amb"></i>EN MANTENIMIENTO</span>' : '') + '</div>' : '') + '</div>';
   };
@@ -800,4 +801,324 @@ function waLeido(i) { var l = S.leidos[i]; if (l) { pararEscaner(); waRecoleccio
 function waLleva(i) {
   var l = S.datos.lleva[i]; if (!l) return;
   waRecoleccion([{ codigo: l.codigo, origen: l.origen, destino: l.destino + (l.destinoDireccion ? ' (' + l.destinoDireccion + ')' : ''), contenido: l.contenido }], 'vistaLleva()');
+}
+
+
+/* =====================================================================
+ *  RECOLECCIÓN BOTICAN (reglas de Logística del 7-nov-2026)
+ *  Ruta del momento (pestaña Rutas), pedidos por fecha compromiso con semáforo,
+ *  y avisos al escanear un pedido ya recolectado o que no existe.
+ * ===================================================================== */
+var SEM = { rojo: ['#B42318', 'VENCIDO', 'Venció'], amarillo: ['#E0A100', 'VENCE PRONTO', 'Vence'], verde: ['#1E7E45', 'EN TIEMPO', 'Vence'], gris: ['#A0A8B6', 'EN ELABORACIÓN', ''] };
+function puntoSem(s) { return '<span class="sem" style="background:' + SEM[s][0] + '"></span>'; }
+
+/** Tarjeta "Ruta del momento" del inicio. compacta = para la pantalla de Facturación. */
+function tarjetaRutaBotican(compacta) {
+  var b = S.datos && S.datos.botican;
+  if (!b) return '';
+  if (b.error) return '<div class="aviso warn">' + esc(b.error) + '</div>';
+  var lista = (b.porRecolectar || []).filter(function (p) { return p.enRuta; });
+  var html = '<button class="ruta-bot" onclick="vistaPendientes()">';
+  if (b.ruta) {
+    var r = b.ruta;
+    html += '<span class="rb-fila"><span class="rb-tag">RUTA DEL MOMENTO</span><small>' + (r.enCurso ? 'pasando ahora' + (r.hasta ? ' · hasta ' + esc(r.hasta) : '') : 'sale en ' + r.enMin + ' min') + '</small></span>' +
+      '<b class="rb-tit">' + esc(r.nombre ? r.nombre + ' · ' : 'Ruta ') + esc(r.hora) + (r.hasta ? '–' + esc(r.hasta) : '') + '</b>' + recorridoHtml(r) +
+      (r.realiza ? '<small class="rb-extra">Realiza: <b>' + esc(r.realiza) + '</b>' + (r.lleva && !compacta ? ' · ' + esc(r.lleva) : '') + '</small>' : '') +
+      (r.nota ? '<small class="rb-nota">' + esc(r.nota) + '</small>' : '') +
+      (r.extra ? '<small class="rb-extra">Hoy también: <b>' + esc(r.extra) + '</b></small>' : '');
+  } else {
+    html += '<span class="rb-fila"><span class="rb-tag gris">SIN RUTA</span></span><b class="rb-tit">' + (b.habilHoy ? 'Ya salieron todas las rutas de hoy' : 'Hoy no hay ruta' + (b.feriadoHoy ? ' · ' + esc(b.feriadoHoy) : ' (día inhábil)')) + '</b>';
+  }
+  if (!compacta) {
+    html += '<span class="rb-sub">POR RECOLECTAR · BOTICAN (' + lista.length + ')</span>';
+    lista.slice(0, 3).forEach(function (p) {
+      html += '<span class="rb-ped">' + puntoSem(p.semaforo) + '<b class="mono">' + esc(p.id) + '</b><span>' + SEM[p.semaforo][2] + ': ' + esc(p.vence) + '</span></span>';
+    });
+    if (!lista.length) html += '<span class="rb-ped"><span>Nada pendiente de recoger por ahora.</span></span>';
+  } else if (lista.length) {
+    var rojos = lista.filter(function (p) { return p.semaforo === 'rojo'; }).length;
+    html += '<span class="rb-ped">' + puntoSem(rojos ? 'rojo' : lista[0].semaforo) + '<span>' + lista.length + ' pedido(s) BOTICAN por recolectar' + (rojos ? ' · ' + rojos + ' vencido(s)' : '') + '</span></span>';
+  }
+  html += '<span class="rb-mas" onclick="event.stopPropagation();vistaRutas()">Rutas de hoy ›</span>';
+  var pd = S.datos.pendientes, misVig = pd ? pd.mios.filter(function (x) { return !x.cerrado; }).length : 0;
+  return html + '<span class="rb-mas">Pendientes por recoger' + (pd ? ' (' + pd.total + ')' : '') + ' ›' + (misVig ? ' · voy por ' + misVig : '') + '</span></button>';
+}
+
+/** R2 · Por recolectar, ordenados por fecha compromiso. */
+function vistaBotican() {
+  S.vista = 'botican'; pararEscaner();
+  var b = (S.datos && S.datos.botican) || {}, lista = b.porRecolectar || [];
+  var cuenta = { rojo: 0, amarillo: 0, verde: 0 };
+  lista.forEach(function (p) { cuenta[p.semaforo]++; });
+  var html = '<div class="barra"><button class="volver" onclick="vistaInicio()" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>Por recolectar · BOTICAN</b><small>Los que vencen primero, arriba</small></div></div><div class="cuerpo con-nav">';
+  if (b.ruta) html += '<div class="aviso">Ruta del momento: <b>' + esc(b.ruta.hora) + ' · ' + esc(b.ruta.sucursales) + '</b>' + (b.ruta.extra ? ' · hoy también ' + esc(b.ruta.extra) : '') + '</div>';
+  html += '<div class="sem-res">' + (cuenta.rojo ? '<span class="sr r">● ' + cuenta.rojo + ' vencido' + (cuenta.rojo > 1 ? 's' : '') + '</span>' : '') +
+    (cuenta.amarillo ? '<span class="sr a">● ' + cuenta.amarillo + ' vence pronto</span>' : '') + (cuenta.verde ? '<span class="sr v">● ' + cuenta.verde + ' en tiempo</span>' : '') +
+    ((b.elaboracion || []).length ? '<span class="sr g">● ' + b.elaboracion.length + ' en elaboración</span>' : '') + '</div>';
+  if (!lista.length) html += '<div class="vacio"><b>Nada por recolectar</b><span>Cuando Producción marque un pedido como listo, aparece aquí con su fecha compromiso.</span></div>';
+  lista.forEach(function (p) {
+    html += '<div class="ped-bot" style="border-left-color:' + SEM[p.semaforo][0] + '"><div class="pb-fila"><b class="mono">' + esc(p.id) + '</b><span class="pb-tag" style="color:' + SEM[p.semaforo][0] + '">' + SEM[p.semaforo][1] + '</span><span class="espacio"></span><small>' + esc(p.sucTxt) + (p.enRuta ? '' : ' · hoy no') + '</small></div>' +
+      '<b class="pb-vence"' + (p.semaforo === 'rojo' ? ' style="color:var(--rojo)"' : '') + '>' + SEM[p.semaforo][2] + ': ' + esc(p.vence) + '</b><small>' + esc(p.explicacion) + (p.area ? ' · ' + esc(p.area) : '') + '</small></div>';
+  });
+  (b.elaboracion || []).forEach(function (p) {
+    html += '<div class="ped-bot gris" style="border-left-color:' + SEM.gris[0] + '"><div class="pb-fila"><b class="mono">' + esc(p.id) + '</b><span class="pb-tag" style="color:var(--gris)">EN ELABORACIÓN</span></div><small>Producción aún no lo marca listo</small></div>';
+  });
+  html += '<p class="nota">Horarios y feriados: pestañas Rutas y Feriados de LOGISTICA BOTICAN 2026' + (b.proxFeriado ? ' · próximo feriado: ' + esc(b.proxFeriado) : '') + '.</p>';
+  pintar(html + '</div><div class="pie con-nav-pie"><button class="btn" onclick="vistaEscaner(\'recolectar\')">Escanear lo que recojo</button></div>' + nav(''));
+}
+
+/** R3 / R4 · Aviso al escanear: ya lo recolectó alguien, o no existe. */
+function avisoRecoleccion(l) {
+  var r = l && l.aviso; if (!r) return;
+  var i = S.leidos.indexOf(l);
+  if (r.apartadoPor) {
+    return modal('<h2>🔒 ' + esc(r.codigo) + ' lo apartó ' + esc(r.apartadoPor) + '</h2>' +
+      '<div class="tabla-mini"><div><span>Desde</span><b>' + esc(r.desde) + '</b></div><div><span>Se libera</span><span>' + esc(r.hasta) + ' si no lo escanea</span></div></div>' +
+      '<p>Si ya lo traes tú en la mano (por ejemplo, ' + esc(r.apartadoPor) + ' no llegó), regístralo: a ' + esc(r.apartadoPor) + ' le avisa la app y a Administración le queda anotado.</p>' +
+      '<button class="btn" onclick="cerrarModal();decidirLeido(' + i + ',\'dejar\')">Dejarlo · que lo recoja ' + esc(r.apartadoPor) + '</button>' +
+      '<button class="btn linea" onclick="cerrarModal();decidirLeido(' + i + ',\'tomar\')">Ya lo traigo yo · registrar</button>');
+  }
+  if (r.duplicado) {
+    modal('<h2>' + esc(r.codigo) + ' ya fue recolectado</h2>' +
+      '<div class="tabla-mini"><div><span>Lo recogió</span><b>' + esc(r.quien) + '</b></div><div><span>Cuándo</span><b>' + esc(fechaBonita(r.cuando)) + '</b></div><div><span>Estado</span><span>' + esc(estadoRec(r.estado)) + '</span></div></div>' +
+      '<p>Si es el mismo paquete, no lo registres otra vez. Si es <b>otro bulto del mismo pedido</b>, regístralo y queda anotado como "bulto adicional".</p>' +
+      '<button class="btn" onclick="cerrarModal();decidirLeido(' + i + ',\'no\')">No registrar · es el mismo</button>' +
+      '<button class="btn linea" onclick="cerrarModal();decidirLeido(' + i + ',\'bulto\')">Es otro bulto · registrar</button>');
+  } else {
+    modal('<h2>No encuentro el ' + esc(r.codigo) + '</h2>' +
+      '<div class="tabla-mini"><div><span style="color:var(--rojo)">✕</span><span>No está en <b>Envios</b> de LOGISTICA BOTICAN 2026</span></div><div><span style="color:var(--rojo)">✕</span><span>No está en <b>Operaciones</b></span></div>' +
+      (r.sugerencia ? '<div><span>¿Quisiste decir?</span><b class="mono">' + esc(r.sugerencia) + '</b></div>' : '') + '</div>' +
+      '<p>Revisa el número en la etiqueta. Si de verdad no existe, pregunta en Producción antes de llevártelo.</p>' +
+      '<button class="btn" onclick="cerrarModal();decidirLeido(' + i + ',\'corregir\')">' + (r.sugerencia ? 'Usar ' + esc(r.sugerencia) : 'Corregir el número') + '</button>' +
+      '<button class="btn linea" onclick="cerrarModal();decidirLeido(' + i + ',\'forzar\')">Registrar de todos modos</button>');
+  }
+}
+function decidirLeido(i, que) {
+  var l = S.leidos[i]; if (!l) return;
+  var r = l.aviso;
+  if (que === 'dejar') { l.aviso = null; l.estado = 'mal'; l.texto = 'No se registró: lo va a recoger ' + r.apartadoPor; return pintarLeidos(); }
+  if (que === 'tomar') { l.aviso = null; l.estado = 'esp'; l.texto = 'Registrando…'; pintarLeidos(); return mandarRecoleccion([{ codigo: r.codigo, tomar: true }], [l]); }
+  if (que === 'no') { l.aviso = null; l.estado = 'mal'; l.texto = 'No se registró: ya lo había recolectado ' + r.quien; return pintarLeidos(); }
+  if (que === 'corregir') {
+    S.leidos.splice(i, 1); pintarLeidos();
+    if (r.sugerencia) return alLeer(r.sugerencia);
+    var c = $('inCodigo'); if (c) { c.value = r.codigo; c.focus(); c.select(); }
+    return;
+  }
+  l.aviso = null; l.estado = 'esp'; l.texto = 'Registrando…'; pintarLeidos();
+  mandarRecoleccion([{ codigo: r.codigo, forzar: true, bulto: que === 'bulto' }], [l]);
+}
+function fechaBonita(t) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/.exec(String(t || '')); if (!m) return t;
+  var d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'][d.getDay()] + ' ' + (+m[3]) + ' ' + ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][+m[2] - 1] + ', ' + m[4] + ':' + m[5];
+}
+function estadoRec(e) {
+  e = String(e || '');
+  return /ENTREGADO/.test(e) ? 'Ya lo entregó' : /EN RUTA/.test(e) ? 'Lo trae en este momento' : /CERRADO/.test(e) ? 'Ya llegó a su destino' : e.toLowerCase();
+}
+
+
+/* =====================================================================
+ *  PENDIENTES POR RECOGER · "Lo recojo yo" (apartar) · ¿Es este?
+ *  Apartar NO registra la recolección: eso solo pasa al escanear la etiqueta.
+ * ===================================================================== */
+var TIPO_PEND = { BOTICAN: ['BOTICAN', '#6B3FA0', '#F1EAFB'], FADERMEX: ['FADERMEX', '#9A5400', '#FFF1DE'], TRASPASO: ['TRASPASO', '#0B3D91', '#E2EAF8'] };
+function chipTipo(t) { var x = TIPO_PEND[t] || [t, '#3D4757', '#EEF1F6']; return '<span class="pchip-t" style="color:' + x[1] + ';background:' + x[2] + '">' + x[0] + '</span>'; }
+
+function vistaPendientes() {
+  S.vista = 'pendientes'; pararEscaner();
+  var pd = (S.datos && S.datos.pendientes) || { grupos: [], total: 0, mios: [] }, b = S.datos.botican || {};
+  S.pendSel = S.pendSel || {}; S.pendFiltro = S.pendFiltro || 'TODO';
+  var cuenta = { TODO: 0, BOTICAN: 0, FADERMEX: 0, TRASPASO: 0 };
+  pd.grupos.forEach(function (g) { g.items.forEach(function (i) { cuenta.TODO++; cuenta[i.tipo] = (cuenta[i.tipo] || 0) + 1; }); });
+  var misVig = pd.mios.filter(function (x) { return !x.cerrado; }).length;
+  var marc = Object.keys(S.pendSel).filter(function (k) { return S.pendSel[k]; });
+  var html = '<div class="barra"><button class="volver" onclick="S.pendSel={};vistaInicio()" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>Pendientes por recoger</b><small>' +
+    (b.ruta ? 'Ruta ' + esc(b.ruta.hora) + ' · ' + esc(String(b.ruta.sucursales).replace(/\s*·\s*/g, ', ')) + (b.ruta.extra ? ' · hoy también ' + esc(b.ruta.extra.replace(/\s*\(.*$/, '')) : '') : 'Sin ruta en este momento') + '</small></div>' +
+    (misVig ? '<button class="chip-mios" onclick="vistaMios()">Voy por ' + misVig + '</button>' : '') + '</div><div class="cuerpo con-nav">' +
+    '<div class="filtros">' + ['TODO', 'BOTICAN', 'FADERMEX', 'TRASPASO'].map(function (f) {
+      return '<button class="' + (S.pendFiltro === f ? 'act' : '') + '" onclick="S.pendFiltro=\'' + f + '\';vistaPendientes()">' + ({ TODO: 'Todo', BOTICAN: 'BOTICAN', FADERMEX: 'FADERMEX', TRASPASO: 'Traspasos' })[f] + ' · ' + (cuenta[f] || 0) + '</button>';
+    }).join('') + '</div>';
+  var hay = false;
+  pd.grupos.forEach(function (g) {
+    var its = g.items.filter(function (i) { return S.pendFiltro === 'TODO' || i.tipo === S.pendFiltro; });
+    if (!its.length) return; hay = true;
+    html += '<span class="etiqueta">' + esc(g.lugar) + '</span>';
+    its.forEach(function (i) {
+      var borde = i.semaforo ? SEM[i.semaforo][0] : TIPO_PEND[i.tipo] ? TIPO_PEND[i.tipo][1] : 'var(--borde)';
+      var bloqueado = (i.apartado && !i.mio) || i.asignadoOps;
+      var k = clave(i.codigo);
+      if (bloqueado) {
+        html += '<div class="pend bloq"><span class="pend-ic">🔒</span><span class="tx"><span class="pend-l1"><b class="mono">' + esc(i.codigo) + '</b>' + chipTipo(i.tipo) + '</span><small>' +
+          (i.apartado ? 'Va ' + esc(i.apartado.nombre) + ' · desde ' + esc(i.apartado.desde) : 'Asignado a ' + esc(i.asignadoOps) + ' en Operaciones') + '</small></span></div>';
+      } else if (i.mio) {
+        html += '<div class="pend mio" style="border-left-color:' + borde + '"><span class="pend-ic">✋</span><span class="tx"><span class="pend-l1"><b class="mono">' + esc(i.codigo) + '</b>' + chipTipo(i.tipo) + '</span><small>Apartado por ti · se libera ' + esc(i.apartado.hasta) + '</small><small>' + esc(i.texto) + '</small></span></div>';
+      } else {
+        html += '<label class="pend" style="border-left-color:' + borde + '"><input type="checkbox" ' + (S.pendSel[k] ? 'checked' : '') + ' onchange="S.pendSel[\'' + k + '\']=this.checked;vistaPendientes()">' +
+          '<span class="tx"><span class="pend-l1"><b class="mono">' + esc(i.codigo) + '</b>' + chipTipo(i.tipo) + (i.asignadoAMi ? '<span class="pchip-t" style="color:var(--verde);background:var(--verde-suave)">TE LO ASIGNARON</span>' : '') + '</span>' +
+          '<small' + (i.semaforo === 'rojo' ? ' style="color:var(--rojo);font-weight:700"' : '') + '>' + esc(i.texto) + (i.hoy === false ? ' · hoy no se visita' : '') + '</small></span></label>';
+      }
+    });
+  });
+  if (!hay) html += '<div class="vacio"><b>Nada pendiente por recoger</b><span>Cuando haya pedidos listos o traspasos esperando, aparecen aquí. Lo que alguien ya lleva no sale.</span></div>';
+  html += '</div><div class="pie con-nav-pie">' + (marc.length ? '<button class="btn" onclick="apartarMarcados()">Lo recojo yo · ' + marc.length + (marc.length > 1 ? ' marcados' : ' marcado') + '</button>'
+    : '<button class="btn linea" onclick="vistaEscaner(\'recolectar\')">Escanear lo que recojo</button>') +
+    '<p class="nota" style="margin:0">Apartar NO registra la recolección: eso es al escanear la etiqueta.</p></div>' + nav('');
+  pintar(html);
+}
+function itemsPend() { var o = {}; ((S.datos.pendientes || {}).grupos || []).forEach(function (g) { g.items.forEach(function (i) { o[clave(i.codigo)] = i; }); }); return o; }
+function apartarMarcados() {
+  var todos = itemsPend(), cods = Object.keys(S.pendSel).filter(function (k) { return S.pendSel[k] && todos[k]; }).map(function (k) { return { codigo: todos[k].codigo, tipo: todos[k].tipo }; });
+  if (!cods.length) return;
+  cargando('Apartando…');
+  srv('apartar', { codigos: cods }).then(function (r) {
+    quitarCargando();
+    var mal = r.resultados.filter(function (x) { return !x.ok; });
+    S.pendSel = {};
+    if (mal.length) { sonido('error'); toast(mal.map(function (x) { return x.mensaje; }).join(' · '), 'err'); } else sonido('escaneo');
+    return actualizar().then(vistaMios);
+  }).catch(function (e) { quitarCargando(); falla(e.red ? errCod('CEL-02', 'Sin señal: para apartar necesitas señal. Igual puedes escanear y se registra.') : e); });
+}
+function vistaMios() {
+  S.vista = 'mios'; pararEscaner();
+  var pd = (S.datos && S.datos.pendientes) || { mios: [], horas: 2 };
+  var vig = pd.mios.filter(function (x) { return !x.cerrado; }), cerr = pd.mios.filter(function (x) { return x.cerrado; });
+  var html = '<div class="cab"><div class="cab-fila"><button class="btn-ic" onclick="vistaPendientes()" aria-label="Volver">' + IC.atras + '</button><div class="cab-nombre"><small>Voy por</small><b>' + vig.length + (vig.length === 1 ? ' pendiente' : ' pendientes') + '</b></div></div>' +
+    '<small style="color:var(--azul-claro)">Los demás ven "Va ' + esc(S.datos.gestor.nombre) + '". Se liberan solos a las ' + pd.horas + ' horas si no los escaneas.</small></div><div class="cuerpo con-nav">';
+  if (!vig.length && !cerr.length) html += '<div class="vacio"><b>No has apartado nada</b><span>En "Pendientes por recoger" marca lo que vas a recoger y toca "Lo recojo yo".</span></div>';
+  vig.forEach(function (i) {
+    html += '<div class="pend mio" style="border-left-color:' + (i.semaforo ? SEM[i.semaforo][0] : 'var(--azul)') + '"><span class="tx"><span class="pend-l1"><b class="mono">' + esc(i.codigo) + '</b>' + chipTipo(i.tipo) + '</span><small>' + esc(i.lugar) + ' · ' + esc(i.texto) + '</small>' +
+      '<small style="color:var(--gris)">Apartado ' + esc(i.apartado.desde) + ' · se libera ' + esc(i.apartado.hasta) + '</small></span><button class="b chico" onclick="soltar(\'' + esc(i.codigo) + '\')">Soltar</button></div>';
+  });
+  cerr.forEach(function (i) {
+    var mio = i.cerrado === 'RECOGIDO';
+    html += '<div class="pend ' + (mio ? 'hecho-ok' : 'bloq') + '"><span class="pend-ic">' + (mio ? '✓' : '↪') + '</span><span class="tx"><span class="pend-l1"><b class="mono">' + esc(i.codigo) + '</b>' + chipTipo(i.tipo) + '</span><small>' +
+      (mio ? 'Escaneado ' + esc(i.hora) + ' · ya está en "Lo que llevo"' : 'Lo recogió ' + esc(i.por) + ' a las ' + esc(i.hora)) + '</small></span></div>';
+  });
+  html += '<div class="aviso warn">Cuando escaneas la etiqueta de uno de estos, se marca solo y pasa a "Lo que llevo". Si escaneas algo que no apartaste, también se registra (si nadie más lo apartó).</div></div>' +
+    '<div class="pie con-nav-pie"><button class="btn" onclick="vistaEscaner(\'recolectar\')">Escanear las etiquetas</button></div>' + nav('');
+  pintar(html);
+}
+function soltar(codigo) {
+  cargando('Soltando…');
+  srv('soltar', { codigo: codigo }).then(function () { quitarCargando(); toast(codigo + ' quedó libre para otro gestor', 'ok'); return actualizar().then(vistaMios); })
+    .catch(function (e) { quitarCargando(); falla(e); });
+}
+/** Tecleado a mano: si lo conocemos, "¿Es este?". Devuelve true si mostró la pregunta. */
+function confirmarTecleado(codigo) {
+  var k = clave(codigo), i = itemsPend()[k], info = null;
+  if (i) info = { codigo: i.codigo, tipo: i.tipo, l1: i.texto, l2: 'Se recoge en ' + i.lugar };
+  if (!info) { var p = (S.datos.pedidos || []).filter(function (x) { return clave(x.id) === k; })[0]; if (p) info = { codigo: p.id, tipo: 'PEDIDO', l1: p.cliente, l2: p.direccion }; }
+  if (!info) return false;
+  S.tecleado = info.codigo;
+  modal('<p style="margin:0">Tecleaste <b class="mono">' + esc(codigo) + '</b></p><h2>¿Es este?</h2>' +
+    '<div class="es-este"><div class="pend-l1"><b class="mono" style="font-size:17px">' + esc(info.codigo) + '</b>' + chipTipo(info.tipo) + '</div><b>' + esc(info.l1) + '</b><small>' + esc(info.l2) + '</small></div>' +
+    '<p>Compáralo con la etiqueta (nombre o destino) antes de confirmar.</p>' +
+    '<button class="btn verde" onclick="cerrarModal();alLeer(S.tecleado)">Sí, es este · registrar</button>' +
+    '<button class="btn linea" onclick="cerrarModal();var c=$(\'inCodigo\');if(c){c.value=\'' + esc(codigo) + '\';c.focus();c.select()}">No, me equivoqué</button>');
+  return true;
+}
+
+
+/* ---------- Rutas (aviso visual, de la pestaña Rutas de LOGISTICA BOTICAN 2026) ---------- */
+function recorridoHtml(r) {
+  var p = r.paradas && r.paradas.length ? r.paradas : String(r.sucursales || '').split(/\s*·\s*/);
+  return '<span class="recorrido">' + p.map(function (x, i) {
+    var of = /oficinas/i.test(x);
+    return (i ? '<span class="rc-linea"></span>' : '') + '<span class="rc-par' + (of ? ' of' : '') + '"><i></i>' + esc(x) + '</span>';
+  }).join('') + '</span>';
+}
+function vistaRutas() {
+  S.vista = 'rutas'; pararEscaner();
+  var b = (S.datos && S.datos.botican) || {}, v = b.visitas || {};
+  var html = '<div class="barra"><button class="volver" onclick="vistaInicio()" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>Rutas de hoy</b><small>' +
+    (b.habilHoy === false ? 'Hoy no hay rutas' + (b.feriadoHoy ? ' · ' + esc(b.feriadoHoy) : '') : 'Recorrido en orden · todas terminan en Oficinas salvo donde se indica') + '</small></div></div><div class="cuerpo con-nav">';
+  (b.rutasHoy || []).forEach(function (r) {
+    html += '<div class="ruta-card' + (r.actual ? ' actual' : '') + (r.paso ? ' pasada' : '') + '"><div class="rc-cab"><span class="rb-tag' + (r.actual ? '' : ' gris') + '">' + esc(r.nombre || 'Ruta') + '</span>' +
+      '<b>' + esc(r.hora) + (r.hasta ? '–' + esc(r.hasta) : '') + '</b><span class="espacio"></span><small>' + (r.actual ? 'AHORA' : r.paso ? 'ya pasó' : '') + '</small></div>' + recorridoHtml(r) +
+      (r.realiza ? '<small>Realiza: <b>' + esc(r.realiza) + '</b></small>' : '') + (r.lleva ? '<small>' + esc(r.lleva) + '</small>' : '') +
+      (!r.oficinas ? '<small class="rb-nota">No entrega en Oficinas</small>' : '') + (r.notaViernes ? '<small class="rb-nota">Viernes: lo de esta ruta sale el lunes</small>' : '') + '</div>';
+  });
+  html += '<div class="visitas"><div><b>Coapa PV</b><span>lun, mié y vie · antes de 13:00</span><span class="tag ' + (v.coapa ? 'v">HOY' : '">no hoy') + '</span></div>' +
+    '<div><b>Ecatepec PV</b><span>mar y jue</span><span class="tag ' + (v.ecatepec ? 'v">HOY' : '">no hoy') + '</span></div></div>' +
+    '<p class="nota">Las rutas son un aviso: no cambian los plazos ni quién puede recoger. Se editan en la pestaña Rutas de LOGISTICA BOTICAN 2026.</p></div>' + nav('');
+  pintar(html);
+}
+
+
+/* =====================================================================
+ *  AVISOS de Logística (los manda la administradora)
+ * ===================================================================== */
+function avisosSinLeer() { return ((S.datos && S.datos.avisos) || []).filter(function (a) { return !a.leido && a.vigente; }); }
+function bloqueAvisos() {
+  return avisosSinLeer().slice(0, 3).map(function (a) {
+    return a.importante
+      ? '<div class="av-imp"><span class="av-fila"><span class="av-tag">IMPORTANTE</span><small>' + esc(a.autor) + ' · ' + esc(fechaBonita(a.fecha)) + '</small></span><b>' + esc(a.texto) + '</b>' +
+        (a.hasta ? '<small>Vigente hasta ' + esc(fechaBonita(a.hasta)) + '</small>' : '') + '<button class="btn rojo" onclick="leerAviso(\'' + esc(a.id) + '\')">Enterado</button></div>'
+      : '<div class="av-norm"><span class="av-ic">ℹ️</span><span class="tx"><b>' + esc(a.texto) + '</b><small>' + esc(a.autor) + ' · ' + esc(fechaBonita(a.fecha)) + '</small></span><button class="av-x" aria-label="Ya lo leí" onclick="leerAviso(\'' + esc(a.id) + '\')">×</button></div>';
+  }).join('');
+}
+function leerAviso(id) {
+  (S.datos.avisos || []).forEach(function (a) { if (a.id === id) a.leido = horaTxt().slice(0, 16); });
+  DB.set('inicio', S.datos);
+  if (S.vista === 'avisos') vistaAvisos(); else vistaInicio();
+  srv('avisoLeido', { id: id }).catch(function (e) { if (e.red) encolar('avisoLeido', { id: id }, 'Aviso leído'); });
+}
+function vistaAvisos() {
+  S.vista = 'avisos'; pararEscaner();
+  var todos = (S.datos && S.datos.avisos) || [], sin = todos.filter(function (a) { return !a.leido && a.vigente; }), leidos = todos.filter(function (a) { return a.leido; });
+  var html = '<div class="barra"><button class="volver" onclick="vistaInicio()" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>Avisos</b><small>De Logística · los vencidos se borran solos</small></div></div><div class="cuerpo con-nav">';
+  if (sin.length) html += '<span class="etiqueta">Sin leer (' + sin.length + ')</span>';
+  sin.forEach(function (a) {
+    html += '<div class="av-item" style="border-left-color:' + (a.importante ? 'var(--rojo)' : 'var(--azul2)') + '"><span class="av-fila"><span class="av-tag' + (a.importante ? '' : ' n') + '">' + (a.importante ? 'IMPORTANTE' : 'AVISO') + '</span><small>' +
+      esc(fechaBonita(a.fecha)) + (a.hasta ? ' · vence ' + esc(fechaBonita(a.hasta)) : '') + '</small></span><b>' + esc(a.texto) + '</b>' +
+      '<button class="b ' + (a.importante ? 'rojo-lleno' : '') + ' chico" style="align-self:flex-start" onclick="leerAviso(\'' + esc(a.id) + '\')">' + (a.importante ? 'Enterado' : 'Ya lo leí') + '</button></div>';
+  });
+  if (leidos.length) html += '<span class="etiqueta">Leídos</span>';
+  leidos.forEach(function (a) { html += '<div class="av-item leido"><small>' + esc(fechaBonita(a.fecha)) + ' · ' + (a.importante ? 'enterado ' : 'leído ') + esc(String(a.leido).slice(11, 16)) + '</small><span>' + esc(a.texto) + '</span></div>'; });
+  if (!todos.length) html += '<div class="vacio"><b>Sin avisos</b><span>Cuando Logística mande un aviso, suena y aparece aquí y en tu inicio.</span></div>';
+  html += '<button class="btn linea" onclick="vistaYo()">Mi cuenta</button></div>' + nav('');
+  pintar(html);
+}
+
+/* ---------- Administración → Avisos ---------- */
+function admAvisos() {
+  S.vista = 'adm';
+  var sub = barraAdm('Avisos', 'Les sale en su app y suena');
+  admCargar('avisos', {}, function (r) {
+    S.admAv = S.admAv || { para: 'Todos', importante: false };
+    var x = S.admAv;
+    var html = sub + '<div class="cuerpo con-nav"><div class="bloque"><div class="cab-b"><b>Nuevo aviso</b></div>' +
+      '<textarea class="campo" id="avTexto" rows="3" placeholder="Ej. Hoy Coapa cierra a las 12:00">' + esc(x.texto || '') + '</textarea>' +
+      '<label class="et">Para</label><div class="segm">' + ['Todos', 'Gestoría', 'Facturación'].map(function (o) {
+        return '<button class="' + (x.para === o ? 'act' : '') + '" onclick="admAvPres();S.admAv.para=\'' + o + '\';admAvisos()">' + o + '</button>';
+      }).join('') + '</div>' +
+      '<select class="campo" id="avPersona" onchange="admAvPres();S.admAv.para=this.value||\'Todos\';admAvisos()"><option value="">— o a una persona —</option>' + r.personas.map(function (p) {
+        return '<option value="' + esc(p.usuario) + '"' + (x.para === p.usuario ? ' selected' : '') + '>' + esc(p.nombre) + '</option>';
+      }).join('') + '</select>' +
+      '<label class="et" for="avHasta">Vigente hasta <span class="opc">(vacío = hasta que lo quites)</span></label><input class="campo" id="avHasta" type="datetime-local" value="' + esc(x.hasta || '') + '">' +
+      '<label class="check sw"><span style="flex:1"><b>Importante</b><br><small>Sale arriba en rojo, suena y pide "Enterado"</small></span><input type="checkbox" id="avImp" ' + (x.importante ? 'checked' : '') + '></label>' +
+      '<button class="btn" onclick="admAvMandar()">Mandar aviso</button></div>';
+    html += '<span class="etiqueta">Vigentes (' + r.avisos.length + ')</span>';
+    if (!r.avisos.length) html += '<div class="vacio"><span>No hay avisos vigentes.</span></div>';
+    r.avisos.forEach(function (a) {
+      html += '<div class="av-item" style="border-left-color:' + (a.importante ? 'var(--rojo)' : 'var(--azul2)') + '"><b>' + esc(a.texto) + '</b><small>' + esc(a.para) + ' · ' + (a.importante ? 'Enterados ' : 'Leído por ') + a.leidos + ' de ' + a.total +
+        (a.faltan.length && a.faltan.length <= 4 ? ' · falta ' + esc(a.faltan.join(', ')) : '') + (a.hasta ? ' · vence ' + esc(fechaBonita(a.hasta)) : '') + '</small>' +
+        '<button class="b chico" style="align-self:flex-start" onclick="admHacer(\'avisoQuitar\',{id:\'' + esc(a.id) + '\'},admAvisos)">Quitar aviso</button></div>';
+    });
+    pintar(html + '<p class="nota">También se pueden escribir en la pestaña APP_Avisos.</p></div>' + navAdm(''));
+  }, sub);
+}
+function admAvPres() {
+  var x = S.admAv; if (!x) return;
+  if ($('avTexto')) x.texto = $('avTexto').value;
+  if ($('avHasta')) x.hasta = $('avHasta').value;
+  if ($('avImp')) x.importante = $('avImp').checked;
+}
+function admAvMandar() {
+  admAvPres();
+  var x = S.admAv;
+  if (!String(x.texto || '').trim()) return falla(errCod('CAP-01', 'Escribe el aviso.'));
+  admHacer('avisoNuevo', { texto: x.texto, para: x.para, importante: x.importante, hasta: x.hasta ? x.hasta.replace('T', ' ') + ':00' : '' }, function () { S.admAv = null; admAvisos(); });
 }
