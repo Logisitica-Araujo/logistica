@@ -487,9 +487,19 @@ function ahoraMX() {
     return { dia: { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[p.weekday], hm: p.hour + ':' + p.minute };
   } catch (e) { var d = new Date(); return { dia: d.getDay(), hm: horaAhora() }; }
 }
+/** Rutas base: se usan solo si el servidor todavía no manda la lista (03_Datos.gs sin actualizar). Lo normal es leerlas de la hoja CAT_RutasRecoleccion. */
+var RUTAS_RESPALDO = [
+  { ruta: '1', desde: '09:00', hasta: '', paradas: ['Vértiz · BOTICAN', 'Doctores', 'Roma'], oficinas: true, realiza: 'José Luis y Antonio', que: 'Recolecta fórmulas BOTICAN y traspasos para Coapa o Ecatepec.', obs: '', color: '#E8853F' },
+  { ruta: '2', desde: '10:00', hasta: '11:00', paradas: ['Roma', 'Doctores', 'Vértiz', 'Roma'], oficinas: true, realiza: 'Bela', que: 'Traspasos entre sucursales y fórmula de Roma.', obs: '', color: '#115E59' },
+  { ruta: '3', desde: '12:30', hasta: '', paradas: ['Vértiz', 'Doctores', 'Vértiz'], oficinas: false, realiza: 'Belén', que: 'Recetas IMSS y traspasos.', obs: '', color: '#7A6B47' },
+  { ruta: '4', desde: '14:40', hasta: '15:10', paradas: ['Vértiz · BOTICAN', 'Doctores', 'Roma'], oficinas: true, realiza: 'Belén', que: 'Fórmulas BOTICAN, traspasos de Vértiz y Doctores, fórmulas Doctores–Roma y entrega de fórmulas BOTICAN en Oficinas.', obs: 'Puede llevar algún traspaso ligero a Sucursal Vértiz.', color: '#A9501E' },
+  { ruta: '5', desde: '16:00', hasta: '17:00', paradas: ['Roma', 'Doctores', 'Vértiz · BOTICAN', 'Roma'], oficinas: true, realiza: 'Bela', que: 'Fórmulas BOTICAN, traspasos de Vértiz y Doctores, fórmulas Doctores–Roma y entrega de fórmulas BOTICAN en Oficinas.', obs: '', color: '#4A4B2E' }
+];
+var RUTAS_NOTAS_RESPALDO = ['Coapa: lunes, miércoles y viernes antes de las 13:00.', 'Ecatepec: martes y jueves.', 'Viernes: lo recolectado en la ruta de 16:00 a 17:00 se envía el lunes.'];
+function rutasLista() { return S.cat.rutas === undefined ? RUTAS_RESPALDO : (S.cat.rutas || []); }
 /** Próxima ruta según la hora actual: hoy si es día hábil (lun a vie) y falta alguna; si no, la primera del siguiente día hábil. */
 function proximaRuta() {
-  var rs = S.cat.rutas || []; if (!rs.length) return null;
+  var rs = rutasLista(); if (!rs.length) return null;
   var n = ahoraMX(), habil = n.dia >= 1 && n.dia <= 5;
   if (habil) { for (var i = 0; i < rs.length; i++) if (rs[i].desde > n.hm) return { ruta: rs[i], cuando: '' }; }
   var sig = n.dia === 5 ? 'lun' : n.dia === 6 ? 'lun' : n.dia === 0 ? 'lun' : 'mañana';
@@ -500,7 +510,7 @@ function chipProximaRuta() {
   return '<button type="button" class="rutachip" data-a="tab" data-v="rutas" title="Ver las rutas de recolección">🕒 Próxima ruta: <b>' + (p.cuando ? esc(p.cuando) + ' ' : '') + esc(p.ruta.desde) + '</b></button>';
 }
 function vRutas() {
-  var rs = S.cat.rutas || [], p = proximaRuta();
+  var rs = rutasLista(), p = proximaRuta();
   var tarjetas = rs.map(function (r) {
     var horas = '<span class="rt-hora">' + esc(r.desde) + '</span>' + (r.hasta ? '<span class="rt-hasta">a ' + esc(r.hasta) + '</span>' : '');
     var paradas = r.paradas.map(function (x) { return '<div class="rt-stop"><span class="dot"></span><span class="nm">' + esc(x) + '</span></div>'; }).join('') +
@@ -511,7 +521,7 @@ function vRutas() {
       '<div class="rt-der"><span class="muted">Realiza: <b style="color:var(--ink)">' + esc(r.realiza || '—') + '</b></span>' +
       (r.que ? '<span>' + esc(r.que) + '</span>' : '') + (r.obs ? '<span class="rt-obs">' + esc(r.obs) + '</span>' : '') + '</div></article>';
   }).join('');
-  var pie = (S.cat.rutasNotas || []).map(function (x) { return '<span>' + esc(x) + '</span>'; }).join('');
+  var pie = (S.cat.rutasNotas === undefined ? RUTAS_NOTAS_RESPALDO : S.cat.rutasNotas).map(function (x) { return '<span>' + esc(x) + '</span>'; }).join('');
   return '<div class="headrow"><h1>Rutas de recolección · lunes a viernes</h1>' + chipProximaRuta() + '</div>' +
     '<p class="sub">Cada línea es el recorrido en orden, de izquierda a derecha. Las rutas con <b>Oficinas</b> al final entregan ahí. ' +
     '<span class="rt-leyenda"><i class="d"></i> Parada <i class="d f"></i> Entrega en Oficinas</span></p>' +
