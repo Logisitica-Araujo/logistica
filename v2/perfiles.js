@@ -817,7 +817,7 @@ function tarjetaRutaBotican(compacta) {
   if (!b) return '';
   if (b.error) return '<div class="aviso warn">' + esc(b.error) + '</div>';
   var lista = (b.porRecolectar || []).filter(function (p) { return p.enRuta; });
-  var html = '<button class="ruta-bot" onclick="vistaBotican()">';
+  var html = '<button class="ruta-bot" onclick="vistaPendientes()">';
   if (b.ruta) {
     html += '<span class="rb-fila"><span class="rb-tag">RUTA DEL MOMENTO</span><small>' + (b.ruta.enMin > 0 ? 'sale en ' + b.ruta.enMin + ' min' : 'saliendo') + '</small></span>' +
       '<b class="rb-tit">Ruta ' + esc(b.ruta.hora) + ' · ' + esc(String(b.ruta.sucursales).replace(/\s*·\s*/g, ', ')) + '</b>' +
@@ -835,7 +835,8 @@ function tarjetaRutaBotican(compacta) {
     var rojos = lista.filter(function (p) { return p.semaforo === 'rojo'; }).length;
     html += '<span class="rb-ped">' + puntoSem(rojos ? 'rojo' : lista[0].semaforo) + '<span>' + lista.length + ' pedido(s) BOTICAN por recolectar' + (rojos ? ' · ' + rojos + ' vencido(s)' : '') + '</span></span>';
   }
-  return html + '<span class="rb-mas">Ver todos ›</span></button>';
+  var pd = S.datos.pendientes, misVig = pd ? pd.mios.filter(function (x) { return !x.cerrado; }).length : 0;
+  return html + '<span class="rb-mas">Pendientes por recoger' + (pd ? ' (' + pd.total + ')' : '') + ' ›' + (misVig ? ' · voy por ' + misVig : '') + '</span></button>';
 }
 
 /** R2 · Por recolectar, ordenados por fecha compromiso. */
@@ -865,6 +866,13 @@ function vistaBotican() {
 function avisoRecoleccion(l) {
   var r = l && l.aviso; if (!r) return;
   var i = S.leidos.indexOf(l);
+  if (r.apartadoPor) {
+    return modal('<h2>🔒 ' + esc(r.codigo) + ' lo apartó ' + esc(r.apartadoPor) + '</h2>' +
+      '<div class="tabla-mini"><div><span>Desde</span><b>' + esc(r.desde) + '</b></div><div><span>Se libera</span><span>' + esc(r.hasta) + ' si no lo escanea</span></div></div>' +
+      '<p>Si ya lo traes tú en la mano (por ejemplo, ' + esc(r.apartadoPor) + ' no llegó), regístralo: a ' + esc(r.apartadoPor) + ' le avisa la app y a Administración le queda anotado.</p>' +
+      '<button class="btn" onclick="cerrarModal();decidirLeido(' + i + ',\'dejar\')">Dejarlo · que lo recoja ' + esc(r.apartadoPor) + '</button>' +
+      '<button class="btn linea" onclick="cerrarModal();decidirLeido(' + i + ',\'tomar\')">Ya lo traigo yo · registrar</button>');
+  }
   if (r.duplicado) {
     modal('<h2>' + esc(r.codigo) + ' ya fue recolectado</h2>' +
       '<div class="tabla-mini"><div><span>Lo recogió</span><b>' + esc(r.quien) + '</b></div><div><span>Cuándo</span><b>' + esc(fechaBonita(r.cuando)) + '</b></div><div><span>Estado</span><span>' + esc(estadoRec(r.estado)) + '</span></div></div>' +
@@ -883,6 +891,8 @@ function avisoRecoleccion(l) {
 function decidirLeido(i, que) {
   var l = S.leidos[i]; if (!l) return;
   var r = l.aviso;
+  if (que === 'dejar') { l.aviso = null; l.estado = 'mal'; l.texto = 'No se registró: lo va a recoger ' + r.apartadoPor; return pintarLeidos(); }
+  if (que === 'tomar') { l.aviso = null; l.estado = 'esp'; l.texto = 'Registrando…'; pintarLeidos(); return mandarRecoleccion([{ codigo: r.codigo, tomar: true }], [l]); }
   if (que === 'no') { l.aviso = null; l.estado = 'mal'; l.texto = 'No se registró: ya lo había recolectado ' + r.quien; return pintarLeidos(); }
   if (que === 'corregir') {
     S.leidos.splice(i, 1); pintarLeidos();
@@ -901,4 +911,106 @@ function fechaBonita(t) {
 function estadoRec(e) {
   e = String(e || '');
   return /ENTREGADO/.test(e) ? 'Ya lo entregó' : /EN RUTA/.test(e) ? 'Lo trae en este momento' : /CERRADO/.test(e) ? 'Ya llegó a su destino' : e.toLowerCase();
+}
+
+
+/* =====================================================================
+ *  PENDIENTES POR RECOGER · "Lo recojo yo" (apartar) · ¿Es este?
+ *  Apartar NO registra la recolección: eso solo pasa al escanear la etiqueta.
+ * ===================================================================== */
+var TIPO_PEND = { BOTICAN: ['BOTICAN', '#6B3FA0', '#F1EAFB'], FADERMEX: ['FADERMEX', '#9A5400', '#FFF1DE'], TRASPASO: ['TRASPASO', '#0B3D91', '#E2EAF8'] };
+function chipTipo(t) { var x = TIPO_PEND[t] || [t, '#3D4757', '#EEF1F6']; return '<span class="pchip-t" style="color:' + x[1] + ';background:' + x[2] + '">' + x[0] + '</span>'; }
+
+function vistaPendientes() {
+  S.vista = 'pendientes'; pararEscaner();
+  var pd = (S.datos && S.datos.pendientes) || { grupos: [], total: 0, mios: [] }, b = S.datos.botican || {};
+  S.pendSel = S.pendSel || {}; S.pendFiltro = S.pendFiltro || 'TODO';
+  var cuenta = { TODO: 0, BOTICAN: 0, FADERMEX: 0, TRASPASO: 0 };
+  pd.grupos.forEach(function (g) { g.items.forEach(function (i) { cuenta.TODO++; cuenta[i.tipo] = (cuenta[i.tipo] || 0) + 1; }); });
+  var misVig = pd.mios.filter(function (x) { return !x.cerrado; }).length;
+  var marc = Object.keys(S.pendSel).filter(function (k) { return S.pendSel[k]; });
+  var html = '<div class="barra"><button class="volver" onclick="S.pendSel={};vistaInicio()" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>Pendientes por recoger</b><small>' +
+    (b.ruta ? 'Ruta ' + esc(b.ruta.hora) + ' · ' + esc(String(b.ruta.sucursales).replace(/\s*·\s*/g, ', ')) + (b.ruta.extra ? ' · hoy también ' + esc(b.ruta.extra.replace(/\s*\(.*$/, '')) : '') : 'Sin ruta en este momento') + '</small></div>' +
+    (misVig ? '<button class="chip-mios" onclick="vistaMios()">Voy por ' + misVig + '</button>' : '') + '</div><div class="cuerpo con-nav">' +
+    '<div class="filtros">' + ['TODO', 'BOTICAN', 'FADERMEX', 'TRASPASO'].map(function (f) {
+      return '<button class="' + (S.pendFiltro === f ? 'act' : '') + '" onclick="S.pendFiltro=\'' + f + '\';vistaPendientes()">' + ({ TODO: 'Todo', BOTICAN: 'BOTICAN', FADERMEX: 'FADERMEX', TRASPASO: 'Traspasos' })[f] + ' · ' + (cuenta[f] || 0) + '</button>';
+    }).join('') + '</div>';
+  var hay = false;
+  pd.grupos.forEach(function (g) {
+    var its = g.items.filter(function (i) { return S.pendFiltro === 'TODO' || i.tipo === S.pendFiltro; });
+    if (!its.length) return; hay = true;
+    html += '<span class="etiqueta">' + esc(g.lugar) + '</span>';
+    its.forEach(function (i) {
+      var borde = i.semaforo ? SEM[i.semaforo][0] : TIPO_PEND[i.tipo] ? TIPO_PEND[i.tipo][1] : 'var(--borde)';
+      var bloqueado = (i.apartado && !i.mio) || i.asignadoOps;
+      var k = clave(i.codigo);
+      if (bloqueado) {
+        html += '<div class="pend bloq"><span class="pend-ic">🔒</span><span class="tx"><span class="pend-l1"><b class="mono">' + esc(i.codigo) + '</b>' + chipTipo(i.tipo) + '</span><small>' +
+          (i.apartado ? 'Va ' + esc(i.apartado.nombre) + ' · desde ' + esc(i.apartado.desde) : 'Asignado a ' + esc(i.asignadoOps) + ' en Operaciones') + '</small></span></div>';
+      } else if (i.mio) {
+        html += '<div class="pend mio" style="border-left-color:' + borde + '"><span class="pend-ic">✋</span><span class="tx"><span class="pend-l1"><b class="mono">' + esc(i.codigo) + '</b>' + chipTipo(i.tipo) + '</span><small>Apartado por ti · se libera ' + esc(i.apartado.hasta) + '</small><small>' + esc(i.texto) + '</small></span></div>';
+      } else {
+        html += '<label class="pend" style="border-left-color:' + borde + '"><input type="checkbox" ' + (S.pendSel[k] ? 'checked' : '') + ' onchange="S.pendSel[\'' + k + '\']=this.checked;vistaPendientes()">' +
+          '<span class="tx"><span class="pend-l1"><b class="mono">' + esc(i.codigo) + '</b>' + chipTipo(i.tipo) + (i.asignadoAMi ? '<span class="pchip-t" style="color:var(--verde);background:var(--verde-suave)">TE LO ASIGNARON</span>' : '') + '</span>' +
+          '<small' + (i.semaforo === 'rojo' ? ' style="color:var(--rojo);font-weight:700"' : '') + '>' + esc(i.texto) + (i.hoy === false ? ' · hoy no se visita' : '') + '</small></span></label>';
+      }
+    });
+  });
+  if (!hay) html += '<div class="vacio"><b>Nada pendiente por recoger</b><span>Cuando haya pedidos listos o traspasos esperando, aparecen aquí. Lo que alguien ya lleva no sale.</span></div>';
+  html += '</div><div class="pie con-nav-pie">' + (marc.length ? '<button class="btn" onclick="apartarMarcados()">Lo recojo yo · ' + marc.length + (marc.length > 1 ? ' marcados' : ' marcado') + '</button>'
+    : '<button class="btn linea" onclick="vistaEscaner(\'recolectar\')">Escanear lo que recojo</button>') +
+    '<p class="nota" style="margin:0">Apartar NO registra la recolección: eso es al escanear la etiqueta.</p></div>' + nav('');
+  pintar(html);
+}
+function itemsPend() { var o = {}; ((S.datos.pendientes || {}).grupos || []).forEach(function (g) { g.items.forEach(function (i) { o[clave(i.codigo)] = i; }); }); return o; }
+function apartarMarcados() {
+  var todos = itemsPend(), cods = Object.keys(S.pendSel).filter(function (k) { return S.pendSel[k] && todos[k]; }).map(function (k) { return { codigo: todos[k].codigo, tipo: todos[k].tipo }; });
+  if (!cods.length) return;
+  cargando('Apartando…');
+  srv('apartar', { codigos: cods }).then(function (r) {
+    quitarCargando();
+    var mal = r.resultados.filter(function (x) { return !x.ok; });
+    S.pendSel = {};
+    if (mal.length) { sonido('error'); toast(mal.map(function (x) { return x.mensaje; }).join(' · '), 'err'); } else sonido('escaneo');
+    return actualizar().then(vistaMios);
+  }).catch(function (e) { quitarCargando(); falla(e.red ? errCod('CEL-02', 'Sin señal: para apartar necesitas señal. Igual puedes escanear y se registra.') : e); });
+}
+function vistaMios() {
+  S.vista = 'mios'; pararEscaner();
+  var pd = (S.datos && S.datos.pendientes) || { mios: [], horas: 2 };
+  var vig = pd.mios.filter(function (x) { return !x.cerrado; }), cerr = pd.mios.filter(function (x) { return x.cerrado; });
+  var html = '<div class="cab"><div class="cab-fila"><button class="btn-ic" onclick="vistaPendientes()" aria-label="Volver">' + IC.atras + '</button><div class="cab-nombre"><small>Voy por</small><b>' + vig.length + (vig.length === 1 ? ' pendiente' : ' pendientes') + '</b></div></div>' +
+    '<small style="color:var(--azul-claro)">Los demás ven "Va ' + esc(S.datos.gestor.nombre) + '". Se liberan solos a las ' + pd.horas + ' horas si no los escaneas.</small></div><div class="cuerpo con-nav">';
+  if (!vig.length && !cerr.length) html += '<div class="vacio"><b>No has apartado nada</b><span>En "Pendientes por recoger" marca lo que vas a recoger y toca "Lo recojo yo".</span></div>';
+  vig.forEach(function (i) {
+    html += '<div class="pend mio" style="border-left-color:' + (i.semaforo ? SEM[i.semaforo][0] : 'var(--azul)') + '"><span class="tx"><span class="pend-l1"><b class="mono">' + esc(i.codigo) + '</b>' + chipTipo(i.tipo) + '</span><small>' + esc(i.lugar) + ' · ' + esc(i.texto) + '</small>' +
+      '<small style="color:var(--gris)">Apartado ' + esc(i.apartado.desde) + ' · se libera ' + esc(i.apartado.hasta) + '</small></span><button class="b chico" onclick="soltar(\'' + esc(i.codigo) + '\')">Soltar</button></div>';
+  });
+  cerr.forEach(function (i) {
+    var mio = i.cerrado === 'RECOGIDO';
+    html += '<div class="pend ' + (mio ? 'hecho-ok' : 'bloq') + '"><span class="pend-ic">' + (mio ? '✓' : '↪') + '</span><span class="tx"><span class="pend-l1"><b class="mono">' + esc(i.codigo) + '</b>' + chipTipo(i.tipo) + '</span><small>' +
+      (mio ? 'Escaneado ' + esc(i.hora) + ' · ya está en "Lo que llevo"' : 'Lo recogió ' + esc(i.por) + ' a las ' + esc(i.hora)) + '</small></span></div>';
+  });
+  html += '<div class="aviso warn">Cuando escaneas la etiqueta de uno de estos, se marca solo y pasa a "Lo que llevo". Si escaneas algo que no apartaste, también se registra (si nadie más lo apartó).</div></div>' +
+    '<div class="pie con-nav-pie"><button class="btn" onclick="vistaEscaner(\'recolectar\')">Escanear las etiquetas</button></div>' + nav('');
+  pintar(html);
+}
+function soltar(codigo) {
+  cargando('Soltando…');
+  srv('soltar', { codigo: codigo }).then(function () { quitarCargando(); toast(codigo + ' quedó libre para otro gestor', 'ok'); return actualizar().then(vistaMios); })
+    .catch(function (e) { quitarCargando(); falla(e); });
+}
+/** Tecleado a mano: si lo conocemos, "¿Es este?". Devuelve true si mostró la pregunta. */
+function confirmarTecleado(codigo) {
+  var k = clave(codigo), i = itemsPend()[k], info = null;
+  if (i) info = { codigo: i.codigo, tipo: i.tipo, l1: i.texto, l2: 'Se recoge en ' + i.lugar };
+  if (!info) { var p = (S.datos.pedidos || []).filter(function (x) { return clave(x.id) === k; })[0]; if (p) info = { codigo: p.id, tipo: 'PEDIDO', l1: p.cliente, l2: p.direccion }; }
+  if (!info) return false;
+  S.tecleado = info.codigo;
+  modal('<p style="margin:0">Tecleaste <b class="mono">' + esc(codigo) + '</b></p><h2>¿Es este?</h2>' +
+    '<div class="es-este"><div class="pend-l1"><b class="mono" style="font-size:17px">' + esc(info.codigo) + '</b>' + chipTipo(info.tipo) + '</div><b>' + esc(info.l1) + '</b><small>' + esc(info.l2) + '</small></div>' +
+    '<p>Compáralo con la etiqueta (nombre o destino) antes de confirmar.</p>' +
+    '<button class="btn verde" onclick="cerrarModal();alLeer(S.tecleado)">Sí, es este · registrar</button>' +
+    '<button class="btn linea" onclick="cerrarModal();var c=$(\'inCodigo\');if(c){c.value=\'' + esc(codigo) + '\';c.focus();c.select()}">No, me equivoqué</button>');
+  return true;
 }

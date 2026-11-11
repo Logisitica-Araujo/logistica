@@ -49,6 +49,8 @@ function apiInicio(p) {
   var cfg = _config();
   var hoy = _hoyTxt();
   var perfil = _perfil(u);
+  var botican = _boticanInicio(), pendientes = null;
+  try { pendientes = _pendientesInicio(u, botican); } catch (e) { _log('sistema', 'PENDIENTES', e.message); }
 
   /* Vehículos y quién trae cuál hoy */
   var ocupados = {};
@@ -116,7 +118,7 @@ function apiInicio(p) {
   return {
     gestor: { numero: u.Numero, nombre: u.Nombre }, perfil: perfil,
     porRecoger: perfil.area === 'FACTURACION' ? _porRecoger() : [],
-    botican: _boticanInicio(),
+    botican: botican, pendientes: pendientes,
     libresHoy: cierres.filter(function (c) {
       return String(c.Tipo) === 'LIBRE' && String(c.NumeroGestor) === String(u.Numero) && _fechaTxt(c.FechaHora) === hoy && String(c.Estado) !== 'ANULADO';
     }).map(function (c) {
@@ -360,6 +362,7 @@ function apiRecolectar(p) {
   var misPedidos = {};
   _tabla(APPG.H.PEDIDOS).filas.forEach(function (f) { if (String(f.NumeroGestor) === String(u.Numero)) misPedidos[_tnClave(f.ID)] = f; });
   // Pedidos que ya recolectó cualquiera (últimos 30 días): para no registrarlos dos veces.
+  var apartados = _apartadosVigentes();
   var yaRecolectados = {}, hace30 = Date.now() - 30 * 86400000;
   t.filas.forEach(function (r) {
     if (String(r.Tipo) === 'PEDIDO' && _fechaMs(r.FechaHora) > hace30 && !/ANULAD/.test(String(r.Estado))) yaRecolectados[_tnClave(r.Codigo)] = r;
@@ -371,6 +374,11 @@ function apiRecolectar(p) {
     var k = _tnClave(codigo);
     if (k.length < 3) return { codigo: codigo, ok: false, mensaje: 'Código muy corto. Revísalo.' };
     if (abiertos[k]) return { codigo: codigo, ok: false, repetido: true, mensaje: 'Ya lo habías leído.' };
+    // "Lo recojo yo": si otro lo apartó, se avisa (salvo que confirme que ya lo trae él).
+    var apOtro = apartados[k];
+    if (apOtro && String(apOtro.NumeroGestor) === String(u.Numero)) apOtro = null;
+    if (apOtro && !o.tomar && !o.forzar) return { codigo: codigo, ok: false, apartadoPor: String(apOtro.Gestor), desde: _fechaTxt(apOtro.Desde, 'yyyy-MM-dd HH:mm').slice(11),
+      hasta: _fechaTxt(apOtro.Hasta, 'yyyy-MM-dd HH:mm').slice(11), mensaje: codigo + ' lo apartó ' + apOtro.Gestor + '.' };
 
     var reg = { FechaHora: _ahora(), NumeroGestor: u.Numero, Gestor: u.Nombre, Vehiculo: vehiculo, Codigo: codigo,
                 Estado: 'EN RUTA', EstadoFuente: '', Actualizado: _ahora(), Enviado: 'NO' };
@@ -414,8 +422,11 @@ function apiRecolectar(p) {
       if (!String(o.destino || '').trim()) return { codigo: codigo, ok: false, pideDestino: true, mensaje: 'No está en el Sistema de Traspasos. Escribe a dónde va.' };
       reg.Tipo = 'OTRO'; reg.Origen = String(o.origen || ''); reg.Destino = String(o.destino); reg.Contenido = String(o.contenido || '');
     }
+    if (apOtro) reg.Nota = (reg.Nota ? reg.Nota + ' · ' : '') + 'Lo había apartado ' + apOtro.Gestor;
     _agregar(APPG.H.RECOLECCIONES, reg);
     abiertos[k] = true;
+    var tomadoDe = _cerrarApartado(reg.Codigo, u);
+    if (tomadoDe) _log(u.Nombre, 'TOMA_APARTADO', reg.Codigo + ' · lo había apartado ' + tomadoDe);
     return { codigo: reg.Codigo, ok: true, tipo: reg.Tipo, origen: reg.Origen, destino: reg.Destino, contenido: reg.Contenido,
              enPedidos: reg.Estado !== 'EN RUTA', direccion: _direccionDe(reg.DestinoPrefijo),
              mensaje: reg.Tipo === 'TRASPASO' ? 'Recolectado · ya se ve en el rastreo en 1 minuto' : 'Recolectado' };

@@ -9,7 +9,10 @@
 - **Envios columna H:** al registrar la recolección de un pedido BOTICAN, el robot escribe la hora SOLO si H está vacía y sin fórmula (`BOT_ESCRIBIR_H`).
 - **APP_Recolecciones:** columna nueva **Nota** al final (A–N sin cambios).
 - **Más rápido:** al abrir/actualizar la app el servidor trae lo nuevo de Operaciones (máx. cada 20 s); OPERACIONES guarda su memoria 20 s (antes 60).
-- App 2.4.0 (service worker `gestores2-v10`). Pruebas: `prueba-botican.js` 53/53 (nueva), `pruebas.js` 60/60, `prueba-integrada.js` 65/65, `prueba-perfiles.js` 109/109, `prueba-celular.js` 32/32.
+- **Pendientes por recoger** (nuevo `11_PENDIENTES.gs`, pestaña nueva **APP_Apartados**): una sola lista por lugar con pedidos BOTICAN listos, pedidos FADERMEX "PENDIENTE PARA RECOLECTAR" (acción nueva `porRecolectar` de OPERACIONES) y traspasos NUEVO/EN_LOGISTICA. Lo que alguien ya lleva no sale.
+- **"Lo recojo yo"** (apartar): los demás lo ven "Va Fulano · desde 10:40"; se libera solo a las `APARTADO_HORAS` (2) o al soltarlo. Apartar NO registra: eso solo al escanear. Si otro escanea algo apartado: aviso "lo apartó X" con "Ya lo traigo yo" (queda anotado y a X le aparece "Lo recogió…").
+- **"¿Es este?"** al teclear un folio a mano (evita el error de dedo).
+- App 2.5.0 (service worker `gestores2-v11`). Pruebas: `prueba-botican.js` 75/75 (nueva), `pruebas.js` 60/60, `prueba-integrada.js` 65/65, `prueba-perfiles.js` 109/109, `prueba-celular.js` 32/32.
 
 ## 0.4.4 · 6-nov-2026 · Si usan "Registrar entrega" para un pedido suyo, se arregla solo
 - **Robot (paso nuevo `ligarLibres`):** si en una "entrega sin asignar" escribieron el número de un pedido o TAREA abierto a su nombre, la pasa sola a ese pedido (foto, quién recibió, ubicación, hora real) y Operaciones queda marcado. La "sin asignar" queda ANULADA con nota. Revisa los últimos 3 días.

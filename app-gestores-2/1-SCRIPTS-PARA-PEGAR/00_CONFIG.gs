@@ -26,7 +26,8 @@ var APPG = {
     SESIONES:      'APP_Sesiones',
     LOG:           'APP_Log',
     PROBLEMAS:     'APP_Problemas',
-    SUCURSALES:    'APP_Sucursales'
+    SUCURSALES:    'APP_Sucursales',
+    APARTADOS:     'APP_Apartados'
   },
 
   /* Encabezados de cada pestaña, en orden. El código busca las columnas
@@ -50,7 +51,8 @@ var APPG = {
     APP_Sesiones:      ['FechaHora', 'Usuario', 'NumeroGestor', 'Dispositivo', 'Resultado'],
     APP_Log:           ['FechaHora', 'Quien', 'Accion', 'Detalle'],
     APP_Problemas:     ['Numero', 'FechaHora', 'Codigo', 'Quien', 'Detalle', 'Resuelto'],
-    APP_Sucursales:    ['Sucursal', 'ID', 'Direccion', 'URLMaps', 'Activo']
+    APP_Sucursales:    ['Sucursal', 'ID', 'Direccion', 'URLMaps', 'Activo'],
+    APP_Apartados:     ['Codigo', 'Tipo', 'NumeroGestor', 'Gestor', 'Desde', 'Hasta', 'Estado', 'Cerrado', 'CerradoPor']
   },
 
   /* Perfiles. Columna "Area" de APP_Usuarios: decide qué app ve cada quien.
@@ -98,6 +100,7 @@ var APPG = {
     ['MOTIVOS_CAMBIO_VEHICULO', 'Llanta ponchada | Falla mecánica | Lluvia | Carga grande | Se lo pasé a otro gestor | Otro', 'Motivos para cambiar de vehículo a medio día'],
     ['ID_BOTICAN', '1a3n7z962Ik6c1YrcD7RxkJEAWWK6a9xuA5LDrr2sffc', 'Archivo LOGISTICA BOTICAN 2026 (Envios, Feriados, Rutas). Vacío = no se muestra la recolección BOTICAN'],
     ['BOT_ESCRIBIR_H', true, 'TRUE = al recolectar un pedido BOTICAN se escribe la hora en Envios columna H (solo si está vacía y sin fórmula)'],
+    ['APARTADO_HORAS', 2, '"Lo recojo yo": horas para que un apartado se libere solo si no lo escanean'],
     ['APP_BLOQUEADA', false, 'TRUE = nadie puede entrar (mantenimiento)'],
     ['MENSAJE_BLOQUEO', 'App en mantenimiento. Intenta más tarde.', 'Texto que ven los gestores si está bloqueada'],
     ['ULTIMA_VUELTA_ROBOT', '', 'La escribe el robot. No editar.'],

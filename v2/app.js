@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.4.0';
+var VERSION_APP = '2.5.0';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -215,6 +215,8 @@ function actualizar(primera) {
     else if (S.vista === 'lleva') vistaLleva();
     else if (S.vista === 'parada' && S.parada) vistaParada(S.parada.k);
     else if (S.vista === 'botican') vistaBotican();
+    else if (S.vista === 'pendientes') vistaPendientes();
+    else if (S.vista === 'mios') vistaMios();
     if (nuevos.length && !primera) avisarNuevos(nuevos);
   }).catch(function (e) {
     quitarCargando();
@@ -688,10 +690,12 @@ function salirEscaner() {
 function pararEscaner() { if (S.escaner) { S.escaner.parar(); S.escaner = null; } }
 function teclear(ev) { ev.preventDefault(); var v = $('inCodigo').value.trim(); if (v) { $('inCodigo').value = ''; alLeer(v, true); } }
 
-function alLeer(texto) {
+function alLeer(texto, tecleado) {
   var codigo = String(texto || '').trim().toUpperCase();
   if (!codigo) return;
   if (S.modoScan === 'entregar') return entregarLeido(codigo);
+  // Tecleado a mano: primero "¿Es este?" (evita el error de dedo). Escaneado: la etiqueta manda.
+  if (tecleado && S.modoScan === 'recolectar' && typeof confirmarTecleado === 'function' && confirmarTecleado(codigo)) return;
   if (S.leidos.some(function (l) { return clave(l.codigo) === clave(codigo); }) || S.datos.lleva.some(function (l) { return clave(l.codigo) === clave(codigo); })) {
     sonido('escaneoMal'); return toast('Ya leíste ' + codigo);
   }
@@ -714,6 +718,7 @@ function aplicarResultados(res, items) {
   res.forEach(function (r, i) {
     var l = items[i] || {};
     l.codigo = r.codigo;
+    if (r.apartadoPor) { l.estado = 'mal'; l.texto = r.mensaje; l.aviso = r; sonido('escaneoMal'); avisoRecoleccion(l); return; }
     if (r.duplicado || r.noExiste) { l.estado = 'mal'; l.texto = r.mensaje; l.aviso = r; sonido('escaneoMal'); avisoRecoleccion(l); return; }
     if (r.ok) { l.aviso = null; l.origen = r.origen; l.destino = r.destino + (r.direccion ? ' (' + r.direccion + ')' : ''); l.contenido = r.contenido; l.estado = 'ok'; l.texto = 'Va a ' + (r.destino || '—') + (r.direccion ? ' · ' + r.direccion : '') + (r.enPedidos ? ' · ya está en tus pedidos' : ''); }
     else if (r.pideDestino) { l.estado = 'esp'; l.texto = r.mensaje; l.pideDestino = true; }

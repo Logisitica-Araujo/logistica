@@ -40,6 +40,7 @@ function robot(forzar) {
     paso('limpieza', _robotLimpieza);
     paso('contraseñas', _procesarClavesNuevas);
     if (String(cfg.ID_BOTICAN || '').trim()) paso('botican', _robotBotican);
+    paso('pendientesFad', _robotPendFad);
     paso('porRecoger', function () {
       var hay = _tabla(APPG.H.USUARIOS).filas.some(function (u) { return _si(u.Activo) && _perfil(u).area === 'FACTURACION'; });
       return hay ? _calcularPorRecoger().length : 0;
