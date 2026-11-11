@@ -155,7 +155,16 @@ function _btLeer() {
   rutas.sort(function (a, b) { return a.min - b.min; });
 
   var sh = L.getSheetByName('Envios');
-  var ult = sh.getLastRow(), desde = Math.max(APPG_BOT.FILA_ENVIOS, ult - APPG_BOT.ULTIMAS + 1);
+  // Envios tiene miles de renglones vacíos con la casilla de la columna I (FALSE): getLastRow() los cuenta.
+  // Se busca el último renglón que de verdad tiene N° de pedido (columna B).
+  var ult = sh.getLastRow();
+  if (ult >= APPG_BOT.FILA_ENVIOS) {
+    var colB = sh.getRange(APPG_BOT.FILA_ENVIOS, 2, ult - APPG_BOT.FILA_ENVIOS + 1, 1).getValues();
+    var k = colB.length - 1;
+    while (k >= 0 && !String(colB[k][0]).trim()) k--;
+    ult = APPG_BOT.FILA_ENVIOS + k;
+  }
+  var desde = Math.max(APPG_BOT.FILA_ENVIOS, ult - APPG_BOT.ULTIMAS + 1);
   var n = ult - desde + 1;
   var vals = n > 0 ? sh.getRange(desde, 1, n, 17).getValues() : [];
   var ids = [], pendientes = [];
