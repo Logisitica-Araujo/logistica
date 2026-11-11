@@ -27,7 +27,8 @@ var APPG = {
     LOG:           'APP_Log',
     PROBLEMAS:     'APP_Problemas',
     SUCURSALES:    'APP_Sucursales',
-    APARTADOS:     'APP_Apartados'
+    APARTADOS:     'APP_Apartados',
+    AVISOS:        'APP_Avisos'
   },
 
   /* Encabezados de cada pestaña, en orden. El código busca las columnas
@@ -52,7 +53,8 @@ var APPG = {
     APP_Log:           ['FechaHora', 'Quien', 'Accion', 'Detalle'],
     APP_Problemas:     ['Numero', 'FechaHora', 'Codigo', 'Quien', 'Detalle', 'Resuelto'],
     APP_Sucursales:    ['Sucursal', 'ID', 'Direccion', 'URLMaps', 'Activo'],
-    APP_Apartados:     ['Codigo', 'Tipo', 'NumeroGestor', 'Gestor', 'Desde', 'Hasta', 'Estado', 'Cerrado', 'CerradoPor']
+    APP_Apartados:     ['Codigo', 'Tipo', 'NumeroGestor', 'Gestor', 'Desde', 'Hasta', 'Estado', 'Cerrado', 'CerradoPor'],
+    APP_Avisos:        ['Id', 'FechaHora', 'Texto', 'Para', 'Importante', 'Hasta', 'Activo', 'Autor', 'Leidos']
   },
 
   /* Perfiles. Columna "Area" de APP_Usuarios: decide qué app ve cada quien.
@@ -64,7 +66,7 @@ var APPG = {
   ROLES: ['Gestor', 'Administrador'],
 
   /* Pestañas que la administradora SÍ edita a mano. Las demás se protegen. */
-  EDITABLES: ['APP_Config', 'APP_Usuarios', 'APP_Vehiculos', 'APP_Motivos', 'APP_Documentos', 'APP_Problemas', 'APP_Sucursales'],
+  EDITABLES: ['APP_Config', 'APP_Usuarios', 'APP_Vehiculos', 'APP_Motivos', 'APP_Documentos', 'APP_Problemas', 'APP_Sucursales', 'APP_Avisos'],
 
   /* Sucursales a donde se entregan traspasos. ID = el de CAT_Sucursales del Sistema de Traspasos
      (el folio D-RB-0005 va a la sucursal D). Direcciones tomadas de la app actual. */

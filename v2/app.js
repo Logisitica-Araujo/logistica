@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.5.0';
+var VERSION_APP = '2.6.0';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -217,6 +217,7 @@ function actualizar(primera) {
     else if (S.vista === 'botican') vistaBotican();
     else if (S.vista === 'pendientes') vistaPendientes();
     else if (S.vista === 'rutas') vistaRutas();
+    else if (S.vista === 'avisos') vistaAvisos();
     else if (S.vista === 'mios') vistaMios();
     if (nuevos.length && !primera) avisarNuevos(nuevos);
   }).catch(function (e) {
@@ -228,11 +229,14 @@ function actualizar(primera) {
 function detectarNuevos(d) {
   var rec = d.perfil && d.perfil.area === 'FACTURACION' ? (d.porRecoger || []) : [];
   var ids = d.pedidos.map(function (p) { return 'P' + p.id; }).concat(d.lleva.map(function (l) { return 'L' + l.codigo; }), rec.map(function (r) { return 'R' + r.folio; }));
+  // Avisos de Logística nuevos (sin leer) también suenan.
+  (d.avisos || []).forEach(function (a) { if (!a.leido && a.vigente) ids.push('A' + a.id); });
   var antes = S.vistos;
   S.vistos = ids;
   if (!antes) return [];
   var huboRec = antes.some(function (x) { return x.charAt(0) === 'R'; }) || !rec.length;   // la primera vez que llega la lista de "por recoger" no suena
-  return d.pedidos.filter(function (p) { return antes.indexOf('P' + p.id) < 0; }).map(function (p) { return { tipo: 'tarea', texto: 'Pedido ' + p.id + ' · ' + p.cliente }; })
+  return (d.avisos || []).filter(function (x) { return !x.leido && x.vigente && antes.indexOf('A' + x.id) < 0; }).map(function (x) { return { tipo: 'tarea', texto: 'Aviso: ' + x.texto }; })
+    .concat(d.pedidos.filter(function (p) { return antes.indexOf('P' + p.id) < 0; }).map(function (p) { return { tipo: 'tarea', texto: 'Pedido ' + p.id + ' · ' + p.cliente }; }))
     .concat(huboRec ? rec.filter(function (r) { return antes.indexOf('R' + r.folio) < 0; }).map(function (r) { return { tipo: 'traspaso', texto: 'Traspaso ' + r.folio + ' por recoger · va a ' + r.destino }; }) : []);
 }
 
@@ -372,13 +376,13 @@ function vistaInicio() {
   var html = '<div class="cab' + (conTarjeta ? ' con-tarjeta' : '') + '"><div class="cab-fila"><img src="../iconos/icono-192.png" alt="">' +
     '<div class="cab-nombre"><small>' + saludo() + ' · Gestoría</small><b>' + esc(d.gestor.nombre) + '</b></div>' +
     (perfil().admin ? '<button class="btn-ic" onclick="entrarAdmin()" aria-label="Administración">' + ICP.escudo + '</button>' : '') +
-    '<button class="btn-ic" onclick="vistaYo()" aria-label="Mi cuenta">' + IC.campana + (aviso ? '<span class="punto"></span>' : '') + '</button></div>' +
+    '<button class="btn-ic" onclick="vistaAvisos()" aria-label="Avisos">' + IC.campana + (avisosSinLeer().length ? '<span class="cuenta-av">' + avisosSinLeer().length + '</span>' : aviso ? '<span class="punto"></span>' : '') + '</button></div>' +
     '<div class="chips"><button class="chip" onclick="vistaVehiculo(false)">' + esc(d.vehiculo || 'Sin vehículo') + ' · cambiar</button>' +
     '<span class="chip" id="estado" onclick="verCola()"><i class="' + (x.amb ? 'amb' : '') + '"></i>' + esc(x.t) + '</span></div></div>';
   if (aviso) html += '<div class="tarjeta-aviso"><span class="ic">' + IC.campana + '</span><span class="tx"><small>Nueva tarea · ' + haceTxt(aviso.hora) + '</small><b>' + esc(aviso.texto) + '</b></span><button class="b" onclick="S.aviso=null;vistaPedidos()">Ver</button></div>';
   else if (window.Notification && Notification.permission === 'default') html += '<div class="tarjeta-aviso bien"><span class="ic">' + IC.campana + '</span><span class="tx"><small>Avisos</small><b>Activa el sonido de tareas nuevas</b></span><button class="b" onclick="pedirAvisos()">Activar</button></div>';
 
-  html += '<div class="cuerpo con-nav">' + tarjetaRutaBotican() + '<div class="rejilla">' +
+  html += '<div class="cuerpo con-nav">' + bloqueAvisos() + tarjetaRutaBotican() + '<div class="rejilla">' +
     '<button class="grande" onclick="vistaEscaner(\'recolectar\')"><span class="ic">' + IC.scan + '</span><span><b>Escanear</b><small>Recolecta o entrega con la cámara</small></span></button>' +
     '<button class="mosaico" onclick="vistaPedidos()"><span class="fila"><span style="color:var(--azul)">' + IC.casa + '</span><span class="num">' + d.pedidos.length + '</span></span><b>Pedidos a domicilio</b></button>' +
     '<button class="mosaico" onclick="vistaLleva()"><span class="fila"><span style="color:var(--verde)">' + IC.caja + '</span><span class="num">' + d.lleva.length + '</span></span><b>Lo que llevo</b></button>' +

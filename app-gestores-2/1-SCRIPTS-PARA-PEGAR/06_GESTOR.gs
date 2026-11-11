@@ -119,6 +119,7 @@ function apiInicio(p) {
     gestor: { numero: u.Numero, nombre: u.Nombre }, perfil: perfil,
     porRecoger: perfil.area === 'FACTURACION' ? _porRecoger() : [],
     botican: botican, pendientes: pendientes,
+    avisos: (function () { try { return _avisosInicio(u); } catch (e) { return []; } })(),
     libresHoy: cierres.filter(function (c) {
       return String(c.Tipo) === 'LIBRE' && String(c.NumeroGestor) === String(u.Numero) && _fechaTxt(c.FechaHora) === hoy && String(c.Estado) !== 'ANULADO';
     }).map(function (c) {

@@ -384,3 +384,22 @@ body.adm{--azul:#111A2E;--azul-osc:#0A1020;--azul-suave:#E6E9F0;--azul-claro:#AE
 .visitas div{display:flex;align-items:center;gap:8px;padding:8px 0;font-size:13.5px}
 .visitas div+div{border-top:1px solid #EEF1F6}
 .visitas span:nth-child(2){flex:1;color:var(--texto2)}
+
+/* avisos */
+.av-imp{background:var(--rojo-suave);border:2px solid var(--rojo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.av-imp b{font-size:16.5px;line-height:1.3}
+.av-imp small{font-size:12.5px;color:var(--texto2)}
+.av-fila{display:flex;align-items:center;gap:8px}
+.av-fila small{font-size:12px;color:#8E1C12}
+.av-tag{font-size:11px;font-weight:800;letter-spacing:.6px;color:#fff;background:var(--rojo);border-radius:999px;padding:3px 9px}
+.av-tag.n{background:var(--azul2)}
+.av-norm{background:var(--azul-suave);border-radius:16px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start}
+.av-norm .tx{flex:1;display:flex;flex-direction:column;gap:2px}
+.av-norm .tx small{font-size:12.5px;color:var(--texto2)}
+.av-ic{font-size:18px}
+.av-x{border:0;background:none;font-size:22px;color:var(--gris);line-height:1;padding:0 4px}
+.av-item{background:#fff;border:1px solid var(--borde);border-left:5px solid var(--borde);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:5px}
+.av-item small{font-size:12.5px;color:var(--gris)}
+.av-item.leido{opacity:.7}
+.b.rojo-lleno{background:var(--rojo);border-color:var(--rojo);color:#fff}
+.cuenta-av{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:999px;background:var(--naranja);color:var(--texto);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px}

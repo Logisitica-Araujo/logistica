@@ -82,10 +82,11 @@ function vistaRuta() {
   var html = '<div class="cab"><div class="cab-fila"><img src="../iconos/icono-192.png" alt="">' +
     '<div class="cab-nombre"><small>' + saludo() + ' · Traslados</small><b>' + esc(d.gestor.nombre) + '</b></div>' +
     (perfil().admin ? '<button class="btn-ic" onclick="entrarAdmin()" aria-label="Administración">' + ICP.escudo + '</button>' : '') +
-    '<button class="btn-ic" onclick="vistaYo()" aria-label="Mi cuenta">' + IC.campana + (aviso ? '<span class="punto"></span>' : '') + '</button></div>' +
+    '<button class="btn-ic" onclick="vistaAvisos()" aria-label="Avisos">' + IC.campana + (avisosSinLeer().length ? '<span class="cuenta-av">' + avisosSinLeer().length + '</span>' : aviso ? '<span class="punto"></span>' : '') + '</button></div>' +
     '<div class="chips"><button class="chip" onclick="vistaVehiculo(false)">' + esc(d.vehiculo || 'Sin vehículo') + ' · cambiar</button>' +
     '<span class="chip" id="estado" onclick="verCola()"><i class="' + (x.amb ? 'amb' : '') + '"></i>' + esc(x.t) + '</span></div></div>' +
     '<div class="cuerpo con-nav">';
+  html += bloqueAvisos();
   if (aviso) html += '<div class="aviso">' + esc(aviso.texto) + '</div>';
   html += tarjetaRutaBotican(true) + '<div class="dos-grandes"><button class="grande" onclick="vistaEscaner(\'recolectar\')"><span><b>Escanear</b><small>Recoger o entregar lo asignado</small></span></button>' +
     '<button class="grande linea" onclick="vistaLibre()"><span><b>+ Registrar entrega</b><small>Algo que no estaba en tu ruta</small></span></button></div>' +
@@ -305,7 +306,7 @@ function admHoy() {
   var f = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
   var cab = function (r) {
     return '<div class="cab"><div class="cab-fila"><div class="cab-nombre"><small>ADMINISTRACIÓN</small><b>Hoy · ' + esc(f) + '</b></div>' +
-      '<button class="chip" onclick="salirAdmin()">Mi app</button></div>' +
+      '<button class="chip" onclick="admAvisos()">Avisos</button><button class="chip" onclick="salirAdmin()">Mi app</button></div>' +
       (r ? '<div class="chips"><span class="chip"><i class="' + (r.robotSeg == null || r.robotSeg > 180 ? 'amb' : '') + '"></i>Robot ' + (r.robot ? 'hace ' + (r.robotSeg < 90 ? r.robotSeg + ' s' : Math.round(r.robotSeg / 60) + ' min') : 'sin datos') + '</span>' +
         (r.bloqueada ? '<span class="chip"><i class="amb"></i>EN MANTENIMIENTO</span>' : '') + '</div>' : '') + '</div>';
   };
@@ -1043,4 +1044,81 @@ function vistaRutas() {
     '<div><b>Ecatepec PV</b><span>mar y jue</span><span class="tag ' + (v.ecatepec ? 'v">HOY' : '">no hoy') + '</span></div></div>' +
     '<p class="nota">Las rutas son un aviso: no cambian los plazos ni quién puede recoger. Se editan en la pestaña Rutas de LOGISTICA BOTICAN 2026.</p></div>' + nav('');
   pintar(html);
+}
+
+
+/* =====================================================================
+ *  AVISOS de Logística (los manda la administradora)
+ * ===================================================================== */
+function avisosSinLeer() { return ((S.datos && S.datos.avisos) || []).filter(function (a) { return !a.leido && a.vigente; }); }
+function bloqueAvisos() {
+  return avisosSinLeer().slice(0, 3).map(function (a) {
+    return a.importante
+      ? '<div class="av-imp"><span class="av-fila"><span class="av-tag">IMPORTANTE</span><small>' + esc(a.autor) + ' · ' + esc(fechaBonita(a.fecha)) + '</small></span><b>' + esc(a.texto) + '</b>' +
+        (a.hasta ? '<small>Vigente hasta ' + esc(fechaBonita(a.hasta)) + '</small>' : '') + '<button class="btn rojo" onclick="leerAviso(\'' + esc(a.id) + '\')">Enterado</button></div>'
+      : '<div class="av-norm"><span class="av-ic">ℹ️</span><span class="tx"><b>' + esc(a.texto) + '</b><small>' + esc(a.autor) + ' · ' + esc(fechaBonita(a.fecha)) + '</small></span><button class="av-x" aria-label="Ya lo leí" onclick="leerAviso(\'' + esc(a.id) + '\')">×</button></div>';
+  }).join('');
+}
+function leerAviso(id) {
+  (S.datos.avisos || []).forEach(function (a) { if (a.id === id) a.leido = horaTxt().slice(0, 16); });
+  DB.set('inicio', S.datos);
+  if (S.vista === 'avisos') vistaAvisos(); else vistaInicio();
+  srv('avisoLeido', { id: id }).catch(function (e) { if (e.red) encolar('avisoLeido', { id: id }, 'Aviso leído'); });
+}
+function vistaAvisos() {
+  S.vista = 'avisos'; pararEscaner();
+  var todos = (S.datos && S.datos.avisos) || [], sin = todos.filter(function (a) { return !a.leido && a.vigente; }), leidos = todos.filter(function (a) { return a.leido; });
+  var html = '<div class="barra"><button class="volver" onclick="vistaInicio()" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>Avisos</b><small>De Logística · los vencidos se borran solos</small></div></div><div class="cuerpo con-nav">';
+  if (sin.length) html += '<span class="etiqueta">Sin leer (' + sin.length + ')</span>';
+  sin.forEach(function (a) {
+    html += '<div class="av-item" style="border-left-color:' + (a.importante ? 'var(--rojo)' : 'var(--azul2)') + '"><span class="av-fila"><span class="av-tag' + (a.importante ? '' : ' n') + '">' + (a.importante ? 'IMPORTANTE' : 'AVISO') + '</span><small>' +
+      esc(fechaBonita(a.fecha)) + (a.hasta ? ' · vence ' + esc(fechaBonita(a.hasta)) : '') + '</small></span><b>' + esc(a.texto) + '</b>' +
+      '<button class="b ' + (a.importante ? 'rojo-lleno' : '') + ' chico" style="align-self:flex-start" onclick="leerAviso(\'' + esc(a.id) + '\')">' + (a.importante ? 'Enterado' : 'Ya lo leí') + '</button></div>';
+  });
+  if (leidos.length) html += '<span class="etiqueta">Leídos</span>';
+  leidos.forEach(function (a) { html += '<div class="av-item leido"><small>' + esc(fechaBonita(a.fecha)) + ' · ' + (a.importante ? 'enterado ' : 'leído ') + esc(String(a.leido).slice(11, 16)) + '</small><span>' + esc(a.texto) + '</span></div>'; });
+  if (!todos.length) html += '<div class="vacio"><b>Sin avisos</b><span>Cuando Logística mande un aviso, suena y aparece aquí y en tu inicio.</span></div>';
+  html += '<button class="btn linea" onclick="vistaYo()">Mi cuenta</button></div>' + nav('');
+  pintar(html);
+}
+
+/* ---------- Administración → Avisos ---------- */
+function admAvisos() {
+  S.vista = 'adm';
+  var sub = barraAdm('Avisos', 'Les sale en su app y suena');
+  admCargar('avisos', {}, function (r) {
+    S.admAv = S.admAv || { para: 'Todos', importante: false };
+    var x = S.admAv;
+    var html = sub + '<div class="cuerpo con-nav"><div class="bloque"><div class="cab-b"><b>Nuevo aviso</b></div>' +
+      '<textarea class="campo" id="avTexto" rows="3" placeholder="Ej. Hoy Coapa cierra a las 12:00">' + esc(x.texto || '') + '</textarea>' +
+      '<label class="et">Para</label><div class="segm">' + ['Todos', 'Gestoría', 'Facturación'].map(function (o) {
+        return '<button class="' + (x.para === o ? 'act' : '') + '" onclick="admAvPres();S.admAv.para=\'' + o + '\';admAvisos()">' + o + '</button>';
+      }).join('') + '</div>' +
+      '<select class="campo" id="avPersona" onchange="admAvPres();S.admAv.para=this.value||\'Todos\';admAvisos()"><option value="">— o a una persona —</option>' + r.personas.map(function (p) {
+        return '<option value="' + esc(p.usuario) + '"' + (x.para === p.usuario ? ' selected' : '') + '>' + esc(p.nombre) + '</option>';
+      }).join('') + '</select>' +
+      '<label class="et" for="avHasta">Vigente hasta <span class="opc">(vacío = hasta que lo quites)</span></label><input class="campo" id="avHasta" type="datetime-local" value="' + esc(x.hasta || '') + '">' +
+      '<label class="check sw"><span style="flex:1"><b>Importante</b><br><small>Sale arriba en rojo, suena y pide "Enterado"</small></span><input type="checkbox" id="avImp" ' + (x.importante ? 'checked' : '') + '></label>' +
+      '<button class="btn" onclick="admAvMandar()">Mandar aviso</button></div>';
+    html += '<span class="etiqueta">Vigentes (' + r.avisos.length + ')</span>';
+    if (!r.avisos.length) html += '<div class="vacio"><span>No hay avisos vigentes.</span></div>';
+    r.avisos.forEach(function (a) {
+      html += '<div class="av-item" style="border-left-color:' + (a.importante ? 'var(--rojo)' : 'var(--azul2)') + '"><b>' + esc(a.texto) + '</b><small>' + esc(a.para) + ' · ' + (a.importante ? 'Enterados ' : 'Leído por ') + a.leidos + ' de ' + a.total +
+        (a.faltan.length && a.faltan.length <= 4 ? ' · falta ' + esc(a.faltan.join(', ')) : '') + (a.hasta ? ' · vence ' + esc(fechaBonita(a.hasta)) : '') + '</small>' +
+        '<button class="b chico" style="align-self:flex-start" onclick="admHacer(\'avisoQuitar\',{id:\'' + esc(a.id) + '\'},admAvisos)">Quitar aviso</button></div>';
+    });
+    pintar(html + '<p class="nota">También se pueden escribir en la pestaña APP_Avisos.</p></div>' + navAdm(''));
+  }, sub);
+}
+function admAvPres() {
+  var x = S.admAv; if (!x) return;
+  if ($('avTexto')) x.texto = $('avTexto').value;
+  if ($('avHasta')) x.hasta = $('avHasta').value;
+  if ($('avImp')) x.importante = $('avImp').checked;
+}
+function admAvMandar() {
+  admAvPres();
+  var x = S.admAv;
+  if (!String(x.texto || '').trim()) return falla(errCod('CAP-01', 'Escribe el aviso.'));
+  admHacer('avisoNuevo', { texto: x.texto, para: x.para, importante: x.importante, hasta: x.hasta ? x.hasta.replace('T', ' ') + ':00' : '' }, function () { S.admAv = null; admAvisos(); });
 }

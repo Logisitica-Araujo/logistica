@@ -186,6 +186,30 @@ pd = post({ accion: 'inicio', token: tJL }).pendientes; it = todos();
 ok(it['#16151'] && !it['#16151'].apartado, 'A las 2 horas sin escanear, se libera solo');
 ponerHora('2026-11-09T20:00:00Z');
 
+/* ---------- Avisos ---------- */
+titulo('Avisos');
+const adm = E.hoja('APP_Usuarios'); const cR = adm.datos[0].indexOf('Rol'); adm.datos.find(f => f[adm.datos[0].indexOf('Usuario')] === 'antonio')[cR] = 'Administrador';
+C.CacheService.getScriptCache().remove('usr_antonio');
+let av = post({ accion: 'admin', token: tAN, que: 'avisoNuevo', texto: 'Hoy Coapa cierra a las 12:00', para: 'Gestoría', importante: true, hasta: '2026-11-09 18:00:00' });
+ok(av.ok && av.id, 'La administradora manda un aviso importante para Gestoría');
+let avJL = post({ accion: 'inicio', token: tJL }).avisos;
+ok(avJL.length === 1 && avJL[0].importante && !avJL[0].leido && avJL[0].vigente, 'A Jose Luis (Gestoría) le llega, sin leer');
+post({ accion: 'admin', token: tAN, que: 'avisoNuevo', texto: 'Solo para Facturación', para: 'Facturación' });
+ok(post({ accion: 'inicio', token: tJL }).avisos.length === 1, 'El de Facturación no le llega a Gestoría');
+let lista = post({ accion: 'admin', token: tAN, que: 'avisos' }).avisos;
+ok(lista.find(x => x.id === av.id).leidos === 0, 'Administración: "Enterados 0"');
+post({ accion: 'avisoLeido', token: tJL, id: av.id });
+ok(post({ accion: 'inicio', token: tJL }).avisos[0].leido, 'Jose Luis da "Enterado"');
+lista = post({ accion: 'admin', token: tAN, que: 'avisos' }).avisos;
+ok(lista.find(x => x.id === av.id).leidos === 1 && !lista.find(x => x.id === av.id).faltan.includes('Jose Luis'), 'Administración ve quién ya dio "Enterado"');
+ponerHora('2026-11-10T01:00:00Z');
+ok(!post({ accion: 'admin', token: tAN, que: 'avisos' }).avisos.some(x => x.id === av.id), 'Después de su hora deja de estar vigente');
+ponerHora('2026-11-09T20:00:00Z');
+post({ accion: 'admin', token: tAN, que: 'avisoQuitar', id: av.id });
+ok(!post({ accion: 'admin', token: tAN, que: 'avisos' }).avisos.some(x => x.id === av.id), 'Quitar aviso');
+av = post({ accion: 'admin', token: tAN, que: 'avisoNuevo', texto: 'Lunes 16 es feriado: no hay rutas.', para: 'Todos' });
+ok(!post({ accion: 'admin', token: tJL, que: 'avisoNuevo', texto: 'x' }).ok, 'Un gestor no puede mandar avisos');
+
 console.log('\n' + (total - fallas) + '/' + total + ' pruebas correctas');
 
 /* ======================= Navegador (capturas) ======================= */
@@ -245,6 +269,14 @@ fs.mkdirSync(SALIDA, { recursive: true });
   await p.click('text=Lo recojo yo'); await p.waitForTimeout(1500);
   ok(/Voy por/.test(await texto()), 'Navegador: "Lo recojo yo" → "Voy por…"');
   await foto('voy-por');
+  await p.evaluate(() => vistaInicio()); await p.waitForTimeout(400);
+  await p.evaluate(() => actualizar()); await p.waitForTimeout(900);
+  ok(/Lunes 16 es feriado/.test(await texto()), 'Navegador: el aviso sale en su inicio');
+  await foto('aviso-en-inicio');
+  await p.click('[aria-label="Avisos"]'); await p.waitForTimeout(500);
+  await foto('avisos');
+  await p.click('.av-item >> text=Ya lo leí'); await p.waitForTimeout(800); await foto('avisos-leido');
+  ok(/leídos/i.test(await texto()), 'Navegador: marcar leído');
   ok(!errores.length, 'Navegador: sin errores de JavaScript' + (errores.length ? ': ' + errores.join(' | ') : ''));
   await browser.close();
   console.log('\n' + (total - fallas) + '/' + total + ' pruebas correctas · capturas en ' + SALIDA);
