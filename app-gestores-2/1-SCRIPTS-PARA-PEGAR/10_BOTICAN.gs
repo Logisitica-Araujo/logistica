@@ -10,7 +10,8 @@
  *             · G Pedido listo (Producción) · H Ingreso a logística · J Fecha salida · Q Sucursales
  *   · Feriados (desde la fila 2): A fecha · B motivo
  *   · Rutas    (desde la fila 2): A hora "HH:MM" · B recorrido en orden ("Vértiz · Doctores · Roma · Oficinas")
- *              Opcionales (solo para mostrar): C hasta "HH:MM" (ventana) · D nombre ("Ruta 4") · E realiza · F qué lleva / notas.
+ *              Opcionales (solo para mostrar), se buscan por su TÍTULO en la fila 1: "Hasta" (HH:MM, ventana) ·
+ *              "Ruta" (nombre) · "Realiza" · "Qué lleva".
  *              Las rutas son un AVISO VISUAL: no deciden plazos ni quién puede recoger.
  * Los horarios y feriados NO están en el código: siempre se leen de esas pestañas.
  *
@@ -134,7 +135,14 @@ function _btLeer() {
   });
   var rutas = [];
   var shR = L.getSheetByName('Rutas');
-  if (shR && shR.getLastRow() >= 2) shR.getRange(2, 1, shR.getLastRow() - 1, Math.min(6, Math.max(2, shR.getLastColumn()))).getDisplayValues().forEach(function (r) {
+  // A = hora y B = recorrido (fijos). Las columnas opcionales se buscan por su título en la fila 1:
+  // "Hasta", "Ruta", "Realiza", "Qué lleva" (en cualquier columna; si no están, no pasa nada).
+  var encR = shR ? shR.getRange(1, 1, 1, Math.max(2, shR.getLastColumn())).getDisplayValues()[0].map(function (h) { return _norm(h); }) : [];
+  var colR = function (re) { for (var i = 2; i < encR.length; i++) if (re.test(encR[i])) return i; return -1; };
+  var cHasta = colR(/^hasta/), cNom = colR(/^ruta$/), cRea = colR(/^realiza/), cLleva = colR(/^que lleva|^notas?$/);
+  if (shR && shR.getLastRow() >= 2) shR.getRange(2, 1, shR.getLastRow() - 1, Math.max(2, shR.getLastColumn())).getDisplayValues().forEach(function (fila) {
+    var v = function (c) { return c >= 0 ? String(fila[c] || '') : ''; };
+    var r = [fila[0], fila[1], v(cHasta), v(cNom), v(cRea), v(cLleva)];
     var horas = String(r[0]).match(/\d{1,2}:\d{2}/g);
     if (!horas) return;
     var hm = function (t) { var x = t.split(':'); return { txt: ('0' + x[0]).slice(-2) + ':' + x[1], min: +x[0] * 60 + +x[1] }; };
