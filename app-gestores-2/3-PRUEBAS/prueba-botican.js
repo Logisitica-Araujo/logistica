@@ -39,7 +39,7 @@ const hEnv = H('Envios', [['', '', '', '', '', 'Bitácora de pedidos BOTICAN 202
   env('🧍 RECOLECCIÓN DE GESTOR', '#16151', 'Sucursal Ecatepec', 'lun, 09 nov26, 10:00'),
   env('🧍 RECOLECCIÓN DE GESTOR', '#16152', '', 'lun, 09 nov26, 10:20', '=SI(B10="";"";"")'),
   env('✅ RECIBIDO EN LOGÍSTICA', '#16137', '', 'sáb, 07 nov26, 13:57', '09/11/2026 09:54:27'),
-  env('🧪 EN ELABORACIÓN', '#16148', '', '')]);
+  env('🧪 EN ELABORACIÓN', '#16148', '', '')].concat(Array.from({ length: 900 }, () => { const f = new Array(17).fill(''); f[8] = false; return f; })));   // como la real: renglones vacíos con la casilla FALSE
 
 APP.correr('INSTALAR');
 APP.correr('conectarOperaciones', E.URL_OPS, 'app.gestores', 'PIN-APP-1');
