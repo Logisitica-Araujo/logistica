@@ -20,12 +20,14 @@ const H = (n, d) => { const h = bot.getSheetByName(n); h.datos = d; return h; };
 H('Feriados', [['Fecha', 'Motivo'], ['lun 02/11/2026', 'Paqueterías sin operación (Día de Muertos)'], ['lun 16/11/2026', 'Revolución Mexicana (LFT)'],
   ['vie 25/12/2026', 'Navidad (LFT)'], ['vie 01/01/2027', 'Año Nuevo (LFT)']]);
 // Rutas del PDF "Rutas de recolección BOTICAN" (11-nov). A y B como siempre; C–F opcionales, solo para mostrar.
-H('Rutas', [['Hora (HH:MM)', 'Sucursales', 'Hasta', 'Ruta', 'Realiza', 'Qué lleva'],
-  ['09:00', 'Vértiz · BOTICAN · Doctores · Roma · Oficinas', '', 'Ruta 1', 'José Luis y Antonio', 'Fórmulas BOTICAN y traspasos para Coapa o Ecatepec'],
-  ['10:00', 'Roma · Doctores · Vértiz · Roma · Oficinas', '11:00', 'Ruta 2', 'Bela', 'Traspasos entre sucursales y fórmula de Roma'],
-  ['12:30', 'Vértiz · Doctores', '', 'Ruta 3', 'Belén', 'Recetas IMSS y traspasos'],
-  ['14:40', 'Vértiz · BOTICAN · Doctores · Roma · Oficinas', '15:10', 'Ruta 4', 'Belén', 'Fórmulas BOTICAN, traspasos de Vértiz y Doctores'],
-  ['16:00', 'Roma · Doctores · Vértiz · BOTICAN · Roma · Oficinas', '17:00', 'Ruta 5', 'Bela', 'Fórmulas BOTICAN y entrega en Oficinas']]);
+// Igual que la pestaña real: C vacía, D1 con una nota, y las opcionales de E a H (se buscan por título).
+const NOTA = 'Nota: las rutas de viernes por la tarde se envían el lunes.';
+H('Rutas', [['Hora (HH:MM)', 'Sucursales', '', NOTA, 'Hasta (HH:MM)', 'Ruta', 'Realiza', 'Qué lleva'],
+  ['09:00', 'Vértiz · BOTICAN · Doctores · Roma · Oficinas', '', '', '', 'Ruta 1', 'José Luis y Antonio', 'Fórmulas BOTICAN y traspasos para Coapa o Ecatepec'],
+  ['10:00', 'Roma · Doctores · Vértiz · Roma · Oficinas', '', '', '11:00', 'Ruta 2', 'Bela', 'Traspasos entre sucursales y fórmula de Roma'],
+  ['12:30', 'Vértiz · Doctores', '', '', '', 'Ruta 3', 'Belén', 'Recetas IMSS y traspasos'],
+  ['14:40', 'Vértiz · BOTICAN · Doctores · Roma · Oficinas', '', '', '15:10', 'Ruta 4', 'Belén', 'Fórmulas BOTICAN, traspasos de Vértiz y Doctores'],
+  ['16:00', 'Roma · Doctores · Vértiz · BOTICAN · Roma · Oficinas', '', '', '17:00', 'Ruta 5', 'Bela', 'Fórmulas BOTICAN y entrega en Oficinas']]);
 const env = (est, id, dir, g, h, j, q) => { const f = new Array(17).fill(''); f[0] = est; f[1] = id; f[4] = dir || 'Calle 1, CDMX'; f[5] = 'Vet'; f[6] = g || ''; f[7] = h || ''; f[8] = false; f[9] = j || ''; f[16] = q || ''; return f; };
 const hEnv = H('Envios', [['', '', '', '', '', 'Bitácora de pedidos BOTICAN 2026'], ['Estatus', 'Identificador', 'Fecha solicitud', 'Contacto', 'Dirección entrega', 'Area', 'Pedido listo para recolección', 'Ingreso a logística', 'Check', 'Fecha salida', 'Tipo', 'Gestor', 'Guía', 'ETA', 'Fecha entrega', 'Tiempo', 'Sucursales'],
   env('ENTREGADO', '#16099', '', 'mar, 03 nov26, 09:10', '03/11/2026 09:50:10', 'mar, 3 de nov'),
