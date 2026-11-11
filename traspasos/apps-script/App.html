@@ -263,7 +263,9 @@ function render() {
   $('#adminbar').innerHTML = adm ? '<div class="adminbar"><div class="wrap"><strong>MODO ADMINISTRADOR</strong><span>' + esc(S.ctx.email) + ' · control total: editar, mover, cambiar estatus y eliminar</span></div></div>' : '';
   renderHeader();
   var v = '';
-  if (esVistaAdmin()) {
+  if (S.tab === 'rutas') {
+    v = vRutas();   // solo lectura, la ven todas las cuentas
+  } else if (esVistaAdmin()) {
     v = S.tab === 'buscar' ? vBuscar() : S.tab === 'sol' ? vSolicitudes() : S.tab === 'hoja' ? vHoja() : vTodos();
   } else {
     v = me() === 'REC' ? vRecepcion()
@@ -304,10 +306,10 @@ function ayudaHTML() {
 function renderHeader() {
   var tabs = [];
   if (esVistaAdmin()) {
-    tabs = [['todos', 'Todos los traspasos'], ['buscar', 'Buscador'], ['sol', 'Solicitudes', S.data.solicitudes.length], ['hoja', 'Catálogos']];
+    tabs = [['todos', 'Todos los traspasos'], ['buscar', 'Buscador'], ['sol', 'Solicitudes', S.data.solicitudes.length], ['hoja', 'Catálogos'], ['rutas', '🚚 Rutas de recolección']];
   } else if (me() === 'REC') {
     var enRec = S.data.traspasos.filter(function (t) { return t.estatus === 'EN_RECEPCION' || R.porSalirRec(t, S.A); }).length;
-    tabs = [['dejar', '📥 Dejar'], ['recoger', '📤 Recoger'], ['resguardo', 'En resguardo', enRec], ['imprimir', '🖨 Centro de Impresión', (S.data.cajas || []).filter(function (c) { return c.estatus === 'ARMADA'; }).length, 'destacado']];
+    tabs = [['dejar', '📥 Dejar'], ['recoger', '📤 Recoger'], ['resguardo', 'En resguardo', enRec], ['imprimir', '🖨 Centro de Impresión', (S.data.cajas || []).filter(function (c) { return c.estatus === 'ARMADA'; }).length, 'destacado'], ['rutas', '🚚 Rutas de recolección']];
   } else {
     tabs = [['bandeja', 'Mi bandeja'], ['nuevo', 'Nuevo traspaso'], ['escaner', 'Escáner']];
     if (me() === 'BOT') tabs.push(['botican', '📦 Recolección pedidos BOTICAN', S.bot && S.bot.lista ? S.bot.lista.filter(function (p) { return p.estado === 'ELABORADO'; }).length : 0, 'destacado']);
@@ -320,6 +322,7 @@ function renderHeader() {
         : S.data.traspasos.filter(function (t) { return R.paqueteria(t, me(), S.A); }).length;
       tabs.push(['paq', 'Paquetería', n]);
     }
+    tabs.push(['rutas', '🚚 Rutas de recolección']);
   }
   var min = Math.max(0, Math.floor((S.ctx.exp - Date.now()) / 60000));
   var hueco = '<span class="logo" title="Aquí va el logo (CFG_Ajustes → logo_empresa)">LOGO</span>';
@@ -440,7 +443,7 @@ function vBandeja() {
 function vNuevo() {
   var w = S.wiz, m = me();
   var pasos = [sinCred() ? 'Tu cuenta' : 'Credencial', 'Destino', 'Contenido y bultos', 'Etiquetas'];
-  var head = '<h1>Nuevo traspaso</h1><p class="sub">Sale de <b>' + esc(nom(m)) + '</b>. El folio y las etiquetas se generan solos al final.</p>' +
+  var head = '<div class="headrow"><h1>Nuevo traspaso</h1>' + chipProximaRuta() + '</div><p class="sub">Sale de <b>' + esc(nom(m)) + '</b>. El folio y las etiquetas se generan solos al final.</p>' +
     '<div class="steps">' + pasos.map(function (p, i) { return '<div class="' + (w.step === i + 1 ? 'on' : w.step > i + 1 ? 'done' : '') + '">' + (i + 1) + '. ' + p + '</div>'; }).join('') + '</div>';
   var err = w.err ? '<div class="feedback err">' + esc(w.err) + '</div>' : '';
   if (w.step === 1) {
@@ -474,6 +477,47 @@ function vNuevo() {
   return head + '<div class="panel stack"><div class="feedback ok">✓ Traspaso <span class="num">' + esc(t.folio) + '</span> creado. Se mandaron ' + t.bultos + ' etiqueta(s) a imprimir. Pégalas en los bultos; queda en espera de gestoría.</div>' +
     '<div class="labels">' + rango(t.bultos).map(function (b) { return etiquetaHTML(t, b, 0, true); }).join('') + '</div>' +
     '<div class="row"><button class="btn" type="button" data-a="reimp-auto">Volver a imprimir</button><button class="btn" type="button" data-a="open" data-v="' + esc(t.folio) + '">Ver detalle</button><button class="btn primary" type="button" data-a="otro">Crear otro traspaso</button></div></div>';
+}
+/* ---------- Rutas de recolección (hoja CAT_RutasRecoleccion; solo lectura) ---------- */
+/** Hora y día actuales en la Ciudad de México (no depende de la zona de la computadora). */
+function ahoraMX() {
+  try {
+    var p = {}; new Intl.DateTimeFormat('en-US', { timeZone: 'America/Mexico_City', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+      .formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
+    return { dia: { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[p.weekday], hm: p.hour + ':' + p.minute };
+  } catch (e) { var d = new Date(); return { dia: d.getDay(), hm: horaAhora() }; }
+}
+/** Próxima ruta según la hora actual: hoy si es día hábil (lun a vie) y falta alguna; si no, la primera del siguiente día hábil. */
+function proximaRuta() {
+  var rs = S.cat.rutas || []; if (!rs.length) return null;
+  var n = ahoraMX(), habil = n.dia >= 1 && n.dia <= 5;
+  if (habil) { for (var i = 0; i < rs.length; i++) if (rs[i].desde > n.hm) return { ruta: rs[i], cuando: '' }; }
+  var sig = n.dia === 5 ? 'lun' : n.dia === 6 ? 'lun' : n.dia === 0 ? 'lun' : 'mañana';
+  return { ruta: rs[0], cuando: sig };
+}
+function chipProximaRuta() {
+  var p = proximaRuta(); if (!p) return '';
+  return '<button type="button" class="rutachip" data-a="tab" data-v="rutas" title="Ver las rutas de recolección">🕒 Próxima ruta: <b>' + (p.cuando ? esc(p.cuando) + ' ' : '') + esc(p.ruta.desde) + '</b></button>';
+}
+function vRutas() {
+  var rs = S.cat.rutas || [], p = proximaRuta();
+  var tarjetas = rs.map(function (r) {
+    var horas = '<span class="rt-hora">' + esc(r.desde) + '</span>' + (r.hasta ? '<span class="rt-hasta">a ' + esc(r.hasta) + '</span>' : '');
+    var paradas = r.paradas.map(function (x) { return '<div class="rt-stop"><span class="dot"></span><span class="nm">' + esc(x) + '</span></div>'; }).join('') +
+      (r.oficinas ? '<div class="rt-stop fin"><span class="dot"></span><span class="nm">Oficinas</span></div>' : '');
+    return '<article class="rt' + (p && p.ruta === r ? ' prox' : '') + '" style="--rc:' + esc(r.color) + '">' +
+      '<div class="rt-izq"><span class="rt-tag">Ruta ' + esc(r.ruta) + '</span><div>' + horas + '</div></div>' +
+      '<div class="rt-linea">' + paradas + '</div>' +
+      '<div class="rt-der"><span class="muted">Realiza: <b style="color:var(--ink)">' + esc(r.realiza || '—') + '</b></span>' +
+      (r.que ? '<span>' + esc(r.que) + '</span>' : '') + (r.obs ? '<span class="rt-obs">' + esc(r.obs) + '</span>' : '') + '</div></article>';
+  }).join('');
+  var pie = (S.cat.rutasNotas || []).map(function (x) { return '<span>' + esc(x) + '</span>'; }).join('');
+  return '<div class="headrow"><h1>Rutas de recolección · lunes a viernes</h1>' + chipProximaRuta() + '</div>' +
+    '<p class="sub">Cada línea es el recorrido en orden, de izquierda a derecha. Las rutas con <b>Oficinas</b> al final entregan ahí. ' +
+    '<span class="rt-leyenda"><i class="d"></i> Parada <i class="d f"></i> Entrega en Oficinas</span></p>' +
+    (rs.length ? '<div class="stack" style="gap:12px">' + tarjetas + '</div>' : '<div class="panel muted">Todavía no hay rutas cargadas. Avisa a Logística.</div>') +
+    (pie ? '<div class="rt-pie">' + pie + '</div>' : '') +
+    (S.ctx.puedeAdmin ? '<p class="muted" style="font-size:13px;margin-top:10px">Para cambiar horarios, paradas o personas, edita la hoja <b>CAT_RutasRecoleccion</b> (las notas del pie están en CFG_Ajustes: rutas_nota_…). Si la hoja no existe, ejecuta <b>instalar</b> una vez.</p>' : '');
 }
 /* ---------- Guía: qué se manda a cada área de Oficinas (hoja CAT_EnviosOf) ---------- */
 function docsDe(area) {
@@ -576,7 +620,7 @@ function etiquetaHTML(t, b, rp, pantalla) {
  */
 var PUNTO = 0.125;
 /** Versión de la página (sale en ❓ Ayuda). Sirve para saber si ya se publicó lo último. */
-var VERSION_PAGINA = '2026-11-05 · cajas en ruta';
+var VERSION_PAGINA = '2026-11-11 · rutas de recolección';
 function bcHTML(code, anchoMm, altoMm) {
   return '<div class="bcw"><svg class="bc" data-code="' + esc(code) + '" data-w="' + anchoMm + '" data-h="' + altoMm + '"></svg></div>';
 }

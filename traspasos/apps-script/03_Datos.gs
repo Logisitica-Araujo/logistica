@@ -116,8 +116,48 @@ function _catalogos() {
       }
     },
     impresoras: _impresoras(),
-    enviosOf: _enviosOficinas().lista
+    enviosOf: _enviosOficinas().lista,
+    rutas: _rutasRecoleccion(),
+    rutasNotas: [_ajuste('rutas_nota_coapa', ''), _ajuste('rutas_nota_ecatepec', ''), _ajuste('rutas_nota_viernes', '')]
+      .map(function (x) { return String(x || '').trim(); }).filter(Boolean)
   };
+}
+
+/**
+ * Rutas de recolección (hoja CAT_RutasRecoleccion): solo lectura en la página, se editan en la hoja.
+ * Columnas: Ruta | Desde (HH:MM) | Hasta (HH:MM, vacío = hora fija) | Paradas (separadas por →, coma o |) |
+ *           Entrega en Oficinas (SI/NO) | Realiza | Qué recolecta | Observación | Color (hex) | Activa (SI/NO)
+ * Si la hoja todavía no existe (no se ha corrido instalar), se usan las rutas base de abajo.
+ */
+const RUTAS_BASE = [
+  [1, '09:00', '', 'Vértiz · BOTICAN → Doctores → Roma', 'SI', 'José Luis y Antonio', 'Recolecta fórmulas BOTICAN y traspasos para Coapa o Ecatepec.', '', '#E8853F', 'SI'],
+  [2, '10:00', '11:00', 'Roma → Doctores → Vértiz → Roma', 'SI', 'Bela', 'Traspasos entre sucursales y fórmula de Roma.', '', '#115E59', 'SI'],
+  [3, '12:30', '', 'Vértiz → Doctores → Vértiz', 'NO', 'Belén', 'Recetas IMSS y traspasos.', '', '#7A6B47', 'SI'],
+  [4, '14:40', '15:10', 'Vértiz · BOTICAN → Doctores → Roma', 'SI', 'Belén', 'Fórmulas BOTICAN, traspasos de Vértiz y Doctores, fórmulas Doctores–Roma y entrega de fórmulas BOTICAN en Oficinas.', 'Puede llevar algún traspaso ligero a Sucursal Vértiz.', '#A9501E', 'SI'],
+  [5, '16:00', '17:00', 'Roma → Doctores → Vértiz · BOTICAN → Roma', 'SI', 'Bela', 'Fórmulas BOTICAN, traspasos de Vértiz y Doctores, fórmulas Doctores–Roma y entrega de fórmulas BOTICAN en Oficinas.', '', '#4A4B2E', 'SI']
+];
+const RUTAS_ENC = ['Ruta', 'Desde (HH:MM)', 'Hasta (HH:MM)', 'Paradas (en orden, separadas por →)', 'Entrega en Oficinas (SI/NO)', 'Realiza', 'Qué recolecta', 'Observación', 'Color (hex)', 'Activa (SI/NO)'];
+
+function _rutasRecoleccion() {
+  const hora = function (v) {
+    if (v instanceof Date) return ('0' + v.getHours()).slice(-2) + ':' + ('0' + v.getMinutes()).slice(-2);
+    const m = String(v == null ? '' : v).match(/(\d{1,2})\s*[:.hH]\s*(\d{2})/);
+    return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : '';
+  };
+  const si = function (v) { return /^(si|sí|s|x|1|true|verdadero)$/i.test(String(v == null ? '' : v).trim()); };
+  let filas = RUTAS_BASE;
+  const sh = _libro().getSheetByName(TR.H.RUTAS);
+  if (sh) {
+    filas = sh.getLastRow() > TR.FILA_ENC ? sh.getRange(TR.FILA_ENC + 1, 1, sh.getLastRow() - TR.FILA_ENC, RUTAS_ENC.length).getValues() : [];
+  }
+  const out = filas.map(function (f) {
+    const paradas = String(f[3] == null ? '' : f[3]).split(/\s*(?:→|->|\||;|,)\s*/).map(function (x) { return x.trim(); }).filter(Boolean);
+    const color = /^#[0-9a-f]{6}$/i.test(String(f[8] || '').trim()) ? String(f[8]).trim() : '#5D6C7A';
+    return { ruta: String(f[0]).trim(), desde: hora(f[1]), hasta: hora(f[2]), paradas: paradas, oficinas: si(f[4]), realiza: String(f[5] || '').trim(),
+             que: String(f[6] || '').trim(), obs: String(f[7] || '').trim(), color: color, activa: sh ? (String(f[9]).trim() === '' ? true : si(f[9])) : true };
+  }).filter(function (r) { return r.desde && r.activa && (r.paradas.length || r.oficinas); });
+  out.sort(function (a, b) { return a.desde < b.desde ? -1 : a.desde > b.desde ? 1 : 0; });
+  return out;
 }
 
 /**

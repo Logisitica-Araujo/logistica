@@ -29,3 +29,7 @@ Sistema para registrar, etiquetar, mover y recibir traspasos entre sucursales, �
 - Imagen o logo de la empresa.
 - Modelo de las etiquetadoras Brother y tamaño de etiqueta.
 - Correos de cada cuenta y listado de personal y credenciales.
+
+## Rutas de recolección (11-nov-2026)
+- Pestaña **🚚 Rutas de recolección** (solo lectura, la ven todas las cuentas) y aviso **"Próxima ruta: HH:MM"** junto al título de "Nuevo traspaso".
+- Los horarios, paradas y personas se editan en la hoja **CAT_RutasRecoleccion** (se crea con `instalar()`; sin la hoja se usan las 5 rutas base). Las notas del pie (Coapa, Ecatepec, viernes) están en CFG_Ajustes → `rutas_nota_coapa`, `rutas_nota_ecatepec`, `rutas_nota_viernes`.

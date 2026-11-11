@@ -41,7 +41,8 @@ const TR = {
     IMPRESORAS:  'CAT_Impresoras',
     CAJAS:       'RES_Cajas',
     BOTICAN:     'RES_RecoleccionesBotican',
-    DOMICILIO:   'RES_RecoleccionesDomicilio'
+    DOMICILIO:   'RES_RecoleccionesDomicilio',
+    RUTAS:       'CAT_RutasRecoleccion'
   },
 
   // Archivo de la app de gestores, donde está la hoja "Operaciones".

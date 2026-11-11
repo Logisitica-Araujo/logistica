@@ -97,6 +97,9 @@ function instalar() {
     ['manual_recepcion', '', 'Link de Drive del PDF "Manual de Recepción Oficinas". Es el ÚNICO manual que ve la computadora de Recepción.'],
     ['manual_administradores', '', 'Link de Drive del PDF "Manual de Administradores". Solo lo ven los administradores.'],
     ['manual_proceso', '', 'Link de Drive del documento del proceso implementado (certificación). Solo administradores. Vacío = no se muestra.'],
+    ['rutas_nota_coapa', 'Coapa: lunes, miércoles y viernes antes de las 13:00.', 'Nota al pie de la sección "Rutas de recolección" (sucursal foránea). Vacío = no se muestra.'],
+    ['rutas_nota_ecatepec', 'Ecatepec: martes y jueves.', 'Nota al pie de la sección "Rutas de recolección" (sucursal foránea). Vacío = no se muestra.'],
+    ['rutas_nota_viernes', 'Viernes: lo recolectado en la ruta de 16:00 a 17:00 se envía el lunes.', 'Nota al pie de la sección "Rutas de recolección". Vacío = no se muestra.'],
     ['horas_alerta_sin_salida', 36, 'Horas que puede estar un traspaso de Oficinas sin salida en Recepción antes de avisar a Logística, al área y a administración.'],
     ['ops_ignorar_hasta_fila', 0, 'La revisión de Operaciones ignora las filas hasta este número (lo llena solo "Limpiar para lanzamiento").'],
     ['ops_columna_folio', 'A', 'Hoja Operaciones: columna (letra) donde va el folio del traspaso o de la caja.'],
@@ -128,6 +131,7 @@ function instalar() {
 
   // 5) Cajas para Morelia y revisión automática de guías en "Operaciones"
   if (_crearHojaCajas()) hechos.push('Se creó la hoja RES_Cajas (cajas para Morelia).');
+  if (_crearHojaRutas()) hechos.push('Se creó la hoja CAT_RutasRecoleccion (rutas y horarios de recolección): edítala para cambiar la sección "Rutas de recolección" sin tocar el código.');
   if (_crearHojaRecolBotican()) hechos.push('Se creó la hoja RES_RecoleccionesBotican (acuses de recolección de pedidos Botican).');
   try { const L = _leerEnvios(); hechos.push('Conexión con la bitácora de Botican (Envios): OK, ' + L.filas.length + ' pedidos recientes.'); }
   catch (e) { hechos.push('⚠ No pude leer la bitácora de Botican: ' + e.message); }
@@ -198,6 +202,27 @@ function _crearHojaImpresoras() {
     sh.getRange(2, 1, 1, enc.length).setBackground('#1F63D6').setFontColor('#FFFFFF').setFontWeight('bold');
     sh.setFrozenRows(2);
     [16, 30, 30, 20, 20, 40, 18, 18, 14, 14].forEach(function (w, i) { sh.setColumnWidth(i + 1, w * 7); });
+  } catch (e) { }
+  __TB = {};
+  return true;
+}
+
+/** Hoja CAT_RutasRecoleccion: horarios y paradas de las rutas (la página la lee; solo administradores la editan). */
+function _crearHojaRutas() {
+  const ss = _libro();
+  if (ss.getSheetByName(TR.H.RUTAS)) return false;
+  const sh = ss.insertSheet(TR.H.RUTAS);
+  sh.getRange(1, 1).setValue('CAT_RutasRecoleccion  —  CATÁLOGO · La página LEE esta hoja (sección "Rutas de recolección" y "Próxima ruta") · Solo administradores la editan.  ' +
+    'Una fila por ruta. Paradas en orden, separadas por →  (la entrega en Oficinas se agrega sola al final si dice SI). "Hasta" vacío = hora fija. Para quitar una ruta, pon NO en Activa. Color en hex (#RRGGBB).');
+  sh.getRange(2, 1, 1, RUTAS_ENC.length).setValues([RUTAS_ENC]);
+  sh.getRange(3, 1, RUTAS_BASE.length, RUTAS_ENC.length).setNumberFormat('@').setValues(RUTAS_BASE.map(function (r) { return r.map(String); }));
+  try {
+    sh.setTabColor('#E8853F');
+    sh.getRange(1, 1, 1, RUTAS_ENC.length).merge().setBackground('#FDEBDD').setFontColor('#A9501E').setFontWeight('bold').setWrap(true);
+    sh.setRowHeight(1, 52);
+    sh.getRange(2, 1, 1, RUTAS_ENC.length).setBackground('#E8853F').setFontColor('#FFFFFF').setFontWeight('bold');
+    sh.setFrozenRows(2);
+    [8, 14, 14, 46, 16, 22, 50, 40, 12, 12].forEach(function (w, i) { sh.setColumnWidth(i + 1, w * 7); });
   } catch (e) { }
   __TB = {};
   return true;
