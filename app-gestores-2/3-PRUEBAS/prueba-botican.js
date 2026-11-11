@@ -19,8 +19,13 @@ const bot = E.bot;
 const H = (n, d) => { const h = bot.getSheetByName(n); h.datos = d; return h; };
 H('Feriados', [['Fecha', 'Motivo'], ['lun 02/11/2026', 'Paqueterías sin operación (Día de Muertos)'], ['lun 16/11/2026', 'Revolución Mexicana (LFT)'],
   ['vie 25/12/2026', 'Navidad (LFT)'], ['vie 01/01/2027', 'Año Nuevo (LFT)']]);
-H('Rutas', [['Hora (HH:MM)', 'Sucursales'], ['09:00', 'Vértiz · Doctores · Roma'], ['10:00', 'Vértiz · Doctores · Roma'], ['12:00', 'Vértiz · Doctores'],
-  ['14:30', 'Vértiz · Doctores · Roma'], ['16:00', 'Vértiz · Doctores · Roma'], ['17:00', 'Vértiz · Doctores']]);
+// Rutas del PDF "Rutas de recolección BOTICAN" (11-nov). A y B como siempre; C–F opcionales, solo para mostrar.
+H('Rutas', [['Hora (HH:MM)', 'Sucursales', 'Hasta', 'Ruta', 'Realiza', 'Qué lleva'],
+  ['09:00', 'Vértiz · BOTICAN · Doctores · Roma · Oficinas', '', 'Ruta 1', 'José Luis y Antonio', 'Fórmulas BOTICAN y traspasos para Coapa o Ecatepec'],
+  ['10:00', 'Roma · Doctores · Vértiz · Roma · Oficinas', '11:00', 'Ruta 2', 'Bela', 'Traspasos entre sucursales y fórmula de Roma'],
+  ['12:30', 'Vértiz · Doctores', '', 'Ruta 3', 'Belén', 'Recetas IMSS y traspasos'],
+  ['14:40', 'Vértiz · BOTICAN · Doctores · Roma · Oficinas', '15:10', 'Ruta 4', 'Belén', 'Fórmulas BOTICAN, traspasos de Vértiz y Doctores'],
+  ['16:00', 'Roma · Doctores · Vértiz · BOTICAN · Roma · Oficinas', '17:00', 'Ruta 5', 'Bela', 'Fórmulas BOTICAN y entrega en Oficinas']]);
 const env = (est, id, dir, g, h, j, q) => { const f = new Array(17).fill(''); f[0] = est; f[1] = id; f[4] = dir || 'Calle 1, CDMX'; f[5] = 'Vet'; f[6] = g || ''; f[7] = h || ''; f[8] = false; f[9] = j || ''; f[16] = q || ''; return f; };
 const hEnv = H('Envios', [['', '', '', '', '', 'Bitácora de pedidos BOTICAN 2026'], ['Estatus', 'Identificador', 'Fecha solicitud', 'Contacto', 'Dirección entrega', 'Area', 'Pedido listo para recolección', 'Ingreso a logística', 'Check', 'Fecha salida', 'Tipo', 'Gestor', 'Guía', 'ETA', 'Fecha entrega', 'Tiempo', 'Sucursales'],
   env('ENTREGADO', '#16099', '', 'mar, 03 nov26, 09:10', '03/11/2026 09:50:10', 'mar, 3 de nov'),
@@ -75,9 +80,11 @@ titulo('Ruta del momento y lista por recolectar');
 ponerHora('2026-11-09T20:00:00Z');   // lunes 9-nov 14:00 en CDMX
 robot();
 let b = post({ accion: 'inicio', token: tJL }).botican;
-ok(b && b.ruta && b.ruta.hora === '14:30' && b.ruta.sucursales === 'Vértiz · Doctores · Roma', 'A las 14:00: Ruta 14:30 · Vértiz · Doctores · Roma');
+ok(b && b.ruta && b.ruta.nombre === 'Ruta 4' && b.ruta.hora === '14:40' && b.ruta.hasta === '15:10' && b.ruta.enMin === 40 && !b.ruta.enCurso, 'A las 14:00: Ruta 4 · 14:40–15:10 (sale en 40 min)');
+ok(b.ruta.paradas.join('>') === 'Vértiz>BOTICAN>Doctores>Roma>Oficinas' && b.ruta.oficinas && b.ruta.realiza === 'Belén', 'Recorrido en orden, termina en Oficinas, "Realiza: Belén" (solo se muestra)');
 ok(/Coapa/.test(b.ruta.extra) && !/Ecatepec/.test(b.ruta.extra), 'Lunes: agrega Coapa (no Ecatepec)');
-ok(b.rutasHoy.filter(r => r.paso).map(r => r.hora).join() === '09:00,10:00,12:00', 'Marca como pasadas 09:00, 10:00 y 12:00');
+ok(b.rutasHoy.filter(r => r.paso).map(r => r.hora).join() === '09:00,10:00,12:30', 'Marca como pasadas las rutas 1, 2 y 3');
+ok(b.rutasHoy.find(r => r.hora === '12:30').oficinas === false, 'La de 12:30 no entrega en Oficinas');
 const ids = b.porRecolectar.map(p => p.id);
 ok(ids.join() === '#16120,#16152,#16133,#16134,#16151,#16150', 'Ordenados por fecha compromiso: ' + ids.join(', '));
 ok(b.porRecolectar[0].semaforo === 'rojo' && b.porRecolectar[0].vence === 'vie 6 nov, 10:20', '#16120 vencido (vie 6 nov, 10:20)');
@@ -85,11 +92,14 @@ ok(b.porRecolectar.find(p => p.id === '#16133').vence === 'mié 11 nov, 16:28' &
 ok(!ids.includes('#16130') && !ids.includes('#16137') && !ids.includes('#16099'), 'No incluye lo que ya salió, ya ingresó o ya se entregó');
 ok(b.elaboracion.map(x => x.id).join() === '#16148', '#16148 en elaboración (gris)');
 ok(b.porRecolectar.find(p => p.id === '#16151').enRuta === false && b.porRecolectar.find(p => p.id === '#16150').enRuta === true, 'Ecatepec hoy no toca (lunes); Coapa sí');
-ponerHora('2026-11-09T20:44:00Z'); ok(post({ accion: 'inicio', token: tJL }).botican.ruta.hora === '14:30', '14:44: sigue siendo la de 14:30 (15 min de tolerancia)');
-ponerHora('2026-11-09T20:46:00Z'); ok(post({ accion: 'inicio', token: tJL }).botican.ruta.hora === '16:00', '14:46: ya es la de 16:00');
+ponerHora('2026-11-09T20:50:00Z'); b = post({ accion: 'inicio', token: tJL }).botican; ok(b.ruta.hora === '14:40' && b.ruta.enCurso, '14:50: Ruta 4 pasando ahora (ventana 14:40–15:10)');
+ponerHora('2026-11-09T21:24:00Z'); ok(post({ accion: 'inicio', token: tJL }).botican.ruta.hora === '14:40', '15:24: sigue la Ruta 4 (15 min después de su ventana)');
+ponerHora('2026-11-09T21:26:00Z'); ok(post({ accion: 'inicio', token: tJL }).botican.ruta.hora === '16:00', '15:26: ya es la Ruta 5');
 ponerHora('2026-11-09T23:20:00Z'); ok(post({ accion: 'inicio', token: tJL }).botican.ruta === null, '17:20: ya salieron todas');
-ponerHora('2026-11-10T16:00:00Z'); b = post({ accion: 'inicio', token: tJL }).botican;
-ok(b.ruta.hora === '10:00' && /Ecatepec/.test(b.ruta.extra) && !/Coapa/.test(b.ruta.extra), 'Martes 10:00: agrega Ecatepec');
+ponerHora('2026-11-10T16:30:00Z'); b = post({ accion: 'inicio', token: tJL }).botican;
+ok(b.ruta.hora === '10:00' && b.ruta.enCurso && /Ecatepec/.test(b.ruta.extra) && !/Coapa/.test(b.ruta.extra), 'Martes 10:30: Ruta 2 (10:00–11:00) pasando, y agrega Ecatepec');
+ponerHora('2026-11-13T22:10:00Z'); b = post({ accion: 'inicio', token: tJL }).botican;
+ok(b.ruta.hora === '16:00' && /sale el lunes/.test(b.ruta.nota), 'Viernes 16:10: "lo que se recoja en esta ruta sale el lunes"');
 ponerHora('2026-11-16T16:00:00Z'); b = post({ accion: 'inicio', token: tJL }).botican;
 ok(b.ruta === null && /Revoluci/.test(b.feriadoHoy), 'Lunes 16 (feriado): no hay ruta y dice por qué');
 ponerHora('2026-11-09T20:00:00Z');
@@ -203,8 +213,12 @@ fs.mkdirSync(SALIDA, { recursive: true });
   if (/Crea tu contraseña/.test(await texto())) { await p.fill('#inActual', an.clave); await p.fill('#inNueva', 'antonio-26'); await p.fill('#inNueva2', 'antonio-26'); await p.click('button[type=submit]'); await p.waitForTimeout(900); }
   if (/¿Con qué sales hoy\?/.test(await texto())) { await p.click('text=FED 2 14KGC4'); await p.click('text=Salir a ruta'); await p.waitForTimeout(900); }
   let t = await texto();
-  ok(/RUTA DEL MOMENTO/.test(t) && /Ruta 14:30/.test(t) && /Coapa/.test(t), 'Navegador: inicio con la ruta del momento');
+  ok(/RUTA DEL MOMENTO/.test(t) && /Ruta 4 · 14:40–15:10/.test(t) && /Realiza: Belén/.test(t) && /Coapa/.test(t), 'Navegador: inicio con la ruta del momento (recorrido y quién la realiza)');
   await foto('inicio-ruta-del-momento');
+  await p.click('text=Rutas de hoy'); await p.waitForTimeout(500);
+  ok(/Ruta 1/.test(await texto()) && /No entrega en Oficinas/.test(await texto()) && /Ecatepec PV/.test(await texto()), 'Navegador: "Rutas de hoy" con las 5 rutas y las visitas');
+  await foto('rutas-de-hoy');
+  await p.evaluate(() => vistaInicio()); await p.waitForTimeout(400);
   await p.click('.ruta-bot'); await p.waitForTimeout(500);
   t = await texto();
   ok(/Vence: jue 12 nov, 09:00/.test(t) && /Pendientes por recoger/.test(t), 'Navegador: la ruta abre los pendientes, con semáforo y "Vence"');

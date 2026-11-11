@@ -216,6 +216,7 @@ function actualizar(primera) {
     else if (S.vista === 'parada' && S.parada) vistaParada(S.parada.k);
     else if (S.vista === 'botican') vistaBotican();
     else if (S.vista === 'pendientes') vistaPendientes();
+    else if (S.vista === 'rutas') vistaRutas();
     else if (S.vista === 'mios') vistaMios();
     if (nuevos.length && !primera) avisarNuevos(nuevos);
   }).catch(function (e) {

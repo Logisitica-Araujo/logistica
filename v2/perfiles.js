@@ -819,9 +819,12 @@ function tarjetaRutaBotican(compacta) {
   var lista = (b.porRecolectar || []).filter(function (p) { return p.enRuta; });
   var html = '<button class="ruta-bot" onclick="vistaPendientes()">';
   if (b.ruta) {
-    html += '<span class="rb-fila"><span class="rb-tag">RUTA DEL MOMENTO</span><small>' + (b.ruta.enMin > 0 ? 'sale en ' + b.ruta.enMin + ' min' : 'saliendo') + '</small></span>' +
-      '<b class="rb-tit">Ruta ' + esc(b.ruta.hora) + ' · ' + esc(String(b.ruta.sucursales).replace(/\s*·\s*/g, ', ')) + '</b>' +
-      (b.ruta.extra ? '<small class="rb-extra">Hoy también: <b>' + esc(b.ruta.extra) + '</b></small>' : '');
+    var r = b.ruta;
+    html += '<span class="rb-fila"><span class="rb-tag">RUTA DEL MOMENTO</span><small>' + (r.enCurso ? 'pasando ahora' + (r.hasta ? ' · hasta ' + esc(r.hasta) : '') : 'sale en ' + r.enMin + ' min') + '</small></span>' +
+      '<b class="rb-tit">' + esc(r.nombre ? r.nombre + ' · ' : 'Ruta ') + esc(r.hora) + (r.hasta ? '–' + esc(r.hasta) : '') + '</b>' + recorridoHtml(r) +
+      (r.realiza ? '<small class="rb-extra">Realiza: <b>' + esc(r.realiza) + '</b>' + (r.lleva && !compacta ? ' · ' + esc(r.lleva) : '') + '</small>' : '') +
+      (r.nota ? '<small class="rb-nota">' + esc(r.nota) + '</small>' : '') +
+      (r.extra ? '<small class="rb-extra">Hoy también: <b>' + esc(r.extra) + '</b></small>' : '');
   } else {
     html += '<span class="rb-fila"><span class="rb-tag gris">SIN RUTA</span></span><b class="rb-tit">' + (b.habilHoy ? 'Ya salieron todas las rutas de hoy' : 'Hoy no hay ruta' + (b.feriadoHoy ? ' · ' + esc(b.feriadoHoy) : ' (día inhábil)')) + '</b>';
   }
@@ -835,6 +838,7 @@ function tarjetaRutaBotican(compacta) {
     var rojos = lista.filter(function (p) { return p.semaforo === 'rojo'; }).length;
     html += '<span class="rb-ped">' + puntoSem(rojos ? 'rojo' : lista[0].semaforo) + '<span>' + lista.length + ' pedido(s) BOTICAN por recolectar' + (rojos ? ' · ' + rojos + ' vencido(s)' : '') + '</span></span>';
   }
+  html += '<span class="rb-mas" onclick="event.stopPropagation();vistaRutas()">Rutas de hoy ›</span>';
   var pd = S.datos.pendientes, misVig = pd ? pd.mios.filter(function (x) { return !x.cerrado; }).length : 0;
   return html + '<span class="rb-mas">Pendientes por recoger' + (pd ? ' (' + pd.total + ')' : '') + ' ›' + (misVig ? ' · voy por ' + misVig : '') + '</span></button>';
 }
@@ -1013,4 +1017,30 @@ function confirmarTecleado(codigo) {
     '<button class="btn verde" onclick="cerrarModal();alLeer(S.tecleado)">Sí, es este · registrar</button>' +
     '<button class="btn linea" onclick="cerrarModal();var c=$(\'inCodigo\');if(c){c.value=\'' + esc(codigo) + '\';c.focus();c.select()}">No, me equivoqué</button>');
   return true;
+}
+
+
+/* ---------- Rutas (aviso visual, de la pestaña Rutas de LOGISTICA BOTICAN 2026) ---------- */
+function recorridoHtml(r) {
+  var p = r.paradas && r.paradas.length ? r.paradas : String(r.sucursales || '').split(/\s*·\s*/);
+  return '<span class="recorrido">' + p.map(function (x, i) {
+    var of = /oficinas/i.test(x);
+    return (i ? '<span class="rc-linea"></span>' : '') + '<span class="rc-par' + (of ? ' of' : '') + '"><i></i>' + esc(x) + '</span>';
+  }).join('') + '</span>';
+}
+function vistaRutas() {
+  S.vista = 'rutas'; pararEscaner();
+  var b = (S.datos && S.datos.botican) || {}, v = b.visitas || {};
+  var html = '<div class="barra"><button class="volver" onclick="vistaInicio()" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>Rutas de hoy</b><small>' +
+    (b.habilHoy === false ? 'Hoy no hay rutas' + (b.feriadoHoy ? ' · ' + esc(b.feriadoHoy) : '') : 'Recorrido en orden · todas terminan en Oficinas salvo donde se indica') + '</small></div></div><div class="cuerpo con-nav">';
+  (b.rutasHoy || []).forEach(function (r) {
+    html += '<div class="ruta-card' + (r.actual ? ' actual' : '') + (r.paso ? ' pasada' : '') + '"><div class="rc-cab"><span class="rb-tag' + (r.actual ? '' : ' gris') + '">' + esc(r.nombre || 'Ruta') + '</span>' +
+      '<b>' + esc(r.hora) + (r.hasta ? '–' + esc(r.hasta) : '') + '</b><span class="espacio"></span><small>' + (r.actual ? 'AHORA' : r.paso ? 'ya pasó' : '') + '</small></div>' + recorridoHtml(r) +
+      (r.realiza ? '<small>Realiza: <b>' + esc(r.realiza) + '</b></small>' : '') + (r.lleva ? '<small>' + esc(r.lleva) + '</small>' : '') +
+      (!r.oficinas ? '<small class="rb-nota">No entrega en Oficinas</small>' : '') + (r.notaViernes ? '<small class="rb-nota">Viernes: lo de esta ruta sale el lunes</small>' : '') + '</div>';
+  });
+  html += '<div class="visitas"><div><b>Coapa PV</b><span>lun, mié y vie · antes de 13:00</span><span class="tag ' + (v.coapa ? 'v">HOY' : '">no hoy') + '</span></div>' +
+    '<div><b>Ecatepec PV</b><span>mar y jue</span><span class="tag ' + (v.ecatepec ? 'v">HOY' : '">no hoy') + '</span></div></div>' +
+    '<p class="nota">Las rutas son un aviso: no cambian los plazos ni quién puede recoger. Se editan en la pestaña Rutas de LOGISTICA BOTICAN 2026.</p></div>' + nav('');
+  pintar(html);
 }

@@ -9,7 +9,9 @@
  *   · Envios  (datos desde la fila 3): A Estatus · B N° de pedido · E Dirección
  *             · G Pedido listo (Producción) · H Ingreso a logística · J Fecha salida · Q Sucursales
  *   · Feriados (desde la fila 2): A fecha · B motivo
- *   · Rutas    (desde la fila 2): A hora "HH:MM" · B sucursales
+ *   · Rutas    (desde la fila 2): A hora "HH:MM" · B recorrido en orden ("Vértiz · Doctores · Roma · Oficinas")
+ *              Opcionales (solo para mostrar): C hasta "HH:MM" (ventana) · D nombre ("Ruta 4") · E realiza · F qué lleva / notas.
+ *              Las rutas son un AVISO VISUAL: no deciden plazos ni quién puede recoger.
  * Los horarios y feriados NO están en el código: siempre se leen de esas pestañas.
  *
  * PLAZO (igual que el portal):
@@ -132,9 +134,15 @@ function _btLeer() {
   });
   var rutas = [];
   var shR = L.getSheetByName('Rutas');
-  if (shR && shR.getLastRow() >= 2) shR.getRange(2, 1, shR.getLastRow() - 1, 2).getDisplayValues().forEach(function (r) {
-    var m = /^(\d{1,2}):(\d{2})/.exec(String(r[0]).trim());
-    if (m) rutas.push({ hora: ('0' + m[1]).slice(-2) + ':' + m[2], min: +m[1] * 60 + +m[2], sucursales: String(r[1] || '').trim() });
+  if (shR && shR.getLastRow() >= 2) shR.getRange(2, 1, shR.getLastRow() - 1, Math.min(6, Math.max(2, shR.getLastColumn()))).getDisplayValues().forEach(function (r) {
+    var horas = String(r[0]).match(/\d{1,2}:\d{2}/g);
+    if (!horas) return;
+    var hm = function (t) { var x = t.split(':'); return { txt: ('0' + x[0]).slice(-2) + ':' + x[1], min: +x[0] * 60 + +x[1] }; };
+    var ini = hm(horas[0]), fin = r[2] && /\d{1,2}:\d{2}/.test(r[2]) ? hm(String(r[2]).match(/\d{1,2}:\d{2}/)[0]) : horas[1] ? hm(horas[1]) : null;
+    var rec = String(r[1] || '').trim();
+    rutas.push({ hora: ini.txt, min: ini.min, hasta: fin ? fin.txt : '', hastaMin: fin ? fin.min : 0, sucursales: rec,
+                 paradas: rec.split(/\s*(?:→|->|·|,)\s*/).filter(String), oficinas: /oficinas/i.test(rec),
+                 nombre: String(r[3] || '').trim(), realiza: String(r[4] || '').trim(), lleva: String(r[5] || '').trim() });
   });
   rutas.sort(function (a, b) { return a.min - b.min; });
 
@@ -193,9 +201,10 @@ function _btParaInicio(recolectados) {
   if (APPG_BOT.VISITAS.COAPA.indexOf(dow) >= 0) hoyVisita.push('COAPA');
   if (APPG_BOT.VISITAS.ECATEPEC.indexOf(dow) >= 0) hoyVisita.push('ECATEPEC');
 
-  // Ruta del momento: la siguiente que no ha salido (cuenta hasta 15 min después de su hora).
+  // Ruta del momento: la que está pasando (hasta 15 min después de su hora o de su ventana) o la siguiente.
+  var finDe = function (r) { return (r.hastaMin || r.min) + 15; };
   var ruta = null;
-  if (habilHoy) d.rutas.forEach(function (r) { if (!ruta && r.min + 15 >= ahora.min) ruta = r; });
+  if (habilHoy) d.rutas.forEach(function (r) { if (!ruta && finDe(r) >= ahora.min) ruta = r; });
   var extra = !habilHoy ? '' : hoyVisita.map(function (s) {
     return s === 'COAPA' ? 'Coapa' + (ahora.min >= APPG_BOT.CORTE_VISITA_MIN ? ' (antes de las 13:00 · ya pasó hoy)' : ' (antes de las 13:00)') : 'Ecatepec';
   }).join(' y ');
@@ -212,9 +221,15 @@ function _btParaInicio(recolectados) {
   porRecolectar.sort(function (a, b) { return a.venceKey < b.venceKey ? -1 : a.venceKey > b.venceKey ? 1 : 0; });
   var proxFeriado = Object.keys(fer).sort().filter(function (k) { return k >= _btClaveDia(ahora); })[0];
   return {
-    ruta: ruta ? { hora: ruta.hora, sucursales: ruta.sucursales, extra: extra, enMin: ruta.min - ahora.min } : null,
+    ruta: ruta ? { hora: ruta.hora, hasta: ruta.hasta || '', nombre: ruta.nombre || '', sucursales: ruta.sucursales, paradas: ruta.paradas || [], oficinas: !!ruta.oficinas,
+                   realiza: ruta.realiza || '', lleva: ruta.lleva || '', extra: extra, enMin: ruta.min - ahora.min, enCurso: ahora.min >= ruta.min,
+                   nota: dow === 5 && ruta.min >= 16 * 60 ? 'Viernes: lo que se recoja en esta ruta sale el lunes' : '' } : null,
     habilHoy: habilHoy, feriadoHoy: fer[_btClaveDia(ahora)] || '',
-    rutasHoy: d.rutas.map(function (r) { return { hora: r.hora, sucursales: r.sucursales, paso: habilHoy && r.min + 15 < ahora.min, actual: !!ruta && ruta.hora === r.hora }; }),
+    rutasHoy: d.rutas.map(function (r) {
+      return { hora: r.hora, hasta: r.hasta || '', nombre: r.nombre || '', sucursales: r.sucursales, paradas: r.paradas || [], oficinas: !!r.oficinas, realiza: r.realiza || '', lleva: r.lleva || '',
+               paso: habilHoy && finDe(r) < ahora.min, actual: !!ruta && ruta.hora === r.hora, notaViernes: dow === 5 && r.min >= 16 * 60 };
+    }),
+    visitas: { coapa: hoyVisita.indexOf('COAPA') >= 0, ecatepec: hoyVisita.indexOf('ECATEPEC') >= 0, dow: dow },
     porRecolectar: porRecolectar, elaboracion: elaboracion.slice(-15),
     proxFeriado: proxFeriado ? _btTexto(_btF(+proxFeriado.slice(0, 4), +proxFeriado.slice(5, 7), +proxFeriado.slice(8, 10), 0)).slice(0, -7) + ' · ' + fer[proxFeriado] : '',
     leido: d.leido
@@ -271,7 +286,7 @@ function PROBAR_BOTICAN() {
   var d = _btLeer();
   var r = _btParaInicio({});
   Logger.log('Feriados: ' + Object.keys(d.feriados).join(', '));
-  Logger.log('Rutas: ' + d.rutas.map(function (x) { return x.hora + ' ' + x.sucursales; }).join(' | '));
+  Logger.log('Rutas: ' + d.rutas.map(function (x) { return (x.nombre ? x.nombre + ' ' : '') + x.hora + (x.hasta ? '–' + x.hasta : '') + ' ' + x.sucursales + (x.realiza ? ' (' + x.realiza + ')' : ''); }).join(' | '));
   Logger.log('Ruta del momento: ' + JSON.stringify(r.ruta));
   r.porRecolectar.forEach(function (p) { Logger.log(p.semaforo.toUpperCase() + ' ' + p.id + ' · Vence: ' + p.vence + ' · ' + p.explicacion); });
   Logger.log('En elaboración: ' + r.elaboracion.map(function (x) { return x.id; }).join(', '));
