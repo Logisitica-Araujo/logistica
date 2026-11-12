@@ -117,7 +117,7 @@ function _pendientesInicio(u, botican) {
   _pendFad().forEach(function (p) {
     if (rec[_tnClave(p.id)]) return;
     var g = String(p.gestor || '').trim(), asignado = g && !/^no aplica$/i.test(g) ? g : '';
-    var mioOps = asignado && _claveNombre(asignado) === _claveNombre(u.NombreEnOperaciones);
+    var mioOps = _esMiNombreOps(asignado, u);
     items.push({ codigo: String(p.id), tipo: 'FADERMEX', lugar: 'Recolecciones FADERMEX', texto: [p.nombre, p.direccion].filter(String).join(' · ').slice(0, 140),
       hoy: true, apartado: ap(p.id), asignadoOps: asignado && !mioOps ? asignado : '', asignadoAMi: !!mioOps });
   });
