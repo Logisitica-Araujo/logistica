@@ -37,6 +37,7 @@ function robot(forzar) {
     paso('recolecciones', _robotRecolecciones);
     paso('ligarLibres', function () { return _robotLigarLibres(ruta); });
     paso('cierres', function () { return _robotCierres(ruta); });
+    paso('correcciones', _robotCorrecciones);
     paso('limpieza', _robotLimpieza);
     paso('contraseñas', _procesarClavesNuevas);
     if (String(cfg.ID_BOTICAN || '').trim()) paso('botican', _robotBotican);
@@ -279,11 +280,12 @@ function _robotLigarLibres(ruta) {
 /* ---------- utilidades ---------- */
 /** "Jose Luis", "JoseLuis", "jose luis", 'Antonio "A"' → misma clave (sin espacios, acentos ni comillas). */
 function _claveNombre(v) { return _norm(v).replace(/[^a-z0-9]/g, ''); }
-/** Con qué nombres puede venir este gestor en la columna I de Operaciones:
- *  su NombreEnOperaciones, ese mismo sin la letra entre comillas ('Antonio "A"' → antonio) y su Usuario. */
+/** Con qué nombres puede venir este gestor en la columna I de Operaciones (sin importar mayúsculas,
+ *  acentos, espacios ni signos): su NombreEnOperaciones, ese mismo sin la letra entre comillas
+ *  ('Antonio "A"' → antonio), su Usuario y su Nombre en la app. */
 function _clavesOps(u) {
   var ops = String(u.NombreEnOperaciones || '');
-  var ks = [_claveNombre(ops), _claveNombre(ops.replace(/["“”'][^"“”']*["“”']/g, '')), _claveNombre(u.Usuario)];
+  var ks = [_claveNombre(ops), _claveNombre(ops.replace(/["“”'][^"“”']*["“”']/g, '')), _claveNombre(u.Usuario), _claveNombre(u.Nombre)];
   return ks.filter(function (k, i) { return k && ks.indexOf(k) === i; });
 }
 function _esMiNombreOps(enOps, u) { return !!enOps && _clavesOps(u).indexOf(_claveNombre(enOps)) >= 0; }

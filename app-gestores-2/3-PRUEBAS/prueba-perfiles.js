@@ -161,6 +161,20 @@ const reab = post({ accion: 'admin', token: tAD, que: 'corregir', idCierre: cs.f
 ok(reab.ok && opsFila('#16062')[18] === false, 'Reabrir: se quita la casilla de retorno');
 E.formulaEstatus(); robot();
 ok(post({ accion: 'inicio', token: tJL }).pedidos.some(p => p.id === '#16062'), 'Reabierto: vuelve a la lista de Jose Luis');
+{ // 12-nov: OPERACIONES contesta 403 a la app → la corrección se guarda y la pasa el robot
+  post({ accion: 'cerrar', token: tJL, idLocal: 'jl000000403', tipo: 'PEDIDO', id: '#16062', resultado: 'ENTREGADO', foto: FOTO, recibio: 'Equivocado' });
+  robot();
+  ok(opsFila('#16062')[22] === true, '403 · antes: #16062 entregado otra vez en Operaciones');
+  E.red.negar403 = true;
+  const c403 = post({ accion: 'admin', token: tAD, que: 'corregir', idCierre: 'jl000000403', modo: 'reabrir', porque: 'Se equivocó de pedido' });
+  ok(c403.ok && /robot/.test(c403.mensaje), '403 · no sale error: "el robot le pasa la corrección en 1 minuto"');
+  ok(opsFila('#16062')[22] === true && filasDe('APP_Cierres').find(c => c.IdCierre === 'jl000000403').Estado === 'CORREGIDO', '403 · en la app ya quedó corregido; Operaciones aún no');
+  E.red.negar403 = false;
+  robot();
+  ok(opsFila('#16062')[22] === false && APP.props.getProperty('CORR_PEND') === '[]', '403 · el robot la pasa a Operaciones en su vuelta y la quita de la espera');
+  E.formulaEstatus(); robot();
+  ok(post({ accion: 'inicio', token: tJL }).pedidos.some(p => p.id === '#16062'), '403 · el pedido vuelve a la lista de Jose Luis');
+}
 const corrTr = post({ accion: 'admin', token: tAD, que: 'corregir', idCierre: c19.IdCierre, modo: 'reabrir', porque: 'No lo había entregado' });
 ok(corrTr.ok && E.estT('C-PV-0019') === 'RECOLECTADO', 'Traspaso reabierto: vuelve a "en camino" en el Sistema de Traspasos');
 ok(post({ accion: 'inicio', token: tAL }).lleva.some(l => l.codigo === 'C-PV-0019'), '…y regresa a "Lo que llevo" de Alejandro');

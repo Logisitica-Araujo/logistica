@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.6.0';
+var VERSION_APP = '2.7.0';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -65,6 +65,7 @@ function idLocal() { return 'c' + Date.now().toString(36) + Math.random().toStri
 function pintar(html) { $('app').innerHTML = html; window.scrollTo(0, 0); }
 var IC = {
   atras: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
+  refrescar: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>',
   campana: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
   scan: '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>',
   casa: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
@@ -195,10 +196,10 @@ function decidirPrimeraVista() {
 }
 
 /** Pide el inicio al servidor; si llegó algo nuevo, suena. */
-function actualizar(primera) {
+function actualizar(primera, forzar) {
   if (!S.token || S.actualizando) return Promise.resolve();
   S.actualizando = true;
-  return srv('inicio').then(function (d) {
+  return srv('inicio', forzar ? { forzar: true } : {}).then(function (d) {
     quitarCargando();
     var nuevos = detectarNuevos(d);
     // lo que ya cerré y sigue en la fila del celular no se vuelve a mostrar
@@ -223,7 +224,28 @@ function actualizar(primera) {
   }).catch(function (e) {
     quitarCargando();
     if (!S.datos && S.token) pantallaSinDatos(e);
-  }).then(function () { S.actualizando = false; pintarEstado(); });
+    if (forzar) throw e;
+  }).then(function () { S.actualizando = false; pintarEstado(); }, function (e) { S.actualizando = false; pintarEstado(); throw e; });
+}
+
+/* ---------- Botón ↻ Refrescar: trae lo nuevo de Operaciones al momento ---------- */
+function btnRefrescar() { return '<button class="btn-ic' + (S.refrescando ? ' gira' : '') + '" id="btnRefrescar" onclick="refrescarYa()" aria-label="Refrescar">' + IC.refrescar + '</button>'; }
+function refrescarYa() {
+  if (S.refrescando) return;
+  if (!S.hayRed) { toast('Sin señal: se actualiza solo cuando vuelva.', 'err'); return; }
+  var antes = S.datos ? S.datos.pedidos.map(function (p) { return clave(p.id); }) : [];
+  S.refrescando = true;
+  var b = $('btnRefrescar'); if (b) b.classList.add('gira');
+  var e = $('estado'); if (e) e.innerHTML = '<i></i>Actualizando…';
+  var espera = S.actualizando ? new Promise(function (ok) { var i = setInterval(function () { if (!S.actualizando) { clearInterval(i); ok(); } }, 200); }) : Promise.resolve();
+  espera.then(function () { subirCola(); return actualizar(false, true); }).then(function () {
+    var nuevos = S.datos ? S.datos.pedidos.filter(function (p) { return antes.indexOf(clave(p.id)) < 0; }).length : 0;
+    toast(nuevos ? '✓ Listo · ' + nuevos + (nuevos === 1 ? ' pedido nuevo' : ' pedidos nuevos') : '✓ Listo · sin cambios');
+  }).catch(falla).then(function () {
+    S.refrescando = false;
+    var b2 = $('btnRefrescar'); if (b2) b2.classList.remove('gira');
+    pintarEstado();
+  });
 }
 
 function detectarNuevos(d) {
@@ -375,6 +397,7 @@ function vistaInicio() {
   var conTarjeta = !!aviso || (window.Notification && Notification.permission === 'default');
   var html = '<div class="cab' + (conTarjeta ? ' con-tarjeta' : '') + '"><div class="cab-fila"><img src="../iconos/icono-192.png" alt="">' +
     '<div class="cab-nombre"><small>' + saludo() + ' · Gestoría</small><b>' + esc(d.gestor.nombre) + '</b></div>' +
+    btnRefrescar() +
     (perfil().admin ? '<button class="btn-ic" onclick="entrarAdmin()" aria-label="Administración">' + ICP.escudo + '</button>' : '') +
     '<button class="btn-ic" onclick="vistaAvisos()" aria-label="Avisos">' + IC.campana + (avisosSinLeer().length ? '<span class="cuenta-av">' + avisosSinLeer().length + '</span>' : aviso ? '<span class="punto"></span>' : '') + '</button></div>' +
     '<div class="chips"><button class="chip" onclick="vistaVehiculo(false)">' + esc(d.vehiculo || 'Sin vehículo') + ' · cambiar</button>' +

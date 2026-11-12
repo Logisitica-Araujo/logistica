@@ -2,7 +2,10 @@
 
 ## 0.5.1 · 12-nov-2026 · Pedidos que no salían
 - **Pedido recolectado y después asignado no salía** (#16165 de José Luis): la recolección en BOTICAN quedaba como cierre "LOCAL" y escondía el pedido para siempre. Ahora una RECOLECCIÓN ya no esconde el pedido de "Pedidos a domicilio" ni del resumen de Administración (`06_GESTOR`, `08_ADMIN`). Prueba nueva en `prueba-integrada.js`.
-- **Gestor escrito distinto en Operaciones** ("antonio" en vez de 'Antonio "A"'): el robot lo reconoce por su NombreEnOperaciones, ese nombre sin la letra entre comillas o su Usuario (`07_ROBOT`, `11_PENDIENTES`).
+- **Gestor escrito distinto en Operaciones** ("antonio" en vez de 'Antonio "A"'): el robot lo reconoce, sin importar mayúsculas, acentos, espacios ni signos, por su NombreEnOperaciones, ese nombre sin la letra entre comillas, su Usuario o su Nombre (`07_ROBOT`, `11_PENDIENTES`).
+- **Correcciones que OPERACIONES no recibe** (error 403): ya no sale error; la corrección queda en la app y el robot la pasa en su siguiente vuelta (paso nuevo `correcciones`, aviso `ROB-07` si no puede) (`08_ADMIN`, `07_ROBOT`).
+- **Botón ↻ Refrescar** junto a la campana (Gestoría, Traslados y Administrador): trae lo nuevo de Operaciones al momento y dice cuántos pedidos nuevos llegaron. App 2.7.0 (`app.js`, `perfiles.js`, `estilos.css`, `sw.js`). El servidor acepta `inicio` con `forzar` (`06_GESTOR`).
+- Si la app no alcanza a OPERACIONES al abrir, se anota `SYNC_RAPIDO` en APP_Log (máx. 1 vez cada 10 min).
 
 ## 0.5.0 · 11-nov-2026 · Reglas de Logística del 7-nov, pendientes, rutas y avisos
 - **Nuevo `10_BOTICAN.gs`:** lee "LOGISTICA BOTICAN 2026" (APP_Config → `ID_BOTICAN`): Envios, Feriados y Rutas. Horarios y feriados NO están en el código.

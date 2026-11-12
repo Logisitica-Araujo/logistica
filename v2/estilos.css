@@ -403,3 +403,8 @@ body.adm{--azul:#111A2E;--azul-osc:#0A1020;--azul-suave:#E6E9F0;--azul-claro:#AE
 .av-item.leido{opacity:.7}
 .b.rojo-lleno{background:var(--rojo);border-color:var(--rojo);color:#fff}
 .cuenta-av{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:999px;background:var(--naranja);color:var(--texto);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px}
+
+/* Botón ↻ Refrescar */
+@keyframes girar{to{transform:rotate(360deg)}}
+.btn-ic.gira{background:#fff;color:var(--azul)}
+.btn-ic.gira svg{animation:girar 1s linear infinite}

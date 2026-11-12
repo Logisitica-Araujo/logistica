@@ -192,13 +192,15 @@ function _admCorregir(p, yo) {
   var yaPasado = est === 'ENVIADO';
   var nuevoEstado = 'PENDIENTE';
   if (yaPasado && tipo === 'PEDIDO') {
-    var r = _ops('corregirCierre', { fila: Number(c.Fila), id: String(c.ID), antes: String(c.Resultado), nuevo: nuevo, motivo: String(p.motivo || ''),
-                                     comentario: porque, recibio: String(p.recibio || ''), gestor: _nombreEnOps(c.NumeroGestor), quien: yo.Nombre });
-    if (!r.ok) {
-      if (/desconocida/i.test(String(r.mensaje))) throw _falla('API-07', 'OPERACIONES todavía no tiene la corrección. Pega el 04_Backend_App nuevo en OPERACIONES y crea su versión nueva.');
-      throw _falla(r.codigo || 'API-07', 'Operaciones no aceptó la corrección: ' + (r.mensaje || r.error));
-    }
-    nuevoEstado = 'ENVIADO';   // Operaciones ya quedó con lo nuevo
+    var carga = { fila: Number(c.Fila), id: String(c.ID), antes: String(c.Resultado), nuevo: nuevo, motivo: String(p.motivo || ''),
+                  comentario: porque, recibio: String(p.recibio || ''), gestor: _nombreEnOps(c.NumeroGestor), quien: yo.Nombre };
+    var r;
+    // Si OPERACIONES no contesta (permiso de Google, sin red…), la corrección queda guardada y la pasa el robot.
+    try { r = _ops('corregirCierre', carga); } catch (e) { r = { ok: false, codigo: e.codigo || 'API-07', mensaje: e.message, sinRespuesta: true }; }
+    if (!r.ok && /desconocida/i.test(String(r.mensaje))) throw _falla('API-07', 'OPERACIONES todavía no tiene la corrección. Pega el 04_Backend_App nuevo en OPERACIONES y crea su versión nueva.');
+    if (!r.ok && !r.sinRespuesta) throw _falla(r.codigo || 'API-07', 'Operaciones no aceptó la corrección: ' + (r.mensaje || r.error));
+    if (r.ok) nuevoEstado = 'ENVIADO';   // Operaciones ya quedó con lo nuevo
+    else { nuevoEstado = 'CORRIGIENDO'; var enEspera = carga; }
   } else if (yaPasado && tipo === 'TRASPASO') {
     var tn = _tnBuscar(c.ID);
     if (tn && (tn.estatus === 'ENTREGADO_GESTOR' || tn.estatus === 'EXTRAVIADO')) {
@@ -227,8 +229,49 @@ function _admCorregir(p, yo) {
     if (p.recibio != null && String(p.recibio).trim()) o.Recibio = String(p.recibio).trim();
     _agregar(APPG.H.CIERRES, o);
   }
+  if (enEspera) _corrPendAgregar(enEspera, nuevo ? o.IdCierre : '', c.IdCierre);
   _log(yo.Nombre, 'ADMIN_CORRIGE', c.ID + ' · ' + c.Resultado + ' → ' + (nuevo || 'REABIERTO') + ' · ' + porque);
-  return { mensaje: nuevo ? c.ID + ': ahora dice ' + nuevo.toLowerCase() + '.' : c.ID + ' volvió a la lista de ' + c.Gestor + '.' };
+  var msg = nuevo ? c.ID + ': ahora dice ' + nuevo.toLowerCase() + '.' : c.ID + ' volvió a la lista de ' + c.Gestor + '.';
+  if (enEspera) msg += ' Operaciones no contestó: el robot le pasa la corrección en 1 minuto.';
+  return { mensaje: msg };
+}
+
+/* ---------- Correcciones que OPERACIONES no recibió: las pasa el robot ---------- */
+function _corrPendLeer() { try { return JSON.parse(PropertiesService.getScriptProperties().getProperty('CORR_PEND') || '[]'); } catch (e) { return []; } }
+function _corrPendGuardar(l) { PropertiesService.getScriptProperties().setProperty('CORR_PEND', JSON.stringify(l)); }
+function _corrPendAgregar(carga, idNuevo, idViejo) {
+  var l = _corrPendLeer();
+  l.push({ carga: carga, idNuevo: idNuevo, idViejo: idViejo, intentos: 0, desde: _ahora() });
+  _corrPendGuardar(l);
+}
+/** Paso del robot. Devuelve cuántas pasó a OPERACIONES. */
+function _robotCorrecciones() {
+  var l = _corrPendLeer();
+  if (!l.length) return 0;
+  var quedan = [], n = 0;
+  l.forEach(function (x) {
+    var r;
+    try { r = _ops('corregirCierre', x.carga); } catch (e) { r = { ok: false, mensaje: e.message, sinRespuesta: true }; }
+    if (r.ok) {
+      n++;
+      if (x.idNuevo) {
+        var t = _tabla(APPG.H.CIERRES);
+        var f = t.filas.filter(function (c) { return String(c.IdCierre) === String(x.idNuevo); })[0];
+        if (f) { t.sh.getRange(f._fila, t.col('Estado')).setValue('ENVIADO'); t.sh.getRange(f._fila, t.col('EnviadoEn')).setValue(_ahora()); }
+      }
+      _log('robot', 'CORRECCION_PASADA', x.carga.id + ' · ' + x.carga.antes + ' → ' + (x.carga.nuevo || 'REABIERTO'));
+      return;
+    }
+    x.intentos++; x.error = String(r.mensaje || r.error || '');
+    if (!r.sinRespuesta || x.intentos >= 30) {
+      _problema('ROB-07', 'robot', 'No pude pasar a Operaciones la corrección de ' + x.carga.id + ' (' + x.carga.antes + ' → ' + (x.carga.nuevo || 'reabrir') +
+                '): ' + x.error + '. Hazla a mano en Operaciones.');
+      return;
+    }
+    quedan.push(x);
+  });
+  _corrPendGuardar(quedan);
+  return n;
 }
 
 /* ==================== A5 · Reasignar ==================== */

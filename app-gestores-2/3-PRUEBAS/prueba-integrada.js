@@ -165,5 +165,25 @@ OPS.post({ accion: 'rutaGestores', token: tApp });
 OPS.post({ accion: 'rutaGestores', token: tApp });
 ok(OPS.stats.openById - lecturas <= 4, 'rutaGestores usa la memoria de 60 s (no relee Operaciones cada vez)');
 
+titulo('Nombres del gestor escritos distinto (12-nov)');
+{
+  const hU = appL.getSheetByName('APP_Usuarios'); const eU = hU.datos[0];
+  const fAn = hU.datos.find(f => f[eU.indexOf('Usuario')] === 'antonio');
+  const cuantos = () => filasDe('APP_Pedidos').filter(f => f.NumeroGestor === an.numero).length;
+  robot(); const base = cuantos();
+  fAn[eU.indexOf('NombreEnOperaciones')] = 'Antonio "A"';
+  robot();
+  ok(base > 0 && cuantos() === base, 'En la app dice \'Antonio "A"\' y en Operaciones "Antonio": sí le llegan sus pedidos');
+  fAn[eU.indexOf('NombreEnOperaciones')] = 'ANTÓNIO  ¡!';
+  robot();
+  ok(cuantos() === base, 'Mayúsculas, acentos, espacios y signos no importan');
+  fAn[eU.indexOf('NombreEnOperaciones')] = 'Otro Nombre';
+  robot();
+  ok(cuantos() === base, 'Aunque NombreEnOperaciones esté mal, lo reconoce por su Usuario / Nombre');
+  fAn[eU.indexOf('NombreEnOperaciones')] = 'Antonio';
+  const ini3 = APP.post({ accion: 'inicio', token: tAN, forzar: true });
+  ok(ini3.ok && ini3.pedidos.length === base, 'Botón ↻ (forzar): trae lo de Operaciones al momento');
+}
+
 console.log('\n' + (total - fallas) + '/' + total + ' pruebas correctas');
 process.exit(fallas ? 1 : 0);

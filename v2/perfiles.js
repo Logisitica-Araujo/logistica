@@ -81,6 +81,7 @@ function vistaRuta() {
   var aviso = S.aviso && Date.now() - S.aviso.hora < 30 * 60000 ? S.aviso : null;
   var html = '<div class="cab"><div class="cab-fila"><img src="../iconos/icono-192.png" alt="">' +
     '<div class="cab-nombre"><small>' + saludo() + ' · Traslados</small><b>' + esc(d.gestor.nombre) + '</b></div>' +
+    btnRefrescar() +
     (perfil().admin ? '<button class="btn-ic" onclick="entrarAdmin()" aria-label="Administración">' + ICP.escudo + '</button>' : '') +
     '<button class="btn-ic" onclick="vistaAvisos()" aria-label="Avisos">' + IC.campana + (avisosSinLeer().length ? '<span class="cuenta-av">' + avisosSinLeer().length + '</span>' : aviso ? '<span class="punto"></span>' : '') + '</button></div>' +
     '<div class="chips"><button class="chip" onclick="vistaVehiculo(false)">' + esc(d.vehiculo || 'Sin vehículo') + ' · cambiar</button>' +
