@@ -71,7 +71,9 @@ function apiInicio(p) {
     var k = _norm(c.ID);
     var est = String(c.Estado);
     var reciente = _fechaMs(c.EnviadoEn || c.FechaHora) > hace15;
-    if (String(c.Resultado) === 'PAQUETERIA' || est === 'PENDIENTE' || (est === 'ENVIADO' && reciente) || est === 'LOCAL') ocultar[k] = true;
+    // Una RECOLECCIÓN (recogerlo en BOTICAN/sucursal) no es la entrega: el pedido debe seguir en su lista.
+    var esRec = String(c.Tipo) === 'RECOLECCION';
+    if (String(c.Resultado) === 'PAQUETERIA' || (!esRec && (est === 'PENDIENTE' || (est === 'ENVIADO' && reciente) || est === 'LOCAL'))) ocultar[k] = true;
     if (String(c.NumeroGestor) === String(u.Numero) && _fechaTxt(c.FechaHora) === hoy && est !== 'ANULADO' && est !== 'CORREGIDO') {
       if (c.Resultado === 'ENTREGADO') hoyCuenta.entregados++;
       else if (c.Resultado !== 'PAQUETERIA') hoyCuenta.noEntregados++;
