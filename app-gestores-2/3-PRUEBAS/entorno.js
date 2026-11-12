@@ -24,6 +24,7 @@ const APP = crearEntorno({ inicio: '2026-11-04T16:00:00Z', libros, carpetasNegad
   red: (url, o) => {
     if (url !== URL_OPS) throw new Error('URL desconocida ' + url);
     if (!o.headers || !/^Bearer /.test(o.headers.Authorization)) throw new Error('sin token OAuth');
+    if (red.negar403) return { getContentText: () => '<html>Acceso denegado</html>', getResponseCode: () => 403 };
     const r = OPS.post(JSON.parse(o.payload));
     return { getContentText: () => JSON.stringify(r), getResponseCode: () => 200 };
   } });
@@ -94,6 +95,6 @@ const robot = () => { sincronizarRelojes(); const r = JSON.parse(APP.correr('rob
 const opsFila = id => hOps.datos.find(f => f[0] === id);
 
 
-  return { APP, OPS, bot, appL, madre, tras, hOps, hEnt, hHist, hRes, hMov, hAv, encT, estT, hoja, filasDe, robot, opsFila, formulaEstatus, URL_OPS, FOTO, FIRMA };
+  return { APP, OPS, bot, red, appL, madre, tras, hOps, hEnt, hHist, hRes, hMov, hAv, encT, estT, hoja, filasDe, robot, opsFila, formulaEstatus, URL_OPS, FOTO, FIRMA };
 }
 module.exports = { crear };

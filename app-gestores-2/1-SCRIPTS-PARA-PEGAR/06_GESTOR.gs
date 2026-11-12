@@ -44,7 +44,7 @@ function _lista(v) { return String(v || '').split('|').map(function (x) { return
 
 function apiInicio(p) {
   var s = _exigirSesion(p.token);
-  _syncRapido();   // lo que asignaste en Operaciones llega aquí en segundos, sin esperar al robot
+  _syncRapido(p.forzar);   // lo que asignaste en Operaciones llega aquí en segundos, sin esperar al robot
   var u = _buscarUsuario(s.Usuario);
   var cfg = _config();
   var hoy = _hoyTxt();
@@ -149,13 +149,16 @@ function _boticanInicio() {
 }
 
 /** Trae lo nuevo de Operaciones al momento (como mucho una vez cada 20 s, y solo si nadie más lo está haciendo). */
-function _syncRapido() {
+function _syncRapido(forzar) {
   var cache = CacheService.getScriptCache();
-  if (cache.get('sync_rapido')) return;
+  if (!forzar && cache.get('sync_rapido')) return;
   cache.put('sync_rapido', '1', 20);
   var candado = LockService.getScriptLock();
-  if (!candado.tryLock(100)) return;
-  try { _robotPedidos(); } catch (e) { /* el robot lo intenta en su vuelta */ } finally { candado.releaseLock(); }
+  if (!candado.tryLock(forzar ? 3000 : 100)) return;
+  try { _robotPedidos(); }
+  catch (e) {   // el robot lo intenta en su vuelta; se anota (1 vez cada 10 min) para saber si la app no alcanza a OPERACIONES
+    if (!cache.get('sync_err')) { cache.put('sync_err', '1', 600); _log('sistema', 'SYNC_RAPIDO', (e.codigo ? '[' + e.codigo + '] ' : '') + e.message); }
+  } finally { candado.releaseLock(); }
 }
 
 /* ==================== vehiculo ==================== */

@@ -205,9 +205,10 @@ Contesta estas preguntas en orden. La primera que diga "sí" te manda a la secci
 - **Ojo:** fuera del horario (`ROBOT_HORARIO`, por defecto de 6 a 22) el robot **no corre a propósito**.
 
 ### ROB-02 · Pedido asignado a un gestor que no lo ve
-- **Dónde recae:** el nombre en la columna I de Operaciones **no coincide** con el de `APP_Usuarios` (columna "Nombre en Operaciones").
-- **Ejemplo real:** "Jose Luis" contra "José Luis Sánchez".
-- **Qué hago:** corregir el nombre en `APP_Usuarios` para que sea idéntico al de la lista de gestores de "Datos" (columna A).
+- **Dónde recae:** el nombre en la columna I de Operaciones **no se parece** a ninguno del gestor en `APP_Usuarios`.
+- **Desde 0.5.1 el robot lo reconoce solo** (sin importar mayúsculas, acentos, espacios ni signos) por: su "NombreEnOperaciones", ese mismo sin la letra entre comillas (`Antonio "A"` → antonio), su Usuario o su Nombre. Ej.: "antonio", "ANTONIO", `Antonio "A"`, "JoseLuis", "Jose Luis" funcionan.
+- **Ejemplo real que sí falla:** "Jose Luis" contra "José Luis Sánchez" (otro nombre).
+- **Qué hago:** poner en `APP_Usuarios` → NombreEnOperaciones el nombre tal como sale en la lista de gestores de Operaciones.
 - **Prevención:** el robot anota en `APP_Problemas` cada nombre de gestor que no reconoce.
 
 ### ROB-03 · Cierres atorados en `APP_Cierres` como PENDIENTE
@@ -231,6 +232,10 @@ Contesta estas preguntas en orden. La primera que diga "sí" te manda a la secci
   1. Corregir la casilla o el estatus en su hoja.
   2. El robot lo regresa al gestor en el siguiente minuto.
 - **Para pedidos retornados:** usar **"Reenviar este pedido"** en la página OPERACIONES (`OPS-04`).
+
+### ROB-07 · Una corrección no se pudo pasar a Operaciones
+- **Cuándo pasa:** corregiste un cierre desde Administración y OPERACIONES no contestó (por ejemplo error 403 de Google). La app lo guarda y el robot lo reintenta cada minuto (hasta 30 veces). Si Operaciones lo **rechaza** o se agotan los intentos, sale este aviso en `APP_Problemas`.
+- **Qué hago:** hacer la corrección a mano en Operaciones (quitar/poner la casilla y la fecha) y revisar el permiso de la implementación de OPERACIONES (`API-07`).
 
 ### ROB-06 · "Tiempo de ejecución excedido"
 - **Dónde recae:** una vuelta del robot tardó más de 6 minutos. Normalmente es porque el archivo madre está lento.
