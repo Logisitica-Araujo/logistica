@@ -39,7 +39,9 @@ const hEnv = H('Envios', [['', '', '', '', '', 'Bitácora de pedidos BOTICAN 202
   env('🧍 RECOLECCIÓN DE GESTOR', '#16151', 'Sucursal Ecatepec', 'lun, 09 nov26, 10:00'),
   env('🧍 RECOLECCIÓN DE GESTOR', '#16152', '', 'lun, 09 nov26, 10:20', '=SI(B10="";"";"")'),
   env('✅ RECIBIDO EN LOGÍSTICA', '#16137', '', 'sáb, 07 nov26, 13:57', '09/11/2026 09:54:27'),
-  env('🧪 EN ELABORACIÓN', '#16148', '', '')].concat(Array.from({ length: 900 }, () => { const f = new Array(17).fill(''); f[8] = false; return f; })));   // como la real: renglones vacíos con la casilla FALSE
+  env('🧪 EN ELABORACIÓN', '#16148', '', ''),
+  env('🏢 Disponible en sucursal', '#16153', 'Sucursal Doctores', 'mar, 10 nov26, 10:55', '', '', 'mar,10 nov 26'),   // real 12-nov: ya está en Doctores
+  env('📋 ELABORADO', '#16154', 'Sucursal Vértiz', 'mar, 10 nov26, 12:34', '', '', 'mar,10 nov 26')].concat(Array.from({ length: 900 }, () => { const f = new Array(17).fill(''); f[8] = false; return f; })));   // como la real: renglones vacíos con la casilla FALSE
 
 APP.correr('INSTALAR');
 APP.correr('conectarOperaciones', E.URL_OPS, 'app.gestores', 'PIN-APP-1');
@@ -89,6 +91,7 @@ ok(b.rutasHoy.filter(r => r.paso).map(r => r.hora).join() === '09:00,10:00,12:30
 ok(b.rutasHoy.find(r => r.hora === '12:30').oficinas === false, 'La de 12:30 no entrega en Oficinas');
 const ids = b.porRecolectar.map(p => p.id);
 ok(ids.join() === '#16120,#16152,#16133,#16134,#16151,#16150', 'Ordenados por fecha compromiso: ' + ids.join(', '));
+ok(ids.indexOf('#16153') < 0 && ids.indexOf('#16154') < 0, '"Disponible en sucursal" o con fecha en Q (Sucursales) NO sale por recolectar (#16153 en Doctores)');
 ok(b.porRecolectar[0].semaforo === 'rojo' && b.porRecolectar[0].vence === 'vie 6 nov, 10:20', '#16120 vencido (vie 6 nov, 10:20)');
 ok(b.porRecolectar.find(p => p.id === '#16133').vence === 'mié 11 nov, 16:28' && b.porRecolectar.find(p => p.id === '#16133').semaforo === 'verde', '#16133: Vence mié 11 nov, 16:28 · verde');
 ok(!ids.includes('#16130') && !ids.includes('#16137') && !ids.includes('#16099'), 'No incluye lo que ya salió, ya ingresó o ya se entregó');

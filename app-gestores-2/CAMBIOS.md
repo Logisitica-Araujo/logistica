@@ -5,6 +5,7 @@
 - **Gestor escrito distinto en Operaciones** ("antonio" en vez de 'Antonio "A"'): el robot lo reconoce, sin importar mayúsculas, acentos, espacios ni signos, por su NombreEnOperaciones, ese nombre sin la letra entre comillas, su Usuario o su Nombre (`07_ROBOT`, `11_PENDIENTES`).
 - **Correcciones que OPERACIONES no recibe** (error 403): ya no sale error; la corrección queda en la app y el robot la pasa en su siguiente vuelta (paso nuevo `correcciones`, aviso `ROB-07` si no puede) (`08_ADMIN`, `07_ROBOT`).
 - **Botón ↻ Refrescar** junto a la campana (Gestoría, Traslados y Administrador): trae lo nuevo de Operaciones al momento y dice cuántos pedidos nuevos llegaron. App 2.7.0 (`app.js`, `perfiles.js`, `estilos.css`, `sw.js`). El servidor acepta `inicio` con `forzar` (`06_GESTOR`).
+- **BOTICAN "Disponible en sucursal"** (#16153 en Doctores) ya no sale como "por recolectar": se descartan ese estatus y los que tienen fecha en la columna Q (Sucursales) (`10_BOTICAN`).
 - Si la app no alcanza a OPERACIONES al abrir, se anota `SYNC_RAPIDO` en APP_Log (máx. 1 vez cada 10 min).
 
 ## 0.5.0 · 11-nov-2026 · Reglas de Logística del 7-nov, pendientes, rutas y avisos

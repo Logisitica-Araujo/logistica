@@ -174,7 +174,8 @@ function _btLeer() {
     var est = String(r[0] || ''), g = _btLeerFecha(r[6]), h = String(r[7] || '').trim(), j = String(r[9] || '').trim();
     if (h.charAt(0) === '=') h = '';                                       // (una fórmula que no da nada cuenta como vacía)
     if (h || j) return;                                                     // ya ingresó a logística o ya salió
-    if (/entregad|en ruta|recibido|cancel|retorn|devuel/i.test(_norm(est))) return;
+    if (/entregad|en ruta|recibido|cancel|retorn|devuel|disponible|en sucursal/i.test(_norm(est))) return;
+    if (/\d/.test(String(r[16] || ''))) return;                           // Q "Sucursales" con fecha: ya llegó a la sucursal (el cliente pasa por él)
     pendientes.push({ id: id, fila: desde + i, g: g, estatus: est, suc: _btSucursalRecoge(r[4], r[16]), area: String(r[5] || '') });
   });
   return { feriados: feriados, rutas: rutas, ids: ids, pendientes: pendientes, leido: _ahora() };
