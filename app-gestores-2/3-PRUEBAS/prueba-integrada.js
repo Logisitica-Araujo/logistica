@@ -44,6 +44,14 @@ ok(APP.post({ accion: 'vehiculo', token: tJL, vehiculo: 'Suzuki 4B1228', checkli
 const ocupado = APP.post({ accion: 'vehiculo', token: tAN, vehiculo: 'Suzuki 4B1228' });
 ok(!ocupado.ok && ocupado.codigo === 'CAP-06' && /Jose Luis ya trae/.test(ocupado.mensaje), 'Antonio no puede tomar la misma moto el mismo día');
 ok(APP.post({ accion: 'inicio', token: tAN }).vehiculos.find(v => v.nombre === 'Suzuki 4B1228').ocupadoPor === 'Jose Luis', 'A Antonio le sale ocupada por Jose Luis');
+{ // Caso real 12-nov (#16165): lo recolectó ayer en BOTICAN y hoy se lo asignan → debe salirle para entregar
+  const idR = ini.pedidos[0].id;
+  APP.post({ accion: 'cerrar', token: tJL, idLocal: 'rec-asignado-1', tipo: 'RECOLECCION', id: idR, resultado: 'ENTREGADO', foto: FOTO });
+  const ini2 = APP.post({ accion: 'inicio', token: tJL });
+  ok(ini2.pedidos.some(p => p.id === idR), 'Lo que recolectó antes y luego le asignan SÍ le sale en "Pedidos a domicilio" (#16165)');
+  const hC = appL.getSheetByName('APP_Cierres'); const iId = hC.datos[0].indexOf('IdCierre');
+  hC.datos = hC.datos.filter((f, i) => i === 0 || f[iId] !== 'rec-asignado-1');
+}
 APP.post({ accion: 'vehiculo', token: tAN, vehiculo: 'FED 2 14KGC4' });
 
 const prueba = APP.correr('altaGestor', 'Prueba Jose', 'Jose Luis', 'prueba.jose');

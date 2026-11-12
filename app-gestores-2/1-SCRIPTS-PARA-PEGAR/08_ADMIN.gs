@@ -51,6 +51,7 @@ function _admOcultos(cierres) {
   var o = {}, hace15 = Date.now() - 15 * 60000;
   cierres.forEach(function (c) {
     var e = String(c.Estado);
+    if (String(c.Tipo) === 'RECOLECCION' && String(c.Resultado) !== 'PAQUETERIA') return;   // recogerlo no es entregarlo
     if (e === 'PENDIENTE' || e === 'LOCAL' || (e === 'ENVIADO' && _fechaMs(c.EnviadoEn || c.FechaHora) > hace15)) o[_norm(c.ID)] = true;
   });
   return o;

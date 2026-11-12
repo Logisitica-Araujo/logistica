@@ -1,5 +1,9 @@
 # Registro de cambios · App Gestores 2
 
+## 0.5.1 · 12-nov-2026 · Pedidos que no salían
+- **Pedido recolectado y después asignado no salía** (#16165 de José Luis): la recolección en BOTICAN quedaba como cierre "LOCAL" y escondía el pedido para siempre. Ahora una RECOLECCIÓN ya no esconde el pedido de "Pedidos a domicilio" ni del resumen de Administración (`06_GESTOR`, `08_ADMIN`). Prueba nueva en `prueba-integrada.js`.
+- **Gestor escrito distinto en Operaciones** ("antonio" en vez de 'Antonio "A"'): el robot lo reconoce por su NombreEnOperaciones, ese nombre sin la letra entre comillas o su Usuario (`07_ROBOT`, `11_PENDIENTES`).
+
 ## 0.5.0 · 11-nov-2026 · Reglas de Logística del 7-nov, pendientes, rutas y avisos
 - **Nuevo `10_BOTICAN.gs`:** lee "LOGISTICA BOTICAN 2026" (APP_Config → `ID_BOTICAN`): Envios, Feriados y Rutas. Horarios y feriados NO están en el código.
 - **Fecha compromiso** igual que el portal: G + 2 días hábiles a la misma hora (3 si G es antes del 9-nov); sin sábados, domingos ni Feriados; inhábil → desde el siguiente hábil 9:00; Coapa (lun/mié/vie) y Ecatepec (mar/jue) desde la visita 9:00 (mismo día si G antes de 13:00).
