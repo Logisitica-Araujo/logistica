@@ -60,9 +60,8 @@ function _robotPedidos() {
   var porNombre = {};
   // Varios usuarios pueden tener el mismo nombre en Operaciones (ej. el gestor y un usuario de prueba): todos ven sus pedidos.
   _tabla(APPG.H.USUARIOS).filas.forEach(function (u) {
-    if (!_si(u.Activo) || !u.NombreEnOperaciones) return;
-    var k = _claveNombre(u.NombreEnOperaciones);
-    (porNombre[k] = porNombre[k] || []).push(u);
+    if (!_si(u.Activo)) return;
+    _clavesOps(u).forEach(function (k) { (porNombre[k] = porNombre[k] || []).push(u); });
   });
   var desconocidos = {};
   var filas = [];
@@ -101,7 +100,7 @@ function _avisarDesconocidos(mapa) {
     var k = 'desc_' + _norm(n).replace(/[^a-z0-9]/g, '');
     if (cache.get(k)) return;
     cache.put(k, '1', 6 * 3600);
-    _problema('ROB-02', 'robot', 'El gestor "' + n + '" tiene ' + mapa[n] + ' pedido(s) en Operaciones, pero no hay nadie en APP_Usuarios con ese "NombreEnOperaciones".');
+    _problema('ROB-02', 'robot', 'El gestor "' + n + '" tiene ' + mapa[n] + ' pedido(s) en Operaciones, pero no hay nadie en APP_Usuarios con ese "NombreEnOperaciones" ni ese Usuario.');
   });
 }
 
@@ -160,8 +159,11 @@ function _horaReal(c) {
   return _fechaTxt(c.FechaHora, 'yyyy-MM-dd HH:mm').replace(' ', 'T');
 }
 
+function _usuarioPorNumero(numero) {
+  return _tabla(APPG.H.USUARIOS).filas.filter(function (x) { return String(x.Numero) === String(numero); })[0];
+}
 function _nombreEnOps(numero) {
-  var u = _tabla(APPG.H.USUARIOS).filas.filter(function (x) { return String(x.Numero) === String(numero); })[0];
+  var u = _usuarioPorNumero(numero);
   return u ? String(u.NombreEnOperaciones) : '';
 }
 
@@ -277,10 +279,18 @@ function _robotLigarLibres(ruta) {
 /* ---------- utilidades ---------- */
 /** "Jose Luis", "JoseLuis", "jose luis", 'Antonio "A"' → misma clave (sin espacios, acentos ni comillas). */
 function _claveNombre(v) { return _norm(v).replace(/[^a-z0-9]/g, ''); }
+/** Con qué nombres puede venir este gestor en la columna I de Operaciones:
+ *  su NombreEnOperaciones, ese mismo sin la letra entre comillas ('Antonio "A"' → antonio) y su Usuario. */
+function _clavesOps(u) {
+  var ops = String(u.NombreEnOperaciones || '');
+  var ks = [_claveNombre(ops), _claveNombre(ops.replace(/["“”'][^"“”']*["“”']/g, '')), _claveNombre(u.Usuario)];
+  return ks.filter(function (k, i) { return k && ks.indexOf(k) === i; });
+}
+function _esMiNombreOps(enOps, u) { return !!enOps && _clavesOps(u).indexOf(_claveNombre(enOps)) >= 0; }
 /** El nombre tal como está HOY en la columna I de Operaciones, si es el de este gestor (aunque cambie un espacio). */
 function _gestorParaOps(enOps, numero) {
-  var mio = _nombreEnOps(numero);
-  return enOps && _claveNombre(enOps) === _claveNombre(mio) ? String(enOps) : mio;
+  var mio = _nombreEnOps(numero), u = _usuarioPorNumero(numero);
+  return u && _esMiNombreOps(enOps, u) ? String(enOps) : mio;
 }
 function _dentroDeHorario(txt) {
   var m = /^(\d{1,2})\s*-\s*(\d{1,2})$/.exec(String(txt || '6-22').trim());
