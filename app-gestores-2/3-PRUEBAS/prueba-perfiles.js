@@ -111,6 +111,17 @@ const lig = filasDe('APP_Cierres').find(c => c.ID === '#16150');
 ok(lig && lig.Tipo === 'PEDIDO' && lig.Recibio === 'Paris' && lig.URLFoto && lig.Estado === 'ENVIADO', 'El robot la pasa al pedido #16150 con su foto y quién recibió');
 ok(opsFila('#16150')[22] === true, 'Operaciones: #16150 entregado (W ✓)');
 ok(filasDe('APP_Cierres').find(c => c.IdCierre === 'libre0016150').Estado === 'ANULADO', 'La "sin asignar" queda anulada (no cuenta doble)');
+{ // Caso real 13-nov (#16169): sin número, solo la dirección
+  hOps.datos.push(fila35({ 1: '#16169', 2: 'BOTICAN', 4: 'Alexander Hernandez Cholac', 5: 'calle Unidad nacional, Condominio 25 casa 62, Unidad Habitacional Mirasoles, Iztapalapa', 8: 'Logística Interna', 9: 'JoseLuis', 16: 'ENVIADO POR LOGÍSTICA INTERNA', 19: false, 21: false, 23: false }));
+  hOps.datos.push(fila35({ 1: '#16179', 2: 'BOTICAN', 4: 'Geovana Vergara', 5: 'Miguel Laurent 510-1 Colonia del Valle Sur', 8: 'Logística Interna', 9: 'JoseLuis', 16: 'ENVIADO POR LOGÍSTICA INTERNA', 19: false, 21: false, 23: false }));
+  E.OPS.correr('opsw_cacheBorrar_'); robot();
+  post({ accion: 'cerrar', token: tJL, idLocal: 'libre0016169', tipo: 'LIBRE', id: 'E-1113-JL3', que: 'Medicamento · Botican', detalle: '', donde: 'Unidad nacional condominio 25', recibio: 'Norma', foto: FOTO });
+  post({ accion: 'cerrar', token: tJL, idLocal: 'libre0000777', tipo: 'LIBRE', id: 'E-1113-JL4', que: 'Documentos', detalle: '', donde: 'Deje en casa del cliente', recibio: 'Ana', foto: FOTO });
+  E.OPS.correr('opsw_cacheBorrar_'); robot(); E.formulaEstatus();
+  const l69 = filasDe('APP_Cierres').find(c => c.ID === '#16169' && c.Tipo === 'PEDIDO');
+  ok(l69 && l69.Recibio === 'Norma' && opsFila('#16169')[22] === true, 'Sin número: por la dirección "Unidad nacional condominio 25" se liga sola al #16169 (W ✓)');
+  ok(opsFila('#16179')[22] === false && filasDe('APP_Cierres').find(c => c.IdCierre === 'libre0000777').Estado === 'LOCAL', 'Una dirección que no se parece ("Deje en casa del cliente") no se liga a nada');
+}
 
 titulo('Vehículo: motivo al cambiar y en taller');
 post({ accion: 'vehiculo', token: tJL, vehiculo: 'Saviero LKC-752-D' });
@@ -131,7 +142,7 @@ titulo('Administración: permisos y Hoy');
 const noAdm = post({ accion: 'admin', token: tJL, que: 'hoy' });
 ok(!noAdm.ok && noAdm.codigo === 'APP-02', 'Un gestor no puede entrar a Administración');
 const hoy = post({ accion: 'admin', token: tAD, que: 'hoy' });
-ok(hoy.ok && hoy.equipo.length === 4 && hoy.totales.entregados === 7, 'Hoy: equipo y totales (' + hoy.totales.entregados + ' entregados)');
+ok(hoy.ok && hoy.equipo.length === 4 && hoy.totales.entregados === 9, 'Hoy: equipo y totales (' + hoy.totales.entregados + ' entregados)');
 ok(hoy.atender.some(a => /CAP-09/.test(a.texto) || /P-0/.test(a.texto)), 'Atender ahora: muestra el aviso del monto');
 ok(hoy.equipo.find(g => g.usuario === 'alejandro').area === 'FACTURACION', 'Distingue el área de cada quien');
 
