@@ -252,11 +252,20 @@ function _robotLigarLibres(ruta) {
   t.filas.forEach(function (c) { if (String(c.Tipo) === 'PEDIDO' && ['ANULADO', 'CORREGIDO'].indexOf(String(c.Estado)) < 0) yaCerrados[_tnClave(c.ID)] = true; });
   var n = 0;
   libres.forEach(function (c) {
+    var u = _usuarioPorNumero(c.NumeroGestor);
+    if (!u) return;
     var txt = [c.ID, c.Comentario, c.Cliente, c.Direccion, c.Recibio].join(' ');
     var re = /(TAREA\s*#\s*\d+|NRREM-?\s?\d+|#\s?\d{4,6})/gi, m, p = null;
     while ((m = re.exec(txt)) && !p) {
       var k = _tnClave(m[1]), cand = abiertos[k];
-      if (cand && !yaCerrados[k] && _claveNombre(cand.gestor) === _claveNombre(_nombreEnOps(c.NumeroGestor))) p = cand;
+      if (cand && !yaCerrados[k] && _esMiNombreOps(cand.gestor, u)) p = cand;
+    }
+    // Sin número: si la dirección que escribió se parece a la de UNO SOLO de sus pedidos abiertos, es ese.
+    // Ej. "Unidad nacional condominio 25" ↔ "calle Unidad nacional, Condominio 25 casa 62…" (#16169).
+    if (!p) {
+      var mios = ruta.filter(function (x) { return _esMiNombreOps(x.gestor, u) && !yaCerrados[_tnClave(x.id)]; });
+      var parecidos = mios.filter(function (x) { return _direccionParecida(c.Direccion || c.DondeEntrego, [x.direccion, x.nombre].join(' ')); });
+      if (parecidos.length === 1) p = parecidos[0];
     }
     if (!p) return;
     var o = {};
@@ -278,6 +287,16 @@ function _robotLigarLibres(ruta) {
 }
 
 /* ---------- utilidades ---------- */
+/** ¿La dirección que escribió el gestor (corta) está dentro de la del pedido? Al menos 2 palabras
+ *  importantes (4+ letras o números) y 3 de cada 4 de las suyas aparecen en la del pedido. */
+function _direccionParecida(corta, larga) {
+  var vacias = { calle: 1, colonia: 1, entre: 1, cliente: 1, entrega: 1, entrego: 1, deje: 1, dejo: 1, casa: 1, numero: 1, sucursal: 1, para: 1, local: 1, depto: 1, departamento: 1, interior: 1, medicamento: 1, botican: 1, fadermex: 1 };
+  var pal = function (t) { return _norm(t).replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(function (w) { return w && !vacias[w] && (w.length >= 4 || /^\d+$/.test(w)); }); };
+  var a = pal(corta), b = pal(larga);
+  if (a.length < 2) return false;
+  var hay = a.filter(function (w) { return b.indexOf(w) >= 0; }).length;
+  return hay >= 2 && hay / a.length >= 0.75;
+}
 /** "Jose Luis", "JoseLuis", "jose luis", 'Antonio "A"' → misma clave (sin espacios, acentos ni comillas). */
 function _claveNombre(v) { return _norm(v).replace(/[^a-z0-9]/g, ''); }
 /** Con qué nombres puede venir este gestor en la columna I de Operaciones (sin importar mayúsculas,
