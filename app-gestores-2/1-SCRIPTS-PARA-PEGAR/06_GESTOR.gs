@@ -57,9 +57,11 @@ function apiInicio(p) {
   u._t.filas.forEach(function (f) {
     if (String(f.Numero) !== String(u.Numero) && _si(f.Activo) && _fechaTxt(f.FechaVehiculo) === hoy && f.VehiculoHoy) ocupados[_norm(f.VehiculoHoy)] = f.Nombre;
   });
+  var bitT = _bitTabla();
   var vehiculos = _tabla(APPG.H.VEHICULOS).filas.filter(function (v) { return _si(v.Activo); }).map(function (v) {
     var tipo = _tipoVehiculo(v);
-    return { nombre: String(v.Vehiculo), tipo: tipo, placa: String(v.Placa || ''), pideTablero: _pideTablero(v),
+    var rv = _revisionAlTomar(u, v, bitT);
+    return { nombre: String(v.Vehiculo), tipo: tipo, placa: String(v.Placa || ''), pideTablero: rv.revision !== 'NINGUNA', revision: rv.revision, anterior: rv.anterior || null,
              ocupadoPor: tipo === 'NINGUNO' ? '' : (ocupados[_norm(v.Vehiculo)] || ''), enTaller: _si(v.EnTaller) };
   });
 
@@ -122,7 +124,7 @@ function apiInicio(p) {
     porRecoger: perfil.area === 'FACTURACION' ? _porRecoger() : [],
     botican: botican, pendientes: pendientes,
     avisos: (function () { try { return _avisosInicio(u); } catch (e) { return []; } })(),
-    bitacora: _bitacoraInicio(u),
+    bitacora: _bitacoraInicio(u), revConfig: _revConfig(),
     libresHoy: cierres.filter(function (c) {
       return String(c.Tipo) === 'LIBRE' && String(c.NumeroGestor) === String(u.Numero) && _fechaTxt(c.FechaHora) === hoy && String(c.Estado) !== 'ANULADO';
     }).map(function (c) {

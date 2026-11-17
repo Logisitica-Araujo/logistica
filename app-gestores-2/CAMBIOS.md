@@ -1,5 +1,15 @@
 # Registro de cambios · App Gestores 2
 
+## 0.5.3 · 17-nov-2026 · Revisión de vehículo por niveles, todo documentado
+- **Qué revisión pide cada vehículo** (APP_Vehiculos → `Revision`, se cambia en Administración → Vehículos): COMPLETA (siempre) · CAMBIO (completa solo si cambia de conductor; la camioneta queda así) · BASICA · NINGUNA. Botón "Pedir completa la próxima vez" (`CompletaProxima`, una sola vez).
+- **Excepciones por persona** (APP_Usuarios → `RevisionVehiculo`): siempre completa · siempre básica · nunca.
+- **Completa:** 5 fotos (frente, atrás, lado piloto, lado copiloto, interior), qué lleva (TAG, refacción, gato, llave de cruz, cables, tarjeta de circulación, tarjeta gasolina, póliza, permiso de carga, triángulos, extintor, botiquín, herramientas, llaves) y cómo está (Bien / Detalle con foto). Las listas se editan en Ajustes (`REV_FOTOS`, `REV_LLEVA`, `REV_ESTADO`).
+- **Confirmar:** con "siempre completa", quien la recibe ve cómo la dejaron y toca "Sí, está igual" o "Encontré algo nuevo" (foto + qué es).
+- **Básica:** "¿Lleva todo y está bien?" (Sí / Hay algo).
+- **Siempre:** foto del tablero, km, gasolina, día, hora y lugar (GPS), observaciones; al entregar, dónde la dejó y a quién le dejó las llaves. WhatsApp al grupo al recibirla y al entregarla (con faltantes, detalles, notas y enlace de Maps).
+- Lo que alguien encuentra al recibirla avisa en Problemas (`VEH-03`) y en la bitácora dice quién la usó antes.
+- Bitácora en Administración: todas las fotos, lugar (Maps), faltantes, detalles, notas, km y gasolina. App 2.9.0.
+
 ## 0.5.2 · 17-nov-2026 · Pendientes solo para ver y bitácora de la camioneta
 - **Pendientes por recoger, solo para ver:** se quitan "Lo recojo yo", las casillas y "Voy por…". Lo escaneado o lo que cambia de estatus desaparece solo para todos (`11_PENDIENTES`, `perfiles.js`).
 - **Traspasos:** de dónde → a dónde, fecha y hora de creación, bultos y antigüedad (gris hoy · amarillo 2–6 días · rojo 7+) (`06_GESTOR` `_calcularPorRecoger`).

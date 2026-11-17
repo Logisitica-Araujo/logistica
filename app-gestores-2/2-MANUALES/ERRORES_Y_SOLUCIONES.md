@@ -430,6 +430,10 @@ Errores que cometen personas. No son fallas del sistema, pero el sistema ayuda a
 - **Qué pasó:** alguien la tomó (con su foto del tablero) mientras en la bitácora seguía "EN USO" a nombre de otro. Ese uso queda "SIN ENTREGAR" (en rojo en Administración → Vehículos → Bitácora).
 - **Qué hago:** pedirle al anterior que la próxima vez toque "Entregar" en su inicio. El km de salida del nuevo sirve para saber cuánto recorrió.
 
+### VEH-03 · Al recibir el vehículo encontraron algo
+- **Qué pasó:** quien lo recibió marcó un detalle, algo que falta o "Encontré algo nuevo". En la bitácora sale en rojo con la foto y quién lo usó antes.
+- **Qué hago:** hablar con quien lo usó antes; las fotos de su entrega están en la misma bitácora.
+
 ### VEH-02 · "Primero entrega …"
 - **Qué pasó:** el gestor trae un vehículo que pide tablero y quiso cambiarse a otro. Primero tiene que tocar "Entregar" (foto, km y gasolina).
 - **Si ya no la tiene:** Administración → Vehículos → "Liberar", o en la pestaña APP_Bitacora_Vehiculo cambiar su Estado a "SIN ENTREGAR".

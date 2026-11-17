@@ -428,3 +428,21 @@ body.adm{--azul:#111A2E;--azul-osc:#0A1020;--azul-suave:#E6E9F0;--azul-claro:#AE
 .tile-veh{background:var(--azul);color:#fff;border-radius:16px;padding:13px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px}
 .tile-veh b{font-size:15.5px;display:block}.tile-veh small{color:#C9D6EE;font-size:12.5px}
 .tile-veh button{border:0;background:#fff;color:var(--azul);border-radius:10px;padding:9px 12px;font:inherit;font-weight:800;font-size:14px;flex:none}
+
+/* Revisión de vehículo (0.5.3) */
+.slots{display:grid;grid-template-columns:1fr 1fr;gap:8px}.slots.uno{grid-template-columns:1fr}
+.slot-foto{height:92px;border-radius:12px;border:2px dashed var(--borde2);background:#fff;color:var(--azul);position:relative;overflow:hidden;padding:0;font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.slot-foto b{font-size:22px;line-height:1}.slot-foto span{font-size:12.5px;font-weight:700}
+.slot-foto.con{border:0;background:#111}.slot-foto img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.slot-foto.con span{position:absolute;left:6px;bottom:6px;background:rgba(0,0,0,.6);color:#fff;border-radius:8px;padding:2px 7px}
+.lleva{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.lleva button{border:1px solid var(--borde);background:#fff;border-radius:10px;padding:8px 9px;font:inherit;font-size:12.5px;font-weight:600;display:flex;gap:7px;align-items:center;text-align:left;color:var(--texto)}
+.lleva button i{width:18px;height:18px;border-radius:5px;background:var(--verde);color:#fff;font-style:normal;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none}
+.lleva button.falta{background:#FDE7E5;border-color:#F3B8B2;color:#7A1A12}.lleva button.falta i{background:var(--rojo)}
+.punto{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--borde);border-radius:12px;padding:8px 10px;font-size:13.5px;font-weight:700}.punto>span:first-child{flex:1}
+.seg{display:flex;gap:3px;background:#E6EAF1;border-radius:9px;padding:3px}.seg button{border:0;background:none;font:inherit;font-size:12.5px;font-weight:700;padding:6px 10px;border-radius:7px;color:var(--texto2)}
+.seg button.ok{background:#fff;color:var(--verde)}.seg button.mal{background:var(--rojo);color:#fff}
+.detalle{background:#FDE7E5;border:1px solid #F3B8B2;border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:6px}
+.gas.dos button{font-size:13.5px}.gas button.on.mal{background:var(--rojo);color:#fff}
+.anterior .lin{display:block;font-size:13px;color:var(--texto2);padding:2px 0}
+.fotos-ant{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}.fotos-ant a{font-size:12.5px;font-weight:700;background:var(--azul-suave);color:var(--azul);border-radius:8px;padding:5px 8px;text-decoration:none}

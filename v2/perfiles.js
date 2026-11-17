@@ -586,10 +586,19 @@ function admVehiculos() {
         (v.quien ? '<div class="t1">' + esc(v.quien) + ' desde ' + esc(v.desde) + '</div>' : '') + (v.nota ? '<div class="t2">' + esc(v.nota) + '</div>' : '') +
         (v.tipo === 'NINGUNO' ? '' : '<div class="botones"><button class="b" onclick="admHacer(\'vehiculoCambiar\',{vehiculo:\'' + esc(v.nombre) + '\',enTaller:' + (!v.enTaller) + '},admVehiculos)">' + (v.enTaller ? 'Ya salió del taller' : 'Marcar en taller') + '</button>' +
           (v.quien ? '<button class="b" onclick="admHacer(\'liberar\',{numero:\'' + esc(v.numero) + '\'},admVehiculos)">Liberar</button>' : '<span></span>') + '<span></span></div>' +
-          '<label class="check sw"><span style="flex:1">📷 Pedir foto del tablero, km y gasolina al tomarlo y entregarlo</span><input type="checkbox" ' + (v.pideTablero ? 'checked' : '') +
-          ' onchange="admHacer(\'vehiculoCambiar\',{vehiculo:\'' + esc(v.nombre) + '\',pideTablero:this.checked},admVehiculos)"></label>') + '</div>';
+          '<label class="et">📷 Revisión al tomarlo y entregarlo</label><select class="campo" onchange="admHacer(\'vehiculoCambiar\',{vehiculo:\'' + esc(v.nombre) + '\',revision:this.value},admVehiculos)">' +
+          [['COMPLETA', 'Siempre completa'], ['CAMBIO', 'Completa solo si cambia de conductor'], ['BASICA', 'Siempre básica (tablero, km, gasolina)'], ['NINGUNA', 'Ninguna']].map(function (o) {
+            return '<option value="' + o[0] + '"' + (v.revision === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
+          (v.revision === 'NINGUNA' ? '' : v.completaProxima ? '<div class="t2" style="color:var(--azul);font-weight:700">⏳ La próxima vez pide la completa · <a href="#" onclick="admHacer(\'vehiculoCambiar\',{vehiculo:\'' + esc(v.nombre) + '\',completaProxima:false},admVehiculos);return false">quitar</a></div>'
+            : '<button class="b" style="margin-top:6px" onclick="admHacer(\'vehiculoCambiar\',{vehiculo:\'' + esc(v.nombre) + '\',completaProxima:true},admVehiculos)">Pedir completa la próxima vez</button>')) + '</div>';
     });
-    pintar(html + '<button class="btn linea" onclick="admBitacora()">🚐 Bitácora de km y gasolina</button>' +
+    if (r.personas && r.personas.length) {
+      html += '<span class="etiqueta">Excepciones por persona</span>' + r.personas.map(function (u) {
+        return '<div class="card"><div class="linea"><b>' + esc(u.nombre) + '</b><span class="espacio"></span><select class="campo chico" onchange="admHacer(\'revisionPersona\',{numero:\'' + esc(u.numero) + '\',revision:this.value},admVehiculos)">' +
+          [['', 'Como el vehículo'], ['COMPLETA', 'Siempre completa'], ['BASICA', 'Siempre básica'], ['NINGUNA', 'Nunca']].map(function (o) { return '<option value="' + o[0] + '"' + (u.revision === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div></div>';
+      }).join('');
+    }
+    pintar(html + '<button class="btn linea" onclick="admBitacora()">🚐 Bitácora: fotos, km, gasolina, día y lugar</button>' +
       '<p class="nota">Al cambiar de vehículo a medio día, la app le pide el motivo al gestor y aquí lo ves.</p></div>' + navAdm('veh'));
   }, sub);
 }
@@ -597,23 +606,31 @@ function admVehiculos() {
 /* ---------- Bitácora de vehículos (foto del tablero) ---------- */
 function admBitacora() {
   S.vista = 'adm';
-  var sub = barraAdm('Bitácora de km y gasolina', 'Vehículos que piden foto del tablero', 'admVehiculos()');
+  var sub = barraAdm('Bitácora de vehículos', 'Fotos, km, gasolina, día, hora y lugar de cada uso', 'admVehiculos()');
   admCargar('bitacora', {}, function (r) {
     var dia = function (t) { var f = fechaCorta(t); return f ? f.txt.replace(/, \d.*$/, '') : ''; }, hora = function (t) { return String(t || '').slice(11, 16); };
+    var niv = { COMPLETA: 'completa', CONFIRMA: 'confirmó', BASICA: 'básica' };
     var html = sub + '<div class="cuerpo con-nav">';
-    if (!r.bitacora.length) html += '<div class="vacio"><b>Todavía no hay registros</b><span>Aparecen cuando alguien toma un vehículo que pide foto del tablero.</span></div>';
+    if (!r.bitacora.length) html += '<div class="vacio"><b>Todavía no hay registros</b><span>Aparecen cuando alguien toma un vehículo que pide revisión.</span></div>';
     r.bitacora.forEach(function (b) {
-      var rojo = b.sinEntregar || b.descuadre;
+      var rojo = b.sinEntregar || b.descuadre || b.alRecibir.length;
       html += '<div class="card"' + (rojo ? ' style="border-left:5px solid var(--rojo)"' : '') + '><div class="linea"><b>' + esc(dia(b.salida)) + ' · ' + esc(b.gestor) + '</b><span class="espacio"></span>' +
         (b.sinEntregar ? '<span class="tag r">SIN ENTREGAR</span>' : b.estado === 'EN USO' ? '<span class="tag a">EN USO</span>' : '<span class="tag v">' + (b.km !== '' ? esc(String(b.km)) + ' km' : 'ENTREGADA') + '</span>') + '</div>' +
-        '<div class="t1">' + esc(b.vehiculo) + ' · salió ' + esc(hora(b.salida)) + ' (' + esc(String(b.kmSalida)) + ' km · ' + esc(b.gasSalida) + ')' +
-        (b.regreso ? ' → regresó ' + esc(hora(b.regreso)) + ' (' + esc(String(b.kmRegreso)) + ' km · ' + esc(b.gasRegreso) + ')' : '') + '</div>' +
-        (b.descuadre ? '<div class="t2" style="color:var(--rojo);font-weight:700">El km de salida no cuadra con el último regreso (' + (b.descuadre > 0 ? '+' : '') + esc(String(b.descuadre)) + ' km)</div>' : '') +
+        '<div class="t1">' + esc(b.vehiculo) + '</div>' +
+        '<div class="t2">▶ Recibió ' + esc(hora(b.salida)) + ' · ' + esc(String(b.kmSalida)) + ' km · ' + esc(b.gasSalida) + (b.nivelSalida ? ' · revisión ' + esc(niv[b.nivelSalida] || b.nivelSalida) : '') +
+          (b.mapaSalida ? ' · <a href="' + esc(b.mapaSalida) + '" target="_blank" rel="noopener">📍 lugar</a>' : '') + '</div>' +
+        (b.regreso ? '<div class="t2">■ Entregó ' + esc(dia(b.regreso)) + ' ' + esc(hora(b.regreso)) + ' · ' + esc(String(b.kmRegreso)) + ' km · ' + esc(b.gasRegreso) + (b.nivelRegreso ? ' · revisión ' + esc(niv[b.nivelRegreso] || b.nivelRegreso) : '') +
+          (b.mapaRegreso ? ' · <a href="' + esc(b.mapaRegreso) + '" target="_blank" rel="noopener">📍 lugar</a>' : '') + '</div>' : '') +
+        (b.alRecibir.length ? '<div class="t2" style="color:var(--rojo);font-weight:700">⚠ Al recibirla encontró: ' + esc(b.alRecibir.join(' · ')) + (b.antes ? ' — antes la usó ' + esc(b.antes) : '') + '</div>' : '') +
+        (b.faltantes ? '<div class="t2">✗ Faltó: ' + esc(b.faltantes) + '</div>' : '') +
+        (b.detalles && !b.alRecibir.length ? '<div class="t2">⚠ ' + esc(b.detalles) + '</div>' : '') +
+        (b.observaciones ? '<div class="t2">📝 ' + esc(b.observaciones) + '</div>' : '') +
+        (b.donde ? '<div class="t2">📍 La dejó en: ' + esc(b.donde) + '</div>' : '') + (b.llaves ? '<div class="t2">🔑 Llaves: ' + esc(b.llaves) + '</div>' : '') +
+        (b.descuadre ? '<div class="t2" style="color:var(--rojo);font-weight:700">El km de salida no cuadra con el último registro (' + (b.descuadre > 0 ? '+' : '') + esc(String(b.descuadre)) + ' km)</div>' : '') +
         (b.nota ? '<div class="t2">' + esc(b.nota) + '</div>' : '') +
-        '<div class="botones">' + (b.fotoSalida ? '<a class="b" href="' + esc(b.fotoSalida) + '" target="_blank" rel="noopener">Foto salida</a>' : '<span></span>') +
-        (b.fotoRegreso ? '<a class="b" href="' + esc(b.fotoRegreso) + '" target="_blank" rel="noopener">Foto regreso</a>' : '<span></span>') + '<span></span></div></div>';
+        (b.fotos.length ? '<details class="doc"><summary>📷 ' + b.fotos.length + ' fotos</summary><div class="fotos-ant">' + b.fotos.map(function (f) { return '<a href="' + esc(f[1]) + '" target="_blank" rel="noopener">' + esc(f[0]) + ' ↗</a>'; }).join('') + '</div></details>' : '') + '</div>';
     });
-    pintar(html + '</div>' + navAdm('veh'));
+    pintar(html + '<p class="nota">Todo queda también en la pestaña APP_Bitacora_Vehiculo y las fotos en Drive (nombre: vehículo · tomar/entregar · fecha y hora · gestor · qué es).</p></div>' + navAdm('veh'));
   }, sub);
 }
 
@@ -630,6 +647,8 @@ function admAjustes() {
       tog('EXIGIR_QUIEN_RECIBIO', 'Quién recibió obligatorio') + tog('EXIGIR_FOTO_NOENTREGA', 'Foto obligatoria al no entregar') + '</div>' +
       '<div class="bloque"><div class="cab-b"><b>Facturación · traslados</b></div>' + tog('EXIGIR_ACUSE_IMSS', 'Foto del acuse sellado obligatoria (IMSS)') +
       admTexto('AREAS_IMSS', 'Áreas del IMSS (separadas con | )', a) + admTexto('PALABRAS_EFECTIVO', 'Palabras que marcan efectivo', a) + '</div>' +
+      '<div class="bloque"><div class="cab-b"><b>Revisión de vehículos</b></div>' + admTexto('REV_FOTOS', 'Fotos que se piden (separadas con | )', a) +
+      admTexto('REV_LLEVA', 'Qué lleva (separado con | )', a) + admTexto('REV_ESTADO', 'Cómo está: puntos Bien / Detalle (separados con | )', a) + '</div>' +
       '<details class="doc"><summary>Motivos de no entrega</summary><div class="cuerpo-doc">' + r.motivos.map(function (m) {
         return '<label class="check sw"><span style="flex:1"><small class="tag">' + esc(m.tipo) + '</small> ' + esc(m.motivo) + '</span><input type="checkbox" ' + (m.activo ? 'checked' : '') + ' onchange="admHacer(\'motivo\',{fila:' + m.fila + ',activo:this.checked})"></label>';
       }).join('') + '<div class="segm" id="mTipo"><button class="act" onclick="admSegm(this)">RETORNO</button><button onclick="admSegm(this)">CANCELADO</button><button onclick="admSegm(this)">TRASPASO</button></div>' +

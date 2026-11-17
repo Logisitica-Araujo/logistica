@@ -123,6 +123,22 @@ function INSTALAR() {
       hecho.push('APP_Vehiculos: "PideTablero" marcado solo en los AUTO (la camioneta). Cámbialo en Administración → Vehículos.');
     }
   } catch (e) { hecho.push('No pude marcar PideTablero: ' + e.message); }
+  /* 4d) Columna nueva (0.5.3) "Revision": COMPLETA · CAMBIO (completa si cambia de conductor) · BASICA · NINGUNA.
+         Los que pedían tablero quedan en CAMBIO; los demás en NINGUNA. */
+  try {
+    var vr = _tabla(APPG.H.VEHICULOS);
+    vr.filas.forEach(function (v) {
+      if (!String(v.Vehiculo).trim() || String(v.Revision || '').trim()) return;
+      vr.sh.getRange(v._fila, vr.col('Revision')).setValue(_si(v.PideTablero) ? 'CAMBIO' : 'NINGUNA');
+    });
+    try {
+      var dvr = SpreadsheetApp.newDataValidation().requireValueInList(APPG_NIVELES_VEH, true).build(), filasR = Math.max(vr.sh.getMaxRows() - 1, 1);
+      vr.sh.getRange(2, vr.col('Revision'), filasR, 1).setDataValidation(dvr);
+      vr.sh.getRange(2, vr.col('CompletaProxima'), filasR, 1).setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build());
+      var ur = _tabla(APPG.H.USUARIOS);
+      ur.sh.getRange(2, ur.col('RevisionVehiculo'), Math.max(ur.sh.getMaxRows() - 1, 1), 1).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['', 'COMPLETA', 'BASICA', 'NINGUNA'], true).build());
+    } catch (e2) { /* listas desplegables: no indispensables */ }
+  } catch (e) { hecho.push('No pude poner la columna Revision: ' + e.message); }
 
   /* 5) Proteger lo que no se edita a mano. Solo AVISO: Google pregunta
         "¿seguro?" antes de dejar editar; no bloquea a la administradora. */

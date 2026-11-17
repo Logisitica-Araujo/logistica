@@ -10,7 +10,7 @@
  ***********************************************************************/
 
 var APPG = {
-  VERSION: '0.5.2',
+  VERSION: '0.5.3',
   ZONA: 'America/Mexico_City',
 
   /* Nombres de las pestañas del archivo de la app. */
@@ -39,8 +39,8 @@ var APPG = {
     APP_Config:        ['Clave', 'Valor', 'Descripción'],
     APP_Usuarios:      ['Numero', 'Nombre', 'NombreEnOperaciones', 'Usuario', 'ClaveCifrada', 'Rol', 'Activo',
                         'DebeCambiar', 'VersionSesion', 'Alta', 'UltimoAcceso', 'Notas', 'VehiculoHoy', 'FechaVehiculo', 'NuevaContraseña',
-                        'Area', 'VehiculoNota'],
-    APP_Vehiculos:     ['Vehiculo', 'Tipo', 'Placa', 'Activo', 'EnTaller', 'PideTablero'],
+                        'Area', 'VehiculoNota', 'RevisionVehiculo'],
+    APP_Vehiculos:     ['Vehiculo', 'Tipo', 'Placa', 'Activo', 'EnTaller', 'PideTablero', 'Revision', 'CompletaProxima'],
     APP_Motivos:       ['Tipo', 'Motivo', 'PideComentario', 'Activo'],
     APP_Documentos:    ['Categoria', 'Titulo', 'Tipo', 'Contenido', 'Activo', 'Orden'],
     APP_Pedidos:       ['ID', 'Fila', 'NumeroGestor', 'Gestor', 'Cliente', 'Direccion', 'Telefono', 'Notas', 'Area', 'SubArea',
@@ -57,7 +57,8 @@ var APPG = {
     APP_Apartados:     ['Codigo', 'Tipo', 'NumeroGestor', 'Gestor', 'Desde', 'Hasta', 'Estado', 'Cerrado', 'CerradoPor'],
     APP_Avisos:        ['Id', 'FechaHora', 'Texto', 'Para', 'Importante', 'Hasta', 'Activo', 'Autor', 'Leidos'],
     APP_Bitacora_Vehiculo: ['Id', 'Vehiculo', 'NumeroGestor', 'Gestor', 'Estado', 'Salida', 'KmSalida', 'GasSalida', 'FotoSalida', 'LatSalida', 'LngSalida',
-                        'Regreso', 'KmRegreso', 'GasRegreso', 'FotoRegreso', 'LatRegreso', 'LngRegreso', 'Km', 'Nota']
+                        'Regreso', 'KmRegreso', 'GasRegreso', 'FotoRegreso', 'LatRegreso', 'LngRegreso', 'Km', 'Nota',
+                        'NivelSalida', 'RevSalida', 'NivelRegreso', 'RevRegreso', 'Faltantes', 'Detalles', 'Observaciones', 'DondeLaDejo', 'Llaves']
   },
 
   /* Perfiles. Columna "Area" de APP_Usuarios: decide qué app ve cada quien.
@@ -106,6 +107,9 @@ var APPG = {
     ['ID_BOTICAN', '1a3n7z962Ik6c1YrcD7RxkJEAWWK6a9xuA5LDrr2sffc', 'Archivo LOGISTICA BOTICAN 2026 (Envios, Feriados, Rutas). Vacío = no se muestra la recolección BOTICAN'],
     ['BOT_ESCRIBIR_H', true, 'TRUE = al recolectar un pedido BOTICAN se escribe la hora en Envios columna H (solo si está vacía y sin fórmula)'],
     ['ID_FADERMEX', '1lv35lbab-GCrv-H81xjBh2CpfO2F-EUIIN3kcWHSsHU', 'Archivo "Pedidos Logistica-Fadermex 2026" (Envios): pedidos FADERMEX listos para recolectar. Vacío = solo Operaciones'],
+    ['REV_FOTOS', 'Frente | Atrás | Lado piloto | Lado copiloto | Interior', 'Revisión completa de vehículo: fotos que se piden (además del tablero)'],
+    ['REV_LLEVA', 'Llanta de refacción | Gato | Llave de cruz | Cables pasa corriente | Tarjeta de circulación | Póliza de seguro | Permiso de carga | TAG caseta | Tarjeta gasolina | Triángulos | Extintor | Botiquín | Kit de herramientas | Juego de llaves', 'Revisión completa: qué debe llevar el vehículo'],
+    ['REV_ESTADO', 'Carrocería y pintura | Defensas | Espejos | Llantas | Luces y calaveras | Parabrisas y vidrios | Interior limpio', 'Revisión completa: cómo está (Bien / Detalle con foto)'],
     ['CARPETA_TABLERO', '', 'Drive: fotos del tablero (km y gasolina) de los vehículos con PideTablero (vacío = carpeta de respaldo)'],
     ['APARTADO_HORAS', 2, '"Lo recojo yo": horas para que un apartado se libere solo si no lo escanean'],
     ['APP_BLOQUEADA', false, 'TRUE = nadie puede entrar (mantenimiento)'],

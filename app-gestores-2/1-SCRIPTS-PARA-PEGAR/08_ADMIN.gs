@@ -17,7 +17,7 @@
 
 var APPG_AJUSTES = ['EXIGIR_FOTO_ENTREGA', 'EXIGIR_FIRMA_ENTREGA', 'EXIGIR_QUIEN_RECIBIO', 'EXIGIR_FOTO_NOENTREGA', 'EXIGIR_ACUSE_IMSS',
   'APP_BLOQUEADA', 'MENSAJE_BLOQUEO', 'WA_MSG_ENTREGADO', 'CHECK_MOTO', 'CHECK_AUTO', 'AREAS_IMSS', 'MOTIVOS_CAMBIO_VEHICULO',
-  'PALABRAS_EFECTIVO', 'PALABRAS_DOCUMENTOS', 'PALABRAS_IMSS', 'DIAS_PARA_ALERTA'];
+  'PALABRAS_EFECTIVO', 'PALABRAS_DOCUMENTOS', 'PALABRAS_IMSS', 'DIAS_PARA_ALERTA', 'REV_FOTOS', 'REV_LLEVA', 'REV_ESTADO'];
 
 function apiAdmin(p) {
   var s = _exigirSesion(p.token);
@@ -26,7 +26,7 @@ function apiAdmin(p) {
   var f = {
     hoy: _admHoy, gestor: _admGestor, buscar: _admBuscar, corregir: _admCorregir, reasignar: _admReasignar,
     problemas: _admProblemas, resolver: _admResolver, equipo: _admEquipo, equipoCambiar: _admEquipoCambiar, alta: _admAlta,
-    vehiculos: _admVehiculos, vehiculoCambiar: _admVehiculoCambiar, liberar: _admLiberar, bitacora: _admBitacora,
+    vehiculos: _admVehiculos, vehiculoCambiar: _admVehiculoCambiar, liberar: _admLiberar, bitacora: _admBitacora, revisionPersona: _admRevisionPersona,
     ajustes: _admAjustes, ajuste: _admAjuste, motivo: _admMotivo, sucursal: _admSucursal,
     avisos: _admAvisos, avisoNuevo: _admAvisoNuevo, avisoQuitar: _admAvisoQuitar
   }[String(p.que || '')];
@@ -392,9 +392,11 @@ function _admAlta(p, yo) {
 function _admVehiculos() {
   var hoy = _hoyTxt();
   var us = _tabla(APPG.H.USUARIOS).filas.filter(function (u) { return _si(u.Activo); });
-  return { vehiculos: _tabla(APPG.H.VEHICULOS).filas.map(function (v) {
+  var personas = us.filter(function (u) { return !/^prueba/i.test(String(u.Usuario)); }).map(function (u) { return { numero: String(u.Numero), nombre: String(u.Nombre), revision: String(u.RevisionVehiculo || '').toUpperCase() }; });
+  return { personas: personas, vehiculos: _tabla(APPG.H.VEHICULOS).filas.filter(function (v) { return String(v.Vehiculo).trim(); }).map(function (v) {
     var quien = us.filter(function (u) { return _fechaTxt(u.FechaVehiculo) === hoy && _norm(u.VehiculoHoy) === _norm(v.Vehiculo); })[0];
     return { nombre: String(v.Vehiculo), tipo: _tipoVehiculo(v), placa: String(v.Placa || ''), activo: _si(v.Activo), enTaller: _si(v.EnTaller), pideTablero: _si(v.PideTablero),
+             revision: _nivelVehiculo(v), completaProxima: _si(v.CompletaProxima),
              quien: quien ? String(quien.Nombre) : '', numero: quien ? String(quien.Numero) : '',
              desde: quien ? _fechaTxt(quien.FechaVehiculo, 'yyyy-MM-dd HH:mm').slice(11) : '', nota: quien ? String(quien.VehiculoNota || '') : '' };
   }) };
@@ -405,6 +407,19 @@ function _admVehiculoCambiar(p, yo) {
   var t = _tabla(APPG.H.VEHICULOS);
   var v = t.filas.filter(function (x) { return _norm(x.Vehiculo) === _norm(p.vehiculo); })[0];
   if (!v) throw _falla('APP-01', 'No existe ese vehículo.');
+  if (p.revision != null) {      // qué revisión pide: COMPLETA · CAMBIO · BASICA · NINGUNA
+    var niv = String(p.revision).toUpperCase();
+    if (APPG_NIVELES_VEH.indexOf(niv) < 0) throw _falla('APP-01', 'Revisión desconocida: ' + p.revision);
+    t.sh.getRange(v._fila, t.col('Revision')).setValue(niv);
+    t.sh.getRange(v._fila, t.col('PideTablero')).setValue(niv !== 'NINGUNA');
+    _log(yo.Nombre, 'ADMIN_VEHICULO', v.Vehiculo + ' · revisión ' + niv);
+    return { mensaje: v.Vehiculo + ': ' + APPG_NIVEL_TXT[niv] + '.' };
+  }
+  if (p.completaProxima != null) {
+    t.sh.getRange(v._fila, t.col('CompletaProxima')).setValue(!!p.completaProxima);
+    _log(yo.Nombre, 'ADMIN_VEHICULO', v.Vehiculo + (p.completaProxima ? ' · completa la próxima vez' : ' · sin completa pendiente'));
+    return { mensaje: p.completaProxima ? v.Vehiculo + ': la próxima vez que la tomen o entreguen se pide la revisión completa.' : 'Listo.' };
+  }
   if (p.pideTablero != null) {   // foto del tablero al tomar/entregar: lo decide la administradora
     t.sh.getRange(v._fila, t.col('PideTablero')).setValue(!!p.pideTablero);
     _log(yo.Nombre, 'ADMIN_VEHICULO', v.Vehiculo + (p.pideTablero ? ' · pide tablero' : ' · ya no pide tablero'));
@@ -413,6 +428,19 @@ function _admVehiculoCambiar(p, yo) {
   t.sh.getRange(v._fila, t.col('EnTaller')).setValue(!!p.enTaller);
   _log(yo.Nombre, 'ADMIN_VEHICULO', v.Vehiculo + (p.enTaller ? ' · en taller' : ' · disponible'));
   return { mensaje: v.Vehiculo + (p.enTaller ? ' en taller: nadie la puede elegir.' : ' disponible otra vez.') };
+}
+
+/* p = { numero, revision: '' (como el vehículo) | COMPLETA | BASICA | NINGUNA } */
+function _admRevisionPersona(p, yo) {
+  var t = _tabla(APPG.H.USUARIOS);
+  var u = t.filas.filter(function (x) { return String(x.Numero) === String(p.numero); })[0];
+  if (!u) throw _falla('APP-01', 'No existe ' + p.numero + '.');
+  var niv = String(p.revision || '').toUpperCase();
+  if (['', 'COMPLETA', 'BASICA', 'NINGUNA'].indexOf(niv) < 0) throw _falla('APP-01', 'Revisión desconocida.');
+  t.sh.getRange(u._fila, t.col('RevisionVehiculo')).setValue(niv);
+  _olvidarUsuario(u.Usuario);
+  _log(yo.Nombre, 'ADMIN_REVISION', u.Nombre + ' · ' + (niv || 'como el vehículo'));
+  return { mensaje: u.Nombre + ': ' + (niv ? APPG_NIVEL_TXT[niv] : 'la revisión que pida cada vehículo') + '.' };
 }
 
 /* p = { numero } : le quita el vehículo de hoy (para que otro lo pueda tomar) */
