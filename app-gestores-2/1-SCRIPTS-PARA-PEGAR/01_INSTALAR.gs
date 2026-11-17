@@ -111,7 +111,18 @@ function INSTALAR() {
     if (sinArea) hecho.push('APP_Usuarios: ' + sinArea + ' persona(s) quedaron en Área = Gestoría. Cambia a "Facturación" a quien haga traslados (Alejandro, Belarmino).');
     var ve = _tabla(APPG.H.VEHICULOS);
     ve.sh.getRange(2, ve.col('EnTaller'), Math.max(ve.sh.getMaxRows() - 1, 1), 1).setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build());
+    ve.sh.getRange(2, ve.col('PideTablero'), Math.max(ve.sh.getMaxRows() - 1, 1), 1).setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build());
   } catch (e) { hecho.push('No pude poner las listas de Área/Rol: ' + e.message); }
+
+  /* 4c) Columna nueva (0.5.2) "PideTablero": al principio solo los AUTO (la camioneta) piden foto del
+         tablero, km y gasolina. Después lo decide la administradora en Administración → Vehículos. */
+  try {
+    var vt = _tabla(APPG.H.VEHICULOS);
+    if (vt.filas.length && vt.filas.every(function (v) { return v.PideTablero === '' || v.PideTablero == null; })) {
+      vt.filas.forEach(function (v) { if (String(v.Vehiculo).trim()) vt.sh.getRange(v._fila, vt.col('PideTablero')).setValue(_tipoVehiculo(v) === 'AUTO'); });
+      hecho.push('APP_Vehiculos: "PideTablero" marcado solo en los AUTO (la camioneta). Cámbialo en Administración → Vehículos.');
+    }
+  } catch (e) { hecho.push('No pude marcar PideTablero: ' + e.message); }
 
   /* 5) Proteger lo que no se edita a mano. Solo AVISO: Google pregunta
         "¿seguro?" antes de dejar editar; no bloquea a la administradora. */

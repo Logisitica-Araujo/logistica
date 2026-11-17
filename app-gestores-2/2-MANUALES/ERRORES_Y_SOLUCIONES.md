@@ -426,6 +426,14 @@ Errores que cometen personas. No son fallas del sistema, pero el sistema ayuda a
 - **Causa:** `ID_BOTICAN` vacío o equivocado en APP_Config, o la cuenta del script no tiene acceso al archivo.
 - **Solución:** revisa el ID y que el dueño del script pueda abrir el archivo. Prueba con `PROBAR_BOTICAN` desde el editor.
 
+### VEH-01 · Tomaron la camioneta sin que el anterior la entregara en la app
+- **Qué pasó:** alguien la tomó (con su foto del tablero) mientras en la bitácora seguía "EN USO" a nombre de otro. Ese uso queda "SIN ENTREGAR" (en rojo en Administración → Vehículos → Bitácora).
+- **Qué hago:** pedirle al anterior que la próxima vez toque "Entregar" en su inicio. El km de salida del nuevo sirve para saber cuánto recorrió.
+
+### VEH-02 · "Primero entrega …"
+- **Qué pasó:** el gestor trae un vehículo que pide tablero y quiso cambiarse a otro. Primero tiene que tocar "Entregar" (foto, km y gasolina).
+- **Si ya no la tiene:** Administración → Vehículos → "Liberar", o en la pestaña APP_Bitacora_Vehiculo cambiar su Estado a "SIN ENTREGAR".
+
 ### CAP-09 · El monto de efectivo no cuadra (perfil Facturación)
 - **Qué pasa:** el gestor escribió cuánto entregó y no es lo que decía el sobre (el traspaso trae el monto en su descripción, ej. "$2,654.00 + $1,144.00").
 - **Qué hace la app:** le pide una nota y deja un aviso en APP_Problemas (Administración → Por revisar) con los dos montos.

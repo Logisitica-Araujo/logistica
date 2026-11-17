@@ -87,7 +87,7 @@ function vistaRuta() {
     '<div class="chips"><button class="chip" onclick="vistaVehiculo(false)">' + esc(d.vehiculo || 'Sin vehículo') + ' · cambiar</button>' +
     '<span class="chip" id="estado" onclick="verCola()"><i class="' + (x.amb ? 'amb' : '') + '"></i>' + esc(x.t) + '</span></div></div>' +
     '<div class="cuerpo con-nav">';
-  html += bloqueAvisos();
+  html += bloqueAvisos() + tarjetaBitacora();
   if (aviso) html += '<div class="aviso">' + esc(aviso.texto) + '</div>';
   html += tarjetaRutaBotican(true) + '<div class="dos-grandes"><button class="grande" onclick="vistaEscaner(\'recolectar\')"><span><b>Escanear</b><small>Recoger o entregar lo asignado</small></span></button>' +
     '<button class="grande linea" onclick="vistaLibre()"><span><b>+ Registrar entrega</b><small>Algo que no estaba en tu ruta</small></span></button></div>' +
@@ -585,9 +585,35 @@ function admVehiculos() {
         (v.enTaller ? '<span class="tag r">EN TALLER</span>' : v.quien ? '<span class="tag a">EN USO</span>' : '<span class="tag v">LIBRE</span>') + '</div>' +
         (v.quien ? '<div class="t1">' + esc(v.quien) + ' desde ' + esc(v.desde) + '</div>' : '') + (v.nota ? '<div class="t2">' + esc(v.nota) + '</div>' : '') +
         (v.tipo === 'NINGUNO' ? '' : '<div class="botones"><button class="b" onclick="admHacer(\'vehiculoCambiar\',{vehiculo:\'' + esc(v.nombre) + '\',enTaller:' + (!v.enTaller) + '},admVehiculos)">' + (v.enTaller ? 'Ya salió del taller' : 'Marcar en taller') + '</button>' +
-          (v.quien ? '<button class="b" onclick="admHacer(\'liberar\',{numero:\'' + esc(v.numero) + '\'},admVehiculos)">Liberar</button>' : '<span></span>') + '<span></span></div>') + '</div>';
+          (v.quien ? '<button class="b" onclick="admHacer(\'liberar\',{numero:\'' + esc(v.numero) + '\'},admVehiculos)">Liberar</button>' : '<span></span>') + '<span></span></div>' +
+          '<label class="check sw"><span style="flex:1">📷 Pedir foto del tablero, km y gasolina al tomarlo y entregarlo</span><input type="checkbox" ' + (v.pideTablero ? 'checked' : '') +
+          ' onchange="admHacer(\'vehiculoCambiar\',{vehiculo:\'' + esc(v.nombre) + '\',pideTablero:this.checked},admVehiculos)"></label>') + '</div>';
     });
-    pintar(html + '<p class="nota">Al cambiar de vehículo a medio día, la app le pide el motivo al gestor y aquí lo ves.</p></div>' + navAdm('veh'));
+    pintar(html + '<button class="btn linea" onclick="admBitacora()">🚐 Bitácora de km y gasolina</button>' +
+      '<p class="nota">Al cambiar de vehículo a medio día, la app le pide el motivo al gestor y aquí lo ves.</p></div>' + navAdm('veh'));
+  }, sub);
+}
+
+/* ---------- Bitácora de vehículos (foto del tablero) ---------- */
+function admBitacora() {
+  S.vista = 'adm';
+  var sub = barraAdm('Bitácora de km y gasolina', 'Vehículos que piden foto del tablero', 'admVehiculos()');
+  admCargar('bitacora', {}, function (r) {
+    var dia = function (t) { var f = fechaCorta(t); return f ? f.txt.replace(/, \d.*$/, '') : ''; }, hora = function (t) { return String(t || '').slice(11, 16); };
+    var html = sub + '<div class="cuerpo con-nav">';
+    if (!r.bitacora.length) html += '<div class="vacio"><b>Todavía no hay registros</b><span>Aparecen cuando alguien toma un vehículo que pide foto del tablero.</span></div>';
+    r.bitacora.forEach(function (b) {
+      var rojo = b.sinEntregar || b.descuadre;
+      html += '<div class="card"' + (rojo ? ' style="border-left:5px solid var(--rojo)"' : '') + '><div class="linea"><b>' + esc(dia(b.salida)) + ' · ' + esc(b.gestor) + '</b><span class="espacio"></span>' +
+        (b.sinEntregar ? '<span class="tag r">SIN ENTREGAR</span>' : b.estado === 'EN USO' ? '<span class="tag a">EN USO</span>' : '<span class="tag v">' + (b.km !== '' ? esc(String(b.km)) + ' km' : 'ENTREGADA') + '</span>') + '</div>' +
+        '<div class="t1">' + esc(b.vehiculo) + ' · salió ' + esc(hora(b.salida)) + ' (' + esc(String(b.kmSalida)) + ' km · ' + esc(b.gasSalida) + ')' +
+        (b.regreso ? ' → regresó ' + esc(hora(b.regreso)) + ' (' + esc(String(b.kmRegreso)) + ' km · ' + esc(b.gasRegreso) + ')' : '') + '</div>' +
+        (b.descuadre ? '<div class="t2" style="color:var(--rojo);font-weight:700">El km de salida no cuadra con el último regreso (' + (b.descuadre > 0 ? '+' : '') + esc(String(b.descuadre)) + ' km)</div>' : '') +
+        (b.nota ? '<div class="t2">' + esc(b.nota) + '</div>' : '') +
+        '<div class="botones">' + (b.fotoSalida ? '<a class="b" href="' + esc(b.fotoSalida) + '" target="_blank" rel="noopener">Foto salida</a>' : '<span></span>') +
+        (b.fotoRegreso ? '<a class="b" href="' + esc(b.fotoRegreso) + '" target="_blank" rel="noopener">Foto regreso</a>' : '<span></span>') + '<span></span></div></div>';
+    });
+    pintar(html + '</div>' + navAdm('veh'));
   }, sub);
 }
 
@@ -929,15 +955,12 @@ function chipTipo(t) { var x = TIPO_PEND[t] || [t, '#3D4757', '#EEF1F6']; return
 
 function vistaPendientes() {
   S.vista = 'pendientes'; pararEscaner();
-  var pd = (S.datos && S.datos.pendientes) || { grupos: [], total: 0, mios: [] }, b = S.datos.botican || {};
-  S.pendSel = S.pendSel || {}; S.pendFiltro = S.pendFiltro || 'TODO';
+  var pd = (S.datos && S.datos.pendientes) || { grupos: [], total: 0 }, b = S.datos.botican || {};
+  S.pendFiltro = S.pendFiltro || 'TODO';
   var cuenta = { TODO: 0, BOTICAN: 0, FADERMEX: 0, TRASPASO: 0 };
   pd.grupos.forEach(function (g) { g.items.forEach(function (i) { cuenta.TODO++; cuenta[i.tipo] = (cuenta[i.tipo] || 0) + 1; }); });
-  var misVig = pd.mios.filter(function (x) { return !x.cerrado; }).length;
-  var marc = Object.keys(S.pendSel).filter(function (k) { return S.pendSel[k]; });
-  var html = '<div class="barra"><button class="volver" onclick="S.pendSel={};vistaInicio()" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>Pendientes por recoger</b><small>' +
-    (b.ruta ? 'Ruta ' + esc(b.ruta.hora) + ' · ' + esc(String(b.ruta.sucursales).replace(/\s*·\s*/g, ', ')) + (b.ruta.extra ? ' · hoy también ' + esc(b.ruta.extra.replace(/\s*\(.*$/, '')) : '') : 'Sin ruta en este momento') + '</small></div>' +
-    (misVig ? '<button class="chip-mios" onclick="vistaMios()">Voy por ' + misVig + '</button>' : '') + '</div><div class="cuerpo con-nav">' +
+  var html = '<div class="barra"><button class="volver" onclick="vistaInicio()" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>Pendientes por recoger</b><small>' +
+    (b.ruta ? 'Ruta ' + esc(b.ruta.hora) + ' · ' + esc(String(b.ruta.sucursales).replace(/\s*·\s*/g, ', ')) + (b.ruta.extra ? ' · hoy también ' + esc(b.ruta.extra.replace(/\s*\(.*$/, '')) : '') : 'Cuando lo escanees, desaparece de aquí solo') + '</small></div></div><div class="cuerpo con-nav">' +
     '<div class="filtros">' + ['TODO', 'BOTICAN', 'FADERMEX', 'TRASPASO'].map(function (f) {
       return '<button class="' + (S.pendFiltro === f ? 'act' : '') + '" onclick="S.pendFiltro=\'' + f + '\';vistaPendientes()">' + ({ TODO: 'Todo', BOTICAN: 'BOTICAN', FADERMEX: 'FADERMEX', TRASPASO: 'Traspasos' })[f] + ' · ' + (cuenta[f] || 0) + '</button>';
     }).join('') + '</div>';
@@ -946,27 +969,47 @@ function vistaPendientes() {
     var its = g.items.filter(function (i) { return S.pendFiltro === 'TODO' || i.tipo === S.pendFiltro; });
     if (!its.length) return; hay = true;
     html += '<span class="etiqueta">' + esc(g.lugar) + '</span>';
-    its.forEach(function (i) {
-      var borde = i.semaforo ? SEM[i.semaforo][0] : TIPO_PEND[i.tipo] ? TIPO_PEND[i.tipo][1] : 'var(--borde)';
-      var bloqueado = (i.apartado && !i.mio) || i.asignadoOps;
-      var k = clave(i.codigo);
-      if (bloqueado) {
-        html += '<div class="pend bloq"><span class="pend-ic">🔒</span><span class="tx"><span class="pend-l1"><b class="mono">' + esc(i.codigo) + '</b>' + chipTipo(i.tipo) + '</span><small>' +
-          (i.apartado ? 'Va ' + esc(i.apartado.nombre) + ' · desde ' + esc(i.apartado.desde) : 'Asignado a ' + esc(i.asignadoOps) + ' en Operaciones') + '</small></span></div>';
-      } else if (i.mio) {
-        html += '<div class="pend mio" style="border-left-color:' + borde + '"><span class="pend-ic">✋</span><span class="tx"><span class="pend-l1"><b class="mono">' + esc(i.codigo) + '</b>' + chipTipo(i.tipo) + '</span><small>Apartado por ti · se libera ' + esc(i.apartado.hasta) + '</small><small>' + esc(i.texto) + '</small></span></div>';
-      } else {
-        html += '<label class="pend" style="border-left-color:' + borde + '"><input type="checkbox" ' + (S.pendSel[k] ? 'checked' : '') + ' onchange="S.pendSel[\'' + k + '\']=this.checked;vistaPendientes()">' +
-          '<span class="tx"><span class="pend-l1"><b class="mono">' + esc(i.codigo) + '</b>' + chipTipo(i.tipo) + (i.asignadoAMi ? '<span class="pchip-t" style="color:var(--verde);background:var(--verde-suave)">TE LO ASIGNARON</span>' : '') + '</span>' +
-          '<small' + (i.semaforo === 'rojo' ? ' style="color:var(--rojo);font-weight:700"' : '') + '>' + esc(i.texto) + (i.hoy === false ? ' · hoy no se visita' : '') + '</small></span></label>';
-      }
-    });
+    its.forEach(function (i) { html += tarjetaPend(i); });
   });
-  if (!hay) html += '<div class="vacio"><b>Nada pendiente por recoger</b><span>Cuando haya pedidos listos o traspasos esperando, aparecen aquí. Lo que alguien ya lleva no sale.</span></div>';
-  html += '</div><div class="pie con-nav-pie">' + (marc.length ? '<button class="btn" onclick="apartarMarcados()">Lo recojo yo · ' + marc.length + (marc.length > 1 ? ' marcados' : ' marcado') + '</button>'
-    : '<button class="btn linea" onclick="vistaEscaner(\'recolectar\')">Escanear lo que recojo</button>') +
-    '<p class="nota" style="margin:0">Apartar NO registra la recolección: eso es al escanear la etiqueta.</p></div>' + nav('');
+  if (!hay) html += '<div class="vacio"><b>Nada pendiente por recoger</b><span>Cuando haya pedidos listos o traspasos esperando, aparecen aquí. Lo que alguien ya escaneó no sale.</span></div>';
+  html += '</div><div class="pie con-nav-pie"><button class="btn" onclick="vistaEscaner(\'recolectar\')">Escanear lo que recojo</button>' +
+    '<p class="nota" style="margin:0">Es solo para ver. Al escanear la etiqueta se registra y desaparece de aquí para todos.</p></div>' + nav('');
   pintar(html);
+}
+/* "2026-11-03 10:20" → { txt: 'mar 3 nov, 10:20', dias: 14 } */
+var DIAS_C = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'], MESES_C = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+function fechaCorta(t) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}))?/.exec(String(t || ''));
+  if (!m) return null;
+  var d = new Date(+m[1], +m[2] - 1, +m[3]), hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  var dias = Math.round((hoy - d) / 86400000);
+  return { txt: DIAS_C[d.getDay()] + ' ' + (+m[3]) + ' ' + MESES_C[+m[2] - 1] + (m[4] ? ', ' + m[4] + ':' + m[5] : ''), hora: m[4] ? m[4] + ':' + m[5] : '', dias: dias };
+}
+function chipEdad(f) {
+  if (!f) return '';
+  if (f.dias <= 0) return '<span class="pchip-t edad">' + (f.hora ? 'hoy ' + esc(f.hora) : 'hoy') + '</span>';
+  if (f.dias === 1) return '<span class="pchip-t edad">ayer</span>';
+  return '<span class="pchip-t edad ' + (f.dias >= 7 ? 'roja' : 'amar') + '">hace ' + f.dias + ' días</span>';
+}
+function tarjetaPend(i) {
+  var borde = i.semaforo ? SEM[i.semaforo][0] : TIPO_PEND[i.tipo] ? TIPO_PEND[i.tipo][1] : 'var(--borde)';
+  var l1 = '<span class="pend-l1"><b class="mono">' + esc(i.codigo) + '</b>' + chipTipo(i.tipo), cuerpo = '';
+  if (i.tipo === 'TRASPASO') {
+    var f = fechaCorta(i.creado);
+    if (f && f.dias >= 7) borde = 'var(--rojo)';
+    l1 += chipEdad(f);
+    cuerpo = '<span class="pend-ruta">' + esc(i.origen || i.lugar) + ' <i>→</i> ' + esc(i.destino || '') + '</span>' +
+      '<small>' + [f ? 'Creado ' + f.txt : '', i.bultos ? i.bultos + (String(i.bultos) === '1' ? ' bulto' : ' bultos') : '', i.contenido].filter(String).map(esc).join(' · ') + '</small>';
+  } else if (i.tipo === 'FADERMEX') {
+    if (i.listo) l1 += '<span class="pchip-t edad">listo</span>';
+    cuerpo = '<span class="pend-ruta">' + esc(i.origen || i.lugar) + ' <i>→</i> ' + esc(i.destino || 'domicilio') + '</span>' +
+      '<small>' + esc([i.cliente, i.direccion].filter(String).join(' · ') || i.texto) + '</small>' +
+      (i.listo ? '<small>Listo desde ' + esc(i.listo) + (i.estimado ? ' · recoger: ' + esc(i.estimado) : '') + '</small>' : '') +
+      (i.asignadoAMi ? '<small style="color:var(--verde);font-weight:700">Te lo asignaron</small>' : i.asignadoOps ? '<small>Asignado a ' + esc(i.asignadoOps) + ' en Operaciones</small>' : '');
+  } else {
+    cuerpo = '<small' + (i.semaforo === 'rojo' ? ' style="color:var(--rojo);font-weight:700"' : '') + '>' + esc(i.texto) + (i.hoy === false ? ' · hoy no se visita' : '') + '</small>';
+  }
+  return '<div class="pend" style="border-left-color:' + borde + '"><span class="tx">' + l1 + '</span>' + cuerpo + '</span></div>';
 }
 function itemsPend() { var o = {}; ((S.datos.pendientes || {}).grupos || []).forEach(function (g) { g.items.forEach(function (i) { o[clave(i.codigo)] = i; }); }); return o; }
 function apartarMarcados() {
@@ -981,7 +1024,8 @@ function apartarMarcados() {
     return actualizar().then(vistaMios);
   }).catch(function (e) { quitarCargando(); falla(e.red ? errCod('CEL-02', 'Sin señal: para apartar necesitas señal. Igual puedes escanear y se registra.') : e); });
 }
-function vistaMios() {
+function vistaMios() { return vistaPendientes(); }
+function vistaMiosVieja() {
   S.vista = 'mios'; pararEscaner();
   var pd = (S.datos && S.datos.pendientes) || { mios: [], horas: 2 };
   var vig = pd.mios.filter(function (x) { return !x.cerrado; }), cerr = pd.mios.filter(function (x) { return x.cerrado; });

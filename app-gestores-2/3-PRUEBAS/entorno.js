@@ -65,7 +65,7 @@ function formulaEstatus() {
 // Sistema de Traspasos
 const tras = OPS.libroNuevo('Traspasos_FADERMEX_BD', ID_TRAS);
 const encT = ['Folio', 'Fecha creación', 'Hora', 'Origen (prefijo)', 'Origen', 'Destino (prefijo)', 'Destino', 'Descripción', 'Bultos', 'Creado por', 'Credencial', 'Sin credencial', 'Estatus', 'Ubicación actual', 'Ruta', 'Gestor', 'Fecha recolección', 'Paquetería', 'Guía', 'Fecha entrega', 'Recibido por', 'Bultos recibidos', 'Reimpresiones', 'Eliminación solicitada', 'Última actualización', 'Incidencia', 'Editado'];
-const tr = (folio, est, desc, extra) => { const f = new Array(encT.length).fill(''); const o = Object.assign({ Folio: folio, Estatus: est, 'Descripción': desc, Bultos: 1, 'Origen': 'Coapa · PV', 'Origen (prefijo)': 'C-PV', 'Destino': 'Doctores · Rebotica', 'Destino (prefijo)': 'D-RB', 'Eliminación solicitada': 'NO' }, extra || {}); encT.forEach((h, i) => { if (o[h] != null) f[i] = o[h]; }); return f; };
+const tr = (folio, est, desc, extra) => { const f = new Array(encT.length).fill(''); const o = Object.assign({ Folio: folio, Estatus: est, 'Descripción': desc, Bultos: 1, 'Origen': 'Coapa · PV', 'Origen (prefijo)': 'C-PV', 'Destino': 'Doctores · Rebotica', 'Destino (prefijo)': 'D-RB', 'Eliminación solicitada': 'NO', 'Fecha creación': '2026-11-03', 'Hora': '10:20' }, extra || {}); encT.forEach((h, i) => { if (o[h] != null) f[i] = o[h]; }); return f; };
 const hRes = H(tras, 'RES_Traspasos', [['RES_Traspasos — no editar'], encT,
   tr('C-PV-0019', 'NUEVO', 'Receta IMSS Pediatría'), tr('C-PV-0002', 'ENTREGADO', 'Factura'), tr('BOT-0013', 'NUEVO', 'Incidencia de llegada'),
   tr('C-PV-0017', 'NUEVO', 'Efectivo 23-10-2026 $2,654.00'), tr('BOT-0005', 'NUEVO', 'Pedidos', { 'Eliminación solicitada': 'SI' })]);
@@ -77,6 +77,17 @@ const estT = folio => hRes.datos.find(f => f[0] === folio)[encT.indexOf('Estatus
 const ID_BOT = '1a3n7z962Ik6c1YrcD7RxkJEAWWK6a9xuA5LDrr2sffc';
 const bot = OPS.libroNuevo('LOGISTICA BOTICAN 2026 (COPIA DE PRUEBA)', ID_BOT);
 ['Envios', 'Feriados', 'Rutas'].forEach(n => H(bot, n, n === 'Envios' ? [[''], ['Estatus', 'Identificador']] : [['Fecha', 'Motivo']]));
+
+// Pedidos Logistica-Fadermex 2026 / Envios (como el real: datos desde el renglón 3 y renglones vacíos con casillas FALSE)
+const ID_FAD = '1lv35lbab-GCrv-H81xjBh2CpfO2F-EUIIN3kcWHSsHU';
+const fad = OPS.libroNuevo('Pedidos Logistica-Fadermex 2026 (COPIA DE PRUEBA)', ID_FAD);
+const fadF = (id, est, cont, dir, suc, g, h, j, l) => [id, 'lun, 9 nov 26', est, cont, dir, suc, g || '', h || '', !!h, j || '', !!j, l || ''];
+H(fad, 'Envios', [['', '', '', '', '', 'Bitácora de pedidos Sucursales PV 2026'],
+  ['Identificador', 'Fecha solicitud', 'Estatus', 'Contacto entrega', 'Dirección entrega', 'Sucursal', 'Dia estimado para recoleccion por logistica', 'Pedido listo para recolección', '✎ Check Recolección', 'Ingreso a logística', 'Check logística', 'Fecha salida'],
+  fadF('NRREM-00008715', 'Entregado', 'Carlos Carrillo', 'Emiliano Zapata 2', 'NUEVA ROMA PV', 'jue, 12nov26, 11:00', 'jue, 12 nov26, 11:28', 'jue, 12 nov26, 16:06', 'jue, 12 de nov'),
+  fadF('C-00035745', 'Listo para recolectar', 'Rosario Zamarrón', 'Sierra Candela 111, Lomas de Chapultepec', 'DOCTORES PV', 'mar, 17nov26, 09:00', 'mar, 17 nov26, 12:03'),
+  fadF('D-00102926', 'En elaboración', 'Helena Castro', 'Circuito Agaves 1521', 'DOCTORES PV', 'mié, 18nov26, 15:00')
+].concat(Array.from({ length: 300 }, () => ['', '', '', '', '', '', '', '', false, '', false, ''])));
 
 // Archivo de la app
 const appL = APP.libroNuevo('App Gestores · Datos', 'ARCHIVO_APP');

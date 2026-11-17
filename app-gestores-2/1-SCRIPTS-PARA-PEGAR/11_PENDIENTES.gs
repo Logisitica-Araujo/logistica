@@ -15,20 +15,50 @@
  *   Estado: ACTIVO · SOLTADO · RECOGIDO (lo escaneó él) · TOMADO (lo escaneó otro)
  ***********************************************************************/
 
-/* ---------- datos de Operaciones (el robot los deja en memoria cada minuto) ---------- */
+/* ---------- FADERMEX listos para recolectar ----------
+   Fuente principal: "Pedidos Logistica-Fadermex 2026" / Envios (APP_Config → ID_FADERMEX):
+     A Identificador · C Estatus · D Contacto · E Dirección · F Sucursal · G Día estimado de recolección ·
+     H Pedido listo para recolección · J Ingreso a logística · L Fecha salida
+   Sale si H tiene fecha y J y L están vacías (y el estatus no dice entregado / en ruta / cancelado).
+   También los de Operaciones con ESTATUS "PENDIENTE PARA RECOLECTAR" (si OPERACIONES contesta). */
+var APPG_FAD = { FILA: 3, ULTIMAS: 400 };
 function _robotPendFad() {
-  var r = _ops('porRecolectar', {});
-  if (!r.ok) {
-    if (/desconocida/i.test(String(r.mensaje))) return 'OPERACIONES sin porRecolectar (pega el 04_Backend_App nuevo)';
-    throw _falla(r.codigo || 'API-07', r.mensaje || r.error);
+  var lista = [], vistos = {}, err = '';
+  var id = String(_config().ID_FADERMEX || '').trim();
+  if (id) {
+    var sh = SpreadsheetApp.openById(_idDrive(id)).getSheetByName('Envios');
+    var ult = sh.getLastRow();
+    if (ult >= APPG_FAD.FILA) {   // hay cientos de renglones vacíos con casillas FALSE: se busca el último con Identificador
+      var colA = sh.getRange(APPG_FAD.FILA, 1, ult - APPG_FAD.FILA + 1, 1).getValues(), k = colA.length - 1;
+      while (k >= 0 && !String(colA[k][0]).trim()) k--;
+      ult = APPG_FAD.FILA + k;
+    }
+    var desde = Math.max(APPG_FAD.FILA, ult - APPG_FAD.ULTIMAS + 1), n = ult - desde + 1;
+    var txt = function (v) { return Object.prototype.toString.call(v) === '[object Date]' ? Utilities.formatDate(v, APPG.ZONA, 'EEE d MMM, HH:mm') : String(v || '').trim(); };
+    (n > 0 ? sh.getRange(desde, 1, n, 12).getValues() : []).forEach(function (r) {
+      var codigo = String(r[0] || '').trim(), listo = txt(r[7]);
+      if (!codigo || !listo || txt(r[9]) || txt(r[11])) return;
+      if (/entregad|en ruta|cancel|retorn|devuel/i.test(_norm(r[2]))) return;
+      vistos[_tnClave(codigo)] = true;
+      lista.push({ id: codigo, nombre: String(r[3] || ''), direccion: String(r[4] || ''), sucursal: String(r[5] || ''), listo: listo, estimado: txt(r[6]), estatus: String(r[2] || '') });
+    });
   }
-  CacheService.getScriptCache().put('pendFad', JSON.stringify(r.pedidos.slice(0, 200)), 600);
-  return r.pedidos.length;
+  try {
+    var r = _ops('porRecolectar', {});
+    if (r.ok) r.pedidos.forEach(function (p) { if (!vistos[_tnClave(p.id)]) lista.push(p); });
+  } catch (e) { err = e.message; }
+  CacheService.getScriptCache().put('pendFad', JSON.stringify(lista.slice(0, 200)), 600);
+  return lista.length + (err ? ' (Operaciones no contestó)' : '');
 }
 function _pendFad() {
   var c = CacheService.getScriptCache().get('pendFad');
   if (c) { try { return JSON.parse(c); } catch (e) { } }
   try { _robotPendFad(); var d = CacheService.getScriptCache().get('pendFad'); return d ? JSON.parse(d) : []; } catch (e) { return []; }
+}
+/** 'NUEVA ROMA PV' → 'Nueva Roma' (para agrupar con los traspasos de la misma sucursal). */
+function _lugarSucursal(v) {
+  var t = String(v || '').replace(/\b(PV|SUCURSAL)\b/gi, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  return t.replace(/(^|\s)\S/g, function (x) { return x.toUpperCase(); });
 }
 
 /* ---------- apartados ---------- */
@@ -99,34 +129,33 @@ function _recolectadosAbiertos() {
   return out;
 }
 
-/* ---------- la lista para el celular ---------- */
+/* ---------- la lista para el celular (solo para VER: desde 0.5.2 ya no se aparta) ---------- */
 function _pendientesInicio(u, botican) {
-  var rec = _recolectadosAbiertos(), vig = _apartadosVigentes();
+  var rec = _recolectadosAbiertos();
   var sucs = {}; _tabla(APPG.H.SUCURSALES).filas.forEach(function (x) { sucs[String(x.ID).toUpperCase()] = String(x.Sucursal); });
   var items = [];
-  function ap(codigo) {
-    var a = vig[_tnClave(codigo)];
-    return a ? { numero: String(a.NumeroGestor), nombre: String(a.Gestor), desde: _fechaTxt(a.Desde, 'yyyy-MM-dd HH:mm').slice(11), hasta: _fechaTxt(a.Hasta, 'yyyy-MM-dd HH:mm').slice(11) } : null;
-  }
   // BOTICAN (ya viene sin lo recolectado)
   ((botican && botican.porRecolectar) || []).forEach(function (p) {
     items.push({ codigo: p.id, tipo: 'BOTICAN', lugar: p.suc === 'COAPA' ? 'Coapa' : p.suc === 'ECATEPEC' ? 'Ecatepec' : 'Vértiz · Producción BOTICAN',
-      texto: (p.semaforo === 'rojo' ? 'Venció: ' : 'Vence: ') + p.vence + (p.area ? ' · ' + p.area : ''), semaforo: p.semaforo, hoy: p.enRuta, apartado: ap(p.id) });
+      texto: (p.semaforo === 'rojo' ? 'Venció: ' : 'Vence: ') + p.vence + (p.area ? ' · ' + p.area : ''), semaforo: p.semaforo, hoy: p.enRuta });
   });
-  // FADERMEX: Operaciones "PENDIENTE PARA RECOLECTAR"
+  // FADERMEX listos para recolectar
   _pendFad().forEach(function (p) {
     if (rec[_tnClave(p.id)]) return;
     var g = String(p.gestor || '').trim(), asignado = g && !/^no aplica$/i.test(g) ? g : '';
     var mioOps = _esMiNombreOps(asignado, u);
-    items.push({ codigo: String(p.id), tipo: 'FADERMEX', lugar: 'Recolecciones FADERMEX', texto: [p.nombre, p.direccion].filter(String).join(' · ').slice(0, 140),
-      hoy: true, apartado: ap(p.id), asignadoOps: asignado && !mioOps ? asignado : '', asignadoAMi: !!mioOps });
+    items.push({ codigo: String(p.id), tipo: 'FADERMEX', lugar: p.sucursal ? _lugarSucursal(p.sucursal) : 'Recolecciones FADERMEX',
+      origen: p.sucursal ? _lugarSucursal(p.sucursal) : '', destino: 'domicilio', cliente: String(p.nombre || ''), direccion: String(p.direccion || '').slice(0, 140),
+      listo: String(p.listo || ''), estimado: String(p.estimado || ''), texto: [p.nombre, p.direccion].filter(String).join(' · ').slice(0, 140),
+      hoy: true, asignadoOps: asignado && !mioOps ? asignado : '', asignadoAMi: !!mioOps });
   });
-  // Traspasos: Sistema de Traspasos NUEVO / EN_LOGISTICA
+  // Traspasos: Sistema de Traspasos NUEVO / EN_LOGISTICA (al escanearlo o cambiar de estatus, desaparece)
   _porRecoger().forEach(function (r) {
     if (rec[_tnClave(r.folio)]) return;
-    items.push({ codigo: r.folio, tipo: 'TRASPASO', lugar: sucs[r.sucursalId] || r.origen || r.sucursalId, texto: 'Va a ' + r.destino + (r.contenido ? ' · ' + r.contenido : ''), hoy: true, apartado: ap(r.folio) });
+    var lugar = sucs[r.sucursalId] || r.origen || r.sucursalId;
+    items.push({ codigo: r.folio, tipo: 'TRASPASO', lugar: lugar, origen: r.origen || lugar, destino: r.destino, contenido: r.contenido || '',
+      creado: r.creado || '', bultos: r.bultos || '', texto: 'Va a ' + r.destino + (r.contenido ? ' · ' + r.contenido : ''), hoy: true });
   });
-  items.forEach(function (i) { i.mio = !!(i.apartado && i.apartado.numero === String(u.Numero)); });
 
   // Grupos por lugar: primero los de la ruta del momento.
   var ruta = _norm(botican && botican.ruta ? botican.ruta.sucursales + ' ' + botican.ruta.extra : '');
@@ -134,13 +163,7 @@ function _pendientesInicio(u, botican) {
   items.forEach(function (i) { if (!grupos[i.lugar]) { grupos[i.lugar] = []; orden.push(i.lugar); } grupos[i.lugar].push(i); });
   var peso = function (l) { var n = _norm(l).split(/[\s·]+/)[0]; return ruta && n && ruta.indexOf(n) >= 0 ? 0 : /fadermex/i.test(l) ? 2 : 1; };
   orden.sort(function (a, b) { return peso(a) - peso(b); });
-
-  // Lo mío: apartados vigentes + lo que recogí (o me tomaron) en las últimas 3 horas.
-  var mios = items.filter(function (i) { return i.mio; });
-  var hace3 = _txtFecha(Date.now() - 3 * 3600000);
-  _tabla(APPG.H.APARTADOS).filas.forEach(function (a) {
-    if (String(a.NumeroGestor) !== String(u.Numero) || !/RECOGIDO|TOMADO/.test(String(a.Estado)) || _fechaTxt(a.Cerrado, 'yyyy-MM-dd HH:mm:ss') < hace3) return;
-    mios.push({ codigo: String(a.Codigo), tipo: String(a.Tipo), cerrado: String(a.Estado), por: String(a.CerradoPor), hora: _fechaTxt(a.Cerrado, 'yyyy-MM-dd HH:mm').slice(11) });
-  });
-  return { grupos: orden.map(function (l) { return { lugar: l, items: grupos[l] }; }), total: items.length, mios: mios, horas: _horasApartado() };
+  // Dentro de cada lugar: lo más viejo arriba.
+  orden.forEach(function (l) { grupos[l].sort(function (a, b) { return String(a.creado || '9') < String(b.creado || '9') ? -1 : 1; }); });
+  return { grupos: orden.map(function (l) { return { lugar: l, items: grupos[l] }; }), total: items.length, mios: [], soloVer: true };
 }

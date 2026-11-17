@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.7.0';
+var VERSION_APP = '2.8.0';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -367,14 +367,104 @@ function elegirVeh(i) { S.vehSel = S.datos.vehiculos[i].nombre; vistaVehiculo(S.
 function guardarVehiculo() {
   var checklist = Array.prototype.map.call(document.querySelectorAll('.check input'), function (c) { return { texto: c.dataset.t, ok: c.checked }; });
   var motivo = $('selMotVeh') ? $('selMotVeh').value : ''; S.motVeh = '';
+  var veh = S.datos.vehiculos.filter(function (x) { return x.nombre === S.vehSel; })[0];
+  var yaLaTrae = S.datos.bitacora && S.datos.bitacora.vehiculo === S.vehSel;
+  if (S.datos.bitacora && !yaLaTrae) return falla(errCod('VEH-02', 'Primero entrega ' + S.datos.bitacora.vehiculo + ' (botón "Entregar" en tu inicio).'));
+  if (veh && veh.pideTablero && !yaLaTrae) { S.tablero = { modo: 'SALIDA', vehiculo: S.vehSel, checklist: checklist, motivo: motivo, gas: '', km: '' }; return vistaTablero(); }
+  mandarVehiculo(checklist, motivo, null);
+}
+function mandarVehiculo(checklist, motivo, tablero) {
   cargando('Guardando…');
-  srv('vehiculo', { vehiculo: S.vehSel, checklist: checklist, motivo: motivo }).then(function () {
-    quitarCargando(); S.datos.vehiculo = S.vehSel; guardar('dia', hoyTxt()); DB.set('inicio', S.datos); vistaInicio(); actualizar();
+  srv('vehiculo', { vehiculo: S.vehSel, checklist: checklist, motivo: motivo, tablero: tablero }).then(function () {
+    quitarCargando(); S.datos.vehiculo = S.vehSel; guardar('dia', hoyTxt()); if (tablero) bitacoraLocal(tablero); DB.set('inicio', S.datos);
+    var luego = S.despuesVeh; S.despuesVeh = null; if (luego) luego(); else vistaInicio(); actualizar();
   }).catch(function (e) {
     quitarCargando();
-    if (e.red) { S.datos.vehiculo = S.vehSel; guardar('dia', hoyTxt()); encolar('vehiculo', { vehiculo: S.vehSel, checklist: checklist, motivo: motivo }, 'Vehículo ' + S.vehSel); vistaInicio(); }
+    if (e.red && S.despuesVeh) { var l2 = S.despuesVeh; S.despuesVeh = null; setTimeout(l2, 0); }
+    else S.despuesVeh = null;
+    if (e.red) { S.datos.vehiculo = S.vehSel; guardar('dia', hoyTxt()); encolar('vehiculo', { vehiculo: S.vehSel, checklist: checklist, motivo: motivo, tablero: tablero }, 'Vehículo ' + S.vehSel); if (tablero) bitacoraLocal(tablero); vistaInicio(); }
     else falla(e);
   });
+}
+
+/* ==================== Bitácora de vehículo: foto del tablero, km y gasolina (13_CAMIONETA) ==================== */
+var GAS = ['Reserva', '¼', '½', '¾', 'Lleno'];
+function vistaTablero() {
+  var t = S.tablero; if (!t) return vistaInicio();
+  S.vista = 'tablero'; pararEscaner();
+  var b = S.datos.bitacora, sal = t.modo === 'SALIDA';
+  var html = '<div class="barra"><button class="volver" onclick="S.tablero=null;' + (sal ? 'vistaVehiculo(false)' : 'vistaInicio()') + '" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>' + (sal ? '' : 'Entregar ') + esc(t.vehiculo) + '</b><small>' +
+    (sal ? 'Antes de salir: foto del tablero' : 'Foto del tablero al dejarla') + '</small></div></div><div class="cuerpo">' +
+    '<button class="foto-tablero' + (t.foto ? ' con' : '') + '" onclick="tomarFoto()">' + (t.foto ? '<img src="' + t.foto + '" alt=""><span class="ok">✓ Foto · tocar para repetir</span>' : '<span>' + IC.cam + '<b>Foto del tablero</b><small>Que se vea el kilometraje y la gasolina</small></span>') + '</button>' +
+    '<label class="et" for="inKm">Kilometraje (odómetro)</label><input class="campo km" id="inKm" inputmode="numeric" placeholder="Ej. 84215" value="' + esc(t.km) + '" oninput="S.tablero.km=this.value.replace(/[^0-9]/g,\'\');if(this.value!==S.tablero.km)this.value=S.tablero.km;' + (sal ? '' : 'pintarRecorrido()') + '">' +
+    '<span class="et">Gasolina</span><div class="gas">' + GAS.map(function (g) { return '<button class="' + (t.gas === g ? 'on' : '') + '" onclick="S.tablero.gas=\'' + g + '\';vistaTablero()">' + g + '</button>'; }).join('') + '</div>' +
+    (sal ? '<div class="fila-dato"><span>Fecha y hora</span><b>' + esc(new Date().toLocaleString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) + '</b></div>'
+         : '<div id="recorrido">' + recorridoTablero() + '</div>') +
+    '</div><div class="pie"><button class="btn" onclick="guardarTablero()">' + (sal ? 'Tomar ' + (/saveiro|saviero|camioneta/i.test(t.vehiculo) ? 'camioneta' : 'vehículo') : 'Entregar ' + (/saveiro|saviero|camioneta/i.test(t.vehiculo) ? 'camioneta' : 'vehículo')) + '</button></div>';
+  pintar(html);
+}
+function recorridoTablero() {
+  var b = S.datos.bitacora, t = S.tablero; if (!b) return '';
+  var km = Number(t.km) && b.km ? Number(t.km) - Number(b.km) : null;
+  return '<div class="resumen-veh"><span>Recorrió<b>' + (km === null ? '—' : km < 0 ? '¿?' : km + ' km') + '</b></span><span>Salió<b>' + esc(String(b.salida).slice(11)) + ' · ' + esc(b.gas) + '</b></span>' +
+    '<span>Km al salir<b>' + esc(String(b.km)) + '</b></span><span>Tiempo<b>' + duracion(b.salida) + '</b></span></div>' + (km !== null && km < 0 ? '<div class="aviso warn">El kilometraje es menor al de salida (' + esc(String(b.km)) + '). Revisa el tablero.</div>' : '');
+}
+function pintarRecorrido() { var r = $('recorrido'); if (r) r.innerHTML = recorridoTablero(); }
+function duracion(desde) {
+  var m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/.exec(String(desde || '')); if (!m) return '—';
+  var min = Math.max(0, Math.round((Date.now() - new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5])) / 60000));
+  return min < 60 ? min + ' min' : Math.floor(min / 60) + ' h ' + (min % 60) + ' min';
+}
+function guardarTablero() {
+  var t = S.tablero; if (!t) return;
+  if (!t.foto) return falla(errCod('CAP-04', 'Falta la foto del tablero.'));
+  if (!(Number(t.km) > 0)) return falla(errCod('CAP-01', 'Escribe el kilometraje del tablero.'));
+  if (GAS.indexOf(t.gas) < 0) return falla(errCod('CAP-01', 'Elige cuánta gasolina tiene.'));
+  if (t.modo === 'REGRESO' && S.datos.bitacora && Number(S.datos.bitacora.km) && Number(t.km) < Number(S.datos.bitacora.km)) return falla(errCod('CAP-01', 'El kilometraje es menor al de salida. Revisa el tablero.'));
+  cargando('Guardando…');
+  obtenerGPS().then(function (g) {
+    var tab = { foto: t.foto, km: t.km, gas: t.gas, lat: g.lat, lng: g.lng };
+    if (t.modo === 'SALIDA') {
+      quitarCargando();
+      var wa = { modo: 'SALIDA', vehiculo: t.vehiculo, km: t.km, gas: t.gas, foto: t.foto, hora: new Date() };
+      S.tablero = null;
+      S.despuesVeh = function () { vistaWAVehiculo(wa); };
+      return mandarVehiculo(t.checklist, t.motivo, tab);
+    }
+    return srv('entregarVehiculo', tab).then(function (r) {
+      quitarCargando(); S.tablero = null; S.datos.bitacora = null; S.datos.vehiculo = ''; DB.set('inicio', S.datos); sonido('entregado');
+      vistaWAVehiculo({ modo: 'REGRESO', vehiculo: r.vehiculo, km: r.kmRegreso, recorrio: r.km, gas: r.gasRegreso, gasSalida: r.gasSalida, salida: r.salida, foto: t.foto, hora: new Date() });
+      actualizar();
+    }, function (e) {
+      quitarCargando();
+      if (!e.red) return falla(e);
+      encolar('entregarVehiculo', tab, 'Entrega de ' + t.vehiculo);
+      var b = S.datos.bitacora || {};
+      S.tablero = null; S.datos.bitacora = null; S.datos.vehiculo = ''; DB.set('inicio', S.datos);
+      vistaWAVehiculo({ modo: 'REGRESO', vehiculo: t.vehiculo, km: t.km, recorrio: b.km ? Number(t.km) - Number(b.km) : '', gas: t.gas, gasSalida: b.gas, salida: b.salida, foto: t.foto, hora: new Date() });
+    });
+  });
+}
+/** Sin señal al tomarla: el inicio igual muestra "Traes la camioneta" mientras sube. */
+function bitacoraLocal(tab) { S.datos.bitacora = { vehiculo: S.vehSel, salida: new Date().toISOString().slice(0, 10) + ' ' + new Date().toTimeString().slice(0, 5), km: tab.km, gas: tab.gas }; DB.set('inicio', S.datos); }
+function vistaWAVehiculo(w) {
+  S.vista = 'listo';
+  var hora = w.hora.toLocaleString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  var msg = w.modo === 'SALIDA'
+    ? 'SALE CAMIONETA\n' + w.vehiculo + '\nKm: ' + w.km + '\nGasolina: ' + w.gas + '\nTomó: ' + hora + '\nGestor: ' + S.datos.gestor.nombre
+    : 'CAMIONETA ENTREGADA\n' + w.vehiculo + '\nKm: ' + w.km + (w.recorrio !== '' && w.recorrio != null ? ' (recorrió ' + w.recorrio + ' km)' : '') + '\nGasolina: ' + w.gas + (w.gasSalida ? ' (salió con ' + w.gasSalida + ')' : '') +
+      '\n' + (w.salida ? 'Tomó: ' + String(w.salida).slice(11) + ' · ' : '') + 'Entregó: ' + hora + '\nGestor: ' + S.datos.gestor.nombre;
+  S.wa = { msg: msg, foto: w.foto, id: 'tablero' };
+  pintar('<div class="listo"><div class="verde-top"><span class="palomita">' + IC.palomita + '</span><b>' + (w.modo === 'SALIDA' ? 'Listo: traes ' + esc(w.vehiculo) : esc(w.vehiculo) + ' entregada') + '</b><span>' +
+    (w.modo === 'SALIDA' ? 'Al regresar toca "Entregar" en tu inicio' : (w.recorrio !== '' && w.recorrio != null ? 'Recorrió ' + esc(String(w.recorrio)) + ' km' : 'Quedó registrada')) + '</span></div>' +
+    '<div class="cuerpo"><b>¿Mandarlo al grupo?</b><div class="wa-burbuja"><div>' + (w.foto ? '<img src="' + w.foto + '" alt="">' : '') + '<pre>' + esc(msg) + '</pre></div></div>' +
+    (w.foto ? '<label class="check"><input type="checkbox" id="waFoto" checked> Incluir la foto del tablero</label>' : '') + '</div>' +
+    '<div class="pie"><button class="btn wa" onclick="mandarWA()">Mandar al grupo por WhatsApp</button><button class="btn linea" onclick="' + (w.modo === 'SALIDA' ? 'vistaInicio()' : 'vistaVehiculo(true)') + '">' + (w.modo === 'SALIDA' ? 'Ahora no' : 'Ahora no · ¿en qué sigues?') + '</button></div></div>');
+}
+function tarjetaBitacora() {
+  var b = S.datos && S.datos.bitacora; if (!b) return '';
+  return '<div class="tile-veh"><span><b>🚐 Traes ' + esc(b.vehiculo) + ' desde ' + esc(String(b.salida).slice(11)) + '</b><small>Salió con ' + esc(String(b.km)) + ' km · ' + esc(b.gas) + '</small></span>' +
+    '<button onclick="S.tablero={modo:\'REGRESO\',vehiculo:S.datos.bitacora.vehiculo,km:\'\',gas:\'\'};vistaTablero()">Entregar</button></div>';
 }
 
 /* ==================== Inicio ==================== */
@@ -405,7 +495,7 @@ function vistaInicio() {
   if (aviso) html += '<div class="tarjeta-aviso"><span class="ic">' + IC.campana + '</span><span class="tx"><small>Nueva tarea · ' + haceTxt(aviso.hora) + '</small><b>' + esc(aviso.texto) + '</b></span><button class="b" onclick="S.aviso=null;vistaPedidos()">Ver</button></div>';
   else if (window.Notification && Notification.permission === 'default') html += '<div class="tarjeta-aviso bien"><span class="ic">' + IC.campana + '</span><span class="tx"><small>Avisos</small><b>Activa el sonido de tareas nuevas</b></span><button class="b" onclick="pedirAvisos()">Activar</button></div>';
 
-  html += '<div class="cuerpo con-nav">' + bloqueAvisos() + tarjetaRutaBotican() + '<div class="rejilla">' +
+  html += '<div class="cuerpo con-nav">' + bloqueAvisos() + tarjetaBitacora() + tarjetaRutaBotican() + '<div class="rejilla">' +
     '<button class="grande" onclick="vistaEscaner(\'recolectar\')"><span class="ic">' + IC.scan + '</span><span><b>Escanear</b><small>Recolecta o entrega con la cámara</small></span></button>' +
     '<button class="mosaico" onclick="vistaPedidos()"><span class="fila"><span style="color:var(--azul)">' + IC.casa + '</span><span class="num">' + d.pedidos.length + '</span></span><b>Pedidos a domicilio</b></button>' +
     '<button class="mosaico" onclick="vistaLleva()"><span class="fila"><span style="color:var(--verde)">' + IC.caja + '</span><span class="num">' + d.lleva.length + '</span></span><b>Lo que llevo</b></button>' +
@@ -936,6 +1026,7 @@ function cerrarCamFoto() { if (camFoto && camFoto.stream) camFoto.stream.getTrac
 function ponerFoto(f) {
   if (!S.cierre && S.vista === 'listo' && S.waOpts) { S.waOpts.foto = f; beep(); return vistaWA(S.waOpts); }
   if (!S.cierre && S.vista === 'libre' && S.libre) { S.libre.foto = f; beep(); return vistaLibre(); }
+  if (!S.cierre && S.vista === 'tablero' && S.tablero) { S.tablero.foto = f; beep(); return vistaTablero(); }
   if (!S.cierre && S.vista === 'parada' && S.parada) { S.parada.foto = f; beep(); return vistaParada(S.parada.k); }
   if (!S.cierre) return; S.cierre.foto = f; beep(); pintarCierre();
 }
