@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.8.0';
+var VERSION_APP = '2.9.0';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -370,7 +370,7 @@ function guardarVehiculo() {
   var veh = S.datos.vehiculos.filter(function (x) { return x.nombre === S.vehSel; })[0];
   var yaLaTrae = S.datos.bitacora && S.datos.bitacora.vehiculo === S.vehSel;
   if (S.datos.bitacora && !yaLaTrae) return falla(errCod('VEH-02', 'Primero entrega ' + S.datos.bitacora.vehiculo + ' (botón "Entregar" en tu inicio).'));
-  if (veh && veh.pideTablero && !yaLaTrae) { S.tablero = { modo: 'SALIDA', vehiculo: S.vehSel, checklist: checklist, motivo: motivo, gas: '', km: '' }; return vistaTablero(); }
+  if (veh && veh.revision && veh.revision !== 'NINGUNA' && !yaLaTrae) { S.tablero = nuevoTablero('SALIDA', S.vehSel, veh.revision, { checklist: checklist, motivo: motivo }); return vistaTablero(); }
   mandarVehiculo(checklist, motivo, null);
 }
 function mandarVehiculo(checklist, motivo, tablero) {
@@ -387,20 +387,93 @@ function mandarVehiculo(checklist, motivo, tablero) {
   });
 }
 
-/* ==================== Bitácora de vehículo: foto del tablero, km y gasolina (13_CAMIONETA) ==================== */
+/* ==================== Bitácora de vehículo: revisión, tablero, km y gasolina (13_CAMIONETA) ====================
+   Niveles (los decide la administradora por vehículo y por persona):
+     COMPLETA  fotos (frente, atrás, lados, interior) + qué lleva + cómo está (Bien/Detalle con foto) + notas
+     CONFIRMA  al tomarla: ve cómo la dejaron y confirma "Sí, está igual" / "Encontré algo nuevo"
+     BASICA    "¿Lleva todo y está bien?" (Sí / Hay algo)
+   En todos: foto del tablero, km, gasolina, día, hora y lugar (GPS), y WhatsApp al grupo. */
 var GAS = ['Reserva', '¼', '½', '¾', 'Lleno'];
+function revCfg() { return (S.datos && S.datos.revConfig) || { fotos: ['Frente', 'Atrás', 'Lado piloto', 'Lado copiloto', 'Interior'], lleva: [], estado: [] }; }
+function nuevoTablero(modo, vehiculo, nivel, extra) {
+  return Object.assign({ modo: modo, vehiculo: vehiculo, nivel: nivel || 'BASICA', km: '', gas: '', foto: null, fotos: {}, falta: {}, estado: {}, todoBien: true, algo: { nota: '', foto: null },
+    confirma: '', nuevo: { nota: '', foto: null }, obs: '', donde: '', llaves: '', dest: 'tablero' }, extra || {});
+}
+function fotoTab(dest) { S.tablero.dest = dest; tomarFoto(); }
+function ponerFotoTablero(f) {
+  var t = S.tablero, d = t.dest || 'tablero';
+  if (d === 'tablero') t.foto = f;
+  else if (d.indexOf('f:') === 0) t.fotos[d.slice(2)] = f;
+  else if (d.indexOf('d:') === 0) { var p = d.slice(2); t.estado[p] = t.estado[p] || { mal: true, nota: '' }; t.estado[p].foto = f; }
+  else if (d === 'algo') t.algo.foto = f;
+  else if (d === 'nuevo') t.nuevo.foto = f;
+  t.dest = 'tablero'; beep(); vistaTablero();
+}
+function slotFoto(dest, titulo, f) {
+  return '<button class="slot-foto' + (f ? ' con' : '') + '" onclick="fotoTab(\'' + esc(dest).replace(/'/g, "\\'") + '\')">' + (f ? '<img src="' + f + '" alt="">' : '<b>+</b>') + '<span>' + esc(titulo) + (f ? ' ✓' : '') + '</span></button>';
+}
+function campoTxt(id, campo, ph, sub) {
+  var t = S.tablero, v = sub ? t[sub][campo] : t[campo];
+  return '<textarea class="campo" id="' + id + '" rows="2" placeholder="' + esc(ph) + '" oninput="S.tablero' + (sub ? '.' + sub : '') + '.' + campo + '=this.value">' + esc(v || '') + '</textarea>';
+}
+function lugarHoy() { return new Date().toLocaleString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+function bloqueAnterior(a, conFotos) {
+  if (!a) return '';
+  var h = '<div class="bloque anterior"><div class="cab-b"><b>Así la dejó ' + esc(a.gestor) + '</b><span class="opc">' + esc(fechaCortaTxt(a.cuando)) + '</span></div>';
+  if (a.sinEntregar) h += '<div class="aviso warn">' + esc(a.gestor) + ' no la entregó en la app.</div>';
+  var fs = Object.keys(a.fotos || {});
+  if (conFotos && fs.length) h += '<div class="fotos-ant">' + fs.map(function (k) { return '<a href="' + esc(a.fotos[k]) + '" target="_blank" rel="noopener">' + esc(k) + ' ↗</a>'; }).join('') + '</div>';
+  var lin = [];
+  if (a.km) lin.push('Tablero: ' + a.km + ' km · ' + a.gas);
+  (a.detalles || []).forEach(function (d) { lin.push('⚠ ' + d.punto + ': ' + d.nota); });
+  (a.falta || []).forEach(function (f) { lin.push('✗ Falta: ' + f); });
+  if (a.obs) lin.push('📝 ' + a.obs);
+  if (a.donde) lin.push('📍 La dejó en: ' + a.donde);
+  if (a.llaves) lin.push('🔑 Llaves: ' + a.llaves);
+  return h + lin.map(function (l) { return '<small class="lin">' + esc(l) + '</small>'; }).join('') + '</div>';
+}
+function fechaCortaTxt(t) { var f = typeof fechaCorta === 'function' ? fechaCorta(t) : null; return f ? f.txt : String(t || ''); }
 function vistaTablero() {
   var t = S.tablero; if (!t) return vistaInicio();
   S.vista = 'tablero'; pararEscaner();
-  var b = S.datos.bitacora, sal = t.modo === 'SALIDA';
-  var html = '<div class="barra"><button class="volver" onclick="S.tablero=null;' + (sal ? 'vistaVehiculo(false)' : 'vistaInicio()') + '" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>' + (sal ? '' : 'Entregar ') + esc(t.vehiculo) + '</b><small>' +
-    (sal ? 'Antes de salir: foto del tablero' : 'Foto del tablero al dejarla') + '</small></div></div><div class="cuerpo">' +
-    '<button class="foto-tablero' + (t.foto ? ' con' : '') + '" onclick="tomarFoto()">' + (t.foto ? '<img src="' + t.foto + '" alt=""><span class="ok">✓ Foto · tocar para repetir</span>' : '<span>' + IC.cam + '<b>Foto del tablero</b><small>Que se vea el kilometraje y la gasolina</small></span>') + '</button>' +
+  var sal = t.modo === 'SALIDA', cfg = revCfg();
+  var veh = S.datos.vehiculos.filter(function (x) { return x.nombre === t.vehiculo; })[0] || {}, ant = sal ? veh.anterior : null;
+  var nomNivel = { COMPLETA: 'Revisión completa', CONFIRMA: 'Revisa que esté igual', BASICA: 'Revisión básica' }[t.nivel];
+  var html = '<div class="barra"><button class="volver" onclick="S.tablero=null;' + (sal ? 'vistaVehiculo(false)' : 'vistaInicio()') + '" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>' + (sal ? 'Recibir ' : 'Entregar ') + esc(t.vehiculo) + '</b><small>' +
+    esc(nomNivel) + ' · ' + esc(lugarHoy()) + '</small></div></div><div class="cuerpo">';
+  if (t.nivel === 'CONFIRMA') {
+    html += bloqueAnterior(ant, true) + '<span class="et">Revisa por fuera. ¿Está igual?</span><div class="gas dos">' +
+      '<button class="' + (t.confirma === 'IGUAL' ? 'on' : '') + '" onclick="S.tablero.confirma=\'IGUAL\';vistaTablero()">Sí, está igual</button>' +
+      '<button class="' + (t.confirma === 'NUEVO' ? 'on mal' : '') + '" onclick="S.tablero.confirma=\'NUEVO\';vistaTablero()">Encontré algo nuevo</button></div>';
+    if (t.confirma === 'NUEVO') html += '<div class="bloque">' + campoTxt('inNuevo', 'nota', '¿Qué encontraste? (ej. espejo izquierdo roto)', 'nuevo') + '<div class="slots uno">' + slotFoto('nuevo', 'Foto de lo que encontraste', t.nuevo.foto) + '</div></div>';
+  } else if (sal && ant) html += bloqueAnterior(ant, false);
+  if (t.nivel === 'COMPLETA') {
+    html += '<span class="etiqueta">Fotos de la camioneta</span><div class="slots">' + cfg.fotos.map(function (f) { return slotFoto('f:' + f, f, t.fotos[f]); }).join('') + '</div>';
+    if (cfg.lleva.length) html += '<span class="etiqueta">Qué lleva · toca lo que falte</span><div class="lleva">' + cfg.lleva.map(function (x, i) {
+      var falta = !!t.falta[x]; return '<button class="' + (falta ? 'falta' : '') + '" onclick="S.tablero.falta[S.revCfgLleva[' + i + ']]=!S.tablero.falta[S.revCfgLleva[' + i + ']];vistaTablero()"><i>' + (falta ? '✗' : '✓') + '</i>' + esc(x) + '</button>';
+    }).join('') + '</div>';
+    S.revCfgLleva = cfg.lleva; S.revCfgEstado = cfg.estado;
+    if (cfg.estado.length) html += '<span class="etiqueta">Cómo está</span>' + cfg.estado.map(function (x, i) {
+      var e = t.estado[x], mal = e && e.mal;
+      return '<div class="punto"><span>' + esc(x) + '</span><span class="seg"><button class="' + (mal ? '' : 'ok') + '" onclick="delete S.tablero.estado[S.revCfgEstado[' + i + ']];vistaTablero()">Bien</button>' +
+        '<button class="' + (mal ? 'mal' : '') + '" onclick="S.tablero.estado[S.revCfgEstado[' + i + ']]=S.tablero.estado[S.revCfgEstado[' + i + ']]||{mal:true,nota:\'\'};vistaTablero()">Detalle</button></span></div>' +
+        (mal ? '<div class="detalle"><textarea class="campo" rows="2" placeholder="¿Qué tiene? (ej. rayón puerta copiloto)" oninput="S.tablero.estado[S.revCfgEstado[' + i + ']].nota=this.value">' + esc(e.nota || '') + '</textarea>' +
+          '<div class="slots uno">' + slotFoto('d:' + x, 'Foto del detalle', e.foto) + '</div></div>' : '');
+    }).join('');
+  }
+  if (t.nivel === 'BASICA') {
+    html += '<span class="et">¿Lleva todo y está bien?</span><div class="gas dos"><button class="' + (t.todoBien ? 'on' : '') + '" onclick="S.tablero.todoBien=true;vistaTablero()">Sí, todo bien</button>' +
+      '<button class="' + (!t.todoBien ? 'on mal' : '') + '" onclick="S.tablero.todoBien=false;vistaTablero()">Hay algo</button></div>';
+    if (!t.todoBien) html += '<div class="bloque">' + campoTxt('inAlgo', 'nota', '¿Qué tiene o qué falta?', 'algo') + '<div class="slots uno">' + slotFoto('algo', 'Foto (opcional)', t.algo.foto) + '</div></div>';
+  }
+  html += '<span class="etiqueta">Tablero</span><div class="slots uno">' + slotFoto('tablero', 'Foto del tablero (km y gasolina)', t.foto) + '</div>' +
     '<label class="et" for="inKm">Kilometraje (odómetro)</label><input class="campo km" id="inKm" inputmode="numeric" placeholder="Ej. 84215" value="' + esc(t.km) + '" oninput="S.tablero.km=this.value.replace(/[^0-9]/g,\'\');if(this.value!==S.tablero.km)this.value=S.tablero.km;' + (sal ? '' : 'pintarRecorrido()') + '">' +
     '<span class="et">Gasolina</span><div class="gas">' + GAS.map(function (g) { return '<button class="' + (t.gas === g ? 'on' : '') + '" onclick="S.tablero.gas=\'' + g + '\';vistaTablero()">' + g + '</button>'; }).join('') + '</div>' +
-    (sal ? '<div class="fila-dato"><span>Fecha y hora</span><b>' + esc(new Date().toLocaleString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) + '</b></div>'
-         : '<div id="recorrido">' + recorridoTablero() + '</div>') +
-    '</div><div class="pie"><button class="btn" onclick="guardarTablero()">' + (sal ? 'Tomar ' + (/saveiro|saviero|camioneta/i.test(t.vehiculo) ? 'camioneta' : 'vehículo') : 'Entregar ' + (/saveiro|saviero|camioneta/i.test(t.vehiculo) ? 'camioneta' : 'vehículo')) + '</button></div>';
+    (sal ? '' : '<div id="recorrido">' + recorridoTablero() + '</div>') +
+    '<span class="etiqueta">Notas</span>' + campoTxt('inObs', 'obs', 'Observaciones (ej. se prendió el testigo del aceite)') +
+    (sal ? '' : campoTxt('inDonde', 'donde', '¿Dónde la dejaste? (ej. Oficinas, cajón 3)') + campoTxt('inLlaves', 'llaves', '¿A quién le dejaste las llaves?')) +
+    '<div class="fila-dato"><span>Día, hora y lugar</span><b>' + esc(lugarHoy()) + ' · GPS</b></div>' +
+    '</div><div class="pie"><button class="btn" onclick="guardarTablero()">' + (sal ? 'Recibir ' : 'Entregar ') + (/saveiro|saviero|camioneta/i.test(t.vehiculo) ? 'camioneta' : 'vehículo') + '</button></div>';
   pintar(html);
 }
 function recorridoTablero() {
@@ -417,23 +490,41 @@ function duracion(desde) {
 }
 function guardarTablero() {
   var t = S.tablero; if (!t) return;
-  if (!t.foto) return falla(errCod('CAP-04', 'Falta la foto del tablero.'));
-  if (!(Number(t.km) > 0)) return falla(errCod('CAP-01', 'Escribe el kilometraje del tablero.'));
-  if (GAS.indexOf(t.gas) < 0) return falla(errCod('CAP-01', 'Elige cuánta gasolina tiene.'));
-  if (t.modo === 'REGRESO' && S.datos.bitacora && Number(S.datos.bitacora.km) && Number(t.km) < Number(S.datos.bitacora.km)) return falla(errCod('CAP-01', 'El kilometraje es menor al de salida. Revisa el tablero.'));
+  var cfg = revCfg(), err = function (c, m) { falla(errCod(c, m)); return false; };
+  if (t.nivel === 'CONFIRMA') {
+    if (!t.confirma) return err('CAP-01', 'Revisa la camioneta y toca "Sí, está igual" o "Encontré algo nuevo".');
+    if (t.confirma === 'NUEVO' && !String(t.nuevo.nota).trim()) return err('CAP-01', 'Escribe qué encontraste.');
+    if (t.confirma === 'NUEVO' && !t.nuevo.foto) return err('CAP-04', 'Falta la foto de lo que encontraste.');
+  }
+  if (t.nivel === 'COMPLETA') {
+    var sinFoto = cfg.fotos.filter(function (f) { return !t.fotos[f]; });
+    if (sinFoto.length) return err('CAP-04', 'Faltan fotos: ' + sinFoto.join(', ') + '.');
+    for (var p in t.estado) { if (!String(t.estado[p].nota || '').trim()) return err('CAP-01', 'Escribe qué tiene: ' + p + '.'); if (!t.estado[p].foto) return err('CAP-04', 'Falta la foto del detalle: ' + p + '.'); }
+  }
+  if (t.nivel === 'BASICA' && !t.todoBien && !String(t.algo.nota).trim()) return err('CAP-01', 'Escribe qué tiene o qué falta.');
+  if (!t.foto) return err('CAP-04', 'Falta la foto del tablero.');
+  if (!(Number(t.km) > 0)) return err('CAP-01', 'Escribe el kilometraje del tablero.');
+  if (GAS.indexOf(t.gas) < 0) return err('CAP-01', 'Elige cuánta gasolina tiene.');
+  if (t.modo === 'REGRESO' && S.datos.bitacora && Number(S.datos.bitacora.km) && Number(t.km) < Number(S.datos.bitacora.km)) return err('CAP-01', 'El kilometraje es menor al de salida. Revisa el tablero.');
   cargando('Guardando…');
   obtenerGPS().then(function (g) {
-    var tab = { foto: t.foto, km: t.km, gas: t.gas, lat: g.lat, lng: g.lng };
+    var falta = Object.keys(t.falta).filter(function (k) { return t.falta[k]; });
+    var detalles = Object.keys(t.estado).map(function (k) { return { punto: k, nota: t.estado[k].nota, foto: t.estado[k].foto }; });
+    var tab = { foto: t.foto, km: t.km, gas: t.gas, lat: g.lat, lng: g.lng, obs: t.obs, donde: t.donde, llaves: t.llaves };
+    if (t.nivel === 'COMPLETA') { tab.fotos = t.fotos; tab.falta = falta; tab.detalles = detalles; }
+    if (t.nivel === 'CONFIRMA') { tab.confirma = t.confirma; if (t.confirma === 'NUEVO') tab.nuevo = t.nuevo; }
+    if (t.nivel === 'BASICA') { tab.todoBien = t.todoBien; if (!t.todoBien) tab.algo = t.algo; }
+    var wa = { modo: t.modo, vehiculo: t.vehiculo, km: t.km, gas: t.gas, foto: t.foto, hora: new Date(), lat: g.lat, lng: g.lng, nivel: t.nivel, falta: falta,
+               detalles: detalles.map(function (d) { return d.punto + ': ' + d.nota; }).concat(t.confirma === 'NUEVO' ? ['Nuevo al recibir: ' + t.nuevo.nota] : [], t.nivel === 'BASICA' && !t.todoBien ? [t.algo.nota] : []),
+               igual: t.confirma === 'IGUAL', obs: t.obs, donde: t.donde, llaves: t.llaves };
     if (t.modo === 'SALIDA') {
-      quitarCargando();
-      var wa = { modo: 'SALIDA', vehiculo: t.vehiculo, km: t.km, gas: t.gas, foto: t.foto, hora: new Date() };
-      S.tablero = null;
+      quitarCargando(); S.tablero = null;
       S.despuesVeh = function () { vistaWAVehiculo(wa); };
       return mandarVehiculo(t.checklist, t.motivo, tab);
     }
     return srv('entregarVehiculo', tab).then(function (r) {
       quitarCargando(); S.tablero = null; S.datos.bitacora = null; S.datos.vehiculo = ''; DB.set('inicio', S.datos); sonido('entregado');
-      vistaWAVehiculo({ modo: 'REGRESO', vehiculo: r.vehiculo, km: r.kmRegreso, recorrio: r.km, gas: r.gasRegreso, gasSalida: r.gasSalida, salida: r.salida, foto: t.foto, hora: new Date() });
+      vistaWAVehiculo(Object.assign(wa, { km: r.kmRegreso, recorrio: r.km, gasSalida: r.gasSalida, salida: r.salida }));
       actualizar();
     }, function (e) {
       quitarCargando();
@@ -441,30 +532,41 @@ function guardarTablero() {
       encolar('entregarVehiculo', tab, 'Entrega de ' + t.vehiculo);
       var b = S.datos.bitacora || {};
       S.tablero = null; S.datos.bitacora = null; S.datos.vehiculo = ''; DB.set('inicio', S.datos);
-      vistaWAVehiculo({ modo: 'REGRESO', vehiculo: t.vehiculo, km: t.km, recorrio: b.km ? Number(t.km) - Number(b.km) : '', gas: t.gas, gasSalida: b.gas, salida: b.salida, foto: t.foto, hora: new Date() });
+      vistaWAVehiculo(Object.assign(wa, { recorrio: b.km ? Number(t.km) - Number(b.km) : '', gasSalida: b.gas, salida: b.salida }));
     });
   });
 }
 /** Sin señal al tomarla: el inicio igual muestra "Traes la camioneta" mientras sube. */
-function bitacoraLocal(tab) { S.datos.bitacora = { vehiculo: S.vehSel, salida: new Date().toISOString().slice(0, 10) + ' ' + new Date().toTimeString().slice(0, 5), km: tab.km, gas: tab.gas }; DB.set('inicio', S.datos); }
+function bitacoraLocal(tab) { S.datos.bitacora = { vehiculo: S.vehSel, salida: new Date().toISOString().slice(0, 10) + ' ' + new Date().toTimeString().slice(0, 5), km: tab.km, gas: tab.gas, nivel: 'BASICA' }; DB.set('inicio', S.datos); }
 function vistaWAVehiculo(w) {
   S.vista = 'listo';
   var hora = w.hora.toLocaleString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-  var msg = w.modo === 'SALIDA'
-    ? 'SALE CAMIONETA\n' + w.vehiculo + '\nKm: ' + w.km + '\nGasolina: ' + w.gas + '\nTomó: ' + hora + '\nGestor: ' + S.datos.gestor.nombre
-    : 'CAMIONETA ENTREGADA\n' + w.vehiculo + '\nKm: ' + w.km + (w.recorrio !== '' && w.recorrio != null ? ' (recorrió ' + w.recorrio + ' km)' : '') + '\nGasolina: ' + w.gas + (w.gasSalida ? ' (salió con ' + w.gasSalida + ')' : '') +
-      '\n' + (w.salida ? 'Tomó: ' + String(w.salida).slice(11) + ' · ' : '') + 'Entregó: ' + hora + '\nGestor: ' + S.datos.gestor.nombre;
+  var sal = w.modo === 'SALIDA', l = [sal ? 'CAMIONETA RECIBIDA' : 'CAMIONETA ENTREGADA', w.vehiculo];
+  l.push('Km: ' + w.km + (!sal && w.recorrio !== '' && w.recorrio != null ? ' (recorrió ' + w.recorrio + ' km)' : ''));
+  l.push('Gasolina: ' + w.gas + (!sal && w.gasSalida ? ' (salió con ' + w.gasSalida + ')' : ''));
+  l.push(sal ? 'Recibió: ' + hora : (w.salida ? 'Tomó: ' + String(w.salida).slice(11) + ' · ' : '') + 'Entregó: ' + hora);
+  if (w.nivel === 'COMPLETA') l.push('Revisión completa: ' + revCfg().fotos.length + ' fotos' + (w.falta.length ? '' : ' · lleva todo'));
+  if (w.igual) l.push('Revisada: está igual que como la dejaron');
+  if (w.nivel === 'BASICA' && !w.detalles.length) l.push('Lleva todo y está bien');
+  w.falta.forEach(function (f) { l.push('✗ Falta: ' + f); });
+  w.detalles.forEach(function (d) { l.push('⚠ ' + d); });
+  if (w.obs) l.push('Obs: ' + w.obs);
+  if (w.donde) l.push('La dejé en: ' + w.donde);
+  if (w.llaves) l.push('Llaves: ' + w.llaves);
+  if (w.lat && w.lng) l.push('Lugar: https://maps.google.com/?q=' + w.lat + ',' + w.lng);
+  l.push('Gestor: ' + S.datos.gestor.nombre);
+  var msg = l.join('\n');
   S.wa = { msg: msg, foto: w.foto, id: 'tablero' };
-  pintar('<div class="listo"><div class="verde-top"><span class="palomita">' + IC.palomita + '</span><b>' + (w.modo === 'SALIDA' ? 'Listo: traes ' + esc(w.vehiculo) : esc(w.vehiculo) + ' entregada') + '</b><span>' +
-    (w.modo === 'SALIDA' ? 'Al regresar toca "Entregar" en tu inicio' : (w.recorrio !== '' && w.recorrio != null ? 'Recorrió ' + esc(String(w.recorrio)) + ' km' : 'Quedó registrada')) + '</span></div>' +
+  pintar('<div class="listo"><div class="verde-top"><span class="palomita">' + IC.palomita + '</span><b>' + (sal ? 'Listo: traes ' + esc(w.vehiculo) : esc(w.vehiculo) + ' entregada') + '</b><span>' +
+    (sal ? 'Al regresar toca "Entregar" en tu inicio' : (w.recorrio !== '' && w.recorrio != null ? 'Recorrió ' + esc(String(w.recorrio)) + ' km' : 'Quedó registrada')) + '</span></div>' +
     '<div class="cuerpo"><b>¿Mandarlo al grupo?</b><div class="wa-burbuja"><div>' + (w.foto ? '<img src="' + w.foto + '" alt="">' : '') + '<pre>' + esc(msg) + '</pre></div></div>' +
     (w.foto ? '<label class="check"><input type="checkbox" id="waFoto" checked> Incluir la foto del tablero</label>' : '') + '</div>' +
-    '<div class="pie"><button class="btn wa" onclick="mandarWA()">Mandar al grupo por WhatsApp</button><button class="btn linea" onclick="' + (w.modo === 'SALIDA' ? 'vistaInicio()' : 'vistaVehiculo(true)') + '">' + (w.modo === 'SALIDA' ? 'Ahora no' : 'Ahora no · ¿en qué sigues?') + '</button></div></div>');
+    '<div class="pie"><button class="btn wa" onclick="mandarWA()">Mandar al grupo por WhatsApp</button><button class="btn linea" onclick="' + (sal ? 'vistaInicio()' : 'vistaVehiculo(true)') + '">' + (sal ? 'Ahora no' : 'Ahora no · ¿en qué sigues?') + '</button></div></div>');
 }
 function tarjetaBitacora() {
   var b = S.datos && S.datos.bitacora; if (!b) return '';
   return '<div class="tile-veh"><span><b>🚐 Traes ' + esc(b.vehiculo) + ' desde ' + esc(String(b.salida).slice(11)) + '</b><small>Salió con ' + esc(String(b.km)) + ' km · ' + esc(b.gas) + '</small></span>' +
-    '<button onclick="S.tablero={modo:\'REGRESO\',vehiculo:S.datos.bitacora.vehiculo,km:\'\',gas:\'\'};vistaTablero()">Entregar</button></div>';
+    '<button onclick="S.tablero=nuevoTablero(\'REGRESO\',S.datos.bitacora.vehiculo,S.datos.bitacora.nivel);vistaTablero()">Entregar</button></div>';
 }
 
 /* ==================== Inicio ==================== */
@@ -1026,7 +1128,7 @@ function cerrarCamFoto() { if (camFoto && camFoto.stream) camFoto.stream.getTrac
 function ponerFoto(f) {
   if (!S.cierre && S.vista === 'listo' && S.waOpts) { S.waOpts.foto = f; beep(); return vistaWA(S.waOpts); }
   if (!S.cierre && S.vista === 'libre' && S.libre) { S.libre.foto = f; beep(); return vistaLibre(); }
-  if (!S.cierre && S.vista === 'tablero' && S.tablero) { S.tablero.foto = f; beep(); return vistaTablero(); }
+  if (!S.cierre && S.vista === 'tablero' && S.tablero) return ponerFotoTablero(f);
   if (!S.cierre && S.vista === 'parada' && S.parada) { S.parada.foto = f; beep(); return vistaParada(S.parada.k); }
   if (!S.cierre) return; S.cierre.foto = f; beep(); pintarCierre();
 }
