@@ -408,3 +408,23 @@ body.adm{--azul:#111A2E;--azul-osc:#0A1020;--azul-suave:#E6E9F0;--azul-claro:#AE
 @keyframes girar{to{transform:rotate(360deg)}}
 .btn-ic.gira{background:#fff;color:var(--azul)}
 .btn-ic.gira svg{animation:girar 1s linear infinite}
+
+/* Pendientes solo para ver (0.5.2) */
+.pend-ruta{font-weight:700;font-size:14px;display:block}.pend-ruta i{font-style:normal;color:var(--gris)}
+.pchip-t.edad{color:#3D4757;background:#EEF1F6}.pchip-t.edad.amar{color:#8A5A00;background:#FFF4D6}.pchip-t.edad.roja{color:#B42318;background:#FDE7E5}
+
+/* Bitácora de vehículo (0.5.2) */
+.foto-tablero{width:100%;min-height:150px;border-radius:16px;border:2px dashed var(--borde2);background:#fff;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:0;color:var(--azul)}
+.foto-tablero span{display:flex;flex-direction:column;align-items:center;gap:4px}.foto-tablero small{color:var(--texto2)}
+.foto-tablero.con{border:0;background:#111}.foto-tablero img{width:100%;max-height:240px;object-fit:cover;display:block}
+.foto-tablero .ok{position:absolute;top:10px;right:10px;background:var(--verde);color:#fff;border-radius:20px;padding:4px 10px;font-weight:800;font-size:12.5px;flex-direction:row}
+.campo.km{font-size:20px;font-weight:800;letter-spacing:.5px}
+.gas{display:flex;gap:4px;background:#E6EAF1;border-radius:12px;padding:4px}
+.gas button{flex:1;border:0;background:none;padding:11px 0;border-radius:9px;font:inherit;font-size:14px;font-weight:700;color:var(--texto2)}
+.gas button.on{background:#fff;color:var(--azul);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.fila-dato{display:flex;justify-content:space-between;background:#fff;border:1px solid var(--borde);border-radius:12px;padding:11px 12px;font-size:14px;color:var(--texto2)}.fila-dato b{color:var(--texto)}
+.resumen-veh{background:#fff;border:1px solid var(--borde);border-radius:14px;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12.5px;color:var(--texto2)}
+.resumen-veh b{display:block;font-size:19px;color:var(--texto)}
+.tile-veh{background:var(--azul);color:#fff;border-radius:16px;padding:13px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.tile-veh b{font-size:15.5px;display:block}.tile-veh small{color:#C9D6EE;font-size:12.5px}
+.tile-veh button{border:0;background:#fff;color:var(--azul);border-radius:10px;padding:9px 12px;font:inherit;font-weight:800;font-size:14px;flex:none}

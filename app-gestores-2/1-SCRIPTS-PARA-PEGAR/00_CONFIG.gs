@@ -10,7 +10,7 @@
  ***********************************************************************/
 
 var APPG = {
-  VERSION: '0.5.0',
+  VERSION: '0.5.2',
   ZONA: 'America/Mexico_City',
 
   /* Nombres de las pestañas del archivo de la app. */
@@ -28,7 +28,8 @@ var APPG = {
     PROBLEMAS:     'APP_Problemas',
     SUCURSALES:    'APP_Sucursales',
     APARTADOS:     'APP_Apartados',
-    AVISOS:        'APP_Avisos'
+    AVISOS:        'APP_Avisos',
+    BITACORA:      'APP_Bitacora_Vehiculo'
   },
 
   /* Encabezados de cada pestaña, en orden. El código busca las columnas
@@ -39,7 +40,7 @@ var APPG = {
     APP_Usuarios:      ['Numero', 'Nombre', 'NombreEnOperaciones', 'Usuario', 'ClaveCifrada', 'Rol', 'Activo',
                         'DebeCambiar', 'VersionSesion', 'Alta', 'UltimoAcceso', 'Notas', 'VehiculoHoy', 'FechaVehiculo', 'NuevaContraseña',
                         'Area', 'VehiculoNota'],
-    APP_Vehiculos:     ['Vehiculo', 'Tipo', 'Placa', 'Activo', 'EnTaller'],
+    APP_Vehiculos:     ['Vehiculo', 'Tipo', 'Placa', 'Activo', 'EnTaller', 'PideTablero'],
     APP_Motivos:       ['Tipo', 'Motivo', 'PideComentario', 'Activo'],
     APP_Documentos:    ['Categoria', 'Titulo', 'Tipo', 'Contenido', 'Activo', 'Orden'],
     APP_Pedidos:       ['ID', 'Fila', 'NumeroGestor', 'Gestor', 'Cliente', 'Direccion', 'Telefono', 'Notas', 'Area', 'SubArea',
@@ -54,7 +55,9 @@ var APPG = {
     APP_Problemas:     ['Numero', 'FechaHora', 'Codigo', 'Quien', 'Detalle', 'Resuelto'],
     APP_Sucursales:    ['Sucursal', 'ID', 'Direccion', 'URLMaps', 'Activo'],
     APP_Apartados:     ['Codigo', 'Tipo', 'NumeroGestor', 'Gestor', 'Desde', 'Hasta', 'Estado', 'Cerrado', 'CerradoPor'],
-    APP_Avisos:        ['Id', 'FechaHora', 'Texto', 'Para', 'Importante', 'Hasta', 'Activo', 'Autor', 'Leidos']
+    APP_Avisos:        ['Id', 'FechaHora', 'Texto', 'Para', 'Importante', 'Hasta', 'Activo', 'Autor', 'Leidos'],
+    APP_Bitacora_Vehiculo: ['Id', 'Vehiculo', 'NumeroGestor', 'Gestor', 'Estado', 'Salida', 'KmSalida', 'GasSalida', 'FotoSalida', 'LatSalida', 'LngSalida',
+                        'Regreso', 'KmRegreso', 'GasRegreso', 'FotoRegreso', 'LatRegreso', 'LngRegreso', 'Km', 'Nota']
   },
 
   /* Perfiles. Columna "Area" de APP_Usuarios: decide qué app ve cada quien.
@@ -102,6 +105,8 @@ var APPG = {
     ['MOTIVOS_CAMBIO_VEHICULO', 'Llanta ponchada | Falla mecánica | Lluvia | Carga grande | Se lo pasé a otro gestor | Otro', 'Motivos para cambiar de vehículo a medio día'],
     ['ID_BOTICAN', '1a3n7z962Ik6c1YrcD7RxkJEAWWK6a9xuA5LDrr2sffc', 'Archivo LOGISTICA BOTICAN 2026 (Envios, Feriados, Rutas). Vacío = no se muestra la recolección BOTICAN'],
     ['BOT_ESCRIBIR_H', true, 'TRUE = al recolectar un pedido BOTICAN se escribe la hora en Envios columna H (solo si está vacía y sin fórmula)'],
+    ['ID_FADERMEX', '1lv35lbab-GCrv-H81xjBh2CpfO2F-EUIIN3kcWHSsHU', 'Archivo "Pedidos Logistica-Fadermex 2026" (Envios): pedidos FADERMEX listos para recolectar. Vacío = solo Operaciones'],
+    ['CARPETA_TABLERO', '', 'Drive: fotos del tablero (km y gasolina) de los vehículos con PideTablero (vacío = carpeta de respaldo)'],
     ['APARTADO_HORAS', 2, '"Lo recojo yo": horas para que un apartado se libere solo si no lo escanean'],
     ['APP_BLOQUEADA', false, 'TRUE = nadie puede entrar (mantenimiento)'],
     ['MENSAJE_BLOQUEO', 'App en mantenimiento. Intenta más tarde.', 'Texto que ven los gestores si está bloqueada'],

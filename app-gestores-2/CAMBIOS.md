@@ -1,5 +1,12 @@
 # Registro de cambios · App Gestores 2
 
+## 0.5.2 · 17-nov-2026 · Pendientes solo para ver y bitácora de la camioneta
+- **Pendientes por recoger, solo para ver:** se quitan "Lo recojo yo", las casillas y "Voy por…". Lo escaneado o lo que cambia de estatus desaparece solo para todos (`11_PENDIENTES`, `perfiles.js`).
+- **Traspasos:** de dónde → a dónde, fecha y hora de creación, bultos y antigüedad (gris hoy · amarillo 2–6 días · rojo 7+) (`06_GESTOR` `_calcularPorRecoger`).
+- **FADERMEX listos para recolectar** ahora salen de "Pedidos Logistica-Fadermex 2026" / Envios (APP_Config → `ID_FADERMEX`): H "Pedido listo para recolección" con fecha y sin J "Ingreso a logística" ni L "Fecha salida". Siguen saliendo los de Operaciones "PENDIENTE PARA RECOLECTAR".
+- **Bitácora de vehículo** (nuevo `13_CAMIONETA.gs`, pestaña nueva `APP_Bitacora_Vehiculo`, columna nueva `PideTablero` en APP_Vehiculos): al tomar y al entregar, foto del tablero + km + gasolina; calcula km recorridos y tiempo; WhatsApp al grupo. INSTALAR la prende solo en los AUTO (la camioneta); la administradora la prende/apaga por vehículo en Administración → Vehículos. Administración → Vehículos → "Bitácora de km y gasolina" (en rojo: sin entregar o km que no cuadra). Avisos `VEH-01`, `VEH-02`.
+- App 2.8.0.
+
 ## 0.5.1 · 12-nov-2026 · Pedidos que no salían
 - **Pedido recolectado y después asignado no salía** (#16165 de José Luis): la recolección en BOTICAN quedaba como cierre "LOCAL" y escondía el pedido para siempre. Ahora una RECOLECCIÓN ya no esconde el pedido de "Pedidos a domicilio" ni del resumen de Administración (`06_GESTOR`, `08_ADMIN`). Prueba nueva en `prueba-integrada.js`.
 - **Gestor escrito distinto en Operaciones** ("antonio" en vez de 'Antonio "A"'): el robot lo reconoce, sin importar mayúsculas, acentos, espacios ni signos, por su NombreEnOperaciones, ese nombre sin la letra entre comillas, su Usuario o su Nombre (`07_ROBOT`, `11_PENDIENTES`).

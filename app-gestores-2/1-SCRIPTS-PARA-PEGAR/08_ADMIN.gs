@@ -26,7 +26,7 @@ function apiAdmin(p) {
   var f = {
     hoy: _admHoy, gestor: _admGestor, buscar: _admBuscar, corregir: _admCorregir, reasignar: _admReasignar,
     problemas: _admProblemas, resolver: _admResolver, equipo: _admEquipo, equipoCambiar: _admEquipoCambiar, alta: _admAlta,
-    vehiculos: _admVehiculos, vehiculoCambiar: _admVehiculoCambiar, liberar: _admLiberar,
+    vehiculos: _admVehiculos, vehiculoCambiar: _admVehiculoCambiar, liberar: _admLiberar, bitacora: _admBitacora,
     ajustes: _admAjustes, ajuste: _admAjuste, motivo: _admMotivo, sucursal: _admSucursal,
     avisos: _admAvisos, avisoNuevo: _admAvisoNuevo, avisoQuitar: _admAvisoQuitar
   }[String(p.que || '')];
@@ -394,7 +394,7 @@ function _admVehiculos() {
   var us = _tabla(APPG.H.USUARIOS).filas.filter(function (u) { return _si(u.Activo); });
   return { vehiculos: _tabla(APPG.H.VEHICULOS).filas.map(function (v) {
     var quien = us.filter(function (u) { return _fechaTxt(u.FechaVehiculo) === hoy && _norm(u.VehiculoHoy) === _norm(v.Vehiculo); })[0];
-    return { nombre: String(v.Vehiculo), tipo: _tipoVehiculo(v), placa: String(v.Placa || ''), activo: _si(v.Activo), enTaller: _si(v.EnTaller),
+    return { nombre: String(v.Vehiculo), tipo: _tipoVehiculo(v), placa: String(v.Placa || ''), activo: _si(v.Activo), enTaller: _si(v.EnTaller), pideTablero: _si(v.PideTablero),
              quien: quien ? String(quien.Nombre) : '', numero: quien ? String(quien.Numero) : '',
              desde: quien ? _fechaTxt(quien.FechaVehiculo, 'yyyy-MM-dd HH:mm').slice(11) : '', nota: quien ? String(quien.VehiculoNota || '') : '' };
   }) };
@@ -405,6 +405,11 @@ function _admVehiculoCambiar(p, yo) {
   var t = _tabla(APPG.H.VEHICULOS);
   var v = t.filas.filter(function (x) { return _norm(x.Vehiculo) === _norm(p.vehiculo); })[0];
   if (!v) throw _falla('APP-01', 'No existe ese vehículo.');
+  if (p.pideTablero != null) {   // foto del tablero al tomar/entregar: lo decide la administradora
+    t.sh.getRange(v._fila, t.col('PideTablero')).setValue(!!p.pideTablero);
+    _log(yo.Nombre, 'ADMIN_VEHICULO', v.Vehiculo + (p.pideTablero ? ' · pide tablero' : ' · ya no pide tablero'));
+    return { mensaje: v.Vehiculo + (p.pideTablero ? ': al tomarla y entregarla pedirá foto del tablero, km y gasolina.' : ': ya no pide foto del tablero.') };
+  }
   t.sh.getRange(v._fila, t.col('EnTaller')).setValue(!!p.enTaller);
   _log(yo.Nombre, 'ADMIN_VEHICULO', v.Vehiculo + (p.enTaller ? ' · en taller' : ' · disponible'));
   return { mensaje: v.Vehiculo + (p.enTaller ? ' en taller: nadie la puede elegir.' : ' disponible otra vez.') };

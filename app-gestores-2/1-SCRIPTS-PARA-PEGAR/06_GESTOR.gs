@@ -59,7 +59,7 @@ function apiInicio(p) {
   });
   var vehiculos = _tabla(APPG.H.VEHICULOS).filas.filter(function (v) { return _si(v.Activo); }).map(function (v) {
     var tipo = _tipoVehiculo(v);
-    return { nombre: String(v.Vehiculo), tipo: tipo, placa: String(v.Placa || ''),
+    return { nombre: String(v.Vehiculo), tipo: tipo, placa: String(v.Placa || ''), pideTablero: _pideTablero(v),
              ocupadoPor: tipo === 'NINGUNO' ? '' : (ocupados[_norm(v.Vehiculo)] || ''), enTaller: _si(v.EnTaller) };
   });
 
@@ -122,6 +122,7 @@ function apiInicio(p) {
     porRecoger: perfil.area === 'FACTURACION' ? _porRecoger() : [],
     botican: botican, pendientes: pendientes,
     avisos: (function () { try { return _avisosInicio(u); } catch (e) { return []; } })(),
+    bitacora: _bitacoraInicio(u),
     libresHoy: cierres.filter(function (c) {
       return String(c.Tipo) === 'LIBRE' && String(c.NumeroGestor) === String(u.Numero) && _fechaTxt(c.FechaHora) === hoy && String(c.Estado) !== 'ANULADO';
     }).map(function (c) {
@@ -177,6 +178,8 @@ function apiVehiculo(p) {
     })[0];
     if (otro) throw _falla('CAP-06', otro.Nombre + ' ya trae ' + nombre + ' hoy. Elige otro o pídele que lo cambie.');
   }
+  if (_pideTablero(v)) _bitacoraSalida(u, v, p.tablero);   // camioneta: foto del tablero, km y gasolina (13_CAMIONETA)
+  else { var abierta = _bitacoraAbierta({ numero: u.Numero }); if (abierta) throw _falla('VEH-02', 'Primero entrega ' + abierta.b.Vehiculo + ' (botón "Entregar" en tu inicio).'); }
   var antes = _fechaTxt(u.FechaVehiculo) === hoy ? String(u.VehiculoHoy || '') : '';
   var desde = _fechaTxt(u.FechaVehiculo, 'yyyy-MM-dd HH:mm').slice(11);
   u._t.sh.getRange(u._fila, u._t.col('VehiculoHoy')).setValue(String(v.Vehiculo));
@@ -341,6 +344,8 @@ function _calcularPorRecoger() {
   var t = _tnTabla();
   var out = [];
   var cE = t.c('Estatus'), cF = t.c('Folio'), cD = t.c('Destino'), cO = t.c('Origen'), cDesc = t.c('Descripción');
+  var cFe = t.enc.indexOf('Fecha creación'), cH = t.enc.indexOf('Hora'), cB = t.enc.indexOf('Bultos');
+  var hora = function (v) { return Object.prototype.toString.call(v) === '[object Date]' ? Utilities.formatDate(v, APPG.ZONA, 'HH:mm') : String(v || '').trim().slice(0, 5); };
   var cEl = t.enc.indexOf('Eliminación solicitada');
   for (var i = 0; i < t.datos.length && out.length < 300; i++) {
     var v = t.datos[i], est = String(v[cE]).trim().toUpperCase();
@@ -349,7 +354,9 @@ function _calcularPorRecoger() {
     var folio = String(v[cF]).trim(); if (!folio) continue;
     var pref = folio.replace(/-\d+$/, '');
     out.push({ folio: folio, sucursalId: est === 'EN_LOGISTICA' ? 'OFI' : _tnSucursalDe(pref), origen: String(v[cO]), destino: String(v[cD]),
-               contenido: String(v[cDesc]).slice(0, 80), estatus: est });
+               contenido: String(v[cDesc]).slice(0, 80), estatus: est,
+               creado: cFe >= 0 ? (_fechaTxt(v[cFe]) + (cH >= 0 && hora(v[cH]) ? ' ' + ('0' + hora(v[cH])).slice(-5) : '')).trim() : '',
+               bultos: cB >= 0 ? String(v[cB] || '') : '' });
   }
   try { CacheService.getScriptCache().put('porRecoger', JSON.stringify(out), 300); } catch (e) { }
   return out;
