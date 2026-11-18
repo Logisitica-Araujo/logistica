@@ -61,7 +61,7 @@ function apiInicio(p) {
   var vehiculos = _tabla(APPG.H.VEHICULOS).filas.filter(function (v) { return _si(v.Activo); }).map(function (v) {
     var tipo = _tipoVehiculo(v);
     var rv = _hay('_revisionAlTomar') ? _revisionAlTomar(u, v, bitT) : { revision: 'NINGUNA' };
-    return { nombre: String(v.Vehiculo), tipo: tipo, placa: String(v.Placa || ''), pideTablero: rv.revision !== 'NINGUNA', revision: rv.revision, anterior: rv.anterior || null,
+    return { nombre: String(v.Vehiculo), tipo: tipo, placa: String(v.Placa || ''), especial: !!rv.especial, anterior: rv.anterior || null,
              ocupadoPor: tipo === 'NINGUNO' ? '' : (ocupados[_norm(v.Vehiculo)] || ''), enTaller: _si(v.EnTaller) };
   });
 
@@ -181,8 +181,9 @@ function apiVehiculo(p) {
     if (otro) throw _falla('CAP-06', otro.Nombre + ' ya trae ' + nombre + ' hoy. Elige otro o pídele que lo cambie.');
   }
   if (_hay('_bitacoraSalida')) {   // revisión del vehículo (13_CAMIONETA); si no está pegado, se elige como siempre
-    if (_pideTablero(v)) _bitacoraSalida(u, v, p.tablero);
-    else { var abierta = _bitacoraAbierta({ numero: u.Numero }); if (abierta) throw _falla('VEH-02', 'Primero entrega ' + abierta.b.Vehiculo + ' (botón "Entregar" en tu inicio).'); }
+    var abierta = _bitacoraAbierta({ numero: u.Numero });
+    if (abierta && _norm(abierta.b.Vehiculo) !== _norm(v.Vehiculo)) throw _falla('VEH-02', 'Primero entrega ' + abierta.b.Vehiculo + ' (botón "Entregar" en tu inicio).');
+    if (p.especial && !abierta) _bitacoraSalida(u, v, p.tablero, p.especial);   // "Salida especial": fotos, tablero, km, gasolina, revisión
   } else _avisarFaltante('13_CAMIONETA');
   var antes = _fechaTxt(u.FechaVehiculo) === hoy ? String(u.VehiculoHoy || '') : '';
   var desde = _fechaTxt(u.FechaVehiculo, 'yyyy-MM-dd HH:mm').slice(11);

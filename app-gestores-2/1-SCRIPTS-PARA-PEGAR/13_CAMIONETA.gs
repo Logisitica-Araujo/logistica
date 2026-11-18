@@ -1,23 +1,15 @@
 /***********************************************************************
- * APP GESTORES 2 — 13_CAMIONETA.gs   (archivo NUEVO en 0.5.2 · niveles de revisión en 0.5.3)
+ * APP GESTORES 2 — 13_CAMIONETA.gs   (0.5.2 · rediseño 0.5.4: "Salida especial")
  * Proyecto: Apps Script del archivo "App Gestores · Datos"
  * ---------------------------------------------------------------------
- * BITÁCORA DE VEHÍCULO al TOMARLO y al ENTREGARLO, en la app de cada quien.
- *
- * Qué revisión pide cada vehículo (APP_Vehiculos → Revision; se cambia en Administración → Vehículos):
- *   COMPLETA  Siempre completa: al ENTREGAR fotos (REV_FOTOS), qué lleva (REV_LLEVA), cómo está
- *             (REV_ESTADO, Bien/Detalle con foto) y notas. Al TOMAR: ve cómo la dejaron y confirma
- *             "Sí, está igual" o "Encontré algo nuevo" (foto + qué es).
- *   CAMBIO    Completa solo si cambia de conductor: al TOMARLA, si el anterior fue otra persona, hace
- *             la revisión completa (así cualquier daño queda a nombre de quien la entregó); si es el
- *             mismo, básica. Al entregar: básica.
- *   BASICA    Tablero (km, gasolina) + "¿Lleva todo y está bien?" (Sí / Hay algo: foto + nota).
- *   NINGUNA   No pide nada.
- * En TODOS (menos NINGUNA): foto del tablero, km y gasolina, y botón de WhatsApp al tomar y al entregar.
- * Excepción por persona (APP_Usuarios → RevisionVehiculo): COMPLETA · BASICA · NINGUNA (vacío = como el vehículo).
- * "Pedir completa la próxima vez" (APP_Vehiculos → CompletaProxima): una sola vez.
- *
- * Pestaña APP_Bitacora_Vehiculo: un renglón por uso (EN USO → ENTREGADA · SIN ENTREGAR).
+ * Elegir vehículo es COMO ANTES: la lista de siempre (CHECK_AUTO / CHECK_MOTO) y sales.
+ * "🚐 Salida especial" (foráneo, carga, todo el día u otro): SOLO si el gestor lo toca. Ahí sí:
+ *   5 fotos (REV_FOTOS), qué lleva (REV_LLEVA), cómo está (REV_ESTADO, Bien/Detalle con foto),
+ *   tablero, km, gasolina, notas, día, hora y lugar (GPS), y WhatsApp al salir y al entregar.
+ *   Al regresar: "Entregar" en su inicio, con la misma revisión, dónde la dejó y a quién las llaves.
+ * Alguien SIN app: lo registra un administrador en Administración → Vehículos →
+ *   "Prestar vehículo a alguien sin app" (nombre, teléfono, para qué) y "Recibir de vuelta".
+ * Pestaña APP_Bitacora_Vehiculo: un renglón por salida especial (EN USO → ENTREGADA · SIN ENTREGAR).
  ***********************************************************************/
 
 var APPG_GAS = ['Reserva', '¼', '½', '¾', 'Lleno'];
@@ -29,7 +21,15 @@ function _nivelVehiculo(v) {
   if (APPG_NIVELES_VEH.indexOf(n) >= 0) return n;
   return v && _si(v.PideTablero) ? 'CAMBIO' : 'NINGUNA';
 }
-function _pideTablero(v) { return _nivelVehiculo(v) !== 'NINGUNA'; }
+function _pideTablero(v) { return false; }   // 0.5.4: solo la "Salida especial" pide revisión
+var APPG_PARA = ['Foráneo', 'Carga', 'Todo el día', 'Otro'];
+function _leerEspecial(e) {
+  e = e || {};
+  var para = String(e.para || '');
+  if (APPG_PARA.indexOf(para) < 0) throw _falla('CAP-01', 'Elige para qué es la salida especial.');
+  if (para === 'Otro' && !String(e.destino || '').trim()) throw _falla('CAP-01', 'Escribe a dónde o para qué.');
+  return { para: para, destino: String(e.destino || '').slice(0, 150) };
+}
 function _revConfig() {
   var c = _config();
   return { fotos: _lista(c.REV_FOTOS || 'Frente | Atrás | Lado piloto | Lado copiloto | Interior'), lleva: _lista(c.REV_LLEVA || ''), estado: _lista(c.REV_ESTADO || '') };
@@ -51,24 +51,6 @@ function _ultimoUso(t, vehiculo) {
   return f.length ? f[f.length - 1] : null;
 }
 function _jsonLeer(v) { try { return v ? JSON.parse(String(v)) : null; } catch (e) { return null; } }
-
-/** Qué se le pide a esta persona con este vehículo: COMPLETA · CONFIRMA · BASICA · NINGUNA. momento = SALIDA | REGRESO */
-function _nivelPara(u, v, momento, ultimo) {
-  var veh = _nivelVehiculo(v);
-  if (veh === 'NINGUNA') return 'NINGUNA';
-  var per = String(u.RevisionVehiculo || '').trim().toUpperCase();
-  if (per === 'NINGUNA') return 'NINGUNA';
-  var completa = _si(v.CompletaProxima) || per === 'COMPLETA' || veh === 'COMPLETA';
-  if (per === 'BASICA' && !_si(v.CompletaProxima)) return 'BASICA';
-  if (completa) {
-    if (momento === 'REGRESO') return 'COMPLETA';
-    var rev = ultimo && _jsonLeer(ultimo.RevRegreso);   // si la última entrega trae la revisión completa, solo se confirma
-    return rev && rev.nivel === 'COMPLETA' && !_si(v.CompletaProxima) ? 'CONFIRMA' : 'COMPLETA';
-  }
-  if (veh === 'CAMBIO' && momento === 'SALIDA' && ultimo && String(ultimo.NumeroGestor) !== String(u.Numero)) return 'COMPLETA';
-  if (veh === 'CAMBIO' && momento === 'SALIDA' && !ultimo) return 'COMPLETA';
-  return 'BASICA';
-}
 
 function _leerTablero(x, cuando) {
   x = x || {};
@@ -117,13 +99,11 @@ function _leerRevision(nivel, x, v, u, momento) {
 }
 
 /** Lo llama apiVehiculo cuando el vehículo elegido pide revisión. */
-function _bitacoraSalida(u, v, tablero) {
-  var mia = _bitacoraAbierta({ numero: u.Numero });
-  if (mia && _norm(mia.b.Vehiculo) === _norm(v.Vehiculo)) return;   // ya la trae (volvió a elegirla): nada que pedir
+function _bitacoraSalida(u, v, tablero, especial, registro) {
+  var mia = u.Numero && !registro ? _bitacoraAbierta({ numero: u.Numero }) : null;
   if (mia) throw _falla('VEH-02', 'Primero entrega ' + mia.b.Vehiculo + ' (botón "Entregar" en tu inicio).');
   var t = _bitTabla(), ultimo = _ultimoUso(t, v.Vehiculo);
-  var nivel = _nivelPara(u, v, 'SALIDA', ultimo);
-  if (nivel === 'NINGUNA') return;
+  var esp = _leerEspecial(especial), nivel = 'COMPLETA';
   var d = _leerTablero(tablero, 'al tomarla');
   var r = _leerRevision(nivel, tablero, v, u, 'SALIDA');
   var otro = _bitacoraAbierta({ vehiculo: v.Vehiculo });
@@ -133,28 +113,32 @@ function _bitacoraSalida(u, v, tablero) {
     _problema('VEH-01', u.Nombre, v.Vehiculo + ': ' + otro.b.Gestor + ' no la entregó en la app (salió ' + _fechaTxt(otro.b.Salida, 'yyyy-MM-dd HH:mm') + ').');
   }
   if (r.detalles.length || r.faltantes.length) {
-    _problema('VEH-03', u.Nombre, v.Vehiculo + ' al recibirla' + (ultimo ? ' (la entregó ' + ultimo.Gestor + ')' : '') + ': ' + r.detalles.concat(r.faltantes.map(function (f) { return 'falta ' + f; })).join(' · '));
+    _problema('VEH-03', u.Nombre, v.Vehiculo + ' al salir (' + u.Nombre + ')' + (ultimo ? ' · antes la usó ' + ultimo.Gestor : '') + ': ' + r.detalles.concat(r.faltantes.map(function (f) { return 'falta ' + f; })).join(' · '));
   }
   var foto = _guardarImagen(d.foto, 'image/jpeg', v.Vehiculo + ' SALIDA ' + _ahora('yyyy-MM-dd HH.mm') + ' ' + u.Nombre + ' · Tablero', _config().CARPETA_TABLERO, u.Nombre);
   _agregar(APPG.H.BITACORA, { Id: 'VB' + _ahora('yyMMddHHmm') + '-' + Utilities.getUuid().slice(0, 4).toUpperCase(), Vehiculo: String(v.Vehiculo),
     NumeroGestor: u.Numero, Gestor: u.Nombre, Estado: 'EN USO', Salida: _ahora(), KmSalida: d.km, GasSalida: d.gas, FotoSalida: foto, LatSalida: d.lat, LngSalida: d.lng,
-    NivelSalida: nivel, RevSalida: JSON.stringify(r.rev), Faltantes: r.faltantes.join(', '), Detalles: r.detalles.join(' · '), Observaciones: r.rev.obs ? 'Al tomar: ' + r.rev.obs : '' });
-  if (nivel === 'COMPLETA' && _si(v.CompletaProxima)) _limpiarCompletaProxima(v);
-  _log(u.Nombre, 'TOMA_VEHICULO', v.Vehiculo + ' · ' + d.km + ' km · ' + d.gas + ' · revisión ' + nivel);
-}
-function _limpiarCompletaProxima(v) {
-  var tv = _tabla(APPG.H.VEHICULOS), f = tv.filas.filter(function (x) { return _norm(x.Vehiculo) === _norm(v.Vehiculo); })[0];
-  if (f) tv.sh.getRange(f._fila, tv.col('CompletaProxima')).setValue(false);
+    NivelSalida: nivel, RevSalida: JSON.stringify(r.rev), Faltantes: r.faltantes.join(', '), Detalles: r.detalles.join(' · '), Observaciones: r.rev.obs ? 'Al tomar: ' + r.rev.obs : '',
+    Motivo: esp.para, Destino: esp.destino, Telefono: registro ? String(registro.telefono || '') : '', RegistroPor: registro ? registro.por : '' });
+  _log(registro ? registro.por : u.Nombre, 'SALIDA_ESPECIAL', v.Vehiculo + ' · ' + u.Nombre + ' · ' + esp.para + (esp.destino ? ' · ' + esp.destino : '') + ' · ' + d.km + ' km · ' + d.gas);
 }
 
-/** p = { foto, km, gas, lat, lng, fotos, falta, detalles, todoBien, algo, obs, donde, llaves } */
+/** p = { foto, km, gas, lat, lng, fotos, falta, detalles, obs, donde, llaves } */
 function apiEntregarVehiculo(p) {
   var s = _exigirSesion(p.token), u = _buscarUsuario(s.Usuario);
   var a = _bitacoraAbierta({ numero: u.Numero });
   if (!a) throw _falla('APP-01', 'No tienes ningún vehículo por entregar.');
-  var v = _tabla(APPG.H.VEHICULOS).filas.filter(function (x) { return _norm(x.Vehiculo) === _norm(a.b.Vehiculo); })[0] || { Vehiculo: a.b.Vehiculo, PideTablero: true };
-  var nivel = _nivelPara(u, v, 'REGRESO', null);
-  if (nivel === 'NINGUNA' || nivel === 'CONFIRMA') nivel = 'BASICA';   // si la tomó con revisión, al menos el tablero al dejarla
+  var r = _cerrarBitacora(a, u, p, null);
+  if (_norm(u.VehiculoHoy) === _norm(a.b.Vehiculo)) {   // ya no trae vehículo: la app le pregunta en qué sigue
+    u._t.sh.getRange(u._fila, u._t.col('VehiculoHoy')).setValue('');
+    u._t.sh.getRange(u._fila, u._t.col('FechaVehiculo')).setValue('');
+  }
+  return r;
+}
+/** Cierra un uso abierto con la revisión de regreso. quien = { Nombre } de quien la entrega (o de quien la recibe de vuelta). */
+function _cerrarBitacora(a, u, p, recibio) {
+  var v = _tabla(APPG.H.VEHICULOS).filas.filter(function (x) { return _norm(x.Vehiculo) === _norm(a.b.Vehiculo); })[0] || { Vehiculo: a.b.Vehiculo };
+  var nivel = 'COMPLETA';
   var d = _leerTablero(p, 'al entregarla');
   var kmSal = Number(a.b.KmSalida) || 0;
   if (kmSal && d.km < kmSal) throw _falla('CAP-01', 'El kilometraje (' + d.km + ') es menor al de salida (' + kmSal + '). Revisa el tablero.');
@@ -169,31 +153,53 @@ function apiEntregarVehiculo(p) {
   set('Detalles', [String(a.b.Detalles || '')].concat(r.detalles).filter(String).join(' · '));
   set('Observaciones', [String(a.b.Observaciones || ''), r.rev.obs ? 'Al entregar: ' + r.rev.obs : ''].filter(String).join(' · '));
   set('DondeLaDejo', r.rev.donde); set('Llaves', r.rev.llaves);
-  if (nivel === 'COMPLETA' && _si(v.CompletaProxima)) _limpiarCompletaProxima(v);
-  if (_norm(u.VehiculoHoy) === _norm(a.b.Vehiculo)) {   // ya no trae vehículo: la app le pregunta en qué sigue
-    u._t.sh.getRange(u._fila, u._t.col('VehiculoHoy')).setValue('');
-    u._t.sh.getRange(u._fila, u._t.col('FechaVehiculo')).setValue('');
-  }
+  if (recibio) set('RecibioPor', recibio);
   var min = Math.round((Date.now() - _fechaMs(a.b.Salida)) / 60000);
-  _log(u.Nombre, 'ENTREGA_VEHICULO', a.b.Vehiculo + ' · ' + d.km + ' km (' + (kmSal ? d.km - kmSal : '?') + ' recorridos) · ' + d.gas + ' · revisión ' + nivel);
+  _log(recibio || u.Nombre, 'ENTREGA_VEHICULO', a.b.Vehiculo + ' · ' + a.b.Gestor + ' · ' + d.km + ' km (' + (kmSal ? d.km - kmSal : '?') + ' recorridos) · ' + d.gas);
   return { vehiculo: String(a.b.Vehiculo), kmSalida: kmSal, kmRegreso: d.km, km: kmSal ? d.km - kmSal : '', gasSalida: String(a.b.GasSalida), gasRegreso: d.gas,
            salida: _fechaTxt(a.b.Salida, 'yyyy-MM-dd HH:mm'), regreso: _ahora('yyyy-MM-dd HH:mm'), minutos: min > 0 ? min : 0, urlFoto: foto,
-           nivel: nivel, faltantes: r.faltantes, detalles: r.detalles };
+           nivel: nivel, faltantes: r.faltantes, detalles: r.detalles, para: String(a.b.Motivo || ''), destino: String(a.b.Destino || '') };
+}
+
+/* ---------- Alguien SIN app (lo registra un administrador) ---------- */
+/* p = { nombre, telefono, vehiculo, especial: {para, destino}, tablero: {foto, km, gas, fotos, falta, detalles, obs, lat, lng} } */
+function _admPrestar(p, yo) {
+  var nombre = String(p.nombre || '').trim();
+  if (!nombre) throw _falla('CAP-01', 'Escribe el nombre de quien se lo lleva.');
+  var v = _tabla(APPG.H.VEHICULOS).filas.filter(function (x) { return _si(x.Activo) && _norm(x.Vehiculo) === _norm(p.vehiculo); })[0];
+  if (!v) throw _falla('CAP-06', 'Ese vehículo no está en la lista.');
+  if (_si(v.EnTaller)) throw _falla('CAP-06', v.Vehiculo + ' está en taller.');
+  var persona = { Numero: 'EXT', Nombre: nombre + ' (sin app)' };
+  _bitacoraSalida(persona, v, p.tablero, p.especial, { telefono: p.telefono, por: yo.Nombre });
+  return { mensaje: v.Vehiculo + ' prestada a ' + nombre + '. Cuando la regrese: Vehículos → "Recibir de vuelta".' };
+}
+/* p = { id, tablero: {...} } */
+function _admRecibirPrestado(p, yo) {
+  var t = _bitTabla(); if (!t) throw _falla('APP-01', 'No hay bitácora.');
+  var b = t.filas.filter(function (x) { return String(x.Id) === String(p.id) && String(x.Estado) === 'EN USO'; })[0];
+  if (!b) throw _falla('APP-01', 'Ese préstamo ya se cerró.');
+  return _cerrarBitacora({ t: t, b: b }, { Nombre: String(b.Gestor), Numero: 'EXT' }, p.tablero || {}, yo.Nombre);
+}
+function _prestadosAbiertos() {
+  var t = _bitTabla(); if (!t) return [];
+  return t.filas.filter(function (b) { return String(b.Estado) === 'EN USO' && String(b.RegistroPor || ''); }).map(function (b) {
+    return { id: String(b.Id), vehiculo: String(b.Vehiculo), persona: String(b.Gestor), telefono: String(b.Telefono || ''), salida: _fechaTxt(b.Salida, 'yyyy-MM-dd HH:mm'),
+             km: Number(b.KmSalida) || '', gas: String(b.GasSalida || ''), para: String(b.Motivo || ''), destino: String(b.Destino || ''), por: String(b.RegistroPor) };
+  });
 }
 
 /** Para el inicio: el vehículo que trae, y qué revisión le toca al entregarlo. */
 function _bitacoraInicio(u) {
   try {
     var a = _bitacoraAbierta({ numero: u.Numero }); if (!a) return null;
-    var v = _tabla(APPG.H.VEHICULOS).filas.filter(function (x) { return _norm(x.Vehiculo) === _norm(a.b.Vehiculo); })[0] || { Vehiculo: a.b.Vehiculo, PideTablero: true };
-    var niv = _nivelPara(u, v, 'REGRESO', null); if (niv === 'NINGUNA' || niv === 'CONFIRMA') niv = 'BASICA';
-    return { vehiculo: String(a.b.Vehiculo), salida: _fechaTxt(a.b.Salida, 'yyyy-MM-dd HH:mm'), km: Number(a.b.KmSalida) || '', gas: String(a.b.GasSalida), nivel: niv };
+    return { vehiculo: String(a.b.Vehiculo), salida: _fechaTxt(a.b.Salida, 'yyyy-MM-dd HH:mm'), km: Number(a.b.KmSalida) || '', gas: String(a.b.GasSalida), nivel: 'COMPLETA',
+             para: String(a.b.Motivo || ''), destino: String(a.b.Destino || '') };
   } catch (e) { return null; }
 }
 /** Para la lista de vehículos del inicio: qué revisión le toca al tomarlo y, si es "confirmar", cómo lo dejaron. */
 function _revisionAlTomar(u, v, t) {
-  var ultimo = _ultimoUso(t, v.Vehiculo), nivel = _nivelPara(u, v, 'SALIDA', ultimo), out = { revision: nivel };
-  if (nivel !== 'NINGUNA' && ultimo && String(ultimo.Estado) !== 'EN USO') {
+  var ultimo = _ultimoUso(t, v.Vehiculo), out = { revision: 'NINGUNA', especial: _tipoVehiculo(v) !== 'NINGUNO' };
+  if (out.especial && ultimo && String(ultimo.Estado) !== 'EN USO') {
     var rev = _jsonLeer(ultimo.RevRegreso) || {};
     out.anterior = { gestor: String(ultimo.Gestor), cuando: _fechaTxt(ultimo.Regreso || ultimo.Salida, 'yyyy-MM-dd HH:mm'), km: Number(ultimo.KmRegreso) || '',
       gas: String(ultimo.GasRegreso || ''), fotos: rev.fotos || {}, falta: rev.falta || [], detalles: rev.detalles || [], obs: String(ultimo.Observaciones || ''),
@@ -232,6 +238,7 @@ function _admBitacora() {
       fotoSalida: String(b.FotoSalida || ''), fotoRegreso: String(b.FotoRegreso || ''), descuadre: descuadre, nota: String(b.Nota || ''),
       nivelSalida: String(b.NivelSalida || ''), nivelRegreso: String(b.NivelRegreso || ''), faltantes: String(b.Faltantes || ''), detalles: String(b.Detalles || ''),
       observaciones: String(b.Observaciones || ''), donde: String(b.DondeLaDejo || ''), llaves: String(b.Llaves || ''), fotos: fotos, alRecibir: alRecibir,
+      para: String(b.Motivo || ''), destino: String(b.Destino || ''), telefono: String(b.Telefono || ''), registroPor: String(b.RegistroPor || ''), recibioPor: String(b.RecibioPor || ''),
       // Lugar exacto (GPS del celular) al tomarla y al entregarla
       mapaSalida: b.LatSalida && b.LngSalida ? 'https://www.google.com/maps?q=' + b.LatSalida + ',' + b.LngSalida : '',
       mapaRegreso: b.LatRegreso && b.LngRegreso ? 'https://www.google.com/maps?q=' + b.LatRegreso + ',' + b.LngRegreso : '' };

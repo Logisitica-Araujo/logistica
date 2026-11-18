@@ -1,5 +1,12 @@
 # Registro de cambios · App Gestores 2
 
+## 0.5.4 · 18-nov-2026 · Vehículos como antes + "Salida especial" · la app no se cae si falta un archivo
+- **Si falta pegar un archivo** (como pasó con 13_CAMIONETA): la app sigue funcionando sin esa parte y avisa en Problemas qué archivo pegar (`APP-03`). El robot revisa cada vuelta que estén todos (`00_CONFIG` `_hay/_opc`, `03_API`, `06_GESTOR`, `07_ROBOT`, `08_ADMIN`).
+- **Elegir vehículo es como antes:** la lista de siempre (CHECK_AUTO / CHECK_MOTO) y sales. Se quitan los niveles por vehículo y las excepciones por persona.
+- **"🚐 Salida especial"** (Foráneo · Carga · Todo el día · Otro + destino): solo si el gestor lo toca. Pide la revisión completa (fotos, qué lleva, cómo está, tablero, km, gasolina, notas, día, hora y lugar) al salir y al entregar, con WhatsApp en los dos.
+- **Alguien sin app:** Administración → Vehículos → "Prestar vehículo a alguien sin app" (nombre, teléfono, para qué + revisión) y "Recibir de vuelta". Queda en la bitácora quién registró y quién lo recibió.
+- Bitácora: columnas nuevas Motivo, Destino, Telefono, RegistroPor, RecibioPor. App 2.10.0.
+
 ## 0.5.3 · 17-nov-2026 · Revisión de vehículo por niveles, todo documentado
 - **Qué revisión pide cada vehículo** (APP_Vehiculos → `Revision`, se cambia en Administración → Vehículos): COMPLETA (siempre) · CAMBIO (completa solo si cambia de conductor; la camioneta queda así) · BASICA · NINGUNA. Botón "Pedir completa la próxima vez" (`CompletaProxima`, una sola vez).
 - **Excepciones por persona** (APP_Usuarios → `RevisionVehiculo`): siempre completa · siempre básica · nunca.

@@ -446,3 +446,11 @@ body.adm{--azul:#111A2E;--azul-osc:#0A1020;--azul-suave:#E6E9F0;--azul-claro:#AE
 .gas.dos button{font-size:13.5px}.gas button.on.mal{background:var(--rojo);color:#fff}
 .anterior .lin{display:block;font-size:13px;color:var(--texto2);padding:2px 0}
 .fotos-ant{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}.fotos-ant a{font-size:12.5px;font-weight:700;background:var(--azul-suave);color:var(--azul);border-radius:8px;padding:5px 8px;text-decoration:none}
+
+/* Salida especial (0.5.4) */
+.esp-btn{width:100%;background:#FFF7E6;border:2px solid #E5A100;border-radius:14px;padding:12px;display:flex;gap:10px;align-items:center;text-align:left;font:inherit;color:#7A4B00}
+.esp-btn .ic{font-size:24px}.esp-btn b{display:block;font-size:15px}.esp-btn small{font-size:12.5px}
+.para{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.para button{border:1.5px solid var(--borde);background:#fff;border-radius:12px;padding:11px 10px;font:inherit;font-size:14px;font-weight:700;text-align:left;color:var(--texto)}
+.para button.on{border-color:#E5A100;background:#FFF7E6;color:#7A4B00}
+.esp-btn.azul{background:var(--azul-suave);border-color:var(--azul);color:var(--azul)}
