@@ -37,6 +37,7 @@ function robot(forzar) {
     // tiene que estar "RECOLECTADO" en el sistema cuando llegue su entrega.
     paso('recolecciones', function () { return _robotRecolecciones(); });
     paso('ligarLibres', function () { return _robotLigarLibres(ruta); });
+    paso('llevaInfo', function () { return _robotLlevaInfo(); });
     paso('cierres', function () { return _robotCierres(ruta); });
     paso('correcciones', function () { return _robotCorrecciones(); });
     paso('limpieza', function () { return _robotLimpieza(); });
@@ -114,11 +115,18 @@ function _robotCierres(ruta) {
   (ruta || []).forEach(function (p) { filaPorId[_norm(p.id)] = p.fila; gestorPorId[_norm(p.id)] = p.gestor; });
   var n = 0;
   pend.forEach(function (c) {
-    var res;
+    var res, sos = null;
     try {
-      if (String(c.Tipo) === 'TRASPASO') res = _robotCierreTraspaso(c);
+      if (String(c.Clase) === 'SOS') {   // "Entrega a domicilio" SOS: primero se asigna a su nombre en Operaciones
+        sos = _sosPreparar(c, filaPorId, gestorPorId);
+        if (sos.esperar) { t.sh.getRange(c._fila, t.col('UltimoError')).setValue(sos.mensaje); return; }
+        if (!sos.ok) res = sos;
+        else if (sos.fila && Number(c.Fila) !== Number(sos.fila)) t.sh.getRange(c._fila, t.col('Fila')).setValue(sos.fila);
+      }
+      if (res) { /* ya falló al asignar */ }
+      else if (String(c.Tipo) === 'TRASPASO') res = _robotCierreTraspaso(c);
       else res = _ops('cierreGestor', {
-        fila: Number(c.Fila) || filaPorId[_norm(c.ID)] || 0, id: String(c.ID), gestor: _gestorParaOps(gestorPorId[_norm(c.ID)], c.NumeroGestor), vehiculo: String(c.Vehiculo),
+        fila: (sos && sos.fila) || Number(c.Fila) || filaPorId[_norm(c.ID)] || 0, id: String(c.ID), gestor: sos ? sos.gestor : _gestorParaOps(gestorPorId[_norm(c.ID)], c.NumeroGestor), vehiculo: String(c.Vehiculo),
         resultado: String(c.Resultado), motivo: String(c.Motivo), comentario: String(c.Comentario), recibio: String(c.Recibio),
         lat: c.Lat, lng: c.Lng, urlFoto: String(c.URLFoto), urlFirma: String(c.URLFirma), cliente: String(c.Cliente), direccion: String(c.Direccion),
         fecha: _horaReal(c)
@@ -235,6 +243,49 @@ function _robotLimpieza() {
     }
   });
   return n;
+}
+
+/* ---------- 2a. Datos de los pedidos que llevan (para "Entrega a domicilio" SOS) ----------
+   Cliente, dirección, teléfono y a quién está asignado: de Operaciones; si aún no está capturado,
+   de LOGISTICA BOTICAN 2026 o de Pedidos Logistica-Fadermex 2026. Queda en memoria 15 min. */
+function _clavePed(v) { return String(v || '').trim().replace(/^#/, '').replace(/\s+/g, '').toUpperCase(); }
+function _llevaInfo() { return (_hay('_cacheGrandeLeer') && _cacheGrandeLeer('llevaInfo')) || {}; }
+function _robotLlevaInfo() {
+  var codigos = {};
+  _tabla(APPG.H.RECOLECCIONES).filas.forEach(function (r) { if (String(r.Tipo) === 'PEDIDO' && String(r.Estado) === 'EN RUTA') codigos[_tnClave(r.Codigo)] = String(r.Codigo); });
+  var ks = Object.keys(codigos); if (!ks.length) return 0;
+  var ops = {};
+  try {
+    var r = _ops('buscarPedidos', { ids: ks.map(function (k) { return codigos[k]; }) });
+    if (r.ok) ops = r.pedidos || {};
+  } catch (e) { }
+  var bot = (_hay('_btDatos') ? (_btDatos() || {}).dirs : null) || {}, fad = (_hay('_cacheGrandeLeer') ? _cacheGrandeLeer('fadDirs') : null) || {};
+  var out = {};
+  ks.forEach(function (k) {
+    var o = ops[_clavePed(codigos[k])];
+    if (o) { out[k] = { fuente: 'OPS', fila: o.fila, cliente: String(o.nombre || ''), direccion: String(o.direccion || ''), telefono: String(o.telefono || ''), gestor: /^no aplica$/i.test(String(o.gestor || '').trim()) ? '' : String(o.gestor || ''), abierto: !!o.abierto, estatus: String(o.estatus || '') }; return; }
+    var b = bot[k] || fad[k];
+    out[k] = b ? { fuente: bot[k] ? 'BOTICAN' : 'FADERMEX', cliente: b[0], direccion: b[1], telefono: '', gestor: '' } : { fuente: '' };
+  });
+  if (_hay('_cacheGrandeGuardar')) _cacheGrandeGuardar('llevaInfo', out, 900);
+  return ks.length;
+}
+/** Antes de pasar una entrega SOS: la asigna a su nombre en Operaciones (Logística Interna + vehículo). */
+function _sosPreparar(c, filaPorId, gestorPorId) {
+  var u = _usuarioPorNumero(c.NumeroGestor) || {}, mio = _nombreEnOps(c.NumeroGestor), k = _norm(c.ID);
+  if (gestorPorId[k] && _esMiNombreOps(gestorPorId[k], u)) return { ok: true, fila: filaPorId[k], gestor: String(gestorPorId[k]) };
+  var b = _ops('buscarPedidos', { ids: [String(c.ID)] });
+  if (!b.ok) return { ok: false, codigo: b.codigo || 'API-07', mensaje: /desconocida/i.test(String(b.mensaje)) ? 'OPERACIONES todavía no tiene la entrega SOS: pega su 04_Backend_App nuevo y haz su versión nueva.' : (b.mensaje || b.error), reintentar: true };
+  var p = (b.pedidos || {})[_clavePed(c.ID)];
+  if (!p) {
+    var cache = CacheService.getScriptCache(), ck = 'sos_' + _clavePed(c.ID);
+    if (!cache.get(ck)) { cache.put(ck, '1', 6 * 3600); _problema('SOS-02', String(c.Gestor), 'Captura ' + c.ID + ' en Operaciones: ' + c.Gestor + ' lo entregó a domicilio (SOS) y todavía no existe. En cuanto lo captures, el robot lo pone a su nombre y lo marca entregado. Cliente: ' + (c.Cliente || '—') + ' · ' + (c.Direccion || '')); }
+    return { esperar: true, mensaje: 'Esperando que capturen ' + c.ID + ' en Operaciones (entrega SOS)' };
+  }
+  var a = _ops('autoasignar', { fila: p.fila, id: p.id, gestor: mio, vehiculo: String(c.Vehiculo || ''), quien: String(c.Gestor), forzar: true });
+  if (!a.ok) return { ok: false, codigo: a.error === 'LISTA' ? 'ROB-02' : a.error === 'CERRADO' ? 'SOS-03' : (a.codigo || 'API-07'), mensaje: a.mensaje || a.error, reintentar: a.error !== 'CERRADO' && a.error !== 'LISTA' };
+  if (a.antes && !/^no aplica$/i.test(a.antes) && _claveNombre(a.antes) !== _claveNombre(mio)) _problema('SOS-01', String(c.Gestor), c.ID + ' estaba asignado a ' + a.antes + ' en Operaciones y lo entregó ' + c.Gestor + ' (SOS). Quedó a nombre de ' + c.Gestor + '.');
+  return { ok: true, fila: p.fila, gestor: mio };
 }
 
 /* ---------- 2b. "Entrega sin asignar" que en realidad era un pedido suyo ----------

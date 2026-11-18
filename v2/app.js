@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.10.0';
+var VERSION_APP = '2.11.0';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -699,15 +699,34 @@ function vistaLleva() {
     var tras = l.tipo === 'TRASPASO';
     html += '<div class="card"><div class="linea"><span class="id">' + esc(l.codigo) + '</span><span class="tag ' + (tras ? 'a' : 'n') + '">' + (tras ? 'TRASPASO' : l.tipo === 'PEDIDO' ? 'PEDIDO' : 'OTRO') + '</span>' +
       '<span class="espacio"></span><span class="hora">' + esc(String(l.fecha).slice(5)) + '</span></div>' +
-      '<div><div class="t2">Va a</div><div class="t1">' + esc(l.destino) + '</div>' + (l.destinoDireccion ? '<div class="t2">' + esc(l.destinoDireccion) + '</div>' : '') +
+      (l.tipo === 'PEDIDO' && l.info ? bloquePedidoLleva(l.info) : '') +
+      '<div>' + (l.destino ? '<div class="t2">Va a</div><div class="t1">' + esc(l.destino) + '</div>' : '') + (l.destinoDireccion ? '<div class="t2">' + esc(l.destinoDireccion) + '</div>' : '') +
       '<div class="t2">' + esc(l.contenido) + (l.origen ? ' · viene de ' + esc(l.origen) : '') + '</div>' +
       (l.estado ? '<div class="t2" style="color:var(--azul);font-weight:600">' + esc(l.estado) + '</div>' : '') + '</div>' +
-      '<div class="botones"><button class="b verde" onclick="abrirCierre(\'' + (tras ? 'TRASPASO' : 'RECOLECCION') + '\',' + i + ',\'ENTREGADO\')">Entregar</button>' +
+      '<div class="botones"><button class="b verde" onclick="abrirCierre(\'' + (tras ? 'TRASPASO' : 'RECOLECCION') + '\',' + i + ',\'ENTREGADO\')">' + (l.tipo === 'PEDIDO' ? 'Lo dejé en sucursal' : 'Entregar') + '</button>' +
       '<button class="b" onclick="abrirCierre(\'' + (tras ? 'TRASPASO' : 'RECOLECCION') + '\',' + i + ',\'NO_ENTREGADO\')">No entregué</button>' +
       (l.destinoMaps || l.destinoDireccion ? '<a class="b" href="' + esc(l.destinoMaps || ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(l.destinoDireccion))) + '" target="_blank" rel="noopener">' + IC.mapa + 'Mapa</a>' : '<span></span>') + '</div>' +
-      '<button class="b wa-b" onclick="waLleva(' + i + ')">Enviar por WhatsApp</button></div>';
+      '<button class="b wa-b" onclick="waLleva(' + i + ')">Enviar por WhatsApp</button>' +
+      (l.tipo === 'PEDIDO' && !(l.info && l.info.mio) ? '<button class="sos-btn" onclick="abrirSOS(' + i + ')"><span class="ic">🆘</span><span><b>Entrega a domicilio</b><small>Lo entrego yo: se registra en Operaciones a mi nombre</small></span></button>' : '') + '</div>';
   });
   pintar(html + '</div>' + nav(''));
+}
+/* Datos del pedido que lleva (de Operaciones, o de la bitácora BOTICAN / FADERMEX si aún no está capturado). */
+function bloquePedidoLleva(f) {
+  if (!f.fuente) return '<div class="t2" style="color:var(--gris)">Sin datos del cliente todavía (no está en Operaciones ni en las bitácoras).</div>';
+  return '<div class="pedido-lleva"><div class="t1">' + esc(f.cliente || 'Cliente') + '</div>' + (f.direccion ? '<div class="t2">' + esc(f.direccion) + '</div>' : '') +
+    '<div class="t2">' + (f.mio ? '<b style="color:var(--verde)">Ya te lo asignaron: está en "Pedidos a domicilio"</b>' : f.gestor ? 'Asignado a <b>' + esc(f.gestor) + '</b> en Operaciones' :
+      f.fuente === 'OPS' ? '<b style="color:var(--rojo)">Nadie te lo asignó en Operaciones</b>' : '<b style="color:var(--rojo)">Aún no está capturado en Operaciones</b>') + '</div></div>';
+}
+/* "Entrega a domicilio" SOS: entregar un pedido que recolectó y nadie le asignó. */
+function abrirSOS(i) {
+  var x = S.datos.lleva[i]; if (!x) return;
+  var f = x.info || {};
+  if (f.gestor && !f.mio && !window.confirm(x.codigo + ' está asignado a ' + f.gestor + ' en Operaciones.\n¿Lo entregas tú? Quedará a tu nombre y se avisa a Administración.')) return;
+  S.volverA = 'lleva'; S.volverParada = null;
+  S.cierre = { tipo: 'PEDIDO', sos: true, resultado: 'ENTREGADO', id: x.codigo, fila: f.fila || '', cliente: f.cliente || '', direccion: f.direccion || '', telefono: f.telefono || '',
+               dirEscrita: !f.direccion, exigeFirma: false, foto: null, firma: null, recibio: '', motivo: '', comentario: '', sucursal: '', clase: '', esperado: 0, areaImss: '', matricula: '', monto: '' };
+  pintarCierre();
 }
 
 /* ==================== Cierre (entregar / no entregué / paquetería) ==================== */
@@ -737,6 +756,15 @@ function pintarCierre() {
   var html = '<div class="barra"><button class="volver" onclick="cancelarCierre()" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>' + titulo + '</b>' +
     '<small><span class="mono" style="color:var(--azul);font-weight:600">' + esc(c.id) + '</span> · ' + esc(c.cliente) + '</small></div></div><div class="cuerpo">';
   if (c.comoNumero) html += '<div class="aviso warn">Lo estás cerrando a nombre de <b>' + esc(c.comoNombre) + '</b>. Queda anotado que fuiste tú.</div>';
+  if (c.sos) {
+    var tel = String(c.telefono || '').replace(/\D/g, '');
+    html += '<div class="aviso warn">🆘 <b>Entrega a domicilio</b> · no estaba asignado. Al finalizar queda en Operaciones como <b>Logística Interna · ' + esc(S.datos.gestor.nombre) + (S.datos.vehiculo ? ' · ' + esc(S.datos.vehiculo) : '') + '</b> y entregado.</div>' +
+      '<div class="bloque"><div class="cab-b"><b>¿A dónde va?</b></div>' + (c.cliente ? '<div class="t1">' + esc(c.cliente) + '</div>' : '') +
+      (c.dirEscrita ? '<label class="et" for="inDirSOS">Dirección <span class="req">obligatoria</span></label><textarea class="campo" id="inDirSOS" rows="2" placeholder="Escríbela (ej. la de la etiqueta)" oninput="S.cierre.direccion=this.value;guardarBorrador()">' + esc(c.direccion) + '</textarea>'
+                    : '<div class="t2">' + esc(c.direccion) + '</div>') +
+      '<div class="botones">' + (c.direccion ? '<a class="b" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.direccion) + '" target="_blank" rel="noopener">' + IC.mapa + 'Abrir en Maps</a>' : '<span></span>') +
+      (tel ? '<a class="b" href="tel:' + tel + '">Llamar</a><a class="b" href="https://wa.me/52' + tel.slice(-10) + '" target="_blank" rel="noopener">WhatsApp</a>' : '<span></span><span></span>') + '</div></div>';
+  }
   if (fac) {
     html += fac.html + '<p class="nota">Se guarda en tu celular a cada paso.</p></div><div class="pie"><button class="btn verde" onclick="enviarCierre()">' + fac.boton + '</button></div>';
     pintar(html); guardarBorrador(); return;
@@ -807,6 +835,7 @@ function enviarCierre() {
   if (c.tipo === 'PEDIDO' && !entrega && c.resultado !== 'PAQUETERIA' && !c.motivo) return falla(errCod('CAP-05', 'Elige el motivo.'));
   if (reglaFoto(c) && !c.foto) return falla(errCod('CAP-04', 'Falta la foto.'));
   if (c.tipo === 'PEDIDO' && entrega && c.clase !== 'IMSS' && S.datos.reglas.exigirQuienRecibio && !String(c.recibio).trim()) return falla(errCod('CAP-08', 'Anota quién recibió.'));
+  if (c.sos && !String(c.direccion || '').trim()) return falla(errCod('CAP-01', 'Escribe la dirección donde lo entregaste.'));
   var fac = esFac() && !c.comoNumero;
   if (fac) { var ef = revisarCierreFac(c); if (ef) return falla(ef); }
   cargando('Guardando…');
@@ -815,6 +844,7 @@ function enviarCierre() {
                   recibio: c.recibio, foto: c.foto, firma: c.firma, sucursal: c.sucursal || '', lat: g.lat, lng: g.lng, horaCelular: horaTxt() };
     if (fac) { datos.clase = c.clase || ''; datos.areaImss = c.areaImss || ''; datos.matricula = c.matricula || ''; datos.monto = c.monto || ''; datos.esperado = c.esperado || 0; }
     if (c.comoNumero) datos.comoNumero = c.comoNumero;
+    if (c.sos) { datos.sos = true; datos.cliente = c.cliente; datos.direccion = c.direccion; }
     var etiqueta = c.id + ' · ' + ({ ENTREGADO: 'Entregado', RETORNO: 'Retorno', CANCELADO: 'Cancelado', PAQUETERIA: 'Paquetería', NO_ENTREGADO: 'No entregado' })[c.resultado];
     if (c.comoNumero) {
       return srv('cerrar', datos).then(function () { quitarCargando(); sonido(entrega ? 'entregado' : 'noEntregado'); S.cierre = null; DB.del('borrador'); toast(etiqueta + ' · a nombre de ' + c.comoNombre, 'ok'); admGestor(c.comoNumero); });

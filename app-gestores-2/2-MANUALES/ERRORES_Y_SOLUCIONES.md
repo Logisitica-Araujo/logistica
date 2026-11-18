@@ -430,6 +430,14 @@ Errores que cometen personas. No son fallas del sistema, pero el sistema ayuda a
 - **Qué pasó:** alguien la tomó (con su foto del tablero) mientras en la bitácora seguía "EN USO" a nombre de otro. Ese uso queda "SIN ENTREGAR" (en rojo en Administración → Vehículos → Bitácora).
 - **Qué hago:** pedirle al anterior que la próxima vez toque "Entregar" en su inicio. El km de salida del nuevo sirve para saber cuánto recorrió.
 
+### SOS-01 · Entrega a domicilio SOS
+- **Qué pasó:** un gestor entregó a domicilio un pedido que recolectó y nadie le había asignado. El robot lo puso a su nombre en Operaciones (Logística Interna) y lo marcó entregado. Si dice "estaba asignado a …", lo entregó otro gestor distinto al asignado.
+- **Qué hago:** solo revisarlo. Si no debía ser así, corrígelo en Administración → Buscar.
+
+### SOS-02 · "Captura #… en Operaciones"
+- **Qué pasó:** se entregó con SOS un pedido que todavía no está capturado. La entrega (foto, quién recibió, dirección) ya está guardada.
+- **Qué hago:** capturarlo en Operaciones. En el siguiente minuto el robot lo pone a nombre del gestor y lo marca entregado.
+
 ### VEH-03 · Al recibir el vehículo encontraron algo
 - **Qué pasó:** quien lo recibió marcó un detalle, algo que falta o "Encontré algo nuevo". En la bitácora sale en rojo con la foto y quién lo usó antes.
 - **Qué hago:** hablar con quien lo usó antes; las fotos de su entrega están en la misma bitácora.

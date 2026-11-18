@@ -185,5 +185,47 @@ titulo('Nombres del gestor escritos distinto (12-nov)');
   ok(ini3.ok && ini3.pedidos.length === base, 'Botón ↻ (forzar): trae lo de Operaciones al momento');
 }
 
+titulo('Entrega a domicilio SOS (recolectó un pedido que nadie le asignó)');
+{
+  const f35 = o => { const f = new Array(35).fill(''); Object.keys(o).forEach(k => { f[Number(k) - 1] = o[k]; }); return f; };
+  hOps.datos.push(f35({ 1: '#16300', 2: 'BOTICAN', 4: 'Gabriela León', 5: 'Lago Caneguín 191, Argentina Antigua', 8: 'Paquetería Externa', 9: 'NO APLICA', 16: 'EN ESPERA', 19: false, 21: false, 23: false }));
+  OPS.correr('opsw_cacheBorrar_');
+  ok(APP.post({ accion: 'recolectar', token: tJL, codigos: ['#16300'] }).ok, 'Jose Luis recolecta #16300 (BOTICAN) escaneándolo');
+  robot();
+  let ll = APP.post({ accion: 'inicio', token: tJL }).lleva.find(l => l.codigo === '#16300');
+  ok(ll && ll.info && ll.info.fuente === 'OPS' && /Lago Caneguín/.test(ll.info.direccion) && ll.info.cliente === 'Gabriela León' && !ll.info.gestor, '"Lo que llevo": sale el cliente, la dirección y que nadie se lo asignó');
+  const sinDir = APP.post({ accion: 'cerrar', token: tJL, idLocal: 'sos00016300', tipo: 'PEDIDO', id: '#16300', resultado: 'ENTREGADO', sos: true, foto: FOTO, recibio: 'Gabriela' });
+  ok(!sinDir.ok && /dirección/.test(sinDir.mensaje), 'SOS sin dirección: no deja');
+  ok(APP.post({ accion: 'cerrar', token: tJL, idLocal: 'sos00016300', tipo: 'PEDIDO', id: '#16300', resultado: 'ENTREGADO', sos: true, foto: FOTO, recibio: 'Gabriela', cliente: ll.info.cliente, direccion: ll.info.direccion, fila: ll.info.fila }).ok, '🆘 Entrega a domicilio: foto y quién recibió');
+  ok(!APP.post({ accion: 'inicio', token: tJL }).lleva.some(l => l.codigo === '#16300'), 'Sale de "Lo que llevo"');
+  ok(filasDe('APP_Problemas').some(x => x.Codigo === 'SOS-01' && /#16300/.test(x.Detalle)), 'Aviso a Administración: "Entrega a domicilio SOS" (SOS-01)');
+  robot(); formulaEstatus();
+  const f = opsFila('#16300');
+  ok(f[7] === 'Logística Interna' && f[8] === 'Jose Luis' && f[22] === true, 'Operaciones: Logística Interna · Jose Luis · entregado (W ✓)');
+  ok(filasDe('APP_Cierres').find(c => c.IdCierre === 'sos00016300').Estado === 'ENVIADO', 'El cierre quedó ENVIADO');
+  // Aún no capturado
+  const r2 = APP.post({ accion: 'recolectar', token: tJL, codigos: [{ codigo: '#16301', forzar: true }] });
+  ok(r2.ok, 'Recolecta #16301, que todavía no está en ningún lado');
+  robot();
+  ll = APP.post({ accion: 'inicio', token: tJL }).lleva.find(l => l.codigo === '#16301');
+  ok(ll && ll.info && !ll.info.fuente, 'Sin datos: la app le pedirá escribir la dirección');
+  ok(APP.post({ accion: 'cerrar', token: tJL, idLocal: 'sos00016301', tipo: 'PEDIDO', id: '#16301', resultado: 'ENTREGADO', sos: true, foto: FOTO, recibio: 'Pedro', direccion: 'Av. Siempre Viva 742 (la de la etiqueta)' }).ok, 'SOS con la dirección escrita a mano');
+  robot();
+  let c1 = filasDe('APP_Cierres').find(c => c.IdCierre === 'sos00016301');
+  ok(c1.Estado === 'PENDIENTE' && /Esperando que capturen/.test(c1.UltimoError) && filasDe('APP_Problemas').some(x => x.Codigo === 'SOS-02' && /Captura #16301/.test(x.Detalle)), 'Espera y avisa "Captura #16301 en Operaciones" (SOS-02)');
+  hOps.datos.push(f35({ 1: '#16301', 2: 'BOTICAN', 4: 'Pedro', 5: 'Av. Siempre Viva 742', 8: 'Paquetería Externa', 9: '', 16: 'EN ESPERA', 19: false, 21: false, 23: false }));
+  OPS.correr('opsw_cacheBorrar_'); robot(); formulaEstatus();
+  ok(opsFila('#16301')[8] === 'Jose Luis' && opsFila('#16301')[22] === true && filasDe('APP_Cierres').find(c => c.IdCierre === 'sos00016301').Estado === 'ENVIADO', 'En cuanto lo capturan, el robot lo pone a su nombre y lo marca entregado');
+  // Asignado a otro
+  hOps.datos.push(f35({ 1: '#16302', 2: 'BOTICAN', 4: 'Lucía', 5: 'Calle 9', 8: 'Logística Interna', 9: 'Antonio', 16: 'ENVIADO POR LOGÍSTICA INTERNA', 19: false, 21: false, 23: false }));
+  OPS.correr('opsw_cacheBorrar_');
+  APP.post({ accion: 'recolectar', token: tJL, codigos: [{ codigo: '#16302', forzar: true }] }); robot();
+  ll = APP.post({ accion: 'inicio', token: tJL }).lleva.find(l => l.codigo === '#16302');
+  ok(ll && ll.info.gestor === 'Antonio' && !ll.info.mio, 'Si está asignado a otro: "Asignado a Antonio en Operaciones"');
+  APP.post({ accion: 'cerrar', token: tJL, idLocal: 'sos00016302', tipo: 'PEDIDO', id: '#16302', resultado: 'ENTREGADO', sos: true, foto: FOTO, recibio: 'Lucía', direccion: 'Calle 9' });
+  robot(); formulaEstatus();
+  ok(opsFila('#16302')[8] === 'Jose Luis' && filasDe('APP_Problemas').some(x => x.Codigo === 'SOS-01' && /estaba asignado a Antonio/.test(x.Detalle)), 'Lo entrega él (confirmó): queda a su nombre y avisa que estaba asignado a Antonio');
+}
+
 console.log('\n' + (total - fallas) + '/' + total + ' pruebas correctas');
 process.exit(fallas ? 1 : 0);

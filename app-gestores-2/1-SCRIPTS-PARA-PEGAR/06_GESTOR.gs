@@ -96,14 +96,16 @@ function apiInicio(p) {
   });
   var porId = {};
   sucursales.forEach(function (x) { porId[x.id] = x; });
-  var lleva = [];
+  var lleva = [], infoPed = _llevaInfo();
   _tabla(APPG.H.RECOLECCIONES).filas.forEach(function (r) {
     if (String(r.NumeroGestor) !== String(u.Numero)) return;
     if (_fechaTxt(r.FechaHora) === hoy) hoyCuenta.recolectados++;
     if (String(r.Estado) !== 'EN RUTA') return;
     var suc = null;
     if (r.DestinoPrefijo) { try { suc = porId[_tnSucursalDe(r.DestinoPrefijo)] || null; } catch (e) { } }
-    lleva.push({ codigo: String(r.Codigo), tipo: String(r.Tipo), origen: String(r.Origen), destino: String(r.Destino),
+    var inf = String(r.Tipo) === 'PEDIDO' ? infoPed[_tnClave(r.Codigo)] || { fuente: '' } : null;
+    if (inf && inf.gestor) inf.mio = _esMiNombreOps(inf.gestor, u);
+    lleva.push({ codigo: String(r.Codigo), tipo: String(r.Tipo), origen: String(r.Origen), destino: String(r.Destino), info: inf,
                  contenido: String(r.Contenido), fecha: _fechaTxt(r.FechaHora, 'yyyy-MM-dd HH:mm'),
                  estado: _estadoAmigable(r.EstadoFuente, r.Enviado),
                  destinoSucursal: suc ? suc.nombre : '', destinoDireccion: suc ? suc.direccion : '', destinoMaps: suc ? suc.maps : '',
@@ -272,6 +274,14 @@ function _cerrarUno(u, cfg, p, urlFotoYa) {
     if (mPed) _problema('DIS-03', u.Nombre, 'Registró como "entrega sin asignar" algo que parece el pedido ' + mPed[1].replace(/\s+/g, ' ') +
       '. Revisa en Operaciones a quién está asignado (columna I) y que su nombre sea igual al de APP_Usuarios. Entrega: ' + id + ' · ' + txtLibre.slice(0, 160));
   }
+  /* "Entrega a domicilio" SOS: un pedido que recolectó y nadie le asignó. El robot lo asigna a su nombre en
+     Operaciones (Logística Interna) y lo marca entregado; si aún no está capturado, espera y avisa "Captura …". */
+  if (p.sos) {
+    if (tipo !== 'PEDIDO' || res !== 'ENTREGADO') throw _falla('APP-01', 'La entrega SOS es solo para entregar pedidos.');
+    if (!String(p.direccion || '').trim()) throw _falla('CAP-01', 'Escribe la dirección donde lo entregaste.');
+    p.clase = 'SOS';
+    p.comentario = 'Entrega a domicilio SOS (no estaba asignado)' + (p.comentario ? ' · ' + p.comentario : '');
+  }
   if (['PEDIDO', 'TRASPASO', 'RECOLECCION', 'LIBRE'].indexOf(tipo) < 0) throw _falla('APP-01', 'Tipo de cierre desconocido.');
   if (APPG_RESULTADOS.indexOf(res) < 0) throw _falla('APP-01', 'Resultado desconocido.');
   if (!id) throw _falla('APP-01', 'Falta el número de pedido o folio.');
@@ -317,13 +327,14 @@ function _cerrarUno(u, cfg, p, urlFotoYa) {
     Vehiculo: _fechaTxt(u.FechaVehiculo) === _hoyTxt() ? String(u.VehiculoHoy || '') : '', Tipo: tipo, ID: id,
     Fila: ped ? Number(ped.Fila) : (Number(p.fila) || ''), Resultado: res, Motivo: String(p.motivo || ''), Comentario: comentario.slice(0, 1000),
     Recibio: recibio.slice(0, 120), Lat: p.lat || '', Lng: p.lng || '', URLFoto: urlFoto, URLFirma: urlFirma,
-    Estado: estado, Intentos: 0, UltimoError: '', EnviadoEn: '', Cliente: ped ? String(ped.Cliente) : tipo === 'LIBRE' ? (String(p.que) + (p.detalle ? ' · ' + String(p.detalle) : '')).slice(0, 200) : '',
-    Direccion: ped ? String(ped.Direccion) : tipo === 'LIBRE' ? String(p.donde).slice(0, 200) : '',
+    Estado: estado, Intentos: 0, UltimoError: '', EnviadoEn: '', Cliente: ped ? String(ped.Cliente) : tipo === 'LIBRE' ? (String(p.que) + (p.detalle ? ' · ' + String(p.detalle) : '')).slice(0, 200) : p.sos ? String(p.cliente || '').slice(0, 200) : '',
+    Direccion: ped ? String(ped.Direccion) : tipo === 'LIBRE' ? String(p.donde).slice(0, 200) : p.sos ? String(p.direccion).slice(0, 250) : '',
     DondeEntrego: donde, Monto: monto === '' ? '' : monto, Clase: clase, Corregido: ''
   });
 
+  if (p.sos) _problema('SOS-01', u.Nombre, 'Entrega a domicilio SOS: ' + id + (p.cliente ? ' · ' + p.cliente : '') + ' · ' + String(p.direccion).slice(0, 120) + '. No estaba asignado; el robot lo pone a su nombre en Operaciones y lo marca entregado. Revísalo.');
   /* Lo que lleva (traspaso o recolección) sale de su lista al entregar */
-  if (tipo !== 'PEDIDO' && (res === 'ENTREGADO' || res === 'PAQUETERIA')) {
+  if ((tipo !== 'PEDIDO' || p.sos) && (res === 'ENTREGADO' || res === 'PAQUETERIA')) {
     var tr = _tabla(APPG.H.RECOLECCIONES);
     tr.filas.forEach(function (r) {
       if (String(r.NumeroGestor) === String(u.Numero) && _tnClave(r.Codigo) === _tnClave(id) && String(r.Estado) === 'EN RUTA') {

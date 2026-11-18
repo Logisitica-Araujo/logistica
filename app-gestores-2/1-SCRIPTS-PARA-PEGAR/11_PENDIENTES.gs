@@ -23,7 +23,7 @@
    También los de Operaciones con ESTATUS "PENDIENTE PARA RECOLECTAR" (si OPERACIONES contesta). */
 var APPG_FAD = { FILA: 3, ULTIMAS: 400 };
 function _robotPendFad() {
-  var lista = [], vistos = {}, err = '';
+  var lista = [], vistos = {}, err = '', dirsFad = {};
   var id = String(_config().ID_FADERMEX || '').trim();
   if (id) {
     var sh = SpreadsheetApp.openById(_idDrive(id)).getSheetByName('Envios');
@@ -37,6 +37,7 @@ function _robotPendFad() {
     var txt = function (v) { return Object.prototype.toString.call(v) === '[object Date]' ? Utilities.formatDate(v, APPG.ZONA, 'EEE d MMM, HH:mm') : String(v || '').trim(); };
     (n > 0 ? sh.getRange(desde, 1, n, 12).getValues() : []).forEach(function (r) {
       var codigo = String(r[0] || '').trim(), listo = txt(r[7]);
+      if (codigo) dirsFad[_tnClave(codigo)] = [String(r[3] || '').slice(0, 80), String(r[4] || '').slice(0, 250), String(r[5] || '')];
       if (!codigo || !listo || txt(r[9]) || txt(r[11])) return;
       if (/entregad|en ruta|cancel|retorn|devuel/i.test(_norm(r[2]))) return;
       vistos[_tnClave(codigo)] = true;
@@ -48,6 +49,7 @@ function _robotPendFad() {
     if (r.ok) r.pedidos.forEach(function (p) { if (!vistos[_tnClave(p.id)]) lista.push(p); });
   } catch (e) { err = e.message; }
   CacheService.getScriptCache().put('pendFad', JSON.stringify(lista.slice(0, 200)), 600);
+  if (_hay('_cacheGrandeGuardar')) _cacheGrandeGuardar('fadDirs', dirsFad, 1800);
   return lista.length + (err ? ' (Operaciones no contestó)' : '');
 }
 function _pendFad() {

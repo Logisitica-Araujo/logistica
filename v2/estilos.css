@@ -454,3 +454,8 @@ body.adm{--azul:#111A2E;--azul-osc:#0A1020;--azul-suave:#E6E9F0;--azul-claro:#AE
 .para button{border:1.5px solid var(--borde);background:#fff;border-radius:12px;padding:11px 10px;font:inherit;font-size:14px;font-weight:700;text-align:left;color:var(--texto)}
 .para button.on{border-color:#E5A100;background:#FFF7E6;color:#7A4B00}
 .esp-btn.azul{background:var(--azul-suave);border-color:var(--azul);color:var(--azul)}
+
+/* Entrega a domicilio SOS (0.5.5) */
+.sos-btn{width:100%;margin-top:8px;background:#FDE7E5;border:2px solid var(--rojo);border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:center;text-align:left;font:inherit;color:#7A1A12}
+.sos-btn .ic{font-size:22px}.sos-btn b{display:block;font-size:14.5px}.sos-btn small{font-size:12.5px}
+.pedido-lleva{background:var(--azul-suave);border-radius:12px;padding:8px 10px;margin:6px 0}

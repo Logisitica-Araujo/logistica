@@ -1,5 +1,11 @@
 # Registro de cambios · App Gestores 2
 
+## 0.5.5 · 18-nov-2026 · "Entrega a domicilio" SOS
+- **"Lo que llevo"**: cada pedido recolectado muestra cliente, dirección y si está asignado (de Operaciones; si no está capturado, de LOGISTICA BOTICAN 2026 o de Pedidos Logistica-Fadermex 2026). El robot lo deja en memoria cada minuto (paso `llevaInfo`).
+- Dos opciones por pedido: **"Lo dejé en sucursal"** (lo normal: sale de su lista y tú asignas la ruta) y **🆘 "Entrega a domicilio"** (cuando no alcanzaste a asignarlo): misma pantalla de entrega + dirección con Maps, llamar y WhatsApp; si no hay dirección, la escribe.
+- El robot lo pone en Operaciones como **Logística Interna · gestor · vehículo** y lo marca entregado (acción nueva `autoasignar`). Si estaba asignado a otro, el gestor confirma y se avisa (SOS-01). Si aún no está capturado, espera y avisa "Captura #…" (SOS-02); en cuanto lo capturan, se completa solo.
+- OPERACIONES `04_Backend_App`: acciones nuevas `buscarPedidos` y `autoasignar`. App 2.11.0.
+
 ## 0.5.4 · 18-nov-2026 · Vehículos como antes + "Salida especial" · la app no se cae si falta un archivo
 - **Si falta pegar un archivo** (como pasó con 13_CAMIONETA): la app sigue funcionando sin esa parte y avisa en Problemas qué archivo pegar (`APP-03`). El robot revisa cada vuelta que estén todos (`00_CONFIG` `_hay/_opc`, `03_API`, `06_GESTOR`, `07_ROBOT`, `08_ADMIN`).
 - **Elegir vehículo es como antes:** la lista de siempre (CHECK_AUTO / CHECK_MOTO) y sales. Se quitan los niveles por vehículo y las excepciones por persona.
