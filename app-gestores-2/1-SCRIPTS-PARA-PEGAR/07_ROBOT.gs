@@ -31,17 +31,18 @@ function robot(forzar) {
   }
   try {
     var ruta = null;
+    try { _archivosFaltantes().forEach(_avisarFaltante); } catch (e) { }   // ¿falta pegar algún archivo? → APP_Problemas (APP-03)
     paso('pedidos', function () { ruta = _robotPedidos(); return ruta.length; });
     // Primero las recolecciones: si alguien recoge y entrega en el mismo minuto, el traspaso ya
     // tiene que estar "RECOLECTADO" en el sistema cuando llegue su entrega.
-    paso('recolecciones', _robotRecolecciones);
+    paso('recolecciones', function () { return _robotRecolecciones(); });
     paso('ligarLibres', function () { return _robotLigarLibres(ruta); });
     paso('cierres', function () { return _robotCierres(ruta); });
-    paso('correcciones', _robotCorrecciones);
-    paso('limpieza', _robotLimpieza);
-    paso('contraseñas', _procesarClavesNuevas);
-    if (String(cfg.ID_BOTICAN || '').trim()) paso('botican', _robotBotican);
-    paso('pendientesFad', _robotPendFad);
+    paso('correcciones', function () { return _robotCorrecciones(); });
+    paso('limpieza', function () { return _robotLimpieza(); });
+    paso('contraseñas', function () { return _procesarClavesNuevas(); });
+    if (String(cfg.ID_BOTICAN || '').trim()) paso('botican', function () { return _robotBotican(); });
+    paso('pendientesFad', function () { return _robotPendFad(); });
     paso('porRecoger', function () {
       var hay = _tabla(APPG.H.USUARIOS).filas.some(function (u) { return _si(u.Activo) && _perfil(u).area === 'FACTURACION'; });
       return hay ? _calcularPorRecoger().length : 0;

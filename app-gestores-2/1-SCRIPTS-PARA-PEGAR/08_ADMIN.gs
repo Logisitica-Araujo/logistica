@@ -23,13 +23,22 @@ function apiAdmin(p) {
   var s = _exigirSesion(p.token);
   var yo = _buscarUsuario(s.Usuario);
   if (!_esAdmin(yo)) throw _falla('APP-02', 'Esta sección es solo para administradores.');
-  var f = {
-    hoy: _admHoy, gestor: _admGestor, buscar: _admBuscar, corregir: _admCorregir, reasignar: _admReasignar,
-    problemas: _admProblemas, resolver: _admResolver, equipo: _admEquipo, equipoCambiar: _admEquipoCambiar, alta: _admAlta,
-    vehiculos: _admVehiculos, vehiculoCambiar: _admVehiculoCambiar, liberar: _admLiberar, bitacora: _admBitacora, revisionPersona: _admRevisionPersona,
-    ajustes: _admAjustes, ajuste: _admAjuste, motivo: _admMotivo, sucursal: _admSucursal,
-    avisos: _admAvisos, avisoNuevo: _admAvisoNuevo, avisoQuitar: _admAvisoQuitar
-  }[String(p.que || '')];
+  // Cada acción se busca al momento: si falta pegar un archivo, solo esa pantalla avisa (las demás funcionan).
+  var mapa = {
+    hoy: '_admHoy', gestor: '_admGestor', buscar: '_admBuscar', corregir: '_admCorregir', reasignar: '_admReasignar',
+    problemas: '_admProblemas', resolver: '_admResolver', equipo: '_admEquipo', equipoCambiar: '_admEquipoCambiar', alta: '_admAlta',
+    vehiculos: '_admVehiculos', vehiculoCambiar: '_admVehiculoCambiar', liberar: '_admLiberar', bitacora: '_admBitacora', revisionPersona: '_admRevisionPersona',
+    ajustes: '_admAjustes', ajuste: '_admAjuste', motivo: '_admMotivo', sucursal: '_admSucursal',
+    avisos: '_admAvisos', avisoNuevo: '_admAvisoNuevo', avisoQuitar: '_admAvisoQuitar'
+  };
+  var nombre = mapa[String(p.que || '')];
+  if (nombre && !_hay(nombre)) {
+    var arch = { _admBitacora: '13_CAMIONETA', _admAvisos: '12_AVISOS', _admAvisoNuevo: '12_AVISOS', _admAvisoQuitar: '12_AVISOS' }[nombre] || '08_ADMIN';
+    _avisarFaltante(arch);
+    throw _falla('APP-03', 'Esta pantalla no está disponible: falta pegar el archivo ' + arch + ' en Apps Script.');
+  }
+  var f = nombre ? (0, eval)(nombre) : null;
+
   if (!f) throw _falla('APP-01', 'Acción de administración desconocida: ' + p.que);
   return f(p, yo);
 }
@@ -396,7 +405,7 @@ function _admVehiculos() {
   return { personas: personas, vehiculos: _tabla(APPG.H.VEHICULOS).filas.filter(function (v) { return String(v.Vehiculo).trim(); }).map(function (v) {
     var quien = us.filter(function (u) { return _fechaTxt(u.FechaVehiculo) === hoy && _norm(u.VehiculoHoy) === _norm(v.Vehiculo); })[0];
     return { nombre: String(v.Vehiculo), tipo: _tipoVehiculo(v), placa: String(v.Placa || ''), activo: _si(v.Activo), enTaller: _si(v.EnTaller), pideTablero: _si(v.PideTablero),
-             revision: _nivelVehiculo(v), completaProxima: _si(v.CompletaProxima),
+             revision: _hay('_nivelVehiculo') ? _nivelVehiculo(v) : 'NINGUNA', completaProxima: _si(v.CompletaProxima),
              quien: quien ? String(quien.Nombre) : '', numero: quien ? String(quien.Numero) : '',
              desde: quien ? _fechaTxt(quien.FechaVehiculo, 'yyyy-MM-dd HH:mm').slice(11) : '', nota: quien ? String(quien.VehiculoNota || '') : '' };
   }) };
