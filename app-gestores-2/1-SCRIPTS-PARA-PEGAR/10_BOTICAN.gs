@@ -167,10 +167,11 @@ function _btLeer() {
   var desde = Math.max(APPG_BOT.FILA_ENVIOS, ult - APPG_BOT.ULTIMAS + 1);
   var n = ult - desde + 1;
   var vals = n > 0 ? sh.getRange(desde, 1, n, 17).getValues() : [];
-  var ids = [], pendientes = [];
+  var ids = [], pendientes = [], dirs = {};
   vals.forEach(function (r, i) {
     var id = String(r[1] || '').trim(); if (!id) return;
     ids.push(id);
+    dirs[_tnClave(id)] = [String(r[3] || '').slice(0, 80), String(r[4] || '').slice(0, 250)];   // contacto y dirección (para "Entrega a domicilio" SOS)
     var est = String(r[0] || ''), g = _btLeerFecha(r[6]), h = String(r[7] || '').trim(), j = String(r[9] || '').trim();
     if (h.charAt(0) === '=') h = '';                                       // (una fórmula que no da nada cuenta como vacía)
     if (h || j) return;                                                     // ya ingresó a logística o ya salió
@@ -178,7 +179,7 @@ function _btLeer() {
     if (/\d/.test(String(r[16] || ''))) return;                           // Q "Sucursales" con fecha: ya llegó a la sucursal (el cliente pasa por él)
     pendientes.push({ id: id, fila: desde + i, g: g, estatus: est, suc: _btSucursalRecoge(r[4], r[16]), area: String(r[5] || '') });
   });
-  return { feriados: feriados, rutas: rutas, ids: ids, pendientes: pendientes, leido: _ahora() };
+  return { feriados: feriados, rutas: rutas, ids: ids, pendientes: pendientes, dirs: dirs, leido: _ahora() };
 }
 
 /** Lo que el robot dejó en memoria (o lo lee si no hay). */
