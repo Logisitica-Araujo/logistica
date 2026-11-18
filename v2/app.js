@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.9.0';
+var VERSION_APP = '2.10.0';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -355,6 +355,9 @@ function vistaVehiculo(primera) {
       html += '<p class="opc">Si te falta algo, avisa a tu supervisor antes de salir.</p></div>';
     }
   }
+  if (v && v.especial && !(d.bitacora && d.bitacora.vehiculo === v.nombre)) {
+    html += '<button class="esp-btn" onclick="salidaEspecial()"><span class="ic">🚐</span><span><b>Salida especial</b><small>Foráneo, carga, todo el día u otro: con fotos, km, gasolina y revisión</small></span></button>';
+  }
   if (d.vehiculo && S.vehSel && S.vehSel !== d.vehiculo && leer('dia') === hoyTxt()) {
     var mot = (d.reglas && d.reglas.motivosCambioVehiculo) || [];
     html += '<div class="bloque"><div class="cab-b"><label class="et" for="selMotVeh" style="flex:1">¿Por qué cambias de vehículo?</label><span class="opc">opcional</span></div>' +
@@ -370,19 +373,25 @@ function guardarVehiculo() {
   var veh = S.datos.vehiculos.filter(function (x) { return x.nombre === S.vehSel; })[0];
   var yaLaTrae = S.datos.bitacora && S.datos.bitacora.vehiculo === S.vehSel;
   if (S.datos.bitacora && !yaLaTrae) return falla(errCod('VEH-02', 'Primero entrega ' + S.datos.bitacora.vehiculo + ' (botón "Entregar" en tu inicio).'));
-  if (veh && veh.revision && veh.revision !== 'NINGUNA' && !yaLaTrae) { S.tablero = nuevoTablero('SALIDA', S.vehSel, veh.revision, { checklist: checklist, motivo: motivo }); return vistaTablero(); }
-  mandarVehiculo(checklist, motivo, null);
+  mandarVehiculo(checklist, motivo, null, null);
 }
-function mandarVehiculo(checklist, motivo, tablero) {
+function salidaEspecial() {
+  var checklist = Array.prototype.map.call(document.querySelectorAll('.check input'), function (c) { return { texto: c.dataset.t, ok: c.checked }; });
+  var motivo = $('selMotVeh') ? $('selMotVeh').value : '';
+  if (S.datos.bitacora) return falla(errCod('VEH-02', 'Primero entrega ' + S.datos.bitacora.vehiculo + ' (botón "Entregar" en tu inicio).'));
+  S.tablero = nuevoTablero('SALIDA', S.vehSel, 'COMPLETA', { checklist: checklist, motivo: motivo, especial: { para: '', destino: '' } });
+  vistaTablero();
+}
+function mandarVehiculo(checklist, motivo, tablero, especial) {
   cargando('Guardando…');
-  srv('vehiculo', { vehiculo: S.vehSel, checklist: checklist, motivo: motivo, tablero: tablero }).then(function () {
+  srv('vehiculo', { vehiculo: S.vehSel, checklist: checklist, motivo: motivo, tablero: tablero, especial: especial }).then(function () {
     quitarCargando(); S.datos.vehiculo = S.vehSel; guardar('dia', hoyTxt()); if (tablero) bitacoraLocal(tablero); DB.set('inicio', S.datos);
     var luego = S.despuesVeh; S.despuesVeh = null; if (luego) luego(); else vistaInicio(); actualizar();
   }).catch(function (e) {
     quitarCargando();
     if (e.red && S.despuesVeh) { var l2 = S.despuesVeh; S.despuesVeh = null; setTimeout(l2, 0); }
     else S.despuesVeh = null;
-    if (e.red) { S.datos.vehiculo = S.vehSel; guardar('dia', hoyTxt()); encolar('vehiculo', { vehiculo: S.vehSel, checklist: checklist, motivo: motivo, tablero: tablero }, 'Vehículo ' + S.vehSel); if (tablero) bitacoraLocal(tablero); vistaInicio(); }
+    if (e.red) { S.datos.vehiculo = S.vehSel; guardar('dia', hoyTxt()); encolar('vehiculo', { vehiculo: S.vehSel, checklist: checklist, motivo: motivo, tablero: tablero, especial: especial }, 'Vehículo ' + S.vehSel); if (tablero) bitacoraLocal(tablero); vistaInicio(); }
     else falla(e);
   });
 }
@@ -439,8 +448,20 @@ function vistaTablero() {
   var sal = t.modo === 'SALIDA', cfg = revCfg();
   var veh = S.datos.vehiculos.filter(function (x) { return x.nombre === t.vehiculo; })[0] || {}, ant = sal ? veh.anterior : null;
   var nomNivel = { COMPLETA: 'Revisión completa', CONFIRMA: 'Revisa que esté igual', BASICA: 'Revisión básica' }[t.nivel];
-  var html = '<div class="barra"><button class="volver" onclick="S.tablero=null;' + (sal ? 'vistaVehiculo(false)' : 'vistaInicio()') + '" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>' + (sal ? 'Recibir ' : 'Entregar ') + esc(t.vehiculo) + '</b><small>' +
-    esc(nomNivel) + ' · ' + esc(lugarHoy()) + '</small></div></div><div class="cuerpo">';
+  var volver = t.prestar || t.prestadoId ? 'admVehiculos()' : sal ? 'vistaVehiculo(false)' : 'vistaInicio()';
+  var titulo = t.prestar ? 'Prestar ' + t.vehiculo : t.prestadoId ? 'Recibir de vuelta ' + t.vehiculo : (sal ? 'Salida especial · ' : 'Entregar ') + t.vehiculo;
+  var html = '<div class="barra"><button class="volver" onclick="S.tablero=null;' + volver + '" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>' + esc(titulo) + '</b><small>' +
+    (t.prestadoId ? esc(t.ref.persona) + ' · ' : '') + esc(lugarHoy()) + '</small></div></div><div class="cuerpo">';
+  if (t.prestar) {
+    html += '<span class="etiqueta">¿Quién se la lleva? (no tiene la app)</span>' +
+      '<input class="campo" id="inPNom" placeholder="Nombre (ej. Juan Pérez, chofer externo)" value="' + esc(t.prestar.nombre) + '" oninput="S.tablero.prestar.nombre=this.value">' +
+      '<input class="campo" id="inPTel" inputmode="tel" placeholder="Teléfono" value="' + esc(t.prestar.telefono) + '" oninput="S.tablero.prestar.telefono=this.value">';
+  }
+  if (t.especial) {
+    html += '<span class="etiqueta">¿Para qué?</span><div class="para">' + ['Foráneo', 'Carga', 'Todo el día', 'Otro'].map(function (x) {
+      return '<button class="' + (t.especial.para === x ? 'on' : '') + '" onclick="S.tablero.especial.para=\'' + x + '\';vistaTablero()">' + ({ 'Foráneo': '🛣 ', 'Carga': '📦 ', 'Todo el día': '⏱ ', 'Otro': '✏️ ' })[x] + x + '</button>';
+    }).join('') + '</div><input class="campo" id="inDestino" placeholder="Destino o para qué (ej. Querétaro · entrega IMSS)" value="' + esc(t.especial.destino) + '" oninput="S.tablero.especial.destino=this.value">';
+  }
   if (t.nivel === 'CONFIRMA') {
     html += bloqueAnterior(ant, true) + '<span class="et">Revisa por fuera. ¿Está igual?</span><div class="gas dos">' +
       '<button class="' + (t.confirma === 'IGUAL' ? 'on' : '') + '" onclick="S.tablero.confirma=\'IGUAL\';vistaTablero()">Sí, está igual</button>' +
@@ -471,13 +492,13 @@ function vistaTablero() {
     '<span class="et">Gasolina</span><div class="gas">' + GAS.map(function (g) { return '<button class="' + (t.gas === g ? 'on' : '') + '" onclick="S.tablero.gas=\'' + g + '\';vistaTablero()">' + g + '</button>'; }).join('') + '</div>' +
     (sal ? '' : '<div id="recorrido">' + recorridoTablero() + '</div>') +
     '<span class="etiqueta">Notas</span>' + campoTxt('inObs', 'obs', 'Observaciones (ej. se prendió el testigo del aceite)') +
-    (sal ? '' : campoTxt('inDonde', 'donde', '¿Dónde la dejaste? (ej. Oficinas, cajón 3)') + campoTxt('inLlaves', 'llaves', '¿A quién le dejaste las llaves?')) +
+    (sal ? '' : campoTxt('inDonde', 'donde', t.prestadoId ? '¿Dónde quedó? (ej. Oficinas, cajón 3)' : '¿Dónde la dejaste? (ej. Oficinas, cajón 3)') + campoTxt('inLlaves', 'llaves', t.prestadoId ? '¿Quién tiene las llaves?' : '¿A quién le dejaste las llaves?')) +
     '<div class="fila-dato"><span>Día, hora y lugar</span><b>' + esc(lugarHoy()) + ' · GPS</b></div>' +
-    '</div><div class="pie"><button class="btn" onclick="guardarTablero()">' + (sal ? 'Recibir ' : 'Entregar ') + (/saveiro|saviero|camioneta/i.test(t.vehiculo) ? 'camioneta' : 'vehículo') + '</button></div>';
+    '</div><div class="pie"><button class="btn" onclick="guardarTablero()">' + (t.prestar ? 'Prestar' : t.prestadoId ? 'Recibir de vuelta' : sal ? 'Salir' : 'Entregar') + ' ' + (/saveiro|saviero|camioneta/i.test(t.vehiculo) ? 'camioneta' : 'vehículo') + '</button></div>';
   pintar(html);
 }
 function recorridoTablero() {
-  var b = S.datos.bitacora, t = S.tablero; if (!b) return '';
+  var t = S.tablero, b = t.ref || S.datos.bitacora; if (!b) return '';
   var km = Number(t.km) && b.km ? Number(t.km) - Number(b.km) : null;
   return '<div class="resumen-veh"><span>Recorrió<b>' + (km === null ? '—' : km < 0 ? '¿?' : km + ' km') + '</b></span><span>Salió<b>' + esc(String(b.salida).slice(11)) + ' · ' + esc(b.gas) + '</b></span>' +
     '<span>Km al salir<b>' + esc(String(b.km)) + '</b></span><span>Tiempo<b>' + duracion(b.salida) + '</b></span></div>' + (km !== null && km < 0 ? '<div class="aviso warn">El kilometraje es menor al de salida (' + esc(String(b.km)) + '). Revisa el tablero.</div>' : '');
@@ -491,6 +512,9 @@ function duracion(desde) {
 function guardarTablero() {
   var t = S.tablero; if (!t) return;
   var cfg = revCfg(), err = function (c, m) { falla(errCod(c, m)); return false; };
+  if (t.prestar && !String(t.prestar.nombre).trim()) return err('CAP-01', 'Escribe el nombre de quien se la lleva.');
+  if (t.especial && !t.especial.para) return err('CAP-01', 'Elige para qué es la salida especial.');
+  if (t.especial && t.especial.para === 'Otro' && !String(t.especial.destino).trim()) return err('CAP-01', 'Escribe a dónde o para qué.');
   if (t.nivel === 'CONFIRMA') {
     if (!t.confirma) return err('CAP-01', 'Revisa la camioneta y toca "Sí, está igual" o "Encontré algo nuevo".');
     if (t.confirma === 'NUEVO' && !String(t.nuevo.nota).trim()) return err('CAP-01', 'Escribe qué encontraste.');
@@ -505,7 +529,8 @@ function guardarTablero() {
   if (!t.foto) return err('CAP-04', 'Falta la foto del tablero.');
   if (!(Number(t.km) > 0)) return err('CAP-01', 'Escribe el kilometraje del tablero.');
   if (GAS.indexOf(t.gas) < 0) return err('CAP-01', 'Elige cuánta gasolina tiene.');
-  if (t.modo === 'REGRESO' && S.datos.bitacora && Number(S.datos.bitacora.km) && Number(t.km) < Number(S.datos.bitacora.km)) return err('CAP-01', 'El kilometraje es menor al de salida. Revisa el tablero.');
+  var refKm = t.ref ? t.ref.km : S.datos.bitacora && S.datos.bitacora.km;
+  if (t.modo === 'REGRESO' && Number(refKm) && Number(t.km) < Number(refKm)) return err('CAP-01', 'El kilometraje es menor al de salida. Revisa el tablero.');
   cargando('Guardando…');
   obtenerGPS().then(function (g) {
     var falta = Object.keys(t.falta).filter(function (k) { return t.falta[k]; });
@@ -516,11 +541,18 @@ function guardarTablero() {
     if (t.nivel === 'BASICA') { tab.todoBien = t.todoBien; if (!t.todoBien) tab.algo = t.algo; }
     var wa = { modo: t.modo, vehiculo: t.vehiculo, km: t.km, gas: t.gas, foto: t.foto, hora: new Date(), lat: g.lat, lng: g.lng, nivel: t.nivel, falta: falta,
                detalles: detalles.map(function (d) { return d.punto + ': ' + d.nota; }).concat(t.confirma === 'NUEVO' ? ['Nuevo al recibir: ' + t.nuevo.nota] : [], t.nivel === 'BASICA' && !t.todoBien ? [t.algo.nota] : []),
-               igual: t.confirma === 'IGUAL', obs: t.obs, donde: t.donde, llaves: t.llaves };
+               igual: t.confirma === 'IGUAL', obs: t.obs, donde: t.donde, llaves: t.llaves, especial: t.especial, persona: t.prestar ? t.prestar.nombre : t.ref ? t.ref.persona : '' };
+    if (t.prestar || t.prestadoId) {   // alguien sin app: lo registra el administrador
+      var datos = t.prestar ? { nombre: t.prestar.nombre, telefono: t.prestar.telefono, vehiculo: t.vehiculo, especial: t.especial, tablero: tab } : { id: t.prestadoId, tablero: tab };
+      return adm(t.prestar ? 'prestar' : 'recibirPrestado', datos).then(function (r) {
+        quitarCargando(); S.tablero = null;
+        vistaWAVehiculo(Object.assign(wa, t.prestadoId ? { km: r.kmRegreso, recorrio: r.km, gasSalida: r.gasSalida, salida: r.salida, especial: { para: r.para, destino: r.destino } } : {}));
+      }).catch(function (e) { quitarCargando(); falla(e); });
+    }
     if (t.modo === 'SALIDA') {
       quitarCargando(); S.tablero = null;
       S.despuesVeh = function () { vistaWAVehiculo(wa); };
-      return mandarVehiculo(t.checklist, t.motivo, tab);
+      return mandarVehiculo(t.checklist, t.motivo, tab, t.especial);
     }
     return srv('entregarVehiculo', tab).then(function (r) {
       quitarCargando(); S.tablero = null; S.datos.bitacora = null; S.datos.vehiculo = ''; DB.set('inicio', S.datos); sonido('entregado');
@@ -541,7 +573,9 @@ function bitacoraLocal(tab) { S.datos.bitacora = { vehiculo: S.vehSel, salida: n
 function vistaWAVehiculo(w) {
   S.vista = 'listo';
   var hora = w.hora.toLocaleString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-  var sal = w.modo === 'SALIDA', l = [sal ? 'CAMIONETA RECIBIDA' : 'CAMIONETA ENTREGADA', w.vehiculo];
+  var sal = w.modo === 'SALIDA', esp = w.especial && w.especial.para ? ' · ' + w.especial.para + (w.especial.destino ? ' · ' + w.especial.destino : '') : '';
+  var l = [(sal ? 'SALIDA ESPECIAL' : 'VEHÍCULO ENTREGADO') + esp, w.vehiculo];
+  if (w.persona) l.push((sal ? 'Se la lleva: ' : 'La regresó: ') + w.persona + ' (sin app)');
   l.push('Km: ' + w.km + (!sal && w.recorrio !== '' && w.recorrio != null ? ' (recorrió ' + w.recorrio + ' km)' : ''));
   l.push('Gasolina: ' + w.gas + (!sal && w.gasSalida ? ' (salió con ' + w.gasSalida + ')' : ''));
   l.push(sal ? 'Recibió: ' + hora : (w.salida ? 'Tomó: ' + String(w.salida).slice(11) + ' · ' : '') + 'Entregó: ' + hora);
@@ -554,19 +588,19 @@ function vistaWAVehiculo(w) {
   if (w.donde) l.push('La dejé en: ' + w.donde);
   if (w.llaves) l.push('Llaves: ' + w.llaves);
   if (w.lat && w.lng) l.push('Lugar: https://maps.google.com/?q=' + w.lat + ',' + w.lng);
-  l.push('Gestor: ' + S.datos.gestor.nombre);
+  l.push((w.persona ? 'Registró: ' : 'Gestor: ') + S.datos.gestor.nombre);
   var msg = l.join('\n');
   S.wa = { msg: msg, foto: w.foto, id: 'tablero' };
-  pintar('<div class="listo"><div class="verde-top"><span class="palomita">' + IC.palomita + '</span><b>' + (sal ? 'Listo: traes ' + esc(w.vehiculo) : esc(w.vehiculo) + ' entregada') + '</b><span>' +
-    (sal ? 'Al regresar toca "Entregar" en tu inicio' : (w.recorrio !== '' && w.recorrio != null ? 'Recorrió ' + esc(String(w.recorrio)) + ' km' : 'Quedó registrada')) + '</span></div>' +
+  pintar('<div class="listo"><div class="verde-top"><span class="palomita">' + IC.palomita + '</span><b>' + (w.persona ? (sal ? esc(w.vehiculo) + ' prestada' : esc(w.vehiculo) + ' de vuelta') : sal ? 'Listo: traes ' + esc(w.vehiculo) : esc(w.vehiculo) + ' entregada') + '</b><span>' +
+    (sal ? (w.persona ? 'Cuando la regrese: Vehículos → "Recibir de vuelta"' : 'Al regresar toca "Entregar" en tu inicio') : (w.recorrio !== '' && w.recorrio != null ? 'Recorrió ' + esc(String(w.recorrio)) + ' km' : 'Quedó registrada')) + '</span></div>' +
     '<div class="cuerpo"><b>¿Mandarlo al grupo?</b><div class="wa-burbuja"><div>' + (w.foto ? '<img src="' + w.foto + '" alt="">' : '') + '<pre>' + esc(msg) + '</pre></div></div>' +
     (w.foto ? '<label class="check"><input type="checkbox" id="waFoto" checked> Incluir la foto del tablero</label>' : '') + '</div>' +
-    '<div class="pie"><button class="btn wa" onclick="mandarWA()">Mandar al grupo por WhatsApp</button><button class="btn linea" onclick="' + (sal ? 'vistaInicio()' : 'vistaVehiculo(true)') + '">' + (sal ? 'Ahora no' : 'Ahora no · ¿en qué sigues?') + '</button></div></div>');
+    '<div class="pie"><button class="btn wa" onclick="mandarWA()">Mandar al grupo por WhatsApp</button><button class="btn linea" onclick="' + (w.persona ? 'admVehiculos()' : sal ? 'vistaInicio()' : 'vistaVehiculo(true)') + '">' + (w.persona || sal ? 'Ahora no' : 'Ahora no · ¿en qué sigues?') + '</button></div></div>');
 }
 function tarjetaBitacora() {
   var b = S.datos && S.datos.bitacora; if (!b) return '';
   return '<div class="tile-veh"><span><b>🚐 Traes ' + esc(b.vehiculo) + ' desde ' + esc(String(b.salida).slice(11)) + '</b><small>Salió con ' + esc(String(b.km)) + ' km · ' + esc(b.gas) + '</small></span>' +
-    '<button onclick="S.tablero=nuevoTablero(\'REGRESO\',S.datos.bitacora.vehiculo,S.datos.bitacora.nivel);vistaTablero()">Entregar</button></div>';
+    '<button onclick="S.tablero=nuevoTablero(\'REGRESO\',S.datos.bitacora.vehiculo,\'COMPLETA\');vistaTablero()">Entregar</button></div>';
 }
 
 /* ==================== Inicio ==================== */

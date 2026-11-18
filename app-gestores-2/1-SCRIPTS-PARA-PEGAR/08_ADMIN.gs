@@ -29,11 +29,12 @@ function apiAdmin(p) {
     problemas: '_admProblemas', resolver: '_admResolver', equipo: '_admEquipo', equipoCambiar: '_admEquipoCambiar', alta: '_admAlta',
     vehiculos: '_admVehiculos', vehiculoCambiar: '_admVehiculoCambiar', liberar: '_admLiberar', bitacora: '_admBitacora', revisionPersona: '_admRevisionPersona',
     ajustes: '_admAjustes', ajuste: '_admAjuste', motivo: '_admMotivo', sucursal: '_admSucursal',
-    avisos: '_admAvisos', avisoNuevo: '_admAvisoNuevo', avisoQuitar: '_admAvisoQuitar'
+    avisos: '_admAvisos', avisoNuevo: '_admAvisoNuevo', avisoQuitar: '_admAvisoQuitar',
+    prestar: '_admPrestar', recibirPrestado: '_admRecibirPrestado'
   };
   var nombre = mapa[String(p.que || '')];
   if (nombre && !_hay(nombre)) {
-    var arch = { _admBitacora: '13_CAMIONETA', _admAvisos: '12_AVISOS', _admAvisoNuevo: '12_AVISOS', _admAvisoQuitar: '12_AVISOS' }[nombre] || '08_ADMIN';
+    var arch = APPG_FN_ARCHIVO[nombre] || '08_ADMIN';
     _avisarFaltante(arch);
     throw _falla('APP-03', 'Esta pantalla no está disponible: falta pegar el archivo ' + arch + ' en Apps Script.');
   }
@@ -402,7 +403,7 @@ function _admVehiculos() {
   var hoy = _hoyTxt();
   var us = _tabla(APPG.H.USUARIOS).filas.filter(function (u) { return _si(u.Activo); });
   var personas = us.filter(function (u) { return !/^prueba/i.test(String(u.Usuario)); }).map(function (u) { return { numero: String(u.Numero), nombre: String(u.Nombre), revision: String(u.RevisionVehiculo || '').toUpperCase() }; });
-  return { personas: personas, vehiculos: _tabla(APPG.H.VEHICULOS).filas.filter(function (v) { return String(v.Vehiculo).trim(); }).map(function (v) {
+  return { personas: personas, prestados: _hay('_prestadosAbiertos') && _hay('_bitTabla') ? _prestadosAbiertos() : [], vehiculos: _tabla(APPG.H.VEHICULOS).filas.filter(function (v) { return String(v.Vehiculo).trim(); }).map(function (v) {
     var quien = us.filter(function (u) { return _fechaTxt(u.FechaVehiculo) === hoy && _norm(u.VehiculoHoy) === _norm(v.Vehiculo); })[0];
     return { nombre: String(v.Vehiculo), tipo: _tipoVehiculo(v), placa: String(v.Placa || ''), activo: _si(v.Activo), enTaller: _si(v.EnTaller), pideTablero: _si(v.PideTablero),
              revision: _hay('_nivelVehiculo') ? _nivelVehiculo(v) : 'NINGUNA', completaProxima: _si(v.CompletaProxima),

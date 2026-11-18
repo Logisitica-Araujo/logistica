@@ -10,7 +10,7 @@
  ***********************************************************************/
 
 var APPG = {
-  VERSION: '0.5.3',
+  VERSION: '0.5.4',
   ZONA: 'America/Mexico_City',
 
   /* Nombres de las pestañas del archivo de la app. */
@@ -58,7 +58,8 @@ var APPG = {
     APP_Avisos:        ['Id', 'FechaHora', 'Texto', 'Para', 'Importante', 'Hasta', 'Activo', 'Autor', 'Leidos'],
     APP_Bitacora_Vehiculo: ['Id', 'Vehiculo', 'NumeroGestor', 'Gestor', 'Estado', 'Salida', 'KmSalida', 'GasSalida', 'FotoSalida', 'LatSalida', 'LngSalida',
                         'Regreso', 'KmRegreso', 'GasRegreso', 'FotoRegreso', 'LatRegreso', 'LngRegreso', 'Km', 'Nota',
-                        'NivelSalida', 'RevSalida', 'NivelRegreso', 'RevRegreso', 'Faltantes', 'Detalles', 'Observaciones', 'DondeLaDejo', 'Llaves']
+                        'NivelSalida', 'RevSalida', 'NivelRegreso', 'RevRegreso', 'Faltantes', 'Detalles', 'Observaciones', 'DondeLaDejo', 'Llaves',
+                        'Motivo', 'Destino', 'Telefono', 'RegistroPor', 'RecibioPor']
   },
 
   /* Perfiles. Columna "Area" de APP_Usuarios: decide qué app ve cada quien.
@@ -219,6 +220,7 @@ function _falla(codigo, mensaje) { var e = new Error(mensaje); e.codigo = codigo
 var APPG_ARCHIVOS = { '01_INSTALAR': 'INSTALAR', '02_SESION': '_exigirSesion', '03_API': 'manejar', '04_OPERACIONES': '_ops', '05_TRASPASOS': '_tnTabla',
   '06_GESTOR': 'apiInicio', '07_ROBOT': 'robot', '08_ADMIN': 'apiAdmin', '10_BOTICAN': '_btLeer', '11_PENDIENTES': '_pendientesInicio',
   '12_AVISOS': '_avisosInicio', '13_CAMIONETA': '_bitTabla' };
+var APPG_FN_ARCHIVO = { _admBitacora: '13_CAMIONETA', _admPrestar: '13_CAMIONETA', _admRecibirPrestado: '13_CAMIONETA', _admAvisos: '12_AVISOS', _admAvisoNuevo: '12_AVISOS', _admAvisoQuitar: '12_AVISOS' };
 function _hay(nombre) { try { return typeof (0, eval)(nombre) === 'function'; } catch (e) { return false; } }
 function _archivoDe(fn) { var k = Object.keys(APPG_ARCHIVOS).filter(function (a) { return APPG_ARCHIVOS[a] === fn; })[0]; return k || ''; }
 function _archivosFaltantes() { return Object.keys(APPG_ARCHIVOS).filter(function (a) { return !_hay(APPG_ARCHIVOS[a]); }); }

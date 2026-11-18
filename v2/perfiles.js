@@ -586,27 +586,40 @@ function admVehiculos() {
         (v.quien ? '<div class="t1">' + esc(v.quien) + ' desde ' + esc(v.desde) + '</div>' : '') + (v.nota ? '<div class="t2">' + esc(v.nota) + '</div>' : '') +
         (v.tipo === 'NINGUNO' ? '' : '<div class="botones"><button class="b" onclick="admHacer(\'vehiculoCambiar\',{vehiculo:\'' + esc(v.nombre) + '\',enTaller:' + (!v.enTaller) + '},admVehiculos)">' + (v.enTaller ? 'Ya salió del taller' : 'Marcar en taller') + '</button>' +
           (v.quien ? '<button class="b" onclick="admHacer(\'liberar\',{numero:\'' + esc(v.numero) + '\'},admVehiculos)">Liberar</button>' : '<span></span>') + '<span></span></div>' +
-          '<label class="et">📷 Revisión al tomarlo y entregarlo</label><select class="campo" onchange="admHacer(\'vehiculoCambiar\',{vehiculo:\'' + esc(v.nombre) + '\',revision:this.value},admVehiculos)">' +
-          [['COMPLETA', 'Siempre completa'], ['CAMBIO', 'Completa solo si cambia de conductor'], ['BASICA', 'Siempre básica (tablero, km, gasolina)'], ['NINGUNA', 'Ninguna']].map(function (o) {
-            return '<option value="' + o[0] + '"' + (v.revision === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
-          (v.revision === 'NINGUNA' ? '' : v.completaProxima ? '<div class="t2" style="color:var(--azul);font-weight:700">⏳ La próxima vez pide la completa · <a href="#" onclick="admHacer(\'vehiculoCambiar\',{vehiculo:\'' + esc(v.nombre) + '\',completaProxima:false},admVehiculos);return false">quitar</a></div>'
-            : '<button class="b" style="margin-top:6px" onclick="admHacer(\'vehiculoCambiar\',{vehiculo:\'' + esc(v.nombre) + '\',completaProxima:true},admVehiculos)">Pedir completa la próxima vez</button>')) + '</div>';
+          '') + '</div>';
     });
-    if (r.personas && r.personas.length) {
-      html += '<span class="etiqueta">Excepciones por persona</span>' + r.personas.map(function (u) {
-        return '<div class="card"><div class="linea"><b>' + esc(u.nombre) + '</b><span class="espacio"></span><select class="campo chico" onchange="admHacer(\'revisionPersona\',{numero:\'' + esc(u.numero) + '\',revision:this.value},admVehiculos)">' +
-          [['', 'Como el vehículo'], ['COMPLETA', 'Siempre completa'], ['BASICA', 'Siempre básica'], ['NINGUNA', 'Nunca']].map(function (o) { return '<option value="' + o[0] + '"' + (u.revision === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div></div>';
-      }).join('');
-    }
-    pintar(html + '<button class="btn linea" onclick="admBitacora()">🚐 Bitácora: fotos, km, gasolina, día y lugar</button>' +
+    html = html.replace('<div class="cuerpo con-nav">', '<div class="cuerpo con-nav"><button class="esp-btn azul" onclick="admPrestar()"><span class="ic">🔑</span><span><b>Prestar vehículo a alguien sin app</b><small>Lo registra quien entrega las llaves: fotos, tablero, km, gasolina y revisión</small></span></button>' +
+      (r.prestados || []).map(function (x) {
+        return '<div class="card" style="border-left:5px solid #E5A100"><div class="linea"><b>' + esc(x.vehiculo) + '</b><span class="espacio"></span><span class="tag a">PRESTADA</span></div>' +
+          '<div class="t1">' + esc(x.persona) + (x.telefono ? ' · ' + esc(x.telefono) : '') + '</div><div class="t2">' + esc(x.para) + (x.destino ? ' · ' + esc(x.destino) : '') + ' · salió ' + esc(String(x.salida).slice(5)) + ' · ' + esc(String(x.km)) + ' km · ' + esc(x.gas) + ' · registró ' + esc(x.por) + '</div>' +
+          '<div class="botones"><button class="b" onclick="admRecibirPrestado(\'' + esc(x.id) + '\')">Recibir de vuelta</button><span></span><span></span></div></div>';
+      }).join(''));
+    S.admPrestados = r.prestados || [];
+    pintar(html + '<button class="btn linea" onclick="admBitacora()">🚐 Bitácora de salidas especiales: fotos, km, gasolina, día y lugar</button>' +
       '<p class="nota">Al cambiar de vehículo a medio día, la app le pide el motivo al gestor y aquí lo ves.</p></div>' + navAdm('veh'));
   }, sub);
 }
 
-/* ---------- Bitácora de vehículos (foto del tablero) ---------- */
+/* ---------- Prestar a alguien sin app (lo registra el administrador) ---------- */
+function admPrestar() {
+  S.vista = 'adm';
+  var vs = (S.datos.vehiculos || []).filter(function (v) { return v.especial; });
+  var sub = barraAdm('Prestar vehículo', 'A alguien que no tiene la app', 'admVehiculos()');
+  pintar(sub + '<div class="cuerpo con-nav"><span class="etiqueta">¿Cuál vehículo?</span>' + vs.map(function (v, i) {
+    return '<button class="veh" onclick="S.tablero=nuevoTablero(\'SALIDA\',S.datos.vehiculos.filter(function(x){return x.especial;})[' + i + '].nombre,\'COMPLETA\',{prestar:{nombre:\'\',telefono:\'\'},especial:{para:\'\',destino:\'\'}});vistaTablero()">' +
+      '<span class="ic">' + (v.tipo === 'MOTO' ? 'M' : 'C') + '</span><span class="tx"><b>' + esc(v.nombre) + '</b><span>' + (v.ocupadoPor ? 'Hoy la trae ' + esc(v.ocupadoPor) : v.enTaller ? 'En taller' : 'Disponible') + '</span></span></button>';
+  }).join('') + '</div>' + navAdm('veh'));
+}
+function admRecibirPrestado(id) {
+  var x = (S.admPrestados || []).filter(function (p) { return p.id === id; })[0]; if (!x) return;
+  S.tablero = nuevoTablero('REGRESO', x.vehiculo, 'COMPLETA', { prestadoId: id, ref: { km: x.km, gas: x.gas, salida: x.salida, persona: x.persona } });
+  vistaTablero();
+}
+
+/* ---------- Bitácora de vehículos (salidas especiales) ---------- */
 function admBitacora() {
   S.vista = 'adm';
-  var sub = barraAdm('Bitácora de vehículos', 'Fotos, km, gasolina, día, hora y lugar de cada uso', 'admVehiculos()');
+  var sub = barraAdm('Bitácora de salidas especiales', 'Fotos, km, gasolina, día, hora y lugar de cada una', 'admVehiculos()');
   admCargar('bitacora', {}, function (r) {
     var dia = function (t) { var f = fechaCorta(t); return f ? f.txt.replace(/, \d.*$/, '') : ''; }, hora = function (t) { return String(t || '').slice(11, 16); };
     var niv = { COMPLETA: 'completa', CONFIRMA: 'confirmó', BASICA: 'básica' };
@@ -616,12 +629,13 @@ function admBitacora() {
       var rojo = b.sinEntregar || b.descuadre || b.alRecibir.length;
       html += '<div class="card"' + (rojo ? ' style="border-left:5px solid var(--rojo)"' : '') + '><div class="linea"><b>' + esc(dia(b.salida)) + ' · ' + esc(b.gestor) + '</b><span class="espacio"></span>' +
         (b.sinEntregar ? '<span class="tag r">SIN ENTREGAR</span>' : b.estado === 'EN USO' ? '<span class="tag a">EN USO</span>' : '<span class="tag v">' + (b.km !== '' ? esc(String(b.km)) + ' km' : 'ENTREGADA') + '</span>') + '</div>' +
-        '<div class="t1">' + esc(b.vehiculo) + '</div>' +
+        '<div class="t1">' + esc(b.vehiculo) + (b.para ? ' · ' + esc(b.para) + (b.destino ? ' · ' + esc(b.destino) : '') : '') + '</div>' +
+        (b.registroPor ? '<div class="t2">🔑 Sin app' + (b.telefono ? ' · ' + esc(b.telefono) : '') + ' · registró ' + esc(b.registroPor) + (b.recibioPor ? ' · recibió de vuelta ' + esc(b.recibioPor) : '') + '</div>' : '') +
         '<div class="t2">▶ Recibió ' + esc(hora(b.salida)) + ' · ' + esc(String(b.kmSalida)) + ' km · ' + esc(b.gasSalida) + (b.nivelSalida ? ' · revisión ' + esc(niv[b.nivelSalida] || b.nivelSalida) : '') +
           (b.mapaSalida ? ' · <a href="' + esc(b.mapaSalida) + '" target="_blank" rel="noopener">📍 lugar</a>' : '') + '</div>' +
         (b.regreso ? '<div class="t2">■ Entregó ' + esc(dia(b.regreso)) + ' ' + esc(hora(b.regreso)) + ' · ' + esc(String(b.kmRegreso)) + ' km · ' + esc(b.gasRegreso) + (b.nivelRegreso ? ' · revisión ' + esc(niv[b.nivelRegreso] || b.nivelRegreso) : '') +
           (b.mapaRegreso ? ' · <a href="' + esc(b.mapaRegreso) + '" target="_blank" rel="noopener">📍 lugar</a>' : '') + '</div>' : '') +
-        (b.alRecibir.length ? '<div class="t2" style="color:var(--rojo);font-weight:700">⚠ Al recibirla encontró: ' + esc(b.alRecibir.join(' · ')) + (b.antes ? ' — antes la usó ' + esc(b.antes) : '') + '</div>' : '') +
+        (b.alRecibir.length ? '<div class="t2" style="color:var(--rojo);font-weight:700">⚠ Al salir encontró: ' + esc(b.alRecibir.join(' · ')) + (b.antes ? ' — antes la usó ' + esc(b.antes) : '') + '</div>' : '') +
         (b.faltantes ? '<div class="t2">✗ Faltó: ' + esc(b.faltantes) + '</div>' : '') +
         (b.detalles && !b.alRecibir.length ? '<div class="t2">⚠ ' + esc(b.detalles) + '</div>' : '') +
         (b.observaciones ? '<div class="t2">📝 ' + esc(b.observaciones) + '</div>' : '') +
