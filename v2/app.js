@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.11.0';
+var VERSION_APP = '2.11.1';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -62,7 +62,15 @@ function clave(v) { return String(v == null ? '' : v).replace(/[^0-9a-zA-Z]/g, '
 function hoyTxt() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 function horaTxt() { var d = new Date(); return hoyTxt() + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }
 function idLocal() { return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
-function pintar(html) { $('app').innerHTML = html; window.scrollTo(0, 0); }
+/* Dibuja una pantalla. Si es la MISMA pantalla (solo cambió algo que tocaste: gasolina, "Detalle", un filtro…),
+   se queda en la misma altura; si es otra pantalla, empieza arriba. */
+function pintar(html) {
+  var t = /<b>([^<]{0,80})<\/b>/.exec(String(html)), clave = (S.vista || '') + '|' + (t ? t[1] : '');
+  var y = window.scrollY || 0, misma = clave === S.pantalla;
+  $('app').innerHTML = html;
+  window.scrollTo(0, misma ? y : 0);
+  S.pantalla = clave;
+}
 var IC = {
   atras: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
   refrescar: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>',
