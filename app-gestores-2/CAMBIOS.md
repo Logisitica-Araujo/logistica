@@ -1,5 +1,8 @@
 # Registro de cambios · App Gestores 2
 
+## App 2.11.1 · 18-nov-2026 · La pantalla ya no se sube
+- Al tocar algo dentro de una pantalla (gasolina, "Detalle", qué lleva, filtros, motivos…) la pantalla se queda a la misma altura; solo al cambiar de pantalla empieza arriba (`app.js` `pintar`).
+
 ## 0.5.5 · 18-nov-2026 · "Entrega a domicilio" SOS
 - **"Lo que llevo"**: cada pedido recolectado muestra cliente, dirección y si está asignado (de Operaciones; si no está capturado, de LOGISTICA BOTICAN 2026 o de Pedidos Logistica-Fadermex 2026). El robot lo deja en memoria cada minuto (paso `llevaInfo`).
 - Dos opciones por pedido: **"Lo dejé en sucursal"** (lo normal: sale de su lista y tú asignas la ruta) y **🆘 "Entrega a domicilio"** (cuando no alcanzaste a asignarlo): misma pantalla de entrega + dirección con Maps, llamar y WhatsApp; si no hay dirección, la escribe.
