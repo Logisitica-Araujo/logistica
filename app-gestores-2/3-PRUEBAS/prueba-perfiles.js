@@ -211,6 +211,20 @@ titulo('Camioneta: revisión completa / básica, tablero, km y gasolina (bitáco
   post({ accion: 'admin', token: tAD, que: 'liberar', numero: post({ accion: 'inicio', token: tAL }).gestor.numero });
 }
 
+titulo('Si falta pegar un archivo, la app no se cae (18-nov: faltaba 13_CAMIONETA)');
+{
+  const C = E.APP.ctx, quitar = ['_bitTabla', '_revisionAlTomar', '_bitacoraInicio', '_revConfig', '_bitacoraSalida', '_admBitacora', '_nivelVehiculo'], guardado = {};
+  quitar.forEach(n => { guardado[n] = C[n]; C[n] = undefined; });
+  const ini = post({ accion: 'inicio', token: tJL });
+  ok(ini.ok && ini.pedidos && !ini.bitacora, 'Sin 13_CAMIONETA: el inicio de los gestores sigue funcionando');
+  ok(post({ accion: 'vehiculo', token: tJL, vehiculo: 'FED 2 14KGC4' }).ok, 'Puede elegir vehículo como siempre');
+  ok(post({ accion: 'admin', token: tAD, que: 'hoy' }).ok && post({ accion: 'admin', token: tAD, que: 'vehiculos' }).ok, 'Administración: Hoy y Vehículos funcionan');
+  const bi = post({ accion: 'admin', token: tAD, que: 'bitacora' });
+  ok(!bi.ok && bi.codigo === 'APP-03' && /13_CAMIONETA/.test(bi.mensaje), 'Solo la bitácora dice "falta pegar el archivo 13_CAMIONETA"');
+  ok(filasDe('APP_Problemas').some(x => x.Codigo === 'APP-03' && /13_CAMIONETA/.test(x.Detalle)), 'Y avisa en Problemas (APP-03) qué archivo pegar');
+  quitar.forEach(n => { C[n] = guardado[n]; });
+}
+
 titulo('Administración: permisos y Hoy');
 const noAdm = post({ accion: 'admin', token: tJL, que: 'hoy' });
 ok(!noAdm.ok && noAdm.codigo === 'APP-02', 'Un gestor no puede entrar a Administración');

@@ -213,6 +213,30 @@ function _si(v) { return v === true || /^(true|si|sí|1|verdadero)$/i.test(Strin
 /** Error con código de la guía ERRORES_Y_SOLUCIONES.md. */
 function _falla(codigo, mensaje) { var e = new Error(mensaje); e.codigo = codigo; return e; }
 
+/* ---------- ¿Están pegados todos los archivos? ----------
+   Si falta un archivo (p. ej. 13_CAMIONETA), la app NO se cae: esa parte no se muestra y se avisa
+   en APP_Problemas (APP-03) qué archivo pegar. Una función "testigo" por archivo. */
+var APPG_ARCHIVOS = { '01_INSTALAR': 'INSTALAR', '02_SESION': '_exigirSesion', '03_API': 'manejar', '04_OPERACIONES': '_ops', '05_TRASPASOS': '_tnTabla',
+  '06_GESTOR': 'apiInicio', '07_ROBOT': 'robot', '08_ADMIN': 'apiAdmin', '10_BOTICAN': '_btLeer', '11_PENDIENTES': '_pendientesInicio',
+  '12_AVISOS': '_avisosInicio', '13_CAMIONETA': '_bitTabla' };
+function _hay(nombre) { try { return typeof (0, eval)(nombre) === 'function'; } catch (e) { return false; } }
+function _archivoDe(fn) { var k = Object.keys(APPG_ARCHIVOS).filter(function (a) { return APPG_ARCHIVOS[a] === fn; })[0]; return k || ''; }
+function _archivosFaltantes() { return Object.keys(APPG_ARCHIVOS).filter(function (a) { return !_hay(APPG_ARCHIVOS[a]); }); }
+/** Llama a una función de otro archivo si está pegado; si no, devuelve "defecto" y avisa (1 vez cada 6 h). */
+function _opc(fn, args, defecto) {
+  if (_hay(fn)) return (0, eval)(fn).apply(null, args || []);
+  _avisarFaltante(_archivoDe(fn) || fn);
+  return defecto;
+}
+function _avisarFaltante(archivo) {
+  try {
+    var c = CacheService.getScriptCache(), k = 'falta_' + archivo;
+    if (c.get(k)) return;
+    c.put(k, '1', 6 * 3600);
+    _problema('APP-03', 'sistema', 'Falta pegar el archivo ' + archivo + ' en Apps Script (App Gestores · Datos). La app sigue funcionando sin esa parte. Pégalo y haz una versión nueva de la implementación.');
+  } catch (e) { }
+}
+
 function _log(quien, accion, detalle) {
   try { _agregar(APPG.H.LOG, { FechaHora: _ahora(), Quien: quien || '', Accion: accion, Detalle: String(detalle || '').slice(0, 500) }); }
   catch (e) { /* la bitácora nunca debe tumbar la app */ }

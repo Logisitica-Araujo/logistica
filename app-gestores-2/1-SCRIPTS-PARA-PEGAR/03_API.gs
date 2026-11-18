@@ -67,6 +67,13 @@ function manejar(p) {
     return r;
   } catch (err) {
     if (err && err.codigo) return { ok: false, codigo: err.codigo, mensaje: err.message };
+    var falta = /^(\w+) is not defined/.exec(String(err && err.message || ''));
+    if (falta) {   // falta pegar un archivo: se dice cuál, y se avisa en Problemas
+      var arch = _archivoDe(falta[1]) || (_archivosFaltantes()[0] || '');
+      _avisarFaltante(arch || falta[1]);
+      _log('sistema', 'ERROR', accion + ' · ' + err.message);
+      return { ok: false, codigo: 'APP-03', mensaje: 'Esta parte no está disponible: falta pegar ' + (arch ? 'el archivo ' + arch : 'un archivo') + ' del servidor. Avisa a tu administradora.' };
+    }
     _log('sistema', 'ERROR', accion + ' · ' + (err && err.stack ? err.stack : err));
     return { ok: false, codigo: 'APP-01', mensaje: 'Error interno. Ya quedó anotado; avisa a tu administradora.' };
   }

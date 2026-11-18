@@ -49,18 +49,18 @@ function apiInicio(p) {
   var cfg = _config();
   var hoy = _hoyTxt();
   var perfil = _perfil(u);
-  var botican = _boticanInicio(), pendientes = null;
-  try { pendientes = _pendientesInicio(u, botican); } catch (e) { _log('sistema', 'PENDIENTES', e.message); }
+  var botican = _opc('_boticanInicio', [], null), pendientes = null;
+  try { pendientes = _opc('_pendientesInicio', [u, botican], null); } catch (e) { _log('sistema', 'PENDIENTES', e.message); }
 
   /* Vehículos y quién trae cuál hoy */
   var ocupados = {};
   u._t.filas.forEach(function (f) {
     if (String(f.Numero) !== String(u.Numero) && _si(f.Activo) && _fechaTxt(f.FechaVehiculo) === hoy && f.VehiculoHoy) ocupados[_norm(f.VehiculoHoy)] = f.Nombre;
   });
-  var bitT = _bitTabla();
+  var bitT = _opc('_bitTabla', [], null);
   var vehiculos = _tabla(APPG.H.VEHICULOS).filas.filter(function (v) { return _si(v.Activo); }).map(function (v) {
     var tipo = _tipoVehiculo(v);
-    var rv = _revisionAlTomar(u, v, bitT);
+    var rv = _hay('_revisionAlTomar') ? _revisionAlTomar(u, v, bitT) : { revision: 'NINGUNA' };
     return { nombre: String(v.Vehiculo), tipo: tipo, placa: String(v.Placa || ''), pideTablero: rv.revision !== 'NINGUNA', revision: rv.revision, anterior: rv.anterior || null,
              ocupadoPor: tipo === 'NINGUNO' ? '' : (ocupados[_norm(v.Vehiculo)] || ''), enTaller: _si(v.EnTaller) };
   });
@@ -123,8 +123,8 @@ function apiInicio(p) {
     gestor: { numero: u.Numero, nombre: u.Nombre }, perfil: perfil,
     porRecoger: perfil.area === 'FACTURACION' ? _porRecoger() : [],
     botican: botican, pendientes: pendientes,
-    avisos: (function () { try { return _avisosInicio(u); } catch (e) { return []; } })(),
-    bitacora: _bitacoraInicio(u), revConfig: _revConfig(),
+    avisos: (function () { try { return _opc('_avisosInicio', [u], []); } catch (e) { return []; } })(),
+    bitacora: _opc('_bitacoraInicio', [u], null), revConfig: _opc('_revConfig', [], null),
     libresHoy: cierres.filter(function (c) {
       return String(c.Tipo) === 'LIBRE' && String(c.NumeroGestor) === String(u.Numero) && _fechaTxt(c.FechaHora) === hoy && String(c.Estado) !== 'ANULADO';
     }).map(function (c) {
@@ -180,8 +180,10 @@ function apiVehiculo(p) {
     })[0];
     if (otro) throw _falla('CAP-06', otro.Nombre + ' ya trae ' + nombre + ' hoy. Elige otro o pídele que lo cambie.');
   }
-  if (_pideTablero(v)) _bitacoraSalida(u, v, p.tablero);   // camioneta: foto del tablero, km y gasolina (13_CAMIONETA)
-  else { var abierta = _bitacoraAbierta({ numero: u.Numero }); if (abierta) throw _falla('VEH-02', 'Primero entrega ' + abierta.b.Vehiculo + ' (botón "Entregar" en tu inicio).'); }
+  if (_hay('_bitacoraSalida')) {   // revisión del vehículo (13_CAMIONETA); si no está pegado, se elige como siempre
+    if (_pideTablero(v)) _bitacoraSalida(u, v, p.tablero);
+    else { var abierta = _bitacoraAbierta({ numero: u.Numero }); if (abierta) throw _falla('VEH-02', 'Primero entrega ' + abierta.b.Vehiculo + ' (botón "Entregar" en tu inicio).'); }
+  } else _avisarFaltante('13_CAMIONETA');
   var antes = _fechaTxt(u.FechaVehiculo) === hoy ? String(u.VehiculoHoy || '') : '';
   var desde = _fechaTxt(u.FechaVehiculo, 'yyyy-MM-dd HH:mm').slice(11);
   u._t.sh.getRange(u._fila, u._t.col('VehiculoHoy')).setValue(String(v.Vehiculo));
