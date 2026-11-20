@@ -43,6 +43,7 @@ function robot(forzar) {
     paso('limpieza', function () { return _robotLimpieza(); });
     paso('contraseñas', function () { return _procesarClavesNuevas(); });
     if (String(cfg.ID_BOTICAN || '').trim()) paso('botican', function () { return _robotBotican(); });
+    if (String(cfg.ID_BOTICAN || '').trim()) paso('botSucursal', function () { return _robotBotSucursal(); });
     paso('pendientesFad', function () { return _robotPendFad(); });
     paso('porRecoger', function () {
       var hay = _tabla(APPG.H.USUARIOS).filas.some(function (u) { return _si(u.Activo) && _perfil(u).area === 'FACTURACION'; });
@@ -193,7 +194,7 @@ function _robotRecolecciones() {
       ok = a.ok; nota = a.ok ? 'ANOTADO' : '[' + a.codigo + '] ' + a.mensaje;
       // Envios (BOTICAN) columna H: la hora de recolección, solo si está vacía y sin fórmula.
       if (String(_config().ID_BOTICAN || '').trim()) {
-        try { var h = _btEscribirH(String(r.Codigo), r.FechaHora); if (h === 'escrita') _log('robot', 'BOT_H', r.Codigo + ' · ' + r.FechaHora); }
+        try { var h = _btEscribirH(String(r.Codigo), r.FechaHora, String(r.Gestor)); if (h === 'escrita') _log('robot', 'BOT_H', r.Codigo + ' · ' + r.FechaHora); }
         catch (e) { _log('robot', 'BOT_H_ERROR', r.Codigo + ' · ' + e.message); }
       }
     }
@@ -263,7 +264,7 @@ function _robotLlevaInfo() {
   var out = {};
   ks.forEach(function (k) {
     var o = ops[_clavePed(codigos[k])];
-    if (o) { out[k] = { fuente: 'OPS', fila: o.fila, cliente: String(o.nombre || ''), direccion: String(o.direccion || ''), telefono: String(o.telefono || ''), gestor: /^no aplica$/i.test(String(o.gestor || '').trim()) ? '' : String(o.gestor || ''), abierto: !!o.abierto, estatus: String(o.estatus || '') }; return; }
+    if (o) { out[k] = { fuente: 'OPS', area: String(o.area || ''), fila: o.fila, cliente: String(o.nombre || ''), direccion: String(o.direccion || ''), telefono: String(o.telefono || ''), gestor: /^no aplica$/i.test(String(o.gestor || '').trim()) ? '' : String(o.gestor || ''), abierto: !!o.abierto, estatus: String(o.estatus || '') }; return; }
     var b = bot[k] || fad[k];
     out[k] = b ? { fuente: bot[k] ? 'BOTICAN' : 'FADERMEX', cliente: b[0], direccion: b[1], telefono: '', gestor: '' } : { fuente: '' };
   });

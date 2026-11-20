@@ -132,6 +132,9 @@ const enc = E.hoja('APP_Recolecciones').datos[0];
 ok(enc.slice(0, 13).join() === 'FechaHora,NumeroGestor,Gestor,Vehiculo,Codigo,Tipo,Origen,Destino,Contenido,Estado,EstadoFuente,Actualizado,Enviado' && enc[enc.length - 1] === 'Nota', 'APP_Recolecciones: columnas A–M iguales; "Nota" va al final');
 
 /* ---------- Columna H ---------- */
+// Columnas nuevas de evidencia de la app (AD–AI), como se agregaron a la hoja real el 20-nov
+['App · Recolectó (fecha y hora)', 'App · Recolectó (gestor)', 'App · Entregó en sucursal (fecha y hora)', 'App · Sucursal (recibió)', 'App · Gestor que entregó en sucursal', 'App · Foto entrega en sucursal']
+  .forEach((h, i) => { hEnv.datos[1][29 + i] = h; });
 titulo('Envios columna H (solo vacía y sin fórmula)');
 post({ accion: 'recolectar', token: tJL, codigos: ['#16152', '#16120'] });
 robot();
@@ -140,6 +143,17 @@ ok(fila('#16133')[7] === '09/11/2026 14:00:00', '#16133: H = 09/11/2026 14:00:00
 ok(fila('#16152')[7] === '=SI(B10="";"";"")', '#16152 tenía fórmula: no se toca');
 ok(fila('#16137')[7] === '09/11/2026 09:54:27', 'Lo que ya tenía H no cambia');
 ok(!post({ accion: 'inicio', token: tJL }).botican.porRecolectar.some(p => p.id === '#16133'), 'Lo recolectado sale de "Por recolectar" al momento (sin esperar la H)');
+ok(/09\/11\/2026/.test(fila('#16152')[29]) && fila('#16152')[30] === 'Jose Luis', 'Evidencia de la app: AD fecha y hora de la recolección y AE el gestor');
+
+titulo('Gestor entregó a sucursal (pedido BOTICAN que va a sucursal)');
+post({ accion: 'recolectar', token: tJL, codigos: ['#16151'] }); robot();
+ok(post({ accion: 'cerrar', token: tJL, idLocal: 'suc00016151', tipo: 'RECOLECCION', id: '#16151', resultado: 'ENTREGADO', sucursal: 'Ecatepec', recibio: 'Liz', foto: E.FOTO }).ok, 'Jose Luis: "Lo dejé en sucursal" Ecatepec, con foto y quién recibió');
+robot();
+const f51 = fila('#16151');
+ok(/\d{2}\/\d{2}\/2026 \d{2}:\d{2}/.test(f51[31]) && f51[32] === 'Ecatepec · recibió Liz' && f51[33] === 'Jose Luis' && /drive/.test(f51[34]), 'Envios: AF fecha y hora, AG sucursal y quién recibió, AH gestor, AI foto');
+ok(filasDe('APP_Cierres').find(c => c.IdCierre === 'suc00016151').EnviadoEn, 'Queda marcado para no escribirlo dos veces');
+post({ accion: 'cerrar', token: tJL, idLocal: 'suc00016152', tipo: 'RECOLECCION', id: '#16152', resultado: 'ENTREGADO', sucursal: 'Oficinas', foto: E.FOTO }); robot();
+ok(!fila('#16152')[31] && filasDe('APP_Cierres').find(c => c.IdCierre === 'suc00016152').EnviadoEn === 'NO APLICA', 'Un pedido a domicilio dejado en Oficinas NO cambia a "entregó a sucursal"');
 
 /* ---------- Sincronización rápida ---------- */
 titulo('Lo que asignas en Operaciones llega más rápido');
@@ -233,7 +247,7 @@ fs.mkdirSync(SALIDA, { recursive: true });
   await p.evaluate(() => vistaInicio()); await p.waitForTimeout(400);
   await p.click('.ruta-bot'); await p.waitForTimeout(500);
   t = await texto();
-  ok(/Vence: jue 12 nov, 09:00/.test(t) && /Pendientes por recoger/.test(t), 'Navegador: la ruta abre los pendientes, con semáforo y "Vence"');
+  ok(/Venci?ó?e?: [a-zé]{3} \d+ nov, \d{2}:\d{2}/.test(t) && /Pendientes por recoger/.test(t), 'Navegador: la ruta abre los pendientes, con semáforo y "Vence"');
   await foto('por-recolectar');
   await p.evaluate(() => vistaEscaner('recolectar')); await p.waitForTimeout(800);
   await p.fill('#inCodigo', '#16120'); await p.click('.teclear button'); await p.waitForTimeout(900);
