@@ -167,7 +167,7 @@ function apiDatos(token) {
         });
     }
 
-    return { traspasos: mios, activos: activos, avisos: avisos, solicitudes: solicitudes, cajas: _cajasVisibles(), ahora: _ahoraTxt(), diasVisibles: dias, domicilio: _domicilioActivo(c.area) };
+    return { traspasos: mios, activos: activos, avisos: avisos, solicitudes: solicitudes, cajas: _cajasVisibles(), ahora: _ahoraTxt(), diasVisibles: dias, domicilio: _domicilioActivo(c.area), pasaA: c.area === BOT.AREA ? _sucursalesMano() : [] };
   });
 }
 

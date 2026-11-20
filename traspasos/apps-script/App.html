@@ -293,6 +293,21 @@ function manualesPara() {
   }
   return l;
 }
+/** Botón ↻ Actualizar: vuelve a leer todo sin recargar la página (en lugar de F5). */
+function actualizarHTML() {
+  return '<button type="button" class="bell actualizar" data-a="actualizar" title="Actualizar la pantalla (sin F5)" aria-label="Actualizar"' + (S.actualizando ? ' disabled' : '') + '>' +
+    '<span class="gira' + (S.actualizando ? ' on' : '') + '">↻</span> Actualizar</button>';
+}
+function actualizarPantalla() {
+  if (S.actualizando) return;
+  S.actualizando = true; renderHeader();
+  refrescar(false).then(function () {
+    if (S.tab === 'botican' || S.tab === 'domicilio') { if (S.bot) cargarBotican(); }
+    else if (S.tab === 'imprimir') abrirCentroImpresion();
+    if (S.hist && S.hist.abierto && S.hist.res) buscarHist();
+  }).then(function () { S.actualizando = false; renderHeader(); toast('↻ Pantalla actualizada'); },
+          function () { S.actualizando = false; renderHeader(); });
+}
 function ayudaHTML() {
   var l = manualesPara(), M = (S.cat.ajustes && S.cat.ajustes.manuales) || {};
   return '<div class="bellwrap"><button type="button" class="bell ayuda" data-a="ayuda" aria-label="Ayuda" aria-expanded="' + !!S.ayuda + '">❓</button>' +
@@ -339,7 +354,7 @@ function renderHeader() {
   $('#header').innerHTML = '<div class="brand">' + logo + '<div class="titulo"><b>Traspasos</b><small>Control de envíos entre sucursales y oficinas</small></div></div><div class="hder">' +
     cambioModo() + '<div class="who"><span class="p">' + esc(S.ctx.areaNombre) + '</span><span class="u">' + esc(S.ctx.email) + (min < 60 * 24 * 30 ? ' · sesión: cierra en ' + Math.floor(min / 60) + ' h ' + ('0' + (min % 60)).slice(-2) + ' min' : '') + (me() === 'REC' ? ' · 🔒 equipo fijo' : ' · <a href="#" data-a="salir">Salir</a>') + '</span></div>' +
     (esVistaAdmin() ? '' : '<form class="hsearch" data-form="hbuscar" role="search"><input id="hbusq" autocomplete="off" placeholder="🔎 Buscar folio" aria-label="Buscar folio"></form>') +
-    ayudaHTML() + bell + '<nav class="tabs">' + tabs.map(function (x) {
+    actualizarHTML() + ayudaHTML() + bell + '<nav class="tabs">' + tabs.map(function (x) {
       return '<button type="button" data-a="tab" data-v="' + x[0] + '"' + (x[3] ? ' class="' + x[3] + '"' : '') + (S.tab === x[0] ? ' aria-current="page"' : '') + '>' + x[1] + (x[2] ? ' <span class="count">' + x[2] + '</span>' : '') + '</button>';
     }).join('') + '</nav></div>';
 }
@@ -630,7 +645,7 @@ function etiquetaHTML(t, b, rp, pantalla) {
  */
 var PUNTO = 0.125;
 /** Versión de la página (sale en ❓ Ayuda). Sirve para saber si ya se publicó lo último. */
-var VERSION_PAGINA = '2026-11-11 · rutas de recolección';
+var VERSION_PAGINA = '2026-11-20 · Botican pasa a sucursal';
 function bcHTML(code, anchoMm, altoMm) {
   return '<div class="bcw"><svg class="bc" data-code="' + esc(code) + '" data-w="' + anchoMm + '" data-h="' + altoMm + '"></svg></div>';
 }
@@ -1114,7 +1129,7 @@ function vCentroImpresion() {
 var MODOS_RECOL = {
   BOT: { pend: 'apiBoticanPendientes', recol: 'apiBoticanRecolectar', titulo: 'Recolección pedidos BOTICAN', tag: 'BOTICAN', tagCls: 'tagbot', ph: '#15975', listo: 'Elaborado', listos: 'elaborado(s)',
          leyendo: 'Leyendo la bitácora de Botican…',
-         sub: 'Sustituye la bitácora en papel. El gestor escanea su credencial, se marcan (o escanean) los pedidos <b>Elaborados</b> que se lleva y confirma. Su credencial funciona como firma: queda su nombre, la hora y la lista.' },
+         sub: 'Sustituye la bitácora en papel. El gestor escanea su credencial, se marcan (o escanean) los pedidos <b>Elaborados</b> que se lleva y confirma. Su credencial funciona como firma: queda su nombre, la hora y la lista. Los pedidos que se recogen en una sucursal (🏪) los puede pasar Producción mano a mano.' },
   DOM: { pend: 'apiDomicilioPendientes', recol: 'apiDomicilioRecolectar', titulo: 'Recolección pedidos a domicilio', tag: 'DOMICILIO', tagCls: 'tagdom', ph: 'NRREM-00008606', listo: 'Elaborado', listos: 'elaborado(s)',
          leyendo: 'Leyendo Pedidos Logística…',
          sub: 'Solo los pedidos a domicilio de esta sucursal. El gestor escanea su credencial, marca (o escanea) los pedidos <b>Elaborados</b> (ya listos) que se lleva y confirma. Su credencial funciona como firma: queda su nombre, la hora y la lista en Pedidos Logística.' }
@@ -1123,14 +1138,14 @@ function modoRecol() { return MODOS_RECOL[(S.bot && S.bot.modo) || 'BOT']; }
 function abrirBotican(modo) {
   modo = modo || (S.bot && S.bot.modo) || 'BOT';
   var mismo = S.bot && S.bot.modo === modo;
-  S.bot = { modo: modo, gestor: null, gestorId: null, sel: {}, lista: (mismo && S.bot.lista) || null, fb: null, err: null, acuse: null, enviando: false };
+  S.bot = { modo: modo, suc: '', gestor: null, gestorId: null, sel: {}, lista: (mismo && S.bot.lista) || null, fb: null, err: null, acuse: null, enviando: false };
   cargarBotican();
 }
 function cargarBotican() {
   S.bot.err = null; render();
   srv(modoRecol().pend, S.token).then(function (l) {
     S.bot.lista = l;
-    Object.keys(S.bot.sel).forEach(function (k) { if (!botPedido(k) || botPedido(k).estado !== 'ELABORADO') delete S.bot.sel[k]; });
+    Object.keys(S.bot.sel).forEach(function (k) { if (!botPuede(botPedido(k))) delete S.bot.sel[k]; });
     render();
   }).catch(function (e) { S.bot.err = e.message; render(); });
 }
@@ -1142,14 +1157,22 @@ function fhBot(s) {
   var m = String(s || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
   return m ? fh(m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2), m[4] ? m[4] + ':' + m[5] : '') : fh(s);
 }
+/** Sucursales a las que Producción pasa pedidos mano a mano (CFG_Ajustes → botican_pasa_a_sucursal). Solo en Botican. */
+function pasaA() { return (S.bot && S.bot.modo === 'BOT' && S.data && S.data.pasaA) || []; }
+/** ¿Se puede marcar? Elaborado y, si Producción los pasa a una sucursal, solo los de esa sucursal. */
+function botPuede(p) { return !!p && p.estado === 'ELABORADO' && (!S.bot.suc || p.mano === S.bot.suc); }
 function botMarcar(k, on) {
   var p = botPedido(k);
-  if (!S.bot.gestor || !p || p.estado !== 'ELABORADO') return;
+  if (!S.bot.gestor || !botPuede(p)) return;
   if (on) S.bot.sel[p.id] = true; else delete S.bot.sel[p.id];
   S.bot.fb = null;
 }
 function validarGestorBot(d) {
-  srv('apiGestor', S.token, d).then(function (g) { S.bot.gestor = g; S.bot.gestorId = d; S.idAbierto = null; S.bot.fb = { k: 'ok', m: 'Hola ' + g.nombre + '. Marca o escanea los pedidos que te llevas.' }; beep('ok'); render(); })
+  var suc = S.bot.suc;
+  srv(suc ? 'apiPersona' : 'apiGestor', S.token, d).then(function (g) {
+    if (suc && g.area !== 'BOT') throw new Error(g.nombre + ' no está registrado como personal de Botican / Producción (en CAT_Personas su área debe ser BOT).');
+    S.bot.gestor = g; S.bot.gestorId = d; S.idAbierto = null;
+    S.bot.fb = { k: 'ok', m: 'Hola ' + g.nombre + '. Marca o escanea los pedidos que ' + (suc ? 'dejas en ' + suc + '.' : 'te llevas.') }; beep('ok'); render(); })
     .catch(function (e) { S.bot.fb = { k: 'err', m: e.message }; beep('err'); render(); });
 }
 function botEscanear(v) {
@@ -1157,6 +1180,7 @@ function botEscanear(v) {
   if (!k) return;
   if (!p) S.bot.fb = { k: 'err', m: k + ' no está en la lista (no existe, o ya se recolectó). Revisa el número.' };
   else if (p.estado !== 'ELABORADO') S.bot.fb = { k: 'err', m: k + ' sigue en elaboración; todavía no se puede llevar.' };
+  else if (!botPuede(p)) S.bot.fb = { k: 'err', m: k + ' no se recoge en ' + S.bot.suc + ' (su dirección no dice "Sucursal ' + S.bot.suc + '"): va con gestor.' };
   else if (S.bot.sel[k]) S.bot.fb = { k: 'warn', m: k + ' ya está marcado.' };
   else { S.bot.sel[k] = true; S.bot.fb = { k: 'ok', m: k + ' agregado · ' + p.contacto }; }
   beep(S.bot.fb.k);
@@ -1166,7 +1190,7 @@ function botConfirmar() {
   var b = S.bot, ped = Object.keys(b.sel);
   if (!b.gestor || !ped.length || b.enviando) return;
   b.enviando = true; b.fb = null; render();
-  srv(modoRecol().recol, S.token, { gestor: b.gestorId, pedidos: ped }).then(function (r) {
+  srv(modoRecol().recol, S.token, { gestor: b.gestorId, pedidos: ped, sucursal: b.suc || '' }).then(function (r) {
     b.acuse = r; b.enviando = false; b.sel = {}; beep('listo');
     b.lista = b.lista.filter(function (p) { return r.pedidos.indexOf(p.id) < 0; });
     render();
@@ -1175,23 +1199,28 @@ function botConfirmar() {
 function vBotican() {
   var b = S.bot || {}, M = modoRecol();
   var head = '<h1>' + M.titulo + '</h1><p class="sub">' + M.sub + '</p>';
-  var n = Object.keys(b.sel || {}).length, izq;
+  var n = Object.keys(b.sel || {}).length, izq, suc = b.suc || '', PA = pasaA();
+  // ¿Quién se lleva los pedidos? Un gestor (como siempre) o Producción los pasa a una sucursal (mano a mano)
+  var modoH = PA.length && !b.acuse ? '<div class="paso">¿Quién se lleva los pedidos?</div><div class="modo">' +
+    '<button type="button" data-a="botlleva" data-v=""' + (suc ? '' : ' class="on"') + '><b>🛵 Un gestor</b><span>Como siempre: el gestor escanea su credencial.</span></button>' +
+    PA.map(function (s) { return '<button type="button" data-a="botlleva" data-v="' + esc(s) + '"' + (suc === s ? ' class="on"' : '') + '><b>🏪 Pasa a ' + esc(s) + '</b><span>Mano a mano: Producción escanea su credencial y lo deja en la sucursal.</span></button>'; }).join('') + '</div>' : '';
   if (b.acuse) {
     var a = b.acuse;
-    izq = '<div class="gestorpill"><div><b>' + esc(a.gestor) + '</b><div class="muted" style="font-size:13px">Gestor</div></div></div>' +
-      '<div class="feedback ok">✓ Recolección confirmada. Puede pasar el siguiente gestor.</div>' +
-      '<div class="acusebot"><div class="row" style="justify-content:space-between"><span class="num" style="font-size:24px">Acuse ' + esc(a.acuse) + '</span><span class="' + M.tagCls + '">' + M.tag + '</span></div>' +
-      '<dl class="dl"><div><dt>Gestor</dt><dd>' + esc(a.gestor) + '</dd></div><div><dt>Fecha</dt><dd>' + esc(fh(a.fecha, a.hora)) + '</dd></div><div><dt>Pedidos</dt><dd>' + a.pedidos.length + '</dd></div></dl>' +
+    izq = '<div class="gestorpill"><div><b>' + esc(a.gestor) + '</b><div class="muted" style="font-size:13px">' + (a.sucursal ? 'Producción · lo dejó en ' + esc(a.sucursal) : 'Gestor') + '</div></div></div>' +
+      '<div class="feedback ok">✓ ' + (a.sucursal ? 'Quedó registrado que ' + esc(a.gestor) + ' pasó los pedidos a ' + esc(a.sucursal) + '.' : 'Recolección confirmada. Puede pasar el siguiente gestor.') + '</div>' +
+      '<div class="acusebot"><div class="row" style="justify-content:space-between"><span class="num" style="font-size:24px">Acuse ' + esc(a.acuse) + '</span><span class="' + (a.sucursal ? 'tagvz">🏪 BOTICAN → ' + esc(a.sucursal.toUpperCase()) : M.tagCls + '">' + M.tag) + '</span></div>' +
+      '<dl class="dl"><div><dt>' + (a.sucursal ? 'Entregó' : 'Gestor') + '</dt><dd>' + esc(a.gestor) + '</dd></div>' + (a.sucursal ? '<div><dt>Se dejó en</dt><dd>' + esc(a.sucursal) + '</dd></div>' : '') + '<div><dt>Fecha</dt><dd>' + esc(fh(a.fecha, a.hora)) + '</dd></div><div><dt>Pedidos</dt><dd>' + a.pedidos.length + '</dd></div></dl>' +
       '<div class="muted" style="font-size:14px">' + esc(a.pedidos.join(' · ')) + '</div></div>' +
       '<button class="btn primary" type="button" data-a="bototra">Nueva recolección</button>';
   } else if (!b.gestor) {
-    izq = '<div class="scanbox"><b style="font-size:17px">Gestor: escanea tu credencial</b><span class="muted" style="font-size:13px">Tu credencial es tu firma. En pantalla solo sale tu nombre.</span></div>' +
-      idHTML('bgest', 'Credencial del gestor') + (b.fb ? '<div class="feedback ' + b.fb.k + '">' + esc(b.fb.m) + '</div>' : '');
+    izq = modoH + '<div class="scanbox"><b style="font-size:17px">' + (suc ? 'Producción: escanea tu credencial' : 'Gestor: escanea tu credencial') + '</b><span class="muted" style="font-size:13px">' + (suc ? 'Quien saca los pedidos y los deja en ' + esc(suc) + '. ' : '') + 'Tu credencial es tu firma. En pantalla solo sale tu nombre.</span></div>' +
+      idHTML('bgest', suc ? 'Credencial de quien los lleva a ' + esc(suc) : 'Credencial del gestor') + (b.fb ? '<div class="feedback ' + b.fb.k + '">' + esc(b.fb.m) + '</div>' : '');
   } else {
-    izq = '<div class="gestorpill"><div><b>' + esc(b.gestor.nombre) + '</b><div class="muted" style="font-size:13px">Gestor · se lleva</div></div><button class="btn" type="button" data-a="botcambiar" style="margin-left:auto">Cambiar</button></div>' +
+    izq = modoH + '<div class="gestorpill"' + (suc ? ' style="background:var(--accent-soft)"' : '') + '><div><b>' + esc(b.gestor.nombre) + '</b><div class="muted" style="font-size:13px">' + (suc ? 'Producción · lo deja en ' + esc(suc) : 'Gestor · se lleva') + '</div></div><button class="btn" type="button" data-a="botcambiar" style="margin-left:auto">Cambiar</button></div>' +
       '<label class="f">Escanea o teclea el pedido<input class="scaninput" id="botin" autocomplete="off" placeholder="' + M.ph + '"></label>' +
       (b.fb ? '<div class="feedback ' + b.fb.k + '">' + esc(b.fb.m) + '</div>' : '<div class="feedback idle">También puedes marcar los pedidos en la lista.</div>') +
-      '<div class="row" style="justify-content:space-between"><b style="font-size:16px">Se lleva ' + n + ' pedido(s)</b><button class="btn primary" type="button" data-a="botconf"' + (n && !b.enviando ? '' : ' disabled') + '>' + (b.enviando ? 'Guardando…' : 'Confirmar recolección') + '</button></div>';
+      '<div class="row" style="justify-content:space-between"><b style="font-size:16px">' + (suc ? 'Pasan a ' + esc(suc) + ' ' : 'Se lleva ') + n + ' pedido(s)</b><button class="btn primary" type="button" data-a="botconf"' + (n && !b.enviando ? '' : ' disabled') + '>' + (b.enviando ? 'Guardando…' : suc ? 'Confirmar: se dejan en ' + esc(suc) : 'Confirmar recolección') + '</button></div>' +
+      (suc ? '<div class="muted" style="font-size:13px">Solo se pueden marcar los pedidos que dicen 🏪 ' + esc(suc.toUpperCase()) + '.</div>' : '');
   }
   var der;
   if (b.err) der = '<div class="feedback err">' + esc(b.err) + '</div>';
@@ -1200,9 +1229,9 @@ function vBotican() {
     var elab = b.lista.filter(function (p) { return p.estado === 'ELABORADO'; }).length;
     var bloq = !b.gestor || b.acuse;
     der = (b.lista.length ? '<div class="list" style="gap:8px">' + b.lista.map(function (p) {
-      var gris = p.estado !== 'ELABORADO', on = !!(b.sel || {})[p.id];
-      return '<button type="button" class="ped' + (gris ? ' gris' : on ? ' sel' : '') + '" data-a="botsel" data-v="' + esc(p.id) + '"' + (gris || bloq ? ' disabled' : '') + ' aria-pressed="' + on + '">' +
-        '<span class="caja">' + (on ? '✓' : '') + '</span><span style="min-width:0"><span><span class="num" style="font-size:16px">' + esc(p.id) + '</span> <span class="est ' + (gris ? 'enel' : 'elab') + '">' + (gris ? 'En elaboración' : M.listo) + '</span></span>' +
+      var gris = p.estado !== 'ELABORADO', on = !!(b.sel || {})[p.id], otro = !gris && !botPuede(p);
+      return '<button type="button" class="ped' + (gris ? ' gris' : on ? ' sel' : '') + '" data-a="botsel" data-v="' + esc(p.id) + '"' + (gris || otro || bloq ? ' disabled' : '') + ' aria-pressed="' + on + '">' +
+        '<span class="caja">' + (on ? '✓' : '') + '</span><span style="min-width:0"><span><span class="num" style="font-size:16px">' + esc(p.id) + '</span> <span class="est ' + (gris ? 'enel' : 'elab') + '">' + (gris ? 'En elaboración' : M.listo) + '</span>' + (p.mano ? ' <span class="tagvz">🏪 ' + esc(p.mano.toUpperCase()) + '</span>' : '') + '</span>' +
         '<span class="d">' + esc([p.contacto, p.lugar].filter(Boolean).join(' · ')) + '</span></span>' +
         '<span class="r">' + (gris ? 'Aún no<br>se puede' : 'Listo<br>' + esc(fhBot(p.listo))) + '</span></button>';
     }).join('') + '</div>' : '<div class="empty">No hay pedidos pendientes de recolectar.</div>');
@@ -1481,6 +1510,8 @@ document.addEventListener('click', function (e) {
     case 'entsug': case 'recsug': return alEscanear(v);
     case 'tclear': S.scan.trae = null; break;
     case 'botsel': botMarcar(v, !S.bot.sel[v]); break;
+    case 'actualizar': return actualizarPantalla();
+    case 'botlleva': S.bot.suc = v; S.bot.gestor = null; S.bot.gestorId = null; S.bot.sel = {}; S.bot.fb = null; break;
     case 'botcambiar': S.bot.gestor = null; S.bot.gestorId = null; S.bot.sel = {}; S.bot.fb = null; break;
     case 'botconf': return botConfirmar();
     case 'bototra': return abrirBotican(S.bot.modo);

@@ -88,16 +88,33 @@ function _leerEnvios() {
   if (ult < desde) return { E: E, filas: [] };
   const hasta = Math.max(C.estatus, C.id, C.contacto, C.dir, C.area, C.listo, C.recol);
   const v = sh.getRange(desde, 1, ult - desde + 1, hasta).getDisplayValues();
-  const filas = [];
+  const filas = [], suc = _sucursalesMano();
   v.forEach(function (f, i) {
     const id = _pedidoDe(f[C.id - 1]);
     if (!id || id === '#') return;
     filas.push({ fila: desde + i, id: id, estado: _estadoBot(f[C.estatus - 1]),
       contacto: String(f[C.contacto - 1] || '').trim(), lugar: _lugarCorto(f[C.dir - 1]),
       area: String(f[C.area - 1] || '').trim(), listo: String(f[C.listo - 1] || '').trim(),
-      recolecto: String(f[C.recol - 1] || '').trim() });
+      recolecto: String(f[C.recol - 1] || '').trim(), mano: _manoDe(f[C.dir - 1], suc) });
   });
   return { E: E, filas: filas };
+}
+
+/**
+ * PASA A SUCURSAL (mano a mano): pedidos cuya "Dirección entrega" dice "Sucursal Vértiz"
+ * (o la sucursal que se ponga en CFG_Ajustes → botican_pasa_a_sucursal) no se los lleva un gestor:
+ * alguien de Producción los saca escaneando SU credencial y los deja en esa sucursal.
+ */
+function _sucursalesMano() {
+  let v = _ajuste('botican_pasa_a_sucursal', null);
+  if (v == null) v = Object.prototype.hasOwnProperty.call(__AJ || {}, 'botican_pasa_a_sucursal') ? '' : 'Vértiz';   // vacío en CFG_Ajustes = desactivado
+  return String(v).split(/[,;]+/)
+    .map(function (x) { return x.trim(); }).filter(String);
+}
+function _manoDe(dir, lista) {
+  const d = ' ' + _norm(dir).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ') + ' ';
+  for (let i = 0; i < lista.length; i++) if (d.indexOf(' sucursal ' + _norm(lista[i]) + ' ') >= 0) return lista[i];
+  return '';
 }
 
 function _soloBotican(c) {
@@ -110,21 +127,29 @@ function apiBoticanPendientes(token) {
     _soloBotican(_ctx(token));
     return _leerEnvios().filas
       .filter(function (p) { return !p.recolecto && (p.estado === 'ELABORADO' || p.estado === 'EN_ELABORACION'); })
-      .map(function (p) { return { id: p.id, estado: p.estado, contacto: p.contacto, lugar: p.lugar, area: p.area, listo: p.listo }; });
+      .map(function (p) { return { id: p.id, estado: p.estado, contacto: p.contacto, lugar: p.lugar, area: p.area, listo: p.listo, mano: p.mano }; });
   });
 }
 
 /**
- * d = { gestor: credencial | {usuario, nip}, pedidos: ['#15975', ...] }
- * Escribe el nombre del gestor en Envios!AB y guarda el acuse RB-xxxx.
+ * d = { gestor: credencial | {usuario, nip}, pedidos: ['#15975', ...], sucursal?: 'Vértiz' }
+ * Con gestor: escribe su nombre en Envios!AB y guarda el acuse RB-xxxx.
+ * Con sucursal (mano a mano): "gestor" es la credencial de la persona de Producción que los saca;
+ * escribe "Pasó a Vértiz · Nombre" en Envios!AB y guarda el acuse RS-xxxx.
  */
 function apiBoticanRecolectar(token, d) {
   return _api(function () {
     const c = _ctx(token);
     _soloBotican(c);
     d = d || {};
-    const g = _gestorPorCodigo(d.gestor);
-    if (!g) throw new Error(d.gestor ? _noReconocido(d.gestor) : 'Primero escanea la credencial del gestor.');
+    let suc = '';
+    if (d.sucursal) {
+      suc = _sucursalesMano().filter(function (s) { return _norm(s) === _norm(d.sucursal); })[0];
+      if (!suc) throw new Error('"' + d.sucursal + '" ya no está en CFG_Ajustes → botican_pasa_a_sucursal. Actualiza la página.');
+    }
+    const g = suc ? _personaPorCodigo(d.gestor) : _gestorPorCodigo(d.gestor);
+    if (!g) throw new Error(d.gestor ? _noReconocido(d.gestor) : (suc ? 'Primero escanea tu credencial (Producción).' : 'Primero escanea la credencial del gestor.'));
+    if (suc && g.area !== BOT.AREA) throw new Error(g.nombre + ' no está registrado como personal de Botican / Producción (en CAT_Personas su área debe ser ' + BOT.AREA + ').');
     const pedidos = [];
     (d.pedidos || []).forEach(function (x) { const k = _pedidoDe(x); if (k && k !== '#' && pedidos.indexOf(k) < 0) pedidos.push(k); });
     if (!pedidos.length) throw new Error('Marca o escanea al menos un pedido.');
@@ -139,6 +164,7 @@ function apiBoticanRecolectar(token, d) {
         if (!p) malos.push(k + ': no está en la bitácora de Botican');
         else if (p.recolecto) malos.push(k + ': ya lo recolectó ' + p.recolecto);
         else if (p.estado !== 'ELABORADO') malos.push(k + ': todavía no está Elaborado');
+        else if (suc && p.mano !== suc) malos.push(k + ': no es de los que se recogen en ' + suc + ' (va con gestor)');
       });
       if (malos.length) throw new Error('No se guardó nada. ' + malos.join(' · '));
 
@@ -147,21 +173,29 @@ function apiBoticanRecolectar(token, d) {
         const p = porId[k];
         if (_pedidoDe(sh.getRange(p.fila, C.id).getDisplayValue()) !== k) throw new Error('La bitácora de Botican cambió mientras se guardaba. Vuelve a intentar.');
       });
-      pedidos.forEach(function (k) { sh.getRange(porId[k].fila, C.recol).setValue(g.nombre); });
+      const texto = suc ? 'Pasó a ' + suc + ' · ' + g.nombre : g.nombre;
+      pedidos.forEach(function (k) { sh.getRange(porId[k].fila, C.recol).setValue(texto); });
       SpreadsheetApp.flush();
 
-      const acuse = _siguienteFolio('RB');
+      _agregarColumna(TR.H.BOTICAN, 'Tipo');
+      _agregarColumna(TR.H.BOTICAN, 'Se dejó en');
+      const acuse = _siguienteFolio(suc ? 'RS' : 'RB');
       _tb(TR.H.BOTICAN).agregarVarias(pedidos.map(function (k) {
         const p = porId[k];
         return { 'Acuse': acuse, 'Fecha': _hoy(), 'Hora': _hora(), 'Pedido': k, 'Contacto entrega': p.contacto,
-                 'Lugar': p.lugar, 'Área': p.area, 'Gestor': g.nombre, 'Credencial': g.via, 'Registró (cuenta)': c.email };
+                 'Lugar': p.lugar, 'Área': p.area, 'Gestor': g.nombre, 'Credencial': g.via, 'Registró (cuenta)': c.email,
+                 'Tipo': suc ? 'PASA A SUCURSAL (PRODUCCIÓN)' : 'GESTOR', 'Se dejó en': suc };
       }));
       _tb(TR.H.MOV).agregarVarias(pedidos.map(function (k) {
-        return _movObj({ folio: k }, 'RECOLECTADO EN BOTICAN', 'ELABORADO', 'RECOLECCION_GESTOR',
-          { donde: BOT.AREA, persona: g.nombre, cred: g.via, medio: 'BOTICAN · RECOLECCIÓN DE PEDIDOS', equipo: BOT.AREA,
-            detalle: 'Acuse ' + acuse + ' · ' + pedidos.length + ' pedido(s) · ' + (porId[k].contacto || '') });
+        return suc
+          ? _movObj({ folio: k }, 'PRODUCCIÓN LO PASÓ A ' + suc.toUpperCase(), 'ELABORADO', 'ENTREGADO_EN_SUCURSAL',
+              { donde: BOT.AREA, persona: g.nombre, cred: g.via, medio: 'BOTICAN · PASA A SUCURSAL (MANO A MANO)', equipo: BOT.AREA,
+                detalle: 'Acuse ' + acuse + ' · lo dejó en ' + suc + ' · ' + pedidos.length + ' pedido(s) · ' + (porId[k].contacto || '') })
+          : _movObj({ folio: k }, 'RECOLECTADO EN BOTICAN', 'ELABORADO', 'RECOLECCION_GESTOR',
+              { donde: BOT.AREA, persona: g.nombre, cred: g.via, medio: 'BOTICAN · RECOLECCIÓN DE PEDIDOS', equipo: BOT.AREA,
+                detalle: 'Acuse ' + acuse + ' · ' + pedidos.length + ' pedido(s) · ' + (porId[k].contacto || '') });
       }));
-      return { acuse: acuse, gestor: g.nombre, pedidos: pedidos, fecha: _hoy(), hora: _hora() };
+      return { acuse: acuse, gestor: g.nombre, sucursal: suc, pedidos: pedidos, fecha: _hoy(), hora: _hora() };
     });
   });
 }

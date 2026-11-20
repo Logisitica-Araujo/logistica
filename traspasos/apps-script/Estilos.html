@@ -290,6 +290,14 @@ details.sincred summary{cursor:pointer;font-weight:700;color:var(--muted);font-s
 /* Recolección pedidos BOTICAN */
 .tagbot{display:inline-block;font-size:11.5px;font-weight:900;letter-spacing:.05em;padding:2px 8px;border-radius:7px;background:var(--bot-bg);color:var(--bot);vertical-align:1px}
 .tagdom{display:inline-block;font-size:11.5px;font-weight:900;letter-spacing:.05em;padding:2px 8px;border-radius:7px;background:var(--accent-soft);color:var(--accent);vertical-align:1px}
+.tagvz{display:inline-block;font-size:11.5px;font-weight:900;letter-spacing:.04em;padding:2px 8px;border-radius:7px;background:#FFF2D2;color:#8A5A00;vertical-align:1px}
+.modo{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.modo button{border:2px solid var(--line);background:var(--surface);border-radius:12px;padding:12px;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.modo button b{display:block;font-size:16px}.modo button span{font-size:12.5px;color:var(--muted)}
+.modo button.on{border-color:var(--accent);background:var(--accent-soft)}
+.bell.actualizar{width:auto;padding:0 14px;gap:6px;font-weight:800;font-size:15px;display:inline-flex;align-items:center;white-space:nowrap}
+.gira{display:inline-block}.gira.on{animation:gira .8s linear infinite}@keyframes gira{to{transform:rotate(360deg)}}
+.paso{font-size:12px;font-weight:900;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin-bottom:-6px}
 .ped{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;text-align:left;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface);cursor:pointer}
 .ped:hover:not(:disabled){border-color:var(--bot)}
 .ped.sel{border-color:var(--ok);background:var(--ok-bg)}

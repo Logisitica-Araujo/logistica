@@ -89,6 +89,7 @@ function instalar() {
     ['revisar_avisos_cada_seg', 45, 'Cada cuántos segundos la página revisa si hay traspasos nuevos para el área.'],
     ['pin_administrador', '', 'PIN para entrar al Modo administrador. Vacío = sin PIN. Recomendado si tu cuenta está abierta en una computadora compartida.'],
     ['botican_archivo', 'https://docs.google.com/spreadsheets/d/1a3n7z962Ik6c1YrcD7RxkJEAWWK6a9xuA5LDrr2sffc/edit', 'Archivo con la bitácora de pedidos Botican (hoja Envios). Ahí se escribe el gestor en "Recolección de Gestor".'],
+    ['botican_pasa_a_sucursal', 'Vértiz', 'Botican: pedidos cuya "Dirección entrega" dice "Sucursal Vértiz" no los lleva un gestor: alguien de Producción los pasa mano a mano escaneando su credencial. Pon aquí la(s) sucursal(es), separadas por coma (ej. Vértiz, Roma). Vacío = desactivado.'],
     ['domicilio_archivo', 'https://docs.google.com/spreadsheets/d/1lv35lbab-GCrv-H81xjBh2CpfO2F-EUIIN3kcWHSsHU/edit', 'Archivo "Pedidos Logistica-Fadermex 2026" (hoja Envios). Ahí se escribe la fecha y el gestor en "✎ Fecha de recolección" y "Recolectado por:".'],
     ['domicilio_sucursales', 'Nueva Roma, Vertiz, Doctores, Ecatepec, Coapa', 'Sucursales cuyo PV tiene la pestaña "Recolección pedidos a domicilio" (separadas por coma).'],
     ['carpeta_manuales', 'https://drive.google.com/drive/folders/1ZGOY7huAekZEnC_B9i_AY4oL84pMS_hl', 'Carpeta de Drive con los manuales en PDF (solo la ven los administradores, para actualizarlos).'],
@@ -133,6 +134,7 @@ function instalar() {
   if (_crearHojaCajas()) hechos.push('Se creó la hoja RES_Cajas (cajas para Morelia).');
   if (_crearHojaRutas()) hechos.push('Se creó la hoja CAT_RutasRecoleccion (rutas y horarios de recolección): edítala para cambiar la sección "Rutas de recolección" sin tocar el código.');
   if (_crearHojaRecolBotican()) hechos.push('Se creó la hoja RES_RecoleccionesBotican (acuses de recolección de pedidos Botican).');
+  ['Tipo', 'Se dejó en'].forEach(function (h) { if (_agregarColumna(TR.H.BOTICAN, h)) hechos.push('Columna "' + h + '" agregada en RES_RecoleccionesBotican.'); });
   try { const L = _leerEnvios(); hechos.push('Conexión con la bitácora de Botican (Envios): OK, ' + L.filas.length + ' pedidos recientes.'); }
   catch (e) { hechos.push('⚠ No pude leer la bitácora de Botican: ' + e.message); }
   if (_crearHojaRecolDomicilio()) hechos.push('Se creó la hoja RES_RecoleccionesDomicilio (acuses de recolección de pedidos a domicilio en los PV).');
@@ -252,7 +254,7 @@ function _crearHojaRecolBotican() {
   const ss = _libro();
   if (ss.getSheetByName(TR.H.BOTICAN)) return false;
   const sh = ss.insertSheet(TR.H.BOTICAN);
-  const enc = ['Acuse', 'Fecha', 'Hora', 'Pedido', 'Contacto entrega', 'Lugar', 'Área', 'Gestor', 'Credencial', 'Registró (cuenta)'];
+  const enc = ['Acuse', 'Fecha', 'Hora', 'Pedido', 'Contacto entrega', 'Lugar', 'Área', 'Gestor', 'Credencial', 'Registró (cuenta)', 'Tipo', 'Se dejó en'];
   sh.getRange(1, 1).setValue('RES_RecoleccionesBotican  —  RESULTADOS · La app ESCRIBE aquí sola · NO editar a mano.  ' +
     'Acuse digital de cada recolección de pedidos en Botican (sustituye la bitácora en papel). Un renglón por pedido.');
   sh.getRange(2, 1, 1, enc.length).setValues([enc]);
