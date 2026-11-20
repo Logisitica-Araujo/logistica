@@ -835,6 +835,8 @@ function waDespuesDeCierre(c, volver) {
     return vistaWA({ titulo: t.charAt(0) + t.slice(1).toLowerCase() + ' registrado', sub: c.id + ' · guardado', foto: c.foto, id: c.id, volver: volver,
       msg: msgEntrega({ encabezado: t, id: c.id, detalle: c.cliente + (c.direccion && c.direccion !== c.cliente ? ' · ' + c.direccion : ''), motivo: c.motivo, nota: c.comentario, quien: 'Gestor' }) });
   }
+  if (c.botSuc) return vistaWA({ titulo: 'Entregado en sucursal', sub: c.id + ' · ' + c.sucursal, foto: c.foto, id: c.id, volver: volver,
+    msg: msgEntrega({ encabezado: 'ENTREGADO EN SUCURSAL', id: c.id, que: 'Pedido BOTICAN', detalle: c.cliente, donde: c.sucursal, recibio: c.recibio, nota: c.comentario }) });
   var o = { id: c.id, que: c.clase === 'IMSS' ? 'Entrega IMSS' : c.clase ? ({ EFECTIVO: 'Efectivo', DOCUMENTO: 'Documentos', INSUMO: 'Insumos', TRASPASO: 'Traspaso' })[c.clase] || '' : (c.tipo === 'PEDIDO' ? 'Pedido' : 'Traspaso'),
             detalle: c.clase === 'IMSS' ? c.cliente : c.direccion, donde: c.clase === 'IMSS' ? [c.cliente, c.areaImss].filter(Boolean).join(' · ') : (c.sucursal || c.cliente),
             recibio: c.recibio, matricula: c.matricula, monto: c.clase === 'EFECTIVO' ? c.monto : '', nota: c.comentario, foto: c.foto };

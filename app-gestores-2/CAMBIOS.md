@@ -1,5 +1,10 @@
 # Registro de cambios · App Gestores 2
 
+## 0.5.6 · 20-nov-2026 · BOTICAN: "Gestor entregó a sucursal" y evidencia de la app en Envios
+- **LOGISTICA BOTICAN 2026 / Envios**: columnas nuevas AD–AI (App · Recolectó fecha y gestor · Entregó en sucursal fecha · Sucursal (recibió) · Gestor · Foto) y estatus nuevo **🏪 GESTOR ENTREGÓ A SUCURSAL** (fórmula de A3; la anterior está en `2-MANUALES/BOTICAN_formula_estatus.md`).
+- Al recolectar un pedido BOTICAN, el robot escribe H (como antes) y AD/AE.
+- **"Lo dejé en sucursal"** de un pedido BOTICAN que va a sucursal: sucursal ya elegida (obligatoria), foto obligatoria, quién recibió (opcional) y WhatsApp "ENTREGADO EN SUCURSAL". El robot escribe AF–AI (paso nuevo `botSucursal`). Los pedidos a domicilio no cambian. App 2.12.0.
+
 ## App 2.11.1 · 18-nov-2026 · La pantalla ya no se sube
 - Al tocar algo dentro de una pantalla (gasolina, "Detalle", qué lleva, filtros, motivos…) la pantalla se queda a la misma altura; solo al cambiar de pantalla empieza arriba (`app.js` `pintar`).
 

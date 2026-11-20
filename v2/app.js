@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.11.1';
+var VERSION_APP = '2.12.0';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -746,18 +746,28 @@ function abrirCierre(tipo, i, resultado) {
   S.cierre = { tipo: tipo, resultado: resultado, id: tipo === 'PEDIDO' ? x.id : x.codigo, fila: x.fila || '', cliente: x.cliente || x.destino || '',
                direccion: x.direccion || x.contenido || '', exigeFirma: false, foto: null, firma: null, recibio: '', motivo: '', comentario: '',
                sucursal: x.destinoSucursal || '', clase: x.clase || '', esperado: x.esperado || 0, areaImss: '', matricula: '', monto: '' };
+  /* Pedido BOTICAN que va a una sucursal (el cliente pasa por él): "Gestor entregó a sucursal" en la hoja de BOTICAN. */
+  var inf = tipo === 'RECOLECCION' && x.tipo === 'PEDIDO' ? x.info : null;
+  if (resultado === 'ENTREGADO' && inf && /^\s*sucursal/i.test(inf.direccion || '') && (inf.fuente === 'BOTICAN' || /botican/i.test(inf.area || '') || /^#/.test(x.codigo))) {
+    var suc = clave(String(inf.direccion).replace(/^\s*sucursal\s*/i, ''));
+    var lista = S.datos.sucursales || [];
+    var m = lista.filter(function (s) { return clave(s.nombre) === suc; })[0] || lista.filter(function (s) { return suc && clave(s.nombre).indexOf(suc) >= 0; })[0];
+    S.cierre.botSuc = true; S.cierre.cliente = inf.cliente || S.cierre.cliente; S.cierre.destinoSuc = String(inf.direccion).trim();
+    S.cierre.sucursal = m ? m.nombre : '';
+  }
   pintarCierre();
 }
 function reglaFoto(c) {
   var r = S.datos.reglas;
   if (c.resultado === 'PAQUETERIA') return true;
+  if (c.botSuc) return true;   // entrega de un pedido BOTICAN en sucursal: foto obligatoria
   if (c.tipo !== 'PEDIDO') return false;
   return c.resultado === 'ENTREGADO' ? r.exigirFotoEntrega : r.exigirFotoNoEntrega;
 }
 function pintarCierre() {
   S.vista = 'cierre';
   var c = S.cierre, entrega = c.resultado === 'ENTREGADO', paq = c.resultado === 'PAQUETERIA';
-  var titulo = entrega ? 'Entregar' : paq ? 'Entregado a paquetería' : 'No entregué';
+  var titulo = c.botSuc && entrega ? 'Entregar en sucursal' : entrega ? 'Entregar' : paq ? 'Entregado a paquetería' : 'No entregué';
   var pideFoto = reglaFoto(c), firmaObl = entrega && c.exigeFirma, recObl = entrega && (c.exigeFirma || S.datos.reglas.exigirQuienRecibio);
   var fac = esFac() && !c.comoNumero ? bloqueCierreFac(c, 1) : null;
   if (fac) titulo = fac.titulo;
@@ -789,10 +799,12 @@ function pintarCierre() {
   }
   if (entrega && c.tipo !== 'PEDIDO') {
     var sucs = S.datos.sucursales || [];
-    html += '<div class="bloque"><div class="cab-b"><span class="paso' + (c.sucursal ? ' ok' : '') + '">' + (n++) + '</span><label class="et" for="selSuc" style="flex:1">¿Dónde lo entregaste?</label><span class="opc">opcional</span></div>' +
+    if (c.botSuc) html += '<div class="aviso">Pedido BOTICAN que va a <b>' + esc(c.destinoSuc) + '</b> (el cliente pasa por él). En la hoja de BOTICAN queda <b>🏪 Gestor entregó a sucursal</b> con fecha, hora y tu foto.</div>';
+    html += '<div class="bloque"><div class="cab-b"><span class="paso' + (c.sucursal ? ' ok' : '') + '">' + (n++) + '</span><label class="et" for="selSuc" style="flex:1">' + (c.botSuc ? '¿En qué sucursal lo dejaste?' : '¿Dónde lo entregaste?') + '</label>' + (c.botSuc ? '<span class="req">obligatorio</span>' : '<span class="opc">opcional</span>') + '</div>' +
       '<select class="campo" id="selSuc" onchange="S.cierre.sucursal=this.value;guardarBorrador()"><option value="">— Elige la sucursal —</option>' +
       sucs.map(function (x) { return '<option' + (x.nombre === c.sucursal ? ' selected' : '') + '>' + esc(x.nombre) + '</option>'; }).join('') +
       '<option' + (c.sucursal === 'Otro lugar' ? ' selected' : '') + '>Otro lugar</option></select>' +
+      (c.botSuc ? '<label class="et" for="inRecibio">¿Quién lo recibió en la sucursal? <span class="opc">(opcional)</span></label><input class="campo" id="inRecibio" autocomplete="off" placeholder="Ej. Lalo, mostrador" value="' + esc(c.recibio) + '" oninput="S.cierre.recibio=this.value;guardarBorrador()">' : '') +
       '<label class="et" for="inComent">Nota <span class="opc">(opcional)</span></label><textarea class="campo" id="inComent" rows="2" placeholder="Ej. se lo dejé a Lalo en mostrador">' + esc(c.comentario) + '</textarea></div>';
   }
   html += '<div class="bloque"><div class="cab-b"><span class="paso' + (c.foto ? ' ok' : '') + '">' + (n++) + '</span><b>' + (entrega ? (c.tipo === 'PEDIDO' ? 'Foto de la fachada' : 'Foto de la entrega') : paq ? 'Foto de la guía o comprobante' : 'Foto de evidencia') + '</b>' +
@@ -844,6 +856,7 @@ function enviarCierre() {
   if (reglaFoto(c) && !c.foto) return falla(errCod('CAP-04', 'Falta la foto.'));
   if (c.tipo === 'PEDIDO' && entrega && c.clase !== 'IMSS' && S.datos.reglas.exigirQuienRecibio && !String(c.recibio).trim()) return falla(errCod('CAP-08', 'Anota quién recibió.'));
   if (c.sos && !String(c.direccion || '').trim()) return falla(errCod('CAP-01', 'Escribe la dirección donde lo entregaste.'));
+  if (c.botSuc && entrega && !c.sucursal) return falla(errCod('CAP-01', 'Elige en qué sucursal lo dejaste.'));
   var fac = esFac() && !c.comoNumero;
   if (fac) { var ef = revisarCierreFac(c); if (ef) return falla(ef); }
   cargando('Guardando…');

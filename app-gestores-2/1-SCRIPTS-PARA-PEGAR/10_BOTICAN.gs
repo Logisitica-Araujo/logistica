@@ -277,20 +277,72 @@ function _btParecido(codigo) {
 }
 
 /** Columna H de Envios: se escribe la hora de recolección SOLO si está vacía y sin fórmula. */
-function _btEscribirH(codigo, fechaHora) {
+/* ---------- Evidencia de la app en Envios (columnas al final, por su TÍTULO en el renglón 2) ----------
+   AD App · Recolectó (fecha y hora)       AE App · Recolectó (gestor)
+   AF App · Entregó en sucursal (fecha y hora)   AG App · Sucursal (recibió)
+   AH App · Gestor que entregó en sucursal       AI App · Foto entrega en sucursal
+   El Estatus (columna A) muestra "🏪 GESTOR ENTREGÓ A SUCURSAL" cuando AF tiene fecha. Nunca se pisa algo ya escrito. */
+var APPG_BOT_COL = { REC_FECHA: 'App · Recolectó (fecha y hora)', REC_GESTOR: 'App · Recolectó (gestor)',
+  SUC_FECHA: 'App · Entregó en sucursal (fecha y hora)', SUC_DONDE: 'App · Sucursal (recibió)', SUC_GESTOR: 'App · Gestor que entregó en sucursal', SUC_FOTO: 'App · Foto entrega en sucursal' };
+function _btColumnas(sh) {
+  var enc = sh.getRange(2, 1, 1, sh.getLastColumn()).getValues()[0].map(function (h) { return String(h).replace(/\s+/g, ' ').trim(); }), out = {};
+  Object.keys(APPG_BOT_COL).forEach(function (k) { var i = enc.indexOf(APPG_BOT_COL[k]); out[k] = i >= 0 ? i + 1 : 0; });
+  return out;
+}
+/** Renglón de un pedido en Envios (busca en los últimos ULTIMAS por la columna B). 0 si no está. */
+function _btFila(sh, codigo) {
+  var k = _tnClave(codigo), ult = sh.getLastRow(); if (ult < APPG_BOT.FILA_ENVIOS) return 0;
+  var desde = Math.max(APPG_BOT.FILA_ENVIOS, ult - 4000), b = sh.getRange(desde, 2, ult - desde + 1, 1).getValues();
+  for (var i = b.length - 1; i >= 0; i--) if (_tnClave(b[i][0]) === k) return desde + i;
+  return 0;
+}
+function _btFechaTxt(fechaHora) {
+  var f = _btLeerFecha(fechaHora); if (!f) return _ahora('dd/MM/yyyy HH:mm:ss');
+  return ('0' + f.d).slice(-2) + '/' + ('0' + f.m).slice(-2) + '/' + f.y + ' ' + ('0' + Math.floor(f.min / 60)).slice(-2) + ':' + ('0' + f.min % 60).slice(-2) + ':00';
+}
+function _btPoner(sh, fila, col, valor) {   // solo si está vacía y sin fórmula
+  if (!col) return false;
+  var c = sh.getRange(fila, col);
+  if (c.getFormula() || String(c.getValue()).trim()) return false;
+  c.setValue(valor); return true;
+}
+
+/** Al registrar la recolección de un pedido BOTICAN: H (si está vacía) + AD/AE (evidencia de la app). */
+function _btEscribirH(codigo, fechaHora, gestor) {
   if (!_si(_config().BOT_ESCRIBIR_H)) return 'apagado';
-  var d = _btDatos(false), k = _tnClave(codigo);
-  var p = d.pendientes.filter(function (x) { return _tnClave(x.id) === k; })[0];
   var sh = _btLibro().getSheetByName('Envios');
-  var fila = p ? p.fila : 0;
-  if (!fila) return 'no está pendiente';
-  if (_tnClave(sh.getRange(fila, 2).getValue()) !== k) return 'la fila cambió';
-  var celda = sh.getRange(fila, 8);
-  if (celda.getFormula() || String(celda.getValue()).trim()) return 'ya tenía H';
-  var f = _btLeerFecha(fechaHora);
-  var txt = ('0' + f.d).slice(-2) + '/' + ('0' + f.m).slice(-2) + '/' + f.y + ' ' + ('0' + Math.floor(f.min / 60)).slice(-2) + ':' + ('0' + f.min % 60).slice(-2) + ':00';
-  celda.setValue(txt);
-  return 'escrita';
+  var fila = _btFila(sh, codigo);
+  if (!fila) return 'no está en Envios';
+  var col = _btColumnas(sh), txt = _btFechaTxt(fechaHora);
+  _btPoner(sh, fila, col.REC_FECHA, txt);
+  if (gestor) _btPoner(sh, fila, col.REC_GESTOR, String(gestor));
+  return _btPoner(sh, fila, 8, txt) ? 'escrita' : 'ya tenía H';
+}
+
+/** Robot: lo que el gestor dejó en una sucursal ("Lo dejé en sucursal") de pedidos BOTICAN que van a sucursal → AF–AI. */
+function _robotBotSucursal() {
+  var t = _tabla(APPG.H.CIERRES), hace = Date.now() - 3 * 86400000;
+  var pend = t.filas.filter(function (c) {
+    return String(c.Tipo) === 'RECOLECCION' && String(c.Resultado) === 'ENTREGADO' && String(c.Estado) === 'LOCAL' && String(c.DondeEntrego || '').trim() &&
+           !String(c.EnviadoEn || '').trim() && _fechaMs(c.FechaHora) > hace;
+  });
+  if (!pend.length) return 0;
+  var sh = _btLibro().getSheetByName('Envios'), col = _btColumnas(sh), n = 0;
+  if (!col.SUC_FECHA) return 'faltan las columnas App · … en Envios';
+  pend.forEach(function (c) {
+    var marca = 'NO APLICA', fila = _btFila(sh, c.ID);
+    if (fila && /^\s*sucursal/i.test(String(sh.getRange(fila, 5).getValue()))) {
+      _btPoner(sh, fila, col.SUC_FECHA, _btFechaTxt(_horaReal(c).replace('T', ' ')));
+      _btPoner(sh, fila, col.SUC_DONDE, String(c.DondeEntrego) + (String(c.Recibio || '').trim() ? ' · recibió ' + String(c.Recibio).trim() : ''));
+      _btPoner(sh, fila, col.SUC_GESTOR, String(c.Gestor));
+      if (String(c.URLFoto || '')) _btPoner(sh, fila, col.SUC_FOTO, String(c.URLFoto));
+      marca = _ahora();
+      _log('robot', 'BOT_SUCURSAL', c.ID + ' · ' + c.DondeEntrego + ' · ' + c.Gestor);
+      n++;
+    }
+    t.sh.getRange(c._fila, t.col('EnviadoEn')).setValue(marca);
+  });
+  return n;
 }
 
 /** Paso del robot: refresca la memoria de BOTICAN. */
