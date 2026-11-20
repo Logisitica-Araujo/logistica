@@ -645,7 +645,7 @@ function etiquetaHTML(t, b, rp, pantalla) {
  */
 var PUNTO = 0.125;
 /** Versión de la página (sale en ❓ Ayuda). Sirve para saber si ya se publicó lo último. */
-var VERSION_PAGINA = '2026-11-20 · Botican pasa a sucursal';
+var VERSION_PAGINA = '2026-11-20 · editar registros Botican';
 function bcHTML(code, anchoMm, altoMm) {
   return '<div class="bcw"><svg class="bc" data-code="' + esc(code) + '" data-w="' + anchoMm + '" data-h="' + altoMm + '"></svg></div>';
 }
@@ -1377,9 +1377,48 @@ function renderModal() {
   pintarCodigos($('#modal'));
 }
 /** Historia de un pedido de Botican (#15975): solo su línea de tiempo, con la etiqueta BOTICAN. */
+/** Registro de recolección de un pedido de Botican (gestor RB o Producción → sucursal RS). El administrador lo edita o lo deshace. */
+function registroBotHTML(p) {
+  var r = p.registro, m = S.modal || {};
+  if (!r) return '';
+  var suc = r.tipo === 'SUCURSAL';
+  if (r.estado === 'CANCELADO') return '<div class="panel" style="margin:14px 0;border:2px dashed var(--line)"><b>Acuse ' + esc(r.acuse) + ' · <span style="color:#C8232D">CANCELADO</span></b><div class="muted" style="font-size:13.5px">El registro se deshizo; el pedido volvió a Listos para recolección.</div></div>';
+  var o = p.opciones, cuerpo = '';
+  if (o && m.bedit) {
+    var lista = (suc ? o.personas : o.gestores).slice(); if (lista.indexOf(r.nombre) < 0) lista.unshift(r.nombre);
+    var sucs = o.sucursales.slice(); if (suc && sucs.indexOf(r.sucursal) < 0) sucs.unshift(r.sucursal);
+    cuerpo = '<div class="stack" style="border-top:1px solid var(--line);padding-top:12px"><div class="grid2" style="gap:10px">' +
+      '<label class="f">' + (suc ? 'Persona de Producción' : 'Gestor') + '<select class="t" id="be-nom">' + lista.map(function (x) { return '<option' + (x === r.nombre ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select></label>' +
+      (suc ? '<label class="f">Sucursal<select class="t" id="be-suc">' + sucs.map(function (x) { return '<option' + (x === r.sucursal ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select></label>' +
+        '<label class="f">Fecha<input class="t" type="date" id="be-f" value="' + esc(r.fecha) + '"></label><label class="f">Hora<input class="t" type="time" id="be-h" value="' + esc(r.hora) + '"></label>' : '') +
+      '</div><div class="row" style="justify-content:flex-end"><button class="btn ghost" type="button" data-a="botedno">Cancelar</button><button class="btn primary" type="button" data-a="botedok"' + (m.bguardando ? ' disabled' : '') + '>' + (m.bguardando ? 'Guardando…' : 'Guardar') + '</button></div></div>';
+  } else if (o && m.bdesh) {
+    cuerpo = '<div class="feedback warn" style="margin:0"><b>¿Deshacer este registro?</b> Se borra "' + esc(suc ? 'Pasó a ' + r.sucursal + ' · ' + r.nombre : r.nombre) + '"' + (suc ? ' y la fecha y hora' : '') + ' en la bitácora de Botican, el pedido vuelve a Listos para recolección y el acuse ' + esc(r.acuse) + ' queda CANCELADO.</div>' +
+      '<div class="row" style="justify-content:flex-end"><button class="btn ghost" type="button" data-a="botdeshno">No</button><button class="btn primary" type="button" data-a="botdeshok" style="background:#C8232D;border-color:#C8232D"' + (m.bguardando ? ' disabled' : '') + '>Sí, deshacer</button></div>';
+  } else if (o) {
+    cuerpo = '<div class="row"><button class="btn" type="button" data-a="botedit">✏️ Editar</button><button class="btn ghost" type="button" data-a="botdesh" style="color:#C8232D">↩ Deshacer</button></div>';
+  }
+  return '<div class="panel stack" style="margin:14px 0' + (suc ? ';border:2px solid #F2D58A;background:#FFFBEF' : '') + '"><div class="row" style="justify-content:space-between"><b style="font-size:17px">' + (suc ? '🏪 Pasó a sucursal' : '🛵 Recolección de gestor') + ' · Acuse ' + esc(r.acuse) + '</b>' +
+    (suc ? '<span class="tagvz">🏪 BOTICAN → ' + esc(r.sucursal.toUpperCase()) + '</span>' : '<span class="tagbot">BOTICAN</span>') + '</div>' +
+    '<dl class="dl" style="margin:4px 0"><div><dt>' + (suc ? 'Producción (entregó)' : 'Gestor') + '</dt><dd>' + esc(r.nombre) + '</dd></div>' + (suc ? '<div><dt>Se dejó en</dt><dd>' + esc(r.sucursal) + '</dd></div>' : '') +
+    '<div><dt>Fecha y hora</dt><dd>' + esc(fh(r.fecha, r.hora)) + '</dd></div></dl>' + (m.berr ? '<div class="feedback err">' + esc(m.berr) + '</div>' : '') + cuerpo + '</div>';
+}
+function botGuardarEdicion(folio) {
+  var v = function (id) { var el = $('#' + id); return el ? el.value : ''; };
+  var d = { pedido: folio, nombre: v('be-nom'), sucursal: v('be-suc'), fecha: v('be-f'), hora: v('be-h') };
+  S.modal.bguardando = true; S.modal.berr = null; render();
+  srv('apiBoticanEditar', S.token, d).then(function () { toast('✓ Registro de ' + folio + ' actualizado'); abrir(folio); })
+    .catch(function (e) { if (S.modal) { S.modal.bguardando = false; S.modal.berr = e.message; render(); } });
+}
+function botDeshacer(folio) {
+  S.modal.bguardando = true; S.modal.berr = null; render();
+  srv('apiBoticanDeshacer', S.token, folio).then(function () { toast('↩ Registro de ' + folio + ' deshecho'); abrir(folio); })
+    .catch(function (e) { if (S.modal) { S.modal.bguardando = false; S.modal.berr = e.message; render(); } });
+}
 function detalleBoticanHTML(p, movs) {
   var dom = !!p.domicilio, cls = dom ? 'tagdom' : 'tagbot', tag = dom ? 'DOMICILIO' : 'BOTICAN', col = dom ? 'var(--accent)' : 'var(--bot)';
   return '<div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="num" style="font-size:28px">' + esc(p.folio) + '</div><div class="muted">' + (dom ? 'Pedido a domicilio' : 'Pedido de Botican') + ' (no es un traspaso interno)</div></div><div class="row"><span class="' + cls + '">' + tag + ' · PEDIDO</span><button class="btn ghost" type="button" data-a="cerrar" aria-label="Cerrar">✕</button></div></div>' +
+    (dom ? '' : registroBotHTML(p)) +
     '<h2>Línea de tiempo</h2><ol class="timeline">' + movs.map(function (e) {
       return '<li style="--tl:' + col + '"><div class="when">' + esc(fh(e.fecha, e.hora)) + '</div><div class="what">' + esc(e.accion) + ' <span class="' + cls + '">' + tag + '</span></div><div class="detail">' + esc([e.persona, e.donde, e.detalle].filter(Boolean).join(' · ')) + '</div></li>';
     }).join('') + '</ol>';
@@ -1532,6 +1571,12 @@ document.addEventListener('click', function (e) {
     case 'oir': beep(v); return;
     case 'open': return abrir(v);
     case 'cerrar': case 'fondo': S.modal = null; break;
+    case 'botedit': S.modal.bedit = true; S.modal.bdesh = false; S.modal.berr = null; break;
+    case 'botedno': S.modal.bedit = false; S.modal.berr = null; break;
+    case 'botedok': return botGuardarEdicion(S.modal.folio);
+    case 'botdesh': S.modal.bdesh = true; S.modal.bedit = false; S.modal.berr = null; break;
+    case 'botdeshno': S.modal.bdesh = false; S.modal.berr = null; break;
+    case 'botdeshok': return botDeshacer(S.modal.folio);
     case 'form': S.modal.form = v || null; S.modal.err = null; S.modal.edesc = null; S.modal.ebul = null; S.modal.ndest = null; S.modal.nmot = null; break;
 
     case 'idman': return alIdentificar(v, leerId(v, true));

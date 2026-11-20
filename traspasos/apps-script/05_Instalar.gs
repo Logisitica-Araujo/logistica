@@ -134,7 +134,13 @@ function instalar() {
   if (_crearHojaCajas()) hechos.push('Se creó la hoja RES_Cajas (cajas para Morelia).');
   if (_crearHojaRutas()) hechos.push('Se creó la hoja CAT_RutasRecoleccion (rutas y horarios de recolección): edítala para cambiar la sección "Rutas de recolección" sin tocar el código.');
   if (_crearHojaRecolBotican()) hechos.push('Se creó la hoja RES_RecoleccionesBotican (acuses de recolección de pedidos Botican).');
-  ['Tipo', 'Se dejó en'].forEach(function (h) { if (_agregarColumna(TR.H.BOTICAN, h)) hechos.push('Columna "' + h + '" agregada en RES_RecoleccionesBotican.'); });
+  ['Tipo', 'Se dejó en', 'Estado', 'Editado'].forEach(function (h) { if (_agregarColumna(TR.H.BOTICAN, h)) hechos.push('Columna "' + h + '" agregada en RES_RecoleccionesBotican.'); });
+  try {
+    const E = _envios();
+    if (!E.C.fprod) { _asegurarColFprod(E); hechos.push('Bitácora de Botican: se creó la columna "' + COL_FPROD + '".'); }
+    const n = _rellenarFprod();
+    if (n) hechos.push('Bitácora de Botican: se llenó la fecha y hora de ' + n + ' pedido(s) que Producción ya había pasado a sucursal.');
+  } catch (e) { hechos.push('⚠ Columna de fecha de Producción en Botican: ' + e.message); }
   try { const L = _leerEnvios(); hechos.push('Conexión con la bitácora de Botican (Envios): OK, ' + L.filas.length + ' pedidos recientes.'); }
   catch (e) { hechos.push('⚠ No pude leer la bitácora de Botican: ' + e.message); }
   if (_crearHojaRecolDomicilio()) hechos.push('Se creó la hoja RES_RecoleccionesDomicilio (acuses de recolección de pedidos a domicilio en los PV).');
@@ -254,7 +260,7 @@ function _crearHojaRecolBotican() {
   const ss = _libro();
   if (ss.getSheetByName(TR.H.BOTICAN)) return false;
   const sh = ss.insertSheet(TR.H.BOTICAN);
-  const enc = ['Acuse', 'Fecha', 'Hora', 'Pedido', 'Contacto entrega', 'Lugar', 'Área', 'Gestor', 'Credencial', 'Registró (cuenta)', 'Tipo', 'Se dejó en'];
+  const enc = ['Acuse', 'Fecha', 'Hora', 'Pedido', 'Contacto entrega', 'Lugar', 'Área', 'Gestor', 'Credencial', 'Registró (cuenta)', 'Tipo', 'Se dejó en', 'Estado', 'Editado'];
   sh.getRange(1, 1).setValue('RES_RecoleccionesBotican  —  RESULTADOS · La app ESCRIBE aquí sola · NO editar a mano.  ' +
     'Acuse digital de cada recolección de pedidos en Botican (sustituye la bitácora en papel). Un renglón por pedido.');
   sh.getRange(2, 1, 1, enc.length).setValues([enc]);
