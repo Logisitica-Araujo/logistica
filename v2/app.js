@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.12.0';
+var VERSION_APP = '2.13.0';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -344,8 +344,9 @@ function cerrarSesion() {
 
 /* ==================== Vehículo ==================== */
 function vistaVehiculo(primera) {
-  S.vista = 'vehiculo';
+  S.vista = 'vehiculo'; S.vehPrimera = !!primera;
   var d = S.datos; S.vehSel = S.vehSel || d.vehiculo || '';
+  S.vehChk = S.vehChk || {}; S.vehTab = S.vehTab || { foto: null, destino: '' };
   var html = '<div class="cab">' + (primera ? '' : '<div class="cab-fila"><button class="btn-ic" onclick="vistaInicio()" aria-label="Volver">' + IC.atras + '</button></div>') +
     '<div class="cab-nombre"><small>Hola, ' + esc(d.gestor.nombre) + '</small><b>¿Con qué sales hoy?</b></div></div><div class="cuerpo">';
   d.vehiculos.forEach(function (v, i) {
@@ -359,9 +360,14 @@ function vistaVehiculo(primera) {
     var lista = d.checklist[v.tipo] || d.checklist.AUTO || [];
     if (lista.length) {
       html += '<div class="bloque"><div class="cab-b"><b>Antes de salir</b></div>';
-      lista.forEach(function (c, j) { html += '<label class="check"><input type="checkbox" id="chk' + j + '" data-t="' + esc(c) + '">' + esc(c) + '</label>'; });
+      lista.forEach(function (c, j) { html += '<label class="check"><input type="checkbox" id="chk' + j + '" data-t="' + esc(c) + '"' + (S.vehChk[j] ? ' checked' : '') + ' onchange="S.vehChk[' + j + ']=this.checked">' + esc(c) + '</label>'; });
       html += '<p class="opc">Si te falta algo, avisa a tu supervisor antes de salir.</p></div>';
     }
+  }
+  if (pideTableroNormal(v)) {   // camioneta sin "Salida especial": foto del tablero + a dónde va
+    html += '<div class="bloque"><div class="cab-b"><b>Foto del tablero</b><span class="opc">que se vea km y gasolina</span></div>' +
+      '<div class="slots"><button class="slot-foto' + (S.vehTab.foto ? ' con' : '') + '" onclick="tomarFoto()">' + (S.vehTab.foto ? '<img src="' + S.vehTab.foto + '" alt="">' : '<b>+</b>') + '<span>Tablero' + (S.vehTab.foto ? ' ✓' : '') + '</span></button></div>' +
+      '<label class="et" for="txtDestino">¿A dónde vas?</label><input class="campo" id="txtDestino" maxlength="150" placeholder="Destino o ruta (ej. Ruta Norte, Toluca…)" value="' + esc(S.vehTab.destino) + '" oninput="S.vehTab.destino=this.value"></div>';
   }
   if (v && v.especial && !(d.bitacora && d.bitacora.vehiculo === v.nombre)) {
     html += '<button class="esp-btn" onclick="salidaEspecial()"><span class="ic">🚐</span><span><b>Salida especial</b><small>Foráneo, carga, todo el día u otro: con fotos, km, gasolina y revisión</small></span></button>';
@@ -374,14 +380,35 @@ function vistaVehiculo(primera) {
   html += '</div><div class="pie"><button class="btn" ' + (S.vehSel ? '' : 'disabled') + ' onclick="guardarVehiculo()">' + (d.vehiculo && leer('dia') === hoyTxt() ? 'Cambiar de vehículo' : 'Salir a ruta') + '</button></div>';
   pintar(html);
 }
-function elegirVeh(i) { S.vehSel = S.datos.vehiculos[i].nombre; vistaVehiculo(S.vista === 'vehiculo' && !S.datos.vehiculo); }
+/** La camioneta (tipo AUTO) sin "Salida especial" pide foto del tablero y destino, salvo que ya sea la suya hoy. */
+function pideTableroNormal(v) {
+  var d = S.datos;
+  if (!v || v.tipo !== 'AUTO') return false;
+  if (d.bitacora && d.bitacora.vehiculo === v.nombre) return false;
+  return !(d.vehiculo === v.nombre && leer('dia') === hoyTxt());
+}
+function elegirVeh(i) { var n = S.datos.vehiculos[i].nombre; if (n !== S.vehSel) { S.vehChk = {}; S.vehTab = { foto: null, destino: '' }; } S.vehSel = n; vistaVehiculo(S.vista === 'vehiculo' && !S.datos.vehiculo); }
 function guardarVehiculo() {
   var checklist = Array.prototype.map.call(document.querySelectorAll('.check input'), function (c) { return { texto: c.dataset.t, ok: c.checked }; });
-  var motivo = $('selMotVeh') ? $('selMotVeh').value : ''; S.motVeh = '';
+  var motivo = $('selMotVeh') ? $('selMotVeh').value : '';
   var veh = S.datos.vehiculos.filter(function (x) { return x.nombre === S.vehSel; })[0];
   var yaLaTrae = S.datos.bitacora && S.datos.bitacora.vehiculo === S.vehSel;
   if (S.datos.bitacora && !yaLaTrae) return falla(errCod('VEH-02', 'Primero entrega ' + S.datos.bitacora.vehiculo + ' (botón "Entregar" en tu inicio).'));
-  mandarVehiculo(checklist, motivo, null, null);
+  if (!pideTableroNormal(veh)) { S.motVeh = ''; return mandarVehiculo(checklist, motivo, null, null); }
+  var tab = S.vehTab || {}, destino = String(tab.destino || '').trim();
+  if (!tab.foto) return falla(errCod('CAP-04', 'Falta la foto del tablero (que se vea el kilometraje y la gasolina).'));
+  if (!destino) { var c = $('txtDestino'); if (c) c.focus(); return falla(errCod('CAP-01', 'Escribe a dónde vas (destino o ruta).')); }
+  cargando('Ubicando…');
+  obtenerGPS().then(function (g) {
+    quitarCargando();
+    var hora = new Date(), foto = tab.foto;
+    S.despuesVeh = function () {
+      vistaWAVehiculo({ modo: 'NORMAL', vehiculo: veh.nombre, destino: destino, hora: hora, foto: foto, lat: g.lat, lng: g.lng,
+        falta: checklist.filter(function (c) { return !c.ok; }).map(function (c) { return c.texto; }), detalles: [] });
+    };
+    S.vehTab = { foto: null, destino: '' }; S.vehChk = {};
+    mandarVehiculo(checklist, motivo, { foto: foto, lat: g.lat, lng: g.lng }, null, destino);
+  });
 }
 function salidaEspecial() {
   var checklist = Array.prototype.map.call(document.querySelectorAll('.check input'), function (c) { return { texto: c.dataset.t, ok: c.checked }; });
@@ -390,16 +417,18 @@ function salidaEspecial() {
   S.tablero = nuevoTablero('SALIDA', S.vehSel, 'COMPLETA', { checklist: checklist, motivo: motivo, especial: { para: '', destino: '' } });
   vistaTablero();
 }
-function mandarVehiculo(checklist, motivo, tablero, especial) {
-  cargando('Guardando…');
-  srv('vehiculo', { vehiculo: S.vehSel, checklist: checklist, motivo: motivo, tablero: tablero, especial: especial }).then(function () {
-    quitarCargando(); S.datos.vehiculo = S.vehSel; guardar('dia', hoyTxt()); if (tablero) bitacoraLocal(tablero); DB.set('inicio', S.datos);
+function mandarVehiculo(checklist, motivo, tablero, especial, destino) {
+  cargando('Guardando…'); S.motVeh = '';
+  var datos = { vehiculo: S.vehSel, checklist: checklist, motivo: motivo, tablero: tablero, especial: especial };
+  if (destino) datos.destino = destino;   // salida normal de la camioneta: no abre bitácora local (no se "entrega")
+  srv('vehiculo', datos).then(function () {
+    quitarCargando(); S.datos.vehiculo = S.vehSel; guardar('dia', hoyTxt()); if (tablero && especial) bitacoraLocal(tablero); DB.set('inicio', S.datos);
     var luego = S.despuesVeh; S.despuesVeh = null; if (luego) luego(); else vistaInicio(); actualizar();
   }).catch(function (e) {
     quitarCargando();
     if (e.red && S.despuesVeh) { var l2 = S.despuesVeh; S.despuesVeh = null; setTimeout(l2, 0); }
     else S.despuesVeh = null;
-    if (e.red) { S.datos.vehiculo = S.vehSel; guardar('dia', hoyTxt()); encolar('vehiculo', { vehiculo: S.vehSel, checklist: checklist, motivo: motivo, tablero: tablero, especial: especial }, 'Vehículo ' + S.vehSel); if (tablero) bitacoraLocal(tablero); vistaInicio(); }
+    if (e.red) { S.datos.vehiculo = S.vehSel; guardar('dia', hoyTxt()); encolar('vehiculo', datos, 'Vehículo ' + S.vehSel); if (tablero && especial) bitacoraLocal(tablero); vistaInicio(); }
     else falla(e);
   });
 }
@@ -581,6 +610,7 @@ function bitacoraLocal(tab) { S.datos.bitacora = { vehiculo: S.vehSel, salida: n
 function vistaWAVehiculo(w) {
   S.vista = 'listo';
   var hora = w.hora.toLocaleString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  if (w.modo === 'NORMAL') return vistaWASaleCamioneta(w, hora);
   var sal = w.modo === 'SALIDA', esp = w.especial && w.especial.para ? ' · ' + w.especial.para + (w.especial.destino ? ' · ' + w.especial.destino : '') : '';
   var l = [(sal ? 'SALIDA ESPECIAL' : 'VEHÍCULO ENTREGADO') + esp, w.vehiculo];
   if (w.persona) l.push((sal ? 'Se la lleva: ' : 'La regresó: ') + w.persona + ' (sin app)');
@@ -604,6 +634,20 @@ function vistaWAVehiculo(w) {
     '<div class="cuerpo"><b>¿Mandarlo al grupo?</b><div class="wa-burbuja"><div>' + (w.foto ? '<img src="' + w.foto + '" alt="">' : '') + '<pre>' + esc(msg) + '</pre></div></div>' +
     (w.foto ? '<label class="check"><input type="checkbox" id="waFoto" checked> Incluir la foto del tablero</label>' : '') + '</div>' +
     '<div class="pie"><button class="btn wa" onclick="mandarWA()">Mandar al grupo por WhatsApp</button><button class="btn linea" onclick="' + (w.persona ? 'admVehiculos()' : sal ? 'vistaInicio()' : 'vistaVehiculo(true)') + '">' + (w.persona || sal ? 'Ahora no' : 'Ahora no · ¿en qué sigues?') + '</button></div></div>');
+}
+/** Salida normal de la camioneta: SALE CAMIONETA + foto del tablero, destino, faltantes, hora, lugar y gestor. */
+function vistaWASaleCamioneta(w, hora) {
+  var l = ['SALE CAMIONETA', w.vehiculo, 'Destino: ' + w.destino, 'Salió: ' + hora];
+  w.falta.forEach(function (f) { l.push('✗ Falta: ' + f); });
+  if (!w.falta.length) l.push('Lleva todo');
+  if (w.lat && w.lng) l.push('Lugar: https://maps.google.com/?q=' + w.lat + ',' + w.lng);
+  l.push('Gestor: ' + S.datos.gestor.nombre);
+  var msg = l.join('\n');
+  S.wa = { msg: msg, foto: w.foto, id: 'tablero' };
+  pintar('<div class="listo"><div class="verde-top"><span class="palomita">' + IC.palomita + '</span><b>Listo: sales en ' + esc(w.vehiculo) + '</b><span>' + esc(w.destino) + '</span></div>' +
+    '<div class="cuerpo"><b>¿Mandarlo al grupo?</b><div class="wa-burbuja"><div>' + (w.foto ? '<img src="' + w.foto + '" alt="">' : '') + '<pre>' + esc(msg) + '</pre></div></div>' +
+    (w.foto ? '<label class="check"><input type="checkbox" id="waFoto" checked> Incluir la foto del tablero</label>' : '') + '</div>' +
+    '<div class="pie"><button class="btn wa" onclick="mandarWA()">Mandar al grupo por WhatsApp</button><button class="btn linea" onclick="vistaInicio()">Ahora no</button></div></div>');
 }
 function tarjetaBitacora() {
   var b = S.datos && S.datos.bitacora; if (!b) return '';
@@ -1214,6 +1258,7 @@ function ponerFoto(f) {
   if (!S.cierre && S.vista === 'listo' && S.waOpts) { S.waOpts.foto = f; beep(); return vistaWA(S.waOpts); }
   if (!S.cierre && S.vista === 'libre' && S.libre) { S.libre.foto = f; beep(); return vistaLibre(); }
   if (!S.cierre && S.vista === 'tablero' && S.tablero) return ponerFotoTablero(f);
+  if (!S.cierre && S.vista === 'vehiculo' && S.vehTab) { S.vehTab.foto = f; beep(); return vistaVehiculo(S.vehPrimera); }
   if (!S.cierre && S.vista === 'parada' && S.parada) { S.parada.foto = f; beep(); return vistaParada(S.parada.k); }
   if (!S.cierre) return; S.cierre.foto = f; beep(); pintarCierre();
 }

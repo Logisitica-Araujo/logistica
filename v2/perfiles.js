@@ -595,7 +595,7 @@ function admVehiculos() {
           '<div class="botones"><button class="b" onclick="admRecibirPrestado(\'' + esc(x.id) + '\')">Recibir de vuelta</button><span></span><span></span></div></div>';
       }).join(''));
     S.admPrestados = r.prestados || [];
-    pintar(html + '<button class="btn linea" onclick="admBitacora()">🚐 Bitácora de salidas especiales: fotos, km, gasolina, día y lugar</button>' +
+    pintar(html + '<button class="btn linea" onclick="admBitacora()">🚐 Bitácora de la camioneta: salidas, destino, fotos, km y lugar</button>' +
       '<p class="nota">Al cambiar de vehículo a medio día, la app le pide el motivo al gestor y aquí lo ves.</p></div>' + navAdm('veh'));
   }, sub);
 }
@@ -616,16 +616,24 @@ function admRecibirPrestado(id) {
   vistaTablero();
 }
 
-/* ---------- Bitácora de vehículos (salidas especiales) ---------- */
+/* ---------- Bitácora de la camioneta (salidas normales y especiales) ---------- */
 function admBitacora() {
   S.vista = 'adm';
-  var sub = barraAdm('Bitácora de salidas especiales', 'Fotos, km, gasolina, día, hora y lugar de cada una', 'admVehiculos()');
+  var sub = barraAdm('Bitácora de la camioneta', 'Salidas normales y especiales: fotos, destino, km, gasolina, día, hora y lugar', 'admVehiculos()');
   admCargar('bitacora', {}, function (r) {
     var dia = function (t) { var f = fechaCorta(t); return f ? f.txt.replace(/, \d.*$/, '') : ''; }, hora = function (t) { return String(t || '').slice(11, 16); };
     var niv = { COMPLETA: 'completa', CONFIRMA: 'confirmó', BASICA: 'básica' };
     var html = sub + '<div class="cuerpo con-nav">';
     if (!r.bitacora.length) html += '<div class="vacio"><b>Todavía no hay registros</b><span>Aparecen cuando alguien toma un vehículo que pide revisión.</span></div>';
     r.bitacora.forEach(function (b) {
+      if (b.normal) {   // salida normal: foto del tablero + destino (no se entrega)
+        html += '<div class="card"><div class="linea"><b>' + esc(dia(b.salida)) + ' · ' + esc(b.gestor) + '</b><span class="espacio"></span><span class="tag">SALIDA NORMAL</span></div>' +
+          '<div class="t1">' + esc(b.vehiculo) + (b.destino ? ' · ' + esc(b.destino) : '') + '</div>' +
+          '<div class="t2">▶ Salió ' + esc(hora(b.salida)) + (b.mapaSalida ? ' · <a href="' + esc(b.mapaSalida) + '" target="_blank" rel="noopener">📍 lugar</a>' : '') +
+          (b.fotoSalida ? ' · <a href="' + esc(b.fotoSalida) + '" target="_blank" rel="noopener">📷 tablero ↗</a>' : '') + '</div>' +
+          (b.faltantes ? '<div class="t2">✗ Faltó: ' + esc(b.faltantes) + '</div>' : '') + '</div>';
+        return;
+      }
       var rojo = b.sinEntregar || b.descuadre || b.alRecibir.length;
       html += '<div class="card"' + (rojo ? ' style="border-left:5px solid var(--rojo)"' : '') + '><div class="linea"><b>' + esc(dia(b.salida)) + ' · ' + esc(b.gestor) + '</b><span class="espacio"></span>' +
         (b.sinEntregar ? '<span class="tag r">SIN ENTREGAR</span>' : b.estado === 'EN USO' ? '<span class="tag a">EN USO</span>' : '<span class="tag v">' + (b.km !== '' ? esc(String(b.km)) + ' km' : 'ENTREGADA') + '</span>') + '</div>' +
