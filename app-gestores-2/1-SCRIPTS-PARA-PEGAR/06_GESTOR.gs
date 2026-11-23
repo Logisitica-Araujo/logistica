@@ -188,6 +188,8 @@ function apiVehiculo(p) {
     if (p.especial && !abierta) _bitacoraSalida(u, v, p.tablero, p.especial);   // "Salida especial": fotos, tablero, km, gasolina, revisión
   } else _avisarFaltante('13_CAMIONETA');
   var antes = _fechaTxt(u.FechaVehiculo) === hoy ? String(u.VehiculoHoy || '') : '';
+  // Camioneta (tipo AUTO) sin "Salida especial": foto del tablero + a dónde va (se queda en la bitácora)
+  if (!p.especial && _tipoVehiculo(v) === 'AUTO' && _norm(antes) !== _norm(v.Vehiculo) && _hay('_bitacoraNormal')) _bitacoraNormal(u, v, p);
   var desde = _fechaTxt(u.FechaVehiculo, 'yyyy-MM-dd HH:mm').slice(11);
   u._t.sh.getRange(u._fila, u._t.col('VehiculoHoy')).setValue(String(v.Vehiculo));
   u._t.sh.getRange(u._fila, u._t.col('FechaVehiculo')).setValue(_ahora('yyyy-MM-dd HH:mm'));

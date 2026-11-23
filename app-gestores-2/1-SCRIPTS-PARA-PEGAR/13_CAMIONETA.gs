@@ -9,7 +9,8 @@
  *   Al regresar: "Entregar" en su inicio, con la misma revisión, dónde la dejó y a quién las llaves.
  * Alguien SIN app: lo registra un administrador en Administración → Vehículos →
  *   "Prestar vehículo a alguien sin app" (nombre, teléfono, para qué) y "Recibir de vuelta".
- * Pestaña APP_Bitacora_Vehiculo: un renglón por salida especial (EN USO → ENTREGADA · SIN ENTREGAR).
+ * Pestaña APP_Bitacora_Vehiculo: un renglón por salida especial (EN USO → ENTREGADA · SIN ENTREGAR)
+ *   y uno por salida normal de la camioneta (SALIDA: foto del tablero + destino, no se entrega).
  ***********************************************************************/
 
 var APPG_GAS = ['Reserva', '¼', '½', '¾', 'Lleno'];
@@ -47,7 +48,7 @@ function _bitacoraAbierta(filtro) {
 /** El último uso cerrado (o abierto) de un vehículo. */
 function _ultimoUso(t, vehiculo) {
   if (!t) return null;
-  var f = t.filas.filter(function (b) { return _norm(b.Vehiculo) === _norm(vehiculo); });
+  var f = t.filas.filter(function (b) { return _norm(b.Vehiculo) === _norm(vehiculo) && String(b.Estado) !== 'SALIDA'; });   // las salidas normales no traen revisión
   return f.length ? f[f.length - 1] : null;
 }
 function _jsonLeer(v) { try { return v ? JSON.parse(String(v)) : null; } catch (e) { return null; } }
@@ -121,6 +122,21 @@ function _bitacoraSalida(u, v, tablero, especial, registro) {
     NivelSalida: nivel, RevSalida: JSON.stringify(r.rev), Faltantes: r.faltantes.join(', '), Detalles: r.detalles.join(' · '), Observaciones: r.rev.obs ? 'Al tomar: ' + r.rev.obs : '',
     Motivo: esp.para, Destino: esp.destino, Telefono: registro ? String(registro.telefono || '') : '', RegistroPor: registro ? registro.por : '' });
   _log(registro ? registro.por : u.Nombre, 'SALIDA_ESPECIAL', v.Vehiculo + ' · ' + u.Nombre + ' · ' + esp.para + (esp.destino ? ' · ' + esp.destino : '') + ' · ' + d.km + ' km · ' + d.gas);
+}
+
+/** Salida NORMAL de la camioneta (sin "Salida especial"): foto del tablero + a dónde va. No pide entregarla.
+    Queda en la bitácora con Estado "SALIDA" (no "EN USO"). p = { tablero: { foto, lat, lng }, destino, checklist } */
+function _bitacoraNormal(u, v, p) {
+  var tab = p.tablero || {};
+  if (!tab.foto) throw _falla('CAP-04', 'Falta la foto del tablero (que se vea el kilometraje y la gasolina).');
+  var destino = String(p.destino || '').trim();
+  if (!destino) throw _falla('CAP-01', 'Escribe a dónde vas (destino o ruta).');
+  var falta = (p.checklist || []).filter(function (c) { return c && c.ok === false; }).map(function (c) { return String(c.texto); });
+  var foto = _guardarImagen(tab.foto, 'image/jpeg', v.Vehiculo + ' SALIDA ' + _ahora('yyyy-MM-dd HH.mm') + ' ' + u.Nombre + ' · Tablero', _config().CARPETA_TABLERO, u.Nombre);
+  _agregar(APPG.H.BITACORA, { Id: 'VB' + _ahora('yyMMddHHmm') + '-' + Utilities.getUuid().slice(0, 4).toUpperCase(), Vehiculo: String(v.Vehiculo),
+    NumeroGestor: u.Numero, Gestor: u.Nombre, Estado: 'SALIDA', Salida: _ahora(), FotoSalida: foto, LatSalida: tab.lat || '', LngSalida: tab.lng || '',
+    NivelSalida: 'NORMAL', Faltantes: falta.join(', '), Motivo: 'Normal', Destino: destino.slice(0, 150) });
+  _log(u.Nombre, 'SALIDA_CAMIONETA', v.Vehiculo + ' · ' + destino + (falta.length ? ' · le falta: ' + falta.join(', ') : ''));
 }
 
 /** p = { foto, km, gas, lat, lng, fotos, falta, detalles, obs, donde, llaves } */
@@ -231,7 +247,7 @@ function _admBitacora() {
     (rr.detalles || []).forEach(function (d) { fotos.push(['Detalle: ' + d.punto, d.foto]); });
     if (rr.algo && rr.algo.foto) fotos.push(['"Hay algo" al entregar', rr.algo.foto]);
     var alRecibir = [].concat(rs.nuevo ? ['Nuevo: ' + rs.nuevo.nota] : [], (rs.detalles || []).map(function (d) { return d.punto + ': ' + d.nota; }), (rs.falta || []).map(function (f) { return 'falta ' + f; }), rs.algo ? [rs.algo.nota] : []);
-    return { id: String(b.Id), vehiculo: String(b.Vehiculo), gestor: String(b.Gestor), estado: est,
+    return { id: String(b.Id), vehiculo: String(b.Vehiculo), gestor: String(b.Gestor), estado: est, normal: est === 'SALIDA',
       sinEntregar: est === 'SIN ENTREGAR' || (est === 'EN USO' && _fechaTxt(b.Salida) < hoy),
       salida: _fechaTxt(b.Salida, 'yyyy-MM-dd HH:mm'), regreso: _fechaTxt(b.Regreso, 'yyyy-MM-dd HH:mm'),
       kmSalida: kmSal || '', kmRegreso: Number(b.KmRegreso) || '', km: b.Km === '' ? '' : Number(b.Km), gasSalida: String(b.GasSalida || ''), gasRegreso: String(b.GasRegreso || ''),

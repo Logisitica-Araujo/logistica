@@ -1,5 +1,12 @@
 # Registro de cambios · App Gestores 2
 
+## 0.5.7 · 23-nov-2026 · Camioneta normal: foto del tablero + "¿A dónde vas?" + WhatsApp
+- Al tomar la **camioneta** (vehículo tipo AUTO) **sin** "Salida especial": la lista de siempre + **foto del tablero** (que se vean km y gasolina; no se teclea el km) + **"¿A dónde vas?"** (destino o ruta). Los dos son obligatorios (CAP-04 / CAP-01). Si ya es suya hoy, no vuelve a pedirlos. Al regresar no pide nada.
+- Al guardar: WhatsApp **"SALE CAMIONETA"** con la foto, destino, hora, lo que falta de la lista, lugar (Maps) y gestor.
+- Queda en **APP_Bitacora_Vehiculo** con Estado `SALIDA` (Motivo "Normal", Destino, Faltantes, FotoSalida, lugar). La foto va a la carpeta `CARPETA_TABLERO`. No cuenta como "sin entregar".
+- Administración → Vehículos → **"Bitácora de la camioneta"**: salidas normales (etiqueta SALIDA NORMAL, destino, foto del tablero y lugar) junto con las especiales.
+- Las motos y "Sin vehículo" no cambian. Archivos: `06_GESTOR`, `13_CAMIONETA` (y `00_CONFIG` por la versión). App 2.13.0.
+
 ## 0.5.6 · 20-nov-2026 · BOTICAN: "Gestor entregó a sucursal" y evidencia de la app en Envios
 - **LOGISTICA BOTICAN 2026 / Envios**: columnas nuevas AD–AI (App · Recolectó fecha y gestor · Entregó en sucursal fecha · Sucursal (recibió) · Gestor · Foto) y estatus nuevo **🏪 GESTOR ENTREGÓ A SUCURSAL** (fórmula de A3; la anterior está en `2-MANUALES/BOTICAN_formula_estatus.md`).
 - Al recolectar un pedido BOTICAN, el robot escribe H (como antes) y AD/AE.
