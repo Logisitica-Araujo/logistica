@@ -140,7 +140,8 @@ function dibujarEntrada(msg, pinPara) {
   var d = S.inicio;
   var porSuc = {};
   d.areas.forEach(function (a) { (porSuc[a.suc] = porSuc[a.suc] || []).push(a); });
-  var nomPin = pinPara === 'ADMIN' ? 'Modo administrador' : ((d.areas.filter(function (a) { return a.id === pinPara; })[0] || {}).nombre || pinPara);
+  var aPin = d.areas.filter(function (a) { return a.id === pinPara; })[0] || {};
+  var nomPin = pinPara === 'ADMIN' ? 'Modo administrador' : (d.admin && !aPin.mia ? (aPin.nombre || pinPara) + ' (PIN de administrador)' : (aPin.nombre || pinPara));
   var html = '<div class="entrada">' +
     (msg ? '<div class="feedback warn">' + esc(msg) + '</div>' : '') +
     (pinPara ? '<div class="panel stack pinbox"><b style="font-size:17px">🔑 PIN para entrar a ' + esc(nomPin) + '</b>' +
@@ -155,7 +156,9 @@ function dibujarEntrada(msg, pinPara) {
       porSuc[s].map(function (a) {
         return a.mia
           ? '<button data-a="entrar" data-v="' + esc(a.id) + '">' + (a.pin ? '🔑 ' : '') + esc(a.nombre) + '<div class="muted" style="font-size:12.5px;font-weight:700">' + (a.pin ? 'Pide PIN · ' : '') + 'Folios ' + esc(a.id) + '-0001</div></button>'
-          : '<button class="bloq" disabled title="Esta cuenta no tiene acceso a esta área">🔒 ' + esc(a.nombre) + '<div style="font-size:12.5px;font-weight:700">Sin acceso con esta cuenta</div></button>';
+          : d.admin
+            ? '<button class="como" data-a="entrar" data-v="' + esc(a.id) + '" title="Entras a esta área como administrador, para revisar o corregir">👁 ' + esc(a.nombre) + '<div style="font-size:12.5px;font-weight:700">' + (d.adminPin ? '🔑 ' : '') + 'Entrar como administrador</div></button>'
+            : '<button class="bloq" disabled title="Esta cuenta no tiene acceso a esta área">🔒 ' + esc(a.nombre) + '<div style="font-size:12.5px;font-weight:700">Sin acceso con esta cuenta</div></button>';
       }).join('') +
       '</div></div>';
   });
@@ -164,7 +167,8 @@ function dibujarEntrada(msg, pinPara) {
 }
 
 function entrar(area, pin) {
-  if (area !== 'ADMIN') guardar('ultimaArea', area);
+  var propia = !S.inicio || S.inicio.areas.some(function (a) { return a.id === area && a.mia; });
+  if (area !== 'ADMIN' && propia) guardar('ultimaArea', area);     // "ver como" no cambia el área de esta computadora
   $('#view').innerHTML = '<div class="cargando">Entrando…</div>';
   srv('apiEntrar', area, navigator.userAgent, pin || '').then(function (d) {
     guardar('token', d.token); S.token = d.token; aplicarSesion(d.ctx, d.cat);
@@ -260,7 +264,12 @@ function colorDe(t) { return (S.EC[t.estatus] && S.EC[t.estatus].color) || '#5D6
 function render() {
   if (!S.ctx) return;
   var adm = S.ctx.admin;
-  $('#adminbar').innerHTML = adm ? '<div class="adminbar"><div class="wrap"><strong>MODO ADMINISTRADOR</strong><span>' + esc(S.ctx.email) + ' · control total: editar, mover, cambiar estatus y eliminar</span></div></div>' : '';
+  $('#adminbar').innerHTML = adm
+    ? '<div class="adminbar"><div class="wrap"><strong>MODO ADMINISTRADOR</strong><span>' + esc(S.ctx.email) + ' · control total: editar, mover, cambiar estatus y eliminar</span>' + verComoHTML('👁 Ver como…') + '</div></div>'
+    : S.ctx.como
+      ? '<div class="adminbar comobar"><div class="wrap"><strong>👁 VISTA DE ADMINISTRADOR</strong><span>Estás como <b>' + esc(S.ctx.areaNombre) + '</b>. Lo que hagas aquí es real y queda a nombre de ' + esc(S.ctx.email) + '.</span>' +
+        verComoHTML('Cambiar a…') + '<button class="btn gold" type="button" data-a="entrar" data-v="ADMIN" style="padding:6px 12px">Volver a administración</button></div></div>'
+      : '';
   renderHeader();
   var v = '';
   if (S.tab === 'rutas') {
@@ -292,6 +301,19 @@ function manualesPara() {
     if (M.proc) l.push(['📄', 'Proceso implementado', 'Documento oficial del proceso', M.proc]);
   }
   return l;
+}
+/** Selector para que un administrador vea la página como cualquier área (sucursal, oficina, Botican, Recepción…). */
+function verComoHTML(texto) {
+  var grupos = {};
+  (S.cat.areas || []).forEach(function (a) { var g = (S.A[a.id] && S.A[a.id].sucNombre) || 'Oficinas'; (grupos[g] = grupos[g] || []).push(a); });
+  return '<select class="t vercomo" id="vercomo" aria-label="Ver la página como otra área"><option value="">' + esc(texto) + '</option>' +
+    Object.keys(grupos).map(function (g) { return '<optgroup label="' + esc(g) + '">' + grupos[g].map(function (a) { return '<option value="' + esc(a.id) + '"' + (S.ctx.area === a.id ? ' disabled' : '') + '>' + esc(a.nombre) + '</option>'; }).join('') + '</optgroup>'; }).join('') + '</select>';
+}
+function verComo(area) {
+  if (!area) return;
+  $('#view').innerHTML = '<div class="cargando">Entrando como ' + esc(nom(area)) + '…</div>';
+  srv('apiVerComo', S.token, area).then(function (d) { guardar('token', d.token); S.token = d.token; aplicarSesion(d.ctx, d.cat); toast('👁 Estás como ' + d.ctx.areaNombre); })
+    .catch(function (e) { toast(e.message); render(); });
 }
 /** Botón ↻ Actualizar: vuelve a leer todo sin recargar la página (en lugar de F5). */
 function actualizarHTML() {
@@ -645,7 +667,7 @@ function etiquetaHTML(t, b, rp, pantalla) {
  */
 var PUNTO = 0.125;
 /** Versión de la página (sale en ❓ Ayuda). Sirve para saber si ya se publicó lo último. */
-var VERSION_PAGINA = '2026-11-20 · editar registros Botican';
+var VERSION_PAGINA = '2026-11-25 · ver como (administradores)';
 function bcHTML(code, anchoMm, altoMm) {
   return '<div class="bcw"><svg class="bc" data-code="' + esc(code) + '" data-w="' + anchoMm + '" data-h="' + altoMm + '"></svg></div>';
 }
@@ -1711,6 +1733,7 @@ document.addEventListener('click', function (e) {
 document.addEventListener('change', function (e) {
   if (e.target.id === 'destin') { $('#rutanote').innerHTML = rutaNota(me(), e.target.value); if ($('#sugpanel')) $('#sugpanel').innerHTML = guiaEnvios(e.target.value); }
   if (e.target.id === 'impArea') cargarPendientes(e.target.value);
+  if (e.target.id === 'vercomo') verComo(e.target.value);
   if (e.target.getAttribute('data-a') === 'faltan') {
     var f = e.target.getAttribute('data-v');
     S.scan.lote.forEach(function (it) { if (it.t.folio === f) it.faltan = e.target.checked; });

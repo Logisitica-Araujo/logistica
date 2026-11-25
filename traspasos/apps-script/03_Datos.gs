@@ -296,12 +296,13 @@ function _firmar(txt) {
   return Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(txt, _secreto()));
 }
 
-function _crearToken(email, area, admin) {
+function _crearToken(email, area, admin, como) {
   // 0 (o vacío) en CFG_Ajustes = la sesión no se cierra sola.
-  let horas = Number(_ajuste(admin ? 'sesion_horas_admin' : 'sesion_horas_sucursal', 0)) || 0;
+  let horas = Number(_ajuste(admin || como ? 'sesion_horas_admin' : 'sesion_horas_sucursal', 0)) || 0;
   if (!(horas > 0)) horas = 24 * 365 * 10;
   const exp = Date.now() + horas * 3600000;
-  const p = [email, area, admin ? 1 : 0, exp].join('|');
+  // 3er campo: 1 = modo administrador · 2 = administrador "viendo como" un área · 0 = área normal
+  const p = [email, area, admin ? 1 : como ? 2 : 0, exp].join('|');
   return { token: Utilities.base64EncodeWebSafe(p) + '.' + _firmar(p), exp: exp };
 }
 
@@ -323,7 +324,11 @@ function _ctx(token) {
   // Si el área guardada en esta computadora ya no existe (por ejemplo, se cambió su prefijo
   // en CAT_Areas: NR → NR-PV), la computadora debe volver a elegir su área.
   if (d[1] !== TR.AREA_ADMIN && !_areas()[d[1]]) throw new Error('AREA_NO_EXISTE:' + d[1]);
-  return { email: d[0], area: d[1], admin: admin, exp: Number(d[3]), puedeAdmin: _esAdmin(d[0]) };
+  // Administrador "viendo como" un área: si dejó de ser administrador, la sesión ya no sirve.
+  const como = d[2] === '2';
+  if (como && !_esAdmin(d[0])) throw new Error('SESION_EXPIRADA');
+  __COMO = como ? d[0] : '';
+  return { email: d[0], area: d[1], admin: admin, exp: Number(d[3]), puedeAdmin: _esAdmin(d[0]), como: como };
 }
 
 function _exigirAdmin(c) {
@@ -427,8 +432,10 @@ function _siguienteFolio(prefijo) {
 
 /* ======================= BITÁCORAS ======================= */
 
+var __COMO = '';   // correo del administrador cuando trabaja "como" un área (se marca en la historia)
 function _movObj(t, accion, antes, despues, x) {
   x = x || {};
+  if (__COMO && String(x.detalle || '').indexOf('administrador como') < 0) x.detalle = (x.detalle ? x.detalle + ' · ' : '') + 'hecho por administrador como ' + __COMO;
   return {
     'ID': _id('M'), 'Fecha': _hoy(), 'Hora': _hora(), 'Folio': t.folio, 'Acción': accion,
     'Estatus anterior': antes || '', 'Estatus nuevo': despues || '',

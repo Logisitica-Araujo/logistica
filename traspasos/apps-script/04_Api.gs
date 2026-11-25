@@ -65,24 +65,44 @@ function apiEntrar(area, dispositivo, pin) {
     if (area === TR.AREA_ADMIN) {
       if (!admin) throw new Error('Solo los administradores pueden entrar a Administración.');
       _validarPin(yo + '_ADMIN', String(_ajuste('pin_administrador', '') || ''), pin);
-    } else {
-      if (!A[area] || !A[area].activa) throw new Error('Esa área no existe o está desactivada.');
-      if (A[area].correos.indexOf(yo) < 0) throw new Error('Tu correo no tiene permiso para esa área.');
-      _validarPin(yo + '_' + area, A[area].pin, pin);
     }
+    let como = false;
+    if (area !== TR.AREA_ADMIN) {
+      if (!A[area] || !A[area].activa) throw new Error('Esa área no existe o está desactivada.');
+      if (A[area].correos.indexOf(yo) >= 0) _validarPin(yo + '_' + area, A[area].pin, pin);
+      else if (admin) { como = true; _validarPin(yo + '_ADMIN', String(_ajuste('pin_administrador', '') || ''), pin); }   // administrador: entra a cualquier área con SU PIN
+      else throw new Error('Tu correo no tiene permiso para esa área.');
+    }
+    return _sesionNueva(yo, area, admin, como, dispositivo);
+  });
+}
+
+/** Desde el modo administrador: entrar "como" cualquier área (ya se validó el PIN de administrador). */
+function apiVerComo(token, area) {
+  return _api(function () {
+    const c = _ctx(token);
+    if (!c.admin && !c.como) throw new Error('Solo un administrador puede ver la página como otra área.');
+    area = String(area || '').toUpperCase();
+    const A = _areas();
+    if (!A[area] || !A[area].activa) throw new Error('Esa área no existe o está desactivada.');
+    return _sesionNueva(c.email, area, true, true, 'Ver como (administrador)');
+  });
+}
+
+function _sesionNueva(yo, area, admin, como, dispositivo) {
+    const A = _areas();
     const modoAdmin = admin && area === TR.AREA_ADMIN;
-    const tk = _crearToken(yo, area, modoAdmin);
+    const tk = _crearToken(yo, area, modoAdmin, como);
     _tb(TR.H.SESIONES).agregar({
       'Fecha': _hoy(), 'Hora': _hora(), 'Cuenta': yo, 'Equipo': area,
-      'Evento': 'ENTRADA', 'Dispositivo': String(dispositivo || '').substring(0, 150)
+      'Evento': como ? 'ENTRADA (ADMINISTRADOR COMO ÁREA)' : 'ENTRADA', 'Dispositivo': String(dispositivo || '').substring(0, 150)
     });
     return {
       token: tk.token,
-      ctx: { email: yo, area: area, admin: modoAdmin, puedeAdmin: admin, exp: tk.exp,
+      ctx: { email: yo, area: area, admin: modoAdmin, puedeAdmin: admin, como: como, exp: tk.exp,
              areaNombre: area === TR.AREA_ADMIN ? 'Administración' : R.nom(A, area) },
       cat: _catalogos()
     };
-  });
 }
 
 /** Al volver a abrir la página con una sesión guardada. */
