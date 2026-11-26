@@ -155,6 +155,22 @@ ok(filasDe('APP_Cierres').find(c => c.IdCierre === 'suc00016151').EnviadoEn, 'Qu
 post({ accion: 'cerrar', token: tJL, idLocal: 'suc00016152', tipo: 'RECOLECCION', id: '#16152', resultado: 'ENTREGADO', sucursal: 'Oficinas', foto: E.FOTO }); robot();
 ok(!fila('#16152')[31] && filasDe('APP_Cierres').find(c => c.IdCierre === 'suc00016152').EnviadoEn === 'NO APLICA', 'Un pedido a domicilio dejado en Oficinas NO cambia a "entregó a sucursal"');
 
+titulo('"Lo dejé en sucursal" de un pedido que va a esa sucursal: en Operaciones queda entregado');
+{
+  const g = o => { const f = new Array(35).fill(''); Object.keys(o).forEach(k => { f[Number(k) - 1] = o[k]; }); return f; };
+  hEnv.datos.splice(hEnv.datos.findIndex((f, i) => i > 2 && !f[1]), 0, env('🧍 RECOLECCIÓN DE GESTOR', '#16330', 'Sucursal Coapa', 'lun, 09 nov26, 10:00'));
+  hOps.datos.push(g({ 1: '#16330', 2: 'BOTICAN', 4: 'Cliente Coapa', 5: 'Sucursal Coapa', 16: 'RECOLECTADO POR GESTOR', 19: false, 21: false, 23: false }));
+  E.OPS.correr('opsw_cacheBorrar_');
+  post({ accion: 'recolectar', token: tJL, codigos: [{ codigo: '#16330', forzar: true }] }); robot();
+  ok(post({ accion: 'cerrar', token: tJL, idLocal: 'suc00016330', tipo: 'RECOLECCION', id: '#16330', resultado: 'ENTREGADO', sucursal: 'Coapa', recibio: 'Mostrador', foto: E.FOTO }).ok, 'Jose Luis: "Lo dejé en sucursal" Coapa');
+  const extra = filasDe('APP_Cierres').find(c => c.IdCierre === 'suc00016330-OPS');
+  ok(extra && extra.Tipo === 'PEDIDO' && extra.Clase === 'SOS' && /Entregado en sucursal Coapa/.test(extra.Comentario), 'Se crea su entrega en Operaciones (a su nombre, como SOS)');
+  E.OPS.correr('opsw_cacheBorrar_'); robot(); robot();
+  ok(opsFila('#16330')[22] === true && opsFila('#16330')[15] === 'GESTOR ENTREGÓ A SUCURSAL (ENTREGADO)' && opsFila('#16330')[8] === 'Jose Luis', 'Operaciones: entregado, a su nombre y ESTATUS "GESTOR ENTREGÓ A SUCURSAL (ENTREGADO)"');
+  ok(/Coapa/.test(fila('#16330')[32]) && fila('#16330')[33] === 'Jose Luis', 'BOTICAN: AF–AI como antes');
+  fila('#16330')[0] = '🏢 Disponible en sucursal';   // (para que no cuente en los pendientes de las pruebas de abajo)
+}
+
 titulo('Pedido de sucursal que se asignó en la ruta: al entregarlo también queda "Gestor entregó a sucursal"');
 {
   const g = o => { const f = new Array(35).fill(''); Object.keys(o).forEach(k => { f[Number(k) - 1] = o[k]; }); return f; };
@@ -164,6 +180,7 @@ titulo('Pedido de sucursal que se asignó en la ruta: al entregarlo también que
   robot(); robot();
   const f54 = fila('#16154');
   ok(/\d{2}\/\d{2}\/2026/.test(f54[31]) && f54[32] === 'Vértiz · recibió Mostrador' && f54[33] === 'Jose Luis' && /drive/.test(f54[34]), 'Envios: AF–AI llenas (fecha, sucursal, gestor y foto)');
+  ok(opsFila('#16154')[15] === 'GESTOR ENTREGÓ A SUCURSAL (ENTREGADO)', 'Operaciones: ESTATUS "GESTOR ENTREGÓ A SUCURSAL (ENTREGADO)"');
   f54[31] = ''; robot();
   ok(f54[31] === '', 'Se anota una sola vez (si alguien la borra, no la vuelve a escribir)');
 }

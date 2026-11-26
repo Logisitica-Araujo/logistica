@@ -155,13 +155,14 @@ En **Lo que llevo** cada traspaso dice **a qué sucursal va, su dirección, bot�
 
 Si lo escaneaste hoy y ya estaba asignado a otro gestor, se queda en tu lista hasta que lo dejes (**Lo dejé en sucursal** o **🆘 Entrega a domicilio**).
 
-**Pedido BOTICAN que va a sucursal:** si lo dejas con **Lo dejé en sucursal**, o si te lo asignaron en tu ruta y lo marcas **Entregado**, en la hoja de BOTICAN queda **🏪 Gestor entregó a sucursal**, con la fecha, tu nombre y la foto.
+**Pedido BOTICAN que va a sucursal:** si lo dejas con **Lo dejé en sucursal**, o si te lo asignaron en tu ruta y lo entregas (la pantalla ya trae la sucursal; la foto es obligatoria), en la hoja de BOTICAN queda **🏪 Gestor entregó a sucursal** con la fecha, tu nombre y la foto, y en Operaciones **GESTOR ENTREGÓ A SUCURSAL (ENTREGADO)**.
 
 ## 9. Vehículo: camioneta y moto
 
 Al empezar el día eliges con qué sales (**¿Con qué sales hoy?**).
 - **Moto o "Sin vehículo":** marcas la lista de siempre y sales.
 - **Camioneta (salida normal):** la lista de siempre, más **foto del tablero** (que se vean el km y la gasolina; no tecleas el km) y **¿A dónde vas?** (destino o ruta). Los dos son obligatorios. Al guardar te ofrece mandar al grupo el WhatsApp **"SALE CAMIONETA"**. Si ya es tuya ese día, no vuelve a pedir la foto.
+  - **Al regresar:** en tu inicio toca **Dejar camioneta** → foto del tablero, **¿Dónde la dejaste?** y **¿Dónde dejaste las llaves?** (los tres obligatorios) y una nota si hay algo que reportar. Te ofrece el WhatsApp **"DEJA CAMIONETA"**.
 - **🚐 Salida especial** (Foráneo · Carga · Todo el día · Otro): revisión completa con fotos, qué lleva, cómo está, km y gasolina. Al regresar toca **Entregar** en tu inicio y haz la revisión de entrega.
 
 Todo queda en la bitácora de la camioneta (pestaña `APP_Bitacora_Vehiculo`) y las fotos en Drive.

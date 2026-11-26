@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.13.0';
+var VERSION_APP = '2.14.0';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -393,7 +393,7 @@ function guardarVehiculo() {
   var motivo = $('selMotVeh') ? $('selMotVeh').value : '';
   var veh = S.datos.vehiculos.filter(function (x) { return x.nombre === S.vehSel; })[0];
   var yaLaTrae = S.datos.bitacora && S.datos.bitacora.vehiculo === S.vehSel;
-  if (S.datos.bitacora && !yaLaTrae) return falla(errCod('VEH-02', 'Primero entrega ' + S.datos.bitacora.vehiculo + ' (botón "Entregar" en tu inicio).'));
+  if (S.datos.bitacora && !S.datos.bitacora.normal && !yaLaTrae) return falla(errCod('VEH-02', 'Primero entrega ' + S.datos.bitacora.vehiculo + ' (botón "Entregar" en tu inicio).'));
   if (!pideTableroNormal(veh)) { S.motVeh = ''; return mandarVehiculo(checklist, motivo, null, null); }
   var tab = S.vehTab || {}, destino = String(tab.destino || '').trim();
   if (!tab.foto) return falla(errCod('CAP-04', 'Falta la foto del tablero (que se vea el kilometraje y la gasolina).'));
@@ -403,6 +403,7 @@ function guardarVehiculo() {
     quitarCargando();
     var hora = new Date(), foto = tab.foto;
     S.despuesVeh = function () {
+      S.datos.bitacora = { normal: true, vehiculo: veh.nombre, salida: hoyTxt() + ' ' + new Date().toTimeString().slice(0, 5), destino: destino }; DB.set('inicio', S.datos);
       vistaWAVehiculo({ modo: 'NORMAL', vehiculo: veh.nombre, destino: destino, hora: hora, foto: foto, lat: g.lat, lng: g.lng,
         falta: checklist.filter(function (c) { return !c.ok; }).map(function (c) { return c.texto; }), detalles: [] });
     };
@@ -413,7 +414,7 @@ function guardarVehiculo() {
 function salidaEspecial() {
   var checklist = Array.prototype.map.call(document.querySelectorAll('.check input'), function (c) { return { texto: c.dataset.t, ok: c.checked }; });
   var motivo = $('selMotVeh') ? $('selMotVeh').value : '';
-  if (S.datos.bitacora) return falla(errCod('VEH-02', 'Primero entrega ' + S.datos.bitacora.vehiculo + ' (botón "Entregar" en tu inicio).'));
+  if (S.datos.bitacora && !S.datos.bitacora.normal) return falla(errCod('VEH-02', 'Primero entrega ' + S.datos.bitacora.vehiculo + ' (botón "Entregar" en tu inicio).'));
   S.tablero = nuevoTablero('SALIDA', S.vehSel, 'COMPLETA', { checklist: checklist, motivo: motivo, especial: { para: '', destino: '' } });
   vistaTablero();
 }
@@ -635,6 +636,51 @@ function vistaWAVehiculo(w) {
     (w.foto ? '<label class="check"><input type="checkbox" id="waFoto" checked> Incluir la foto del tablero</label>' : '') + '</div>' +
     '<div class="pie"><button class="btn wa" onclick="mandarWA()">Mandar al grupo por WhatsApp</button><button class="btn linea" onclick="' + (w.persona ? 'admVehiculos()' : sal ? 'vistaInicio()' : 'vistaVehiculo(true)') + '">' + (w.persona || sal ? 'Ahora no' : 'Ahora no · ¿en qué sigues?') + '</button></div></div>');
 }
+/* ---------- Dejar la camioneta (salida normal): foto del tablero + dónde la dejó + dónde quedaron las llaves ---------- */
+function vistaDejar() {
+  var b = S.datos.bitacora; if (!b) return vistaInicio();
+  S.vista = 'dejar'; S.dejar = S.dejar || { foto: null, donde: '', llaves: '', obs: '' };
+  var d = S.dejar, campo = function (id, k, ph) { return '<input class="campo" id="' + id + '" maxlength="150" placeholder="' + esc(ph) + '" value="' + esc(d[k]) + '" oninput="S.dejar.' + k + '=this.value">'; };
+  pintar('<div class="barra"><button class="volver" onclick="vistaInicio()" aria-label="Volver">' + IC.atras + '</button><div class="titulo"><b>Dejar camioneta</b><small>' + esc(b.vehiculo) + ' · salió ' + esc(String(b.salida).slice(11)) + (b.destino ? ' a ' + esc(b.destino) : '') + '</small></div></div><div class="cuerpo">' +
+    '<div class="bloque"><div class="cab-b"><span class="paso' + (d.foto ? ' ok' : '') + '">1</span><b>Foto del tablero</b><span class="req">obligatoria</span></div>' +
+    (d.foto ? '<div class="previa"><img src="' + d.foto + '" alt="Tablero"><button onclick="tomarFoto()">Repetir</button></div>' : '<button class="zona-foto" onclick="tomarFoto()">' + IC.cam + '<b>Tomar foto</b><small>Que se vea el km y la gasolina</small></button>') + '</div>' +
+    '<div class="bloque"><div class="cab-b"><span class="paso' + (d.donde ? ' ok' : '') + '">2</span><label class="et" for="inDonde" style="flex:1">¿Dónde la dejaste?</label><span class="req">obligatorio</span></div>' + campo('inDonde', 'donde', 'Ej. Oficinas, cajón 3') + '</div>' +
+    '<div class="bloque"><div class="cab-b"><span class="paso' + (d.llaves ? ' ok' : '') + '">3</span><label class="et" for="inLlaves" style="flex:1">¿Dónde dejaste las llaves?</label><span class="req">obligatorio</span></div>' + campo('inLlaves', 'llaves', 'Ej. Recepción, con Lalo') + '</div>' +
+    '<div class="bloque"><div class="cab-b"><span class="paso">4</span><label class="et" for="inObsD" style="flex:1">¿Algo que reportar?</label><span class="opc">opcional</span></div>' +
+    '<textarea class="campo" id="inObsD" rows="2" placeholder="Ej. se prendió el testigo de aceite" oninput="S.dejar.obs=this.value">' + esc(d.obs) + '</textarea></div>' +
+    '</div><div class="pie"><button class="btn verde" onclick="guardarDejar()">Dejar camioneta</button></div>');
+}
+function guardarDejar() {
+  var d = S.dejar, b = S.datos.bitacora;
+  if (!d.foto) return falla(errCod('CAP-04', 'Falta la foto del tablero (que se vea el kilometraje y la gasolina).'));
+  if (!String(d.donde).trim()) { $('inDonde').focus(); return falla(errCod('CAP-01', 'Escribe dónde dejaste la camioneta.')); }
+  if (!String(d.llaves).trim()) { $('inLlaves').focus(); return falla(errCod('CAP-01', 'Escribe dónde o con quién dejaste las llaves.')); }
+  cargando('Ubicando…');
+  obtenerGPS().then(function (g) {
+    var datos = { normal: true, foto: d.foto, donde: d.donde.trim(), llaves: d.llaves.trim(), obs: String(d.obs || '').trim(), lat: g.lat, lng: g.lng };
+    var wa = { vehiculo: b.vehiculo, salida: b.salida, destino: b.destino, hora: new Date(), foto: d.foto, donde: datos.donde, llaves: datos.llaves, obs: datos.obs, lat: g.lat, lng: g.lng };
+    var listo = function () { S.dejar = null; S.datos.bitacora = null; S.datos.vehiculo = ''; DB.set('inicio', S.datos); vistaWADeja(wa); };
+    cargando('Guardando…');
+    srv('entregarVehiculo', datos).then(function () { quitarCargando(); listo(); actualizar(); }).catch(function (e) {
+      quitarCargando();
+      if (e.red) { encolar('entregarVehiculo', datos, 'Deja ' + b.vehiculo); listo(); } else falla(e);
+    });
+  });
+}
+function vistaWADeja(w) {
+  S.vista = 'listo';
+  var hora = w.hora.toLocaleString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  var l = ['DEJA CAMIONETA', w.vehiculo, 'Salió: ' + String(w.salida).slice(11) + (w.destino ? ' a ' + w.destino : ''), 'Dejó: ' + hora, 'La dejé en: ' + w.donde, 'Llaves: ' + w.llaves];
+  if (w.obs) l.push('Obs: ' + w.obs);
+  if (w.lat && w.lng) l.push('Lugar: https://maps.google.com/?q=' + w.lat + ',' + w.lng);
+  l.push('Gestor: ' + S.datos.gestor.nombre);
+  var msg = l.join('\n');
+  S.wa = { msg: msg, foto: w.foto, id: 'tablero' };
+  pintar('<div class="listo"><div class="verde-top"><span class="palomita">' + IC.palomita + '</span><b>' + esc(w.vehiculo) + ' entregada</b><span>' + esc(w.donde) + '</span></div>' +
+    '<div class="cuerpo"><b>¿Mandarlo al grupo?</b><div class="wa-burbuja"><div><img src="' + w.foto + '" alt=""><pre>' + esc(msg) + '</pre></div></div>' +
+    '<label class="check"><input type="checkbox" id="waFoto" checked> Incluir la foto del tablero</label></div>' +
+    '<div class="pie"><button class="btn wa" onclick="mandarWA()">Mandar al grupo por WhatsApp</button><button class="btn linea" onclick="vistaVehiculo(true)">Ahora no · ¿en qué sigues?</button></div></div>');
+}
 /** Salida normal de la camioneta: SALE CAMIONETA + foto del tablero, destino, faltantes, hora, lugar y gestor. */
 function vistaWASaleCamioneta(w, hora) {
   var l = ['SALE CAMIONETA', w.vehiculo, 'Destino: ' + w.destino, 'Salió: ' + hora];
@@ -651,6 +697,8 @@ function vistaWASaleCamioneta(w, hora) {
 }
 function tarjetaBitacora() {
   var b = S.datos && S.datos.bitacora; if (!b) return '';
+  if (b.normal) return '<div class="tile-veh"><span><b>🚐 Traes ' + esc(b.vehiculo) + ' desde ' + esc(String(b.salida).slice(11)) + '</b><small>Salida normal' + (b.destino ? ' · ' + esc(b.destino) : '') + '</small></span>' +
+    '<button onclick="vistaDejar()">Dejar camioneta</button></div>';
   return '<div class="tile-veh"><span><b>🚐 Traes ' + esc(b.vehiculo) + ' desde ' + esc(String(b.salida).slice(11)) + '</b><small>Salió con ' + esc(String(b.km)) + ' km · ' + esc(b.gas) + '</small></span>' +
     '<button onclick="S.tablero=nuevoTablero(\'REGRESO\',S.datos.bitacora.vehiculo,\'COMPLETA\');vistaTablero()">Entregar</button></div>';
 }
@@ -792,6 +840,8 @@ function abrirCierre(tipo, i, resultado) {
                sucursal: x.destinoSucursal || '', clase: x.clase || '', esperado: x.esperado || 0, areaImss: '', matricula: '', monto: '' };
   /* Pedido BOTICAN que va a una sucursal (el cliente pasa por él): "Gestor entregó a sucursal" en la hoja de BOTICAN. */
   var inf = tipo === 'RECOLECCION' && x.tipo === 'PEDIDO' ? x.info : null;
+  // Pedido asignado en la ruta cuya dirección es "Sucursal …": mismo formulario de entrega en sucursal.
+  if (tipo === 'PEDIDO' && resultado === 'ENTREGADO' && /^\s*sucursal/i.test(x.direccion || '') && x.clase !== 'IMSS') inf = { direccion: x.direccion, fuente: 'BOTICAN', cliente: x.cliente };
   if (resultado === 'ENTREGADO' && inf && /^\s*sucursal/i.test(inf.direccion || '') && (inf.fuente === 'BOTICAN' || /botican/i.test(inf.area || '') || /^#/.test(x.codigo))) {
     var suc = clave(String(inf.direccion).replace(/^\s*sucursal\s*/i, ''));
     var lista = S.datos.sucursales || [];
@@ -841,7 +891,7 @@ function pintarCierre() {
     motivos.forEach(function (m, j) { html += '<button class="opcion' + (c.motivo === m.motivo ? ' sel' : '') + '" onclick="elegirMotivo(' + j + ')"><span class="radio"></span><span>' + esc(m.motivo) + '</span></button>'; });
     html += '</div><label class="et" for="inComent">Comentario <span class="opc">(opcional)</span></label><textarea class="campo" id="inComent" rows="2" placeholder="Ej. se llamó 3 veces sin respuesta">' + esc(c.comentario) + '</textarea></div>';
   }
-  if (entrega && c.tipo !== 'PEDIDO') {
+  if (entrega && (c.tipo !== 'PEDIDO' || c.botSuc)) {
     var sucs = S.datos.sucursales || [];
     if (c.botSuc) html += '<div class="aviso">Pedido BOTICAN que va a <b>' + esc(c.destinoSuc) + '</b> (el cliente pasa por él). En la hoja de BOTICAN queda <b>🏪 Gestor entregó a sucursal</b> con fecha, hora y tu foto.</div>';
     html += '<div class="bloque"><div class="cab-b"><span class="paso' + (c.sucursal ? ' ok' : '') + '">' + (n++) + '</span><label class="et" for="selSuc" style="flex:1">' + (c.botSuc ? '¿En qué sucursal lo dejaste?' : '¿Dónde lo entregaste?') + '</label>' + (c.botSuc ? '<span class="req">obligatorio</span>' : '<span class="opc">opcional</span>') + '</div>' +
@@ -851,11 +901,11 @@ function pintarCierre() {
       (c.botSuc ? '<label class="et" for="inRecibio">¿Quién lo recibió en la sucursal? <span class="opc">(opcional)</span></label><input class="campo" id="inRecibio" autocomplete="off" placeholder="Ej. Lalo, mostrador" value="' + esc(c.recibio) + '" oninput="S.cierre.recibio=this.value;guardarBorrador()">' : '') +
       '<label class="et" for="inComent">Nota <span class="opc">(opcional)</span></label><textarea class="campo" id="inComent" rows="2" placeholder="Ej. se lo dejé a Lalo en mostrador">' + esc(c.comentario) + '</textarea></div>';
   }
-  html += '<div class="bloque"><div class="cab-b"><span class="paso' + (c.foto ? ' ok' : '') + '">' + (n++) + '</span><b>' + (entrega ? (c.tipo === 'PEDIDO' ? 'Foto de la fachada' : 'Foto de la entrega') : paq ? 'Foto de la guía o comprobante' : 'Foto de evidencia') + '</b>' +
+  html += '<div class="bloque"><div class="cab-b"><span class="paso' + (c.foto ? ' ok' : '') + '">' + (n++) + '</span><b>' + (entrega ? (c.botSuc ? 'Foto de la entrega en sucursal' : c.tipo === 'PEDIDO' ? 'Foto de la fachada' : 'Foto de la entrega') : paq ? 'Foto de la guía o comprobante' : 'Foto de evidencia') + '</b>' +
     (pideFoto ? '<span class="req">obligatoria</span>' : '<span class="opc">opcional</span>') + '</div>' +
     (c.foto ? '<div class="previa"><img src="' + c.foto + '" alt="Foto tomada"><button onclick="tomarFoto()">Repetir</button></div>'
-            : '<button class="zona-foto" onclick="tomarFoto()">' + IC.cam + '<b>Tomar foto</b><small>' + (entrega ? (c.tipo === 'PEDIDO' ? 'Que se vea el número de la casa o el negocio' : 'Dónde y a quién lo entregaste') : 'Dónde y qué pasó') + '</small></button>') + '</div>';
-  if (entrega && c.tipo === 'PEDIDO') {
+            : '<button class="zona-foto" onclick="tomarFoto()">' + IC.cam + '<b>Tomar foto</b><small>' + (entrega ? (c.tipo === 'PEDIDO' && !c.botSuc ? 'Que se vea el número de la casa o el negocio' : 'Dónde y a quién lo entregaste') : 'Dónde y qué pasó') + '</small></button>') + '</div>';
+  if (entrega && c.tipo === 'PEDIDO' && !c.botSuc) {
     html += '<div class="bloque"><div class="cab-b"><span class="paso' + (c.recibio ? ' ok' : '') + '">' + (n++) + '</span><label class="et" for="inRecibio" style="flex:1">¿Quién recibió?</label>' +
       (recObl ? '<span class="req">obligatorio</span>' : '<span class="opc">opcional</span>') + '</div>' +
       '<input class="campo" id="inRecibio" autocomplete="off" placeholder="Nombre de quien recibió" value="' + esc(c.recibio) + '" oninput="S.cierre.recibio=this.value;guardarBorrador()"></div>' +
@@ -867,7 +917,7 @@ function pintarCierre() {
     '<div class="pie"><button class="btn ' + (entrega ? 'verde' : paq ? '' : c.resultado === 'CANCELADO' ? 'rojo' : 'ambar') + '" onclick="enviarCierre()">' +
     (entrega ? 'Finalizar entrega' : paq ? 'Registrar entrega a paquetería' : c.resultado === 'CANCELADO' ? 'Registrar cancelación' : c.resultado === 'RETORNO' ? 'Registrar retorno' : 'Registrar') + '</button></div>';
   pintar(html);
-  if (entrega && c.tipo === 'PEDIDO') prepararFirma();
+  if (entrega && c.tipo === 'PEDIDO' && !c.botSuc) prepararFirma();
   guardarBorrador();
 }
 function preservar() {
@@ -898,7 +948,7 @@ function enviarCierre() {
   var c = S.cierre, entrega = c.resultado === 'ENTREGADO';
   if (c.tipo === 'PEDIDO' && !entrega && c.resultado !== 'PAQUETERIA' && !c.motivo) return falla(errCod('CAP-05', 'Elige el motivo.'));
   if (reglaFoto(c) && !c.foto) return falla(errCod('CAP-04', 'Falta la foto.'));
-  if (c.tipo === 'PEDIDO' && entrega && c.clase !== 'IMSS' && S.datos.reglas.exigirQuienRecibio && !String(c.recibio).trim()) return falla(errCod('CAP-08', 'Anota quién recibió.'));
+  if (c.tipo === 'PEDIDO' && entrega && c.clase !== 'IMSS' && !c.botSuc && S.datos.reglas.exigirQuienRecibio && !String(c.recibio).trim()) return falla(errCod('CAP-08', 'Anota quién recibió.'));
   if (c.sos && !String(c.direccion || '').trim()) return falla(errCod('CAP-01', 'Escribe la dirección donde lo entregaste.'));
   if (c.botSuc && entrega && !c.sucursal) return falla(errCod('CAP-01', 'Elige en qué sucursal lo dejaste.'));
   var fac = esFac() && !c.comoNumero;
@@ -1258,6 +1308,7 @@ function ponerFoto(f) {
   if (!S.cierre && S.vista === 'listo' && S.waOpts) { S.waOpts.foto = f; beep(); return vistaWA(S.waOpts); }
   if (!S.cierre && S.vista === 'libre' && S.libre) { S.libre.foto = f; beep(); return vistaLibre(); }
   if (!S.cierre && S.vista === 'tablero' && S.tablero) return ponerFotoTablero(f);
+  if (!S.cierre && S.vista === 'dejar' && S.dejar) { S.dejar.foto = f; beep(); return vistaDejar(); }
   if (!S.cierre && S.vista === 'vehiculo' && S.vehTab) { S.vehTab.foto = f; beep(); return vistaVehiculo(S.vehPrimera); }
   if (!S.cierre && S.vista === 'parada' && S.parada) { S.parada.foto = f; beep(); return vistaParada(S.parada.k); }
   if (!S.cierre) return; S.cierre.foto = f; beep(); pintarCierre();

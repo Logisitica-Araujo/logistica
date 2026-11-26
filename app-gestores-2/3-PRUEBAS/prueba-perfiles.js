@@ -175,14 +175,25 @@ titulo('Vehículos: como antes + "Salida especial" + prestar a alguien sin app')
   ok(!rn.ok && rn.codigo === 'CAP-01' && /a dónde vas/i.test(rn.mensaje), 'Camioneta normal: sin destino no deja salir (CAP-01)');
   const nBit = () => filasDe('APP_Bitacora_Vehiculo').length;
   const antesN = nBit();
-  ok(post({ accion: 'vehiculo', token: tAL, vehiculo: 'Saviero LKC-752-D', checklist: lst, tablero: { foto: FOTO, lat: '19.4', lng: '-99.1' }, destino: 'Ruta Norte' }).ok && !post({ accion: 'inicio', token: tAL }).bitacora,
-    'Camioneta normal: lista de siempre + foto del tablero + destino; no queda "Traes la camioneta" (no se entrega)');
+  ok(post({ accion: 'vehiculo', token: tAL, vehiculo: 'Saviero LKC-752-D', checklist: lst, tablero: { foto: FOTO, lat: '19.4', lng: '-99.1' }, destino: 'Ruta Norte' }).ok && post({ accion: 'inicio', token: tAL }).bitacora.normal,
+    'Camioneta normal: lista de siempre + foto del tablero + destino; en su inicio "Traes la camioneta" con "Dejar camioneta"');
   const bn = filasDe('APP_Bitacora_Vehiculo').slice(-1)[0];
   ok(nBit() === antesN + 1 && bn.Estado === 'SALIDA' && bn.Destino === 'Ruta Norte' && /Gato/.test(bn.Faltantes) && bn.FotoSalida && bn.LatSalida == '19.4', 'Bitácora: renglón SALIDA con destino, faltantes, foto y lugar');
   post({ accion: 'vehiculo', token: tAL, vehiculo: 'Saviero LKC-752-D', checklist: lst });
   ok(nBit() === antesN + 1, 'Si ya es suya hoy, no vuelve a pedir foto ni duplica');
-  const ab = post({ accion: 'admin', token: tAD, que: 'bitacora' }).bitacora.find(b => b.normal);
-  ok(ab && ab.destino === 'Ruta Norte' && ab.fotoSalida && ab.mapaSalida && !ab.sinEntregar, 'Admin: la ve como SALIDA NORMAL con destino, foto y lugar');
+  let rd = post({ accion: 'entregarVehiculo', token: tAL, normal: true, donde: 'Oficinas, cajón 3', llaves: 'Recepción' });
+  ok(!rd.ok && rd.codigo === 'CAP-04', 'Dejar camioneta: sin foto del tablero no deja (CAP-04)');
+  rd = post({ accion: 'entregarVehiculo', token: tAL, normal: true, foto: FOTO, donde: 'Oficinas, cajón 3' });
+  ok(!rd.ok && rd.codigo === 'CAP-01' && /llaves/i.test(rd.mensaje), 'Dejar camioneta: sin dónde quedaron las llaves no deja (CAP-01)');
+  ok(post({ accion: 'entregarVehiculo', token: tAL, normal: true, foto: FOTO, donde: 'Oficinas, cajón 3', llaves: 'Recepción', obs: 'Testigo de aceite', lat: '19.41', lng: '-99.15' }).ok, 'Dejar camioneta con foto, dónde y llaves');
+  const bd = filasDe('APP_Bitacora_Vehiculo').find(b => b.Id === bn.Id);
+  ok(bd.Estado === 'DEJADA' && bd.DondeLaDejo === 'Oficinas, cajón 3' && bd.Llaves === 'Recepción' && bd.FotoRegreso && bd.Regreso && bd.Observaciones === 'Testigo de aceite', 'Bitácora: DEJADA con hora, foto del tablero, dónde, llaves y nota');
+  const iAL2 = post({ accion: 'inicio', token: tAL });
+  ok(!iAL2.bitacora && !iAL2.vehiculo, 'Su inicio ya no dice "Traes la camioneta" y le pregunta en qué sigue');
+  const n2 = nBit();
+  ok(!post({ accion: 'vehiculo', token: tAL, vehiculo: 'Saviero LKC-752-D', checklist: lst }).ok && nBit() === n2, 'Si la vuelve a tomar el mismo día, vuelve a pedir foto y destino');
+  const ab = post({ accion: 'admin', token: tAD, que: 'bitacora' }).bitacora.find(b => b.normal && b.destino === 'Ruta Norte');
+  ok(ab && ab.destino === 'Ruta Norte' && ab.fotoSalida && ab.mapaSalida && !ab.sinEntregar && ab.fotoRegreso && ab.llaves === 'Recepción', 'Admin: la ve como SALIDA NORMAL con destino, foto y lugar');
   const motoN = nBit(); post({ accion: 'vehiculo', token: tAL, vehiculo: 'Suzuki 4B1228' });
   ok(nBit() === motoN, 'La moto sigue como antes (sin foto ni destino)');
   ok(veh(tAL).especial && !post({ accion: 'inicio', token: tAL }).vehiculos.find(v => v.tipo === 'NINGUNO').especial, 'El botón "Salida especial" está en los vehículos (no en "Sin vehículo")');
@@ -499,9 +510,22 @@ const API = 'https://script.google.com/macros/s/APP-PRUEBA/exec';
   await foto(p, 'camioneta-normal-whatsapp');
   await p.click('text=Ahora no'); await p.waitForTimeout(800);
   t = await texto(p);
-  ok(/Pedidos a domicilio/.test(t) && !/Traes Saviero/.test(t), 'Vuelve al inicio sin "Traes la camioneta" (no se entrega)');
-  // Liberar la Saviero para la salida especial
-  await p.evaluate(() => { S.datos.vehiculo = ''; });
+  ok(/Traes Saviero LKC-752-D/.test(t) && /Ruta Norte/.test(t) && /Dejar camioneta/.test(t), 'Inicio: "Traes la Saviero · salida normal" con botón "Dejar camioneta"');
+  await foto(p, 'camioneta-normal-inicio');
+  await p.click('.tile-veh button'); await p.waitForTimeout(400);
+  await p.click('.pie .btn >> text=Dejar camioneta'); await p.waitForTimeout(300);
+  ok(/CAP-04/.test(await texto(p)), 'Dejar: sin foto del tablero no deja');
+  await p.evaluate(f => ponerFoto(f), FOTO_PNG); await p.waitForTimeout(200);
+  await p.fill('#inDonde', 'Oficinas, cajón 3'); await p.click('.pie .btn >> text=Dejar camioneta'); await p.waitForTimeout(300);
+  ok(/llaves/i.test(await texto(p)), 'Dejar: pide dónde quedaron las llaves');
+  await p.fill('#inLlaves', 'Recepción'); await p.fill('#inObsD', 'Testigo de aceite');
+  await foto(p, 'camioneta-dejar');
+  await p.click('.pie .btn >> text=Dejar camioneta'); await p.waitForTimeout(1500);
+  t = await texto(p);
+  ok(/DEJA CAMIONETA/.test(t) && /La dejé en: Oficinas, cajón 3/.test(t) && /Llaves: Recepción/.test(t) && /Obs: Testigo de aceite/.test(t), 'WhatsApp "DEJA CAMIONETA" con foto, dónde, llaves y nota');
+  await foto(p, 'camioneta-dejar-whatsapp');
+  await p.evaluate(() => vistaInicio()); await p.waitForTimeout(500);
+  ok(!/Traes Saviero/.test(await texto(p)), 'Ya no dice "Traes la camioneta"');
   // Salida especial
   await p.click('.chip >> text=cambiar'); await p.waitForTimeout(400); await p.click('text=Saviero LKC-752-D'); await p.waitForTimeout(300);
   ok(/Salida especial/.test(await texto(p)), 'En la pantalla de vehículo está el botón "Salida especial"');

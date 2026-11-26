@@ -296,7 +296,8 @@ function _cerrarUno(u, cfg, p, urlFotoYa) {
   if (clase === 'IMSS' && res === 'ENTREGADO' && apiYoReglas_(cfg).exigirAcuseImss && !tieneFoto) throw _falla('CAP-04', 'Falta la foto del acuse sellado.');
   if (tipo === 'PEDIDO' && clase !== 'IMSS' && res === 'ENTREGADO' && _si(cfg.EXIGIR_FOTO_ENTREGA) && !tieneFoto) throw _falla('CAP-04', 'Falta la foto de la fachada.');
   if (tipo === 'PEDIDO' && (res === 'RETORNO' || res === 'CANCELADO') && _si(cfg.EXIGIR_FOTO_NOENTREGA) && !tieneFoto) throw _falla('CAP-04', 'Falta la foto de evidencia.');
-  if (tipo === 'PEDIDO' && clase !== 'IMSS' && res === 'ENTREGADO' && _si(cfg.EXIGIR_QUIEN_RECIBIO) && !String(p.recibio || '').trim()) throw _falla('CAP-08', 'Anota quién recibió.');
+  var enSucursal = String(p.sucursal || '').trim() && /^\s*sucursal/i.test(String(_dirPedido(id) || ''));   // pedido que va a sucursal: quién recibió es opcional
+  if (tipo === 'PEDIDO' && clase !== 'IMSS' && !enSucursal && res === 'ENTREGADO' && _si(cfg.EXIGIR_QUIEN_RECIBIO) && !String(p.recibio || '').trim()) throw _falla('CAP-08', 'Anota quién recibió.');
 
   /* IMSS: el área queda en "dónde entregó" y en el comentario (Operaciones AD); la matrícula va con quién recibió.
      Efectivo: el monto (opcional) va en su columna y en el comentario; si no cuadra con lo que decía, se avisa. */
@@ -334,6 +335,17 @@ function _cerrarUno(u, cfg, p, urlFotoYa) {
     DondeEntrego: donde, Monto: monto === '' ? '' : monto, Clase: clase, Corregido: ''
   });
 
+  /* "Lo dejé en sucursal" de un pedido que va a esa sucursal (el cliente pasa por él): en Operaciones también
+     queda entregado ("GESTOR ENTREGÓ A SUCURSAL"). El robot lo pone a su nombre (Logística Interna) y lo marca, como en SOS. */
+  if (tipo === 'RECOLECCION' && res === 'ENTREGADO' && /^#/.test(id) && String(p.sucursal || '').trim()) {
+    var dirSuc = String(_dirPedido(id) || '');
+    if (/^\s*sucursal/i.test(dirSuc)) _agregar(APPG.H.CIERRES, {
+      IdCierre: idLocal + '-OPS', FechaHora: _ahora(), HoraCelular: String(p.horaCelular || '').slice(0, 19), NumeroGestor: u.Numero, Gestor: u.Nombre,
+      Vehiculo: _fechaTxt(u.FechaVehiculo) === _hoyTxt() ? String(u.VehiculoHoy || '') : '', Tipo: 'PEDIDO', ID: id, Fila: '', Resultado: 'ENTREGADO', Motivo: '',
+      Comentario: ('Entregado en sucursal ' + String(p.sucursal) + (recibio ? ' · recibió ' + recibio : '') + ' ("Lo dejé en sucursal")').slice(0, 1000),
+      Recibio: recibio.slice(0, 120), Lat: p.lat || '', Lng: p.lng || '', URLFoto: urlFoto, URLFirma: '', Estado: 'PENDIENTE', Intentos: 0, UltimoError: '', EnviadoEn: '',
+      Cliente: '', Direccion: dirSuc.slice(0, 250), DondeEntrego: donde, Monto: '', Clase: 'SOS', Corregido: '' });
+  }
   if (p.sos) _problema('SOS-01', u.Nombre, 'Entrega a domicilio SOS: ' + id + (p.cliente ? ' · ' + p.cliente : '') + ' · ' + String(p.direccion).slice(0, 120) + '. No estaba asignado; el robot lo pone a su nombre en Operaciones y lo marca entregado. Revísalo.');
   /* Lo que lleva (traspaso o recolección) sale de su lista al entregar */
   if ((tipo !== 'PEDIDO' || p.sos) && (res === 'ENTREGADO' || res === 'PAQUETERIA')) {
@@ -555,4 +567,13 @@ function _fechaMs(v) {
   if (!m) return 0;
   // Hora de CDMX (UTC-6, sin horario de verano desde 2022)
   return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4] + 6, +m[5], +(m[6] || 0));
+}
+
+/** Dirección del pedido (Operaciones si ya está en su ruta; si no, la bitácora BOTICAN / FADERMEX). */
+function _dirPedido(id) {
+  var k = _tnClave(id), ped = _tabla(APPG.H.PEDIDOS).filas.filter(function (f) { return _tnClave(f.ID) === k; })[0];
+  if (ped && String(ped.Direccion || '').trim()) return String(ped.Direccion);
+  var inf = (_hay('_llevaInfo') ? _llevaInfo() : {})[k]; if (inf && inf.direccion) return String(inf.direccion);
+  var b = ((_hay('_btDatos') ? _btDatos() : null) || {}).dirs || {}; if (b[k]) return String(b[k][1] || '');
+  return '';
 }
