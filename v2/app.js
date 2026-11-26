@@ -10,7 +10,7 @@
  *     cada paso (borrador).
  *   • Cada error trae el código de ERRORES_Y_SOLUCIONES.md.
  ***********************************************************************/
-var VERSION_APP = '2.14.0';
+var VERSION_APP = '2.14.1';
 var API = window.APPG_API || '';
 var ESPERA_MS = 30000;
 var CADA_SEG = 45;          // cada cuánto revisa si hay tareas nuevas (con la app abierta)
@@ -807,6 +807,7 @@ function vistaLleva() {
       '<button class="b" onclick="abrirCierre(\'' + (tras ? 'TRASPASO' : 'RECOLECCION') + '\',' + i + ',\'NO_ENTREGADO\')">No entregué</button>' +
       (l.destinoMaps || l.destinoDireccion ? '<a class="b" href="' + esc(l.destinoMaps || ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(l.destinoDireccion))) + '" target="_blank" rel="noopener">' + IC.mapa + 'Mapa</a>' : '<span></span>') + '</div>' +
       '<button class="b wa-b" onclick="waLleva(' + i + ')">Enviar por WhatsApp</button>' +
+      '<button class="b rojo" style="border:1px solid var(--borde)" onclick="confirmarQuitar(S.datos.lleva[' + i + '].codigo)">Quitar · lo escaneé por error</button>' +
       (l.tipo === 'PEDIDO' && !(l.info && l.info.mio) ? '<button class="sos-btn" onclick="abrirSOS(' + i + ')"><span class="ic">🆘</span><span><b>Entrega a domicilio</b><small>Lo entrego yo: se registra en Operaciones a mi nombre</small></span></button>' : '') + '</div>';
   });
   pintar(html + '</div>' + nav(''));
@@ -1132,9 +1133,28 @@ function pintarLeidos() {
   c.innerHTML = (S.leidos || []).slice(0, 12).map(function (l, i) {
     return '<div class="leido ' + l.estado + '"><span class="ic">' + (l.estado === 'ok' ? '✓' : l.estado === 'mal' ? '!' : '…') + '</span><span class="tx"><b>' + esc(l.codigo) + '</b><span>' + esc(l.texto) + '</span></span>' +
       (l.pideDestino ? '<button class="b" onclick="pedirDestino(' + i + ')">Destino</button>' : '') +
-      (l.estado === 'ok' ? '<button class="b wa-b" onclick="waLeido(' + i + ')">WhatsApp</button>' : '') +
+      (l.estado === 'ok' ? '<button class="b wa-b" onclick="waLeido(' + i + ')">WhatsApp</button><button class="b rojo" onclick="confirmarQuitar(S.leidos[' + i + '].codigo)">Quitar</button>' : '') +
       (l.aviso ? '<button class="b" onclick="avisoRecoleccion(S.leidos[' + i + '])">Revisar</button>' : '') + '</div>';
   }).join('');
+}
+/* ---------- "Quitar": lo escaneó por error (sin empezar de nuevo) ---------- */
+function confirmarQuitar(codigo) {
+  modal('<h2>¿Quitar ' + esc(codigo) + '?</h2><p>Úsalo si lo escaneaste por error. Sale de tu lista y se deshace la recolección: en Traspasos y en BOTICAN se borra solo lo que puso la app. Los demás siguen igual.</p>' +
+    '<p class="opc">Queda en el historial.</p><button class="btn rojo" onclick="hacerQuitar(\'' + esc(codigo).replace(/'/g, "\\'") + '\')">Sí, quitar ' + esc(codigo) + '</button><button class="btn linea" onclick="cerrarModal()">Cancelar</button>');
+}
+function hacerQuitar(codigo) {
+  cerrarModal();
+  var k = clave(codigo), local = function () {
+    S.datos.lleva = S.datos.lleva.filter(function (l) { return clave(l.codigo) !== k; });
+    S.leidos = (S.leidos || []).filter(function (l) { return clave(l.codigo) !== k; });
+    DB.set('inicio', S.datos); toast(codigo + ' quitado de tu lista', 'ok');
+    if (S.vista === 'lleva') vistaLleva(); else if (S.vista === 'escaner') pintarLeidos(); else if (S.vista === 'inicio') vistaInicio();
+  };
+  cargando('Quitando…');
+  srv('quitarRecoleccion', { codigo: codigo }).then(function () { quitarCargando(); local(); actualizar(); }).catch(function (e) {
+    quitarCargando();
+    if (e.red) { encolar('quitarRecoleccion', { codigo: codigo }, 'Quitar ' + codigo); local(); } else falla(e);
+  });
 }
 function pedirDestino(i) {
   var l = S.leidos[i];

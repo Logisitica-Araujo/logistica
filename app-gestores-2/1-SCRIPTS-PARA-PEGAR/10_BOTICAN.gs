@@ -390,3 +390,14 @@ function PROBAR_BOTICAN() {
   Logger.log('En elaboración: ' + r.elaboracion.map(function (x) { return x.id; }).join(', '));
   return r;
 }
+
+/** Escaneo quitado por error: borra lo que la app escribió en Envios (H, AD, AE), solo si es lo suyo. */
+function _btQuitarRecoleccion(codigo, fechaHora, gestor) {
+  var sh = _btLibro().getSheetByName('Envios'), fila = _btFila(sh, codigo);
+  if (!fila) return 'DESHECHO (no está en BOTICAN)';
+  var col = _btColumnas(sh), txt = _btFechaTxt(fechaHora), hecho = [];
+  var limpia = function (c, debe) { if (!c) return; var r = sh.getRange(fila, c); if (!r.getFormula() && String(r.getValue()).trim() === debe) { r.setValue(''); hecho.push(c); } };
+  if (col.REC_GESTOR && String(sh.getRange(fila, col.REC_GESTOR).getValue()).trim() === String(gestor)) { limpia(col.REC_FECHA, txt); limpia(col.REC_GESTOR, String(gestor)); }
+  limpia(8, txt);
+  return 'DESHECHO (BOTICAN: ' + (hecho.length ? 'se borró lo de la app' : 'nada que borrar') + ')';
+}

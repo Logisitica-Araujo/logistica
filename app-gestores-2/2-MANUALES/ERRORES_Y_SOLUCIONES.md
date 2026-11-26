@@ -237,6 +237,10 @@ Contesta estas preguntas en orden. La primera que diga "sí" te manda a la secci
 - **Cuándo pasa:** corregiste un cierre desde Administración y OPERACIONES no contestó (por ejemplo error 403 de Google). La app lo guarda y el robot lo reintenta cada minuto (hasta 30 veces). Si Operaciones lo **rechaza** o se agotan los intentos, sale este aviso en `APP_Problemas`.
 - **Qué hago:** hacer la corrección a mano en Operaciones (quitar/poner la casilla y la fecha) y revisar el permiso de la implementación de OPERACIONES (`API-07`).
 
+### ROB-08 · No se pudo deshacer un escaneo quitado
+- **Cuándo pasa:** un gestor tocó **Quitar** (lo escaneó por error) y el robot no encontró en el Sistema de Traspasos el estatus que tenía antes (`RES_Movimientos`), o Traspasos/BOTICAN no contestaron. El folio ya salió de la lista del gestor.
+- **Qué hago:** en el Sistema de Traspasos regresa el folio a su estatus anterior (normalmente EN_LOGISTICA o NUEVO) y borra Gestor y Fecha recolección. En BOTICAN, si quedó la hora en H/AD/AE y no corresponde, bórrala.
+
 ### ROB-06 · "Tiempo de ejecución excedido"
 - **Dónde recae:** una vuelta del robot tardó más de 6 minutos. Normalmente es porque el archivo madre está lento.
 - **Qué hago:** nada de inmediato; la siguiente vuelta sigue donde se quedó. Si pasa más de 3 veces en un día: `GOO-01`.
