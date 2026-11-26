@@ -627,11 +627,15 @@ function admBitacora() {
     if (!r.bitacora.length) html += '<div class="vacio"><b>Todavía no hay registros</b><span>Aparecen cuando alguien toma un vehículo que pide revisión.</span></div>';
     r.bitacora.forEach(function (b) {
       if (b.normal) {   // salida normal: foto del tablero + destino (no se entrega)
-        html += '<div class="card"><div class="linea"><b>' + esc(dia(b.salida)) + ' · ' + esc(b.gestor) + '</b><span class="espacio"></span><span class="tag">SALIDA NORMAL</span></div>' +
+        html += '<div class="card"><div class="linea"><b>' + esc(dia(b.salida)) + ' · ' + esc(b.gestor) + '</b><span class="espacio"></span><span class="tag' + (b.regreso ? ' v' : ' a') + '">SALIDA NORMAL</span></div>' +
           '<div class="t1">' + esc(b.vehiculo) + (b.destino ? ' · ' + esc(b.destino) : '') + '</div>' +
           '<div class="t2">▶ Salió ' + esc(hora(b.salida)) + (b.mapaSalida ? ' · <a href="' + esc(b.mapaSalida) + '" target="_blank" rel="noopener">📍 lugar</a>' : '') +
           (b.fotoSalida ? ' · <a href="' + esc(b.fotoSalida) + '" target="_blank" rel="noopener">📷 tablero ↗</a>' : '') + '</div>' +
-          (b.faltantes ? '<div class="t2">✗ Faltó: ' + esc(b.faltantes) + '</div>' : '') + '</div>';
+          (b.faltantes ? '<div class="t2">✗ Faltó: ' + esc(b.faltantes) + '</div>' : '') +
+          (b.regreso ? '<div class="t2">■ La dejó ' + esc(hora(b.regreso)) + ' · en: ' + esc(b.donde) + ' · llaves: ' + esc(b.llaves) +
+            (b.mapaRegreso ? ' · <a href="' + esc(b.mapaRegreso) + '" target="_blank" rel="noopener">📍 lugar</a>' : '') + (b.fotoRegreso ? ' · <a href="' + esc(b.fotoRegreso) + '" target="_blank" rel="noopener">📷 tablero ↗</a>' : '') + '</div>' +
+            (b.observaciones ? '<div class="t2">📝 ' + esc(b.observaciones) + '</div>' : '')
+          : '<div class="t2" style="color:var(--gris)">Todavía no la deja</div>') + '</div>';
         return;
       }
       var rojo = b.sinEntregar || b.descuadre || b.alRecibir.length;

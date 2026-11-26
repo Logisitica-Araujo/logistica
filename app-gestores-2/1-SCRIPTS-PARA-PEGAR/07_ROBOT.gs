@@ -293,7 +293,7 @@ function _sosPreparar(c, filaPorId, gestorPorId) {
   var p = (b.pedidos || {})[_clavePed(c.ID)];
   if (!p) {
     var cache = CacheService.getScriptCache(), ck = 'sos_' + _clavePed(c.ID);
-    if (!cache.get(ck)) { cache.put(ck, '1', 6 * 3600); _problema('SOS-02', String(c.Gestor), 'Captura ' + c.ID + ' en Operaciones: ' + c.Gestor + ' lo entregó a domicilio (SOS) y todavía no existe. En cuanto lo captures, el robot lo pone a su nombre y lo marca entregado. Cliente: ' + (c.Cliente || '—') + ' · ' + (c.Direccion || '')); }
+    if (!cache.get(ck)) { cache.put(ck, '1', 6 * 3600); _problema('SOS-02', String(c.Gestor), 'Captura ' + c.ID + ' en Operaciones: ' + c.Gestor + (/sucursal/i.test(String(c.Comentario)) ? ' lo dejó en sucursal' : ' lo entregó a domicilio (SOS)') + ' y todavía no existe. En cuanto lo captures, el robot lo pone a su nombre y lo marca entregado. Cliente: ' + (c.Cliente || '—') + ' · ' + (c.Direccion || '')); }
     return { esperar: true, mensaje: 'Esperando que capturen ' + c.ID + ' en Operaciones (entrega SOS)' };
   }
   var a = _ops('autoasignar', { fila: p.fila, id: p.id, gestor: mio, vehiculo: String(c.Vehiculo || ''), quien: String(c.Gestor), forzar: true });

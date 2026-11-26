@@ -48,7 +48,7 @@ function _bitacoraAbierta(filtro) {
 /** El último uso cerrado (o abierto) de un vehículo. */
 function _ultimoUso(t, vehiculo) {
   if (!t) return null;
-  var f = t.filas.filter(function (b) { return _norm(b.Vehiculo) === _norm(vehiculo) && String(b.Estado) !== 'SALIDA'; });   // las salidas normales no traen revisión
+  var f = t.filas.filter(function (b) { return _norm(b.Vehiculo) === _norm(vehiculo) && ['SALIDA', 'DEJADA'].indexOf(String(b.Estado)) < 0; });   // las salidas normales no traen revisión
   return f.length ? f[f.length - 1] : null;
 }
 function _jsonLeer(v) { try { return v ? JSON.parse(String(v)) : null; } catch (e) { return null; } }
@@ -142,6 +142,7 @@ function _bitacoraNormal(u, v, p) {
 /** p = { foto, km, gas, lat, lng, fotos, falta, detalles, obs, donde, llaves } */
 function apiEntregarVehiculo(p) {
   var s = _exigirSesion(p.token), u = _buscarUsuario(s.Usuario);
+  if (p.normal) return _dejarNormal(u, p);
   var a = _bitacoraAbierta({ numero: u.Numero });
   if (!a) throw _falla('APP-01', 'No tienes ningún vehículo por entregar.');
   var r = _cerrarBitacora(a, u, p, null);
@@ -204,10 +205,44 @@ function _prestadosAbiertos() {
   });
 }
 
+/** Salida normal de la camioneta que todavía no deja (de hoy y es la que trae). */
+function _salidaNormalAbierta(u) {
+  var t = _bitTabla(); if (!t) return null;
+  if (_fechaTxt(u.FechaVehiculo) !== _hoyTxt()) return null;
+  for (var i = t.filas.length - 1; i >= 0; i--) {
+    var b = t.filas[i];
+    if (String(b.NumeroGestor) !== String(u.Numero)) continue;
+    if (String(b.Estado) === 'SALIDA' && !String(b.Regreso || '').trim() && _fechaTxt(b.Salida) === _hoyTxt() && _norm(b.Vehiculo) === _norm(u.VehiculoHoy)) return { t: t, b: b };
+    return null;   // lo último que hizo ya no es una salida normal abierta
+  }
+  return null;
+}
+/** Dejar la camioneta de una salida normal: foto del tablero, dónde la dejó y dónde quedaron las llaves (obligatorios). */
+function _dejarNormal(u, p) {
+  var a = _salidaNormalAbierta(u);
+  if (!a) throw _falla('APP-01', 'No tienes ninguna camioneta por dejar.');
+  if (!p.foto) throw _falla('CAP-04', 'Falta la foto del tablero (que se vea el kilometraje y la gasolina).');
+  var donde = String(p.donde || '').trim(), llaves = String(p.llaves || '').trim();
+  if (!donde) throw _falla('CAP-01', 'Escribe dónde dejaste la camioneta.');
+  if (!llaves) throw _falla('CAP-01', 'Escribe dónde o con quién dejaste las llaves.');
+  var foto = _guardarImagen(p.foto, 'image/jpeg', a.b.Vehiculo + ' DEJA ' + _ahora('yyyy-MM-dd HH.mm') + ' ' + u.Nombre + ' · Tablero', _config().CARPETA_TABLERO, u.Nombre);
+  var set = function (h, val) { a.t.sh.getRange(a.b._fila, a.t.col(h)).setValue(val); };
+  set('Regreso', _ahora()); set('FotoRegreso', foto); set('LatRegreso', p.lat || ''); set('LngRegreso', p.lng || '');
+  set('DondeLaDejo', donde.slice(0, 150)); set('Llaves', llaves.slice(0, 100)); set('Observaciones', String(p.obs || '').slice(0, 500)); set('NivelRegreso', 'NORMAL');
+  set('Estado', 'DEJADA');
+  u._t.sh.getRange(u._fila, u._t.col('VehiculoHoy')).setValue('');   // ya no trae vehículo: si la vuelve a tomar, pide foto y destino
+  u._t.sh.getRange(u._fila, u._t.col('FechaVehiculo')).setValue('');
+  _log(u.Nombre, 'DEJA_CAMIONETA', a.b.Vehiculo + ' · en: ' + donde + ' · llaves: ' + llaves + (p.obs ? ' · ' + p.obs : ''));
+  return { vehiculo: String(a.b.Vehiculo), salida: _fechaTxt(a.b.Salida, 'yyyy-MM-dd HH:mm'), destino: String(a.b.Destino || '') };
+}
 /** Para el inicio: el vehículo que trae, y qué revisión le toca al entregarlo. */
 function _bitacoraInicio(u) {
   try {
-    var a = _bitacoraAbierta({ numero: u.Numero }); if (!a) return null;
+    var a = _bitacoraAbierta({ numero: u.Numero });
+    if (!a) {
+      var n = _salidaNormalAbierta(u); if (!n) return null;
+      return { normal: true, vehiculo: String(n.b.Vehiculo), salida: _fechaTxt(n.b.Salida, 'yyyy-MM-dd HH:mm'), destino: String(n.b.Destino || '') };
+    }
     return { vehiculo: String(a.b.Vehiculo), salida: _fechaTxt(a.b.Salida, 'yyyy-MM-dd HH:mm'), km: Number(a.b.KmSalida) || '', gas: String(a.b.GasSalida), nivel: 'COMPLETA',
              para: String(a.b.Motivo || ''), destino: String(a.b.Destino || '') };
   } catch (e) { return null; }
@@ -247,7 +282,7 @@ function _admBitacora() {
     (rr.detalles || []).forEach(function (d) { fotos.push(['Detalle: ' + d.punto, d.foto]); });
     if (rr.algo && rr.algo.foto) fotos.push(['"Hay algo" al entregar', rr.algo.foto]);
     var alRecibir = [].concat(rs.nuevo ? ['Nuevo: ' + rs.nuevo.nota] : [], (rs.detalles || []).map(function (d) { return d.punto + ': ' + d.nota; }), (rs.falta || []).map(function (f) { return 'falta ' + f; }), rs.algo ? [rs.algo.nota] : []);
-    return { id: String(b.Id), vehiculo: String(b.Vehiculo), gestor: String(b.Gestor), estado: est, normal: est === 'SALIDA',
+    return { id: String(b.Id), vehiculo: String(b.Vehiculo), gestor: String(b.Gestor), estado: est, normal: est === 'SALIDA' || est === 'DEJADA',
       sinEntregar: est === 'SIN ENTREGAR' || (est === 'EN USO' && _fechaTxt(b.Salida) < hoy),
       salida: _fechaTxt(b.Salida, 'yyyy-MM-dd HH:mm'), regreso: _fechaTxt(b.Regreso, 'yyyy-MM-dd HH:mm'),
       kmSalida: kmSal || '', kmRegreso: Number(b.KmRegreso) || '', km: b.Km === '' ? '' : Number(b.Km), gasSalida: String(b.GasSalida || ''), gasRegreso: String(b.GasRegreso || ''),

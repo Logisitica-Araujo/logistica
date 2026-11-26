@@ -1,5 +1,13 @@
 # Registro de cambios · App Gestores 2
 
+## 0.5.9 · 26-nov-2026 · "Dejar camioneta" · "GESTOR ENTREGÓ A SUCURSAL" en Operaciones
+- **Dejar camioneta (salida normal):** en su inicio dice "🚐 Traes … desde … · Salida normal · destino" con el botón **Dejar camioneta**: foto del tablero, dónde la dejó y dónde quedaron las llaves (los tres obligatorios) y una nota opcional. WhatsApp **"DEJA CAMIONETA"**. En la bitácora queda `DEJADA` con hora, foto, lugar (GPS), dónde y llaves. Si la vuelve a tomar el mismo día, vuelve a pedir foto y destino (`13_CAMIONETA` `_dejarNormal`, `_salidaNormalAbierta`).
+- **Operaciones · ESTATUS (P4):** los pedidos con Dirección (E) "Sucursal …" y Fecha de Entrega (V) dicen **GESTOR ENTREGÓ A SUCURSAL (ENTREGADO)**. Sigue conteniendo "ENTREGADO" (colores, página de Operaciones, plazos y la app lo cuentan como entregado). Fórmula anterior en el repositorio OPERACIONES `docs/ESTATUS_formula.md`.
+- **"Lo dejé en sucursal"** de un pedido que va a esa sucursal: además de BOTICAN (AF–AI), el robot lo pone a su nombre en Operaciones y lo marca entregado (como la entrega SOS), así el estatus cambia solo.
+- **Entregar desde la ruta un pedido de sucursal:** la pantalla es la de sucursal (sucursal ya elegida, foto obligatoria, quién recibió opcional, sin firma).
+- Datos!AB: se agregó "Error de BOTICAN: producto equivocado" a la lista de Tipos de Problemas.
+- Archivos: `00_CONFIG`, `06_GESTOR`, `07_ROBOT`, `13_CAMIONETA` + **versión nueva de la implementación**. App 2.14.0.
+
 ## 0.5.8 · 26-nov-2026 · "Lo que llevo" se limpia solo · entregas de sucursal desde la ruta
 - **"Lo que llevo" se actualiza con el estatus de Operaciones** (`07_ROBOT` paso limpieza). Antes solo se quitaba al quedar ENTREGADO, CANCELADO o RETORNADO; por eso #16280 seguía ahí aunque ya decía "ENVIADO POR PAQUETERÍA EXTERNA". Ahora también se quita cuando dice "ENVIADO POR…" y: cambió después de escanearlo, o ya está asignado al mismo gestor (lo ve en Pedidos a domicilio), o lo escaneó otro día. Si lo escaneó hoy ya asignado a otro gestor, se queda (lo trae él: "Lo dejé en sucursal" o SOS).
 - **Pedido BOTICAN que va a sucursal y se asignó en la ruta:** al marcarlo **Entregado** también se llenan AF–AI en Envios (**🏪 Gestor entregó a sucursal**): fecha y hora, sucursal (de la dirección "Sucursal …") y quién recibió, gestor y foto. Una sola vez por cierre (`10_BOTICAN` `_botSucursalRuta`, propiedad `BOT_SUC_PED`).
