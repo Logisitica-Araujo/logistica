@@ -171,6 +171,17 @@ titulo('"Lo dejé en sucursal" de un pedido que va a esa sucursal: en Operacione
   fila('#16330')[0] = '🏢 Disponible en sucursal';   // (para que no cuente en los pendientes de las pruebas de abajo)
 }
 
+titulo('"Quitar" un pedido BOTICAN escaneado por error: se borra la hora que puso la app');
+{
+  hEnv.datos.splice(hEnv.datos.findIndex((f, i) => i > 2 && !f[1]), 0, env('📋 ELABORADO', '#16331', 'Calle 5, CDMX', 'lun, 09 nov26, 10:00'));
+  post({ accion: 'recolectar', token: tJL, codigos: [{ codigo: '#16331', forzar: true }] }); robot();
+  ok(fila('#16331')[7] && fila('#16331')[30] === 'Jose Luis', 'Escaneado: H, AD y AE con la hora y el gestor');
+  ok(post({ accion: 'quitarRecoleccion', token: tJL, codigo: '#16331' }).ok, 'Jose Luis lo quita (escaneo por error)');
+  robot();
+  ok(!fila('#16331')[7] && !fila('#16331')[29] && !fila('#16331')[30], 'El robot borra H, AD y AE (solo lo que puso la app)');
+  fila('#16331')[0] = '🏢 Disponible en sucursal';   // (para que no cuente en los pendientes de abajo)
+}
+
 titulo('Pedido de sucursal que se asignó en la ruta: al entregarlo también queda "Gestor entregó a sucursal"');
 {
   const g = o => { const f = new Array(35).fill(''); Object.keys(o).forEach(k => { f[Number(k) - 1] = o[k]; }); return f; };

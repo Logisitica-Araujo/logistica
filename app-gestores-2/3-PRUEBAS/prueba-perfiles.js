@@ -147,6 +147,27 @@ titulo('Lo que llevo se actualiza solo con el estatus de Operaciones');
   APP.reloj.ahora -= 86400000;
 }
 
+titulo('"Quitar": escaneé algo por error (sin empezar de nuevo)');
+{
+  const tras = (folio, est) => hRes.datos.push((() => { const f = new Array(encT.length).fill(''); const o = { Folio: folio, Estatus: est, 'Descripción': 'Prueba quitar', Bultos: 1, Origen: 'Coapa · PV', 'Origen (prefijo)': 'C-PV', Destino: 'Vertiz · Rebotica', 'Destino (prefijo)': 'V-RB', 'Eliminación solicitada': 'NO' }; encT.forEach((h, i) => { if (o[h] != null) f[i] = o[h]; }); return f; })());
+  tras('C-PV-0090', 'EN_LOGISTICA'); tras('C-PV-0091', 'NUEVO');
+  post({ accion: 'recolectar', token: tJL, codigos: ['C-PV-0090', 'C-PV-0091'] }); robot();
+  ok(E.estT('C-PV-0090') === 'RECOLECTADO', 'Escaneado: Traspasos dice RECOLECTADO');
+  const q = post({ accion: 'quitarRecoleccion', token: tJL, codigo: 'C-PV-0090' });
+  ok(q.ok && !post({ accion: 'inicio', token: tJL }).lleva.some(l => l.codigo === 'C-PV-0090') && post({ accion: 'inicio', token: tJL }).lleva.some(l => l.codigo === 'C-PV-0091'), 'Quitar: sale de su lista al momento; el otro sigue');
+  robot();
+  ok(E.estT('C-PV-0090') === 'EN_LOGISTICA' && E.hMov.datos.some(m => m[3] === 'C-PV-0090' && /QUITADA/.test(m[4])), 'El robot lo regresa a EN_LOGISTICA en Traspasos y queda en el historial');
+  const rq = filasDe('APP_Recolecciones').filter(r => r.Codigo === 'C-PV-0090').slice(-1)[0];
+  ok(rq.Estado === 'QUITADO POR GESTOR' && rq.Enviado === 'DESHECHO' && /Quitado por/.test(rq.Nota), 'APP_Recolecciones: QUITADO POR GESTOR, DESHECHO y nota de quién y cuándo');
+  post({ accion: 'recolectar', token: tJL, codigos: ['C-PV-0092'] });
+  tras('C-PV-0092', 'NUEVO');
+  post({ accion: 'recolectar', token: tJL, codigos: ['C-PV-0092'] });
+  post({ accion: 'quitarRecoleccion', token: tJL, codigo: 'C-PV-0092' }); robot();
+  ok(E.estT('C-PV-0092') === 'NUEVO', 'Si lo quita antes de que el robot lo pase, Traspasos ni se entera');
+  ok(post({ accion: 'recolectar', token: tJL, codigos: ['C-PV-0090'] }).resultados[0].ok, 'Si sí era, lo puede volver a escanear');
+  post({ accion: 'quitarRecoleccion', token: tJL, codigo: 'C-PV-0090' }); post({ accion: 'quitarRecoleccion', token: tJL, codigo: 'C-PV-0091' }); robot();
+}
+
 titulo('Vehículo: motivo al cambiar y en taller');
 post({ accion: 'vehiculo', token: tJL, vehiculo: 'Saviero LKC-752-D', tablero: { foto: FOTO }, destino: 'Ruta Centro' });
 post({ accion: 'vehiculo', token: tJL, vehiculo: 'FED 2 14KGC4', motivo: 'Llanta ponchada', tablero: { foto: FOTO }, destino: 'Ruta Centro' });
@@ -466,6 +487,18 @@ const API = 'https://script.google.com/macros/s/APP-PRUEBA/exec';
   ok(/Monto: \$1,500\.00/.test(await texto(p)) && filasDe('APP_Cierres').some(c => c.Tipo === 'LIBRE' && c.Monto === 1500), 'Efectivo sin asignar con su monto');
   await p.click('text=Ahora no'); await p.waitForTimeout(1200);
   await foto(p, 'facturacion-ruta-con-registradas');
+  // "Quitar": lo escaneó por error
+  ['C-PV-0095', 'C-PV-0096'].forEach(folio => hRes.datos.push((() => { const f = new Array(encT.length).fill(''); const o = { Folio: folio, Estatus: 'NUEVO', 'Descripción': 'Prueba quitar', Bultos: 1, Origen: 'Coapa · PV', 'Origen (prefijo)': 'C-PV', Destino: 'Vertiz · Rebotica', 'Destino (prefijo)': 'V-RB', 'Eliminación solicitada': 'NO' }; encT.forEach((h, i) => { if (o[h] != null) f[i] = o[h]; }); return f; })()));
+  post({ accion: 'recolectar', token: tAL, codigos: ['C-PV-0095', 'C-PV-0096'] }); robot();
+  await p.evaluate(() => actualizar()); await p.waitForTimeout(1200);
+  await p.evaluate(() => vistaLleva()); await p.waitForTimeout(400);
+  ok(/C-PV-0095/.test(await texto(p)) && /Quitar · lo escaneé por error/.test(await texto(p)), 'Lo que llevo: cada uno con "Quitar · lo escaneé por error"');
+  await p.click('.card:has-text("C-PV-0095") >> text=Quitar · lo escaneé por error'); await p.waitForTimeout(300);
+  ok(/¿Quitar C-PV-0095\?/.test(await texto(p)), 'Pide confirmación');
+  await foto(p, 'quitar-confirmar');
+  await p.click('text=Sí, quitar C-PV-0095'); await p.waitForTimeout(1200);
+  t = await texto(p);
+  ok(await p.locator('.card:has-text("C-PV-0095")').count() === 0 && await p.locator('.card:has-text("C-PV-0096")').count() === 1 && /quitado de tu lista/.test(t), 'Se quita solo ese; los demás siguen');
   await p.context().close();
 
   titulo('Navegador · Gestoría (Jose Luis) sigue igual, en azul');

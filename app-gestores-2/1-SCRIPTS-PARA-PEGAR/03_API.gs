@@ -28,6 +28,7 @@ var APPG_ACCIONES = {
   soltar:       { fn: function (p) { return apiSoltar(p); } },
   avisoLeido:   { fn: function (p) { return apiAvisoLeido(p); } },
   entregarVehiculo: { fn: function (p) { return apiEntregarVehiculo(p); } },
+  quitarRecoleccion: { fn: function (p) { return apiQuitarRecoleccion(p); } },
   admin:        { fn: function (p) { return apiAdmin(p); }, admin: true }
 };
 var APPG_PROXIMAS = [];

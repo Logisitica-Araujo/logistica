@@ -577,3 +577,18 @@ function _dirPedido(id) {
   var b = ((_hay('_btDatos') ? _btDatos() : null) || {}).dirs || {}; if (b[k]) return String(b[k][1] || '');
   return '';
 }
+
+/** "Quitar": el gestor escaneó algo por error. Sale de su lista al momento; lo que la app ya puso en el
+    Sistema de Traspasos y en BOTICAN lo deshace el robot (paso "quitados"). Queda en el historial. */
+function apiQuitarRecoleccion(p) {
+  var s = _exigirSesion(p.token), u = _buscarUsuario(s.Usuario);
+  var k = _tnClave(p.codigo), t = _tabla(APPG.H.RECOLECCIONES);
+  var r = t.filas.filter(function (x) { return String(x.NumeroGestor) === String(u.Numero) && _tnClave(x.Codigo) === k && String(x.Estado) === 'EN RUTA'; }).slice(-1)[0];
+  if (!r) return { ya: true, mensaje: 'Ya no estaba en tu lista.' };
+  t.sh.getRange(r._fila, t.col('Estado')).setValue('QUITADO POR GESTOR');
+  t.sh.getRange(r._fila, t.col('Actualizado')).setValue(_ahora());
+  if (String(r.Enviado) === 'NO') t.sh.getRange(r._fila, t.col('Enviado')).setValue('QUITADO');   // todavía no salía: no hay nada que deshacer
+  try { t.sh.getRange(r._fila, t.col('Nota')).setValue((String(r.Nota || '') + ' · Quitado por ' + u.Nombre + ' ' + _ahora('yyyy-MM-dd HH:mm') + ' (escaneo por error)').replace(/^ · /, '').slice(0, 300)); } catch (e) { }
+  _log(u.Nombre, 'QUITA_RECOLECCION', String(r.Tipo) + ' ' + r.Codigo + ' (escaneo por error)');
+  return { codigo: String(r.Codigo) };
+}

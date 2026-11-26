@@ -147,6 +147,8 @@ En **Lo que llevo** cada traspaso dice **a qué sucursal va, su dirección, bot�
 
 **No pude entregar el traspaso:** toca el traspaso → **No entregué** → motivo, comentario y foto (todo opcional) → **Registrar**.
 
+**¿Escaneaste algo por error?** Toca **Quitar** junto a ese folio (en la lista del escáner o en **Lo que llevo** → "Quitar · lo escaneé por error") y confirma. Sale solo ese; no tienes que empezar de nuevo. Si sí era, lo vuelves a escanear.
+
 **Pedidos que recolectaste (Lo que llevo):** se quitan solos de tu lista cuando:
 - Operaciones dice que ya se **entregó**, **canceló** o **retornó**;
 - ya **salió por paquetería** o en la **ruta de un gestor** después de que lo escaneaste;

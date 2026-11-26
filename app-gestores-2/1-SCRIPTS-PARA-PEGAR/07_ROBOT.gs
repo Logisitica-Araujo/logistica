@@ -40,6 +40,7 @@ function robot(forzar) {
     paso('llevaInfo', function () { return _robotLlevaInfo(); });
     paso('cierres', function () { return _robotCierres(ruta); });
     paso('correcciones', function () { return _robotCorrecciones(); });
+    paso('quitados', function () { return _robotQuitados(); });
     paso('limpieza', function () { return _robotLimpieza(); });
     paso('contraseñas', function () { return _procesarClavesNuevas(); });
     if (String(cfg.ID_BOTICAN || '').trim()) paso('botican', function () { return _robotBotican(); });
@@ -406,3 +407,40 @@ function instalarRobot() {
 }
 
 function correrRobotAhora() { _avisar('Vuelta del robot: ' + robot(true)); }
+
+/* ---------- Escaneos quitados por error: se deshace lo que la app puso ----------
+   Traspaso: si sigue "RECOLECTADO" vuelve al estatus que tenía antes (de RES_Movimientos) y se avisa al destino.
+   Pedido BOTICAN: se borra la hora y el gestor que la app escribió en Envios (H, AD, AE), solo si son los suyos. */
+function _robotQuitados() {
+  var t = _tabla(APPG.H.RECOLECCIONES), n = 0;
+  t.filas.forEach(function (r) {
+    if (String(r.Estado) !== 'QUITADO POR GESTOR' || String(r.Enviado) !== 'SI') return;
+    var nota = 'DESHECHO';
+    try {
+      if (String(r.Tipo) === 'TRASPASO') nota = _tnQuitarRecoleccion(String(r.Codigo), String(r.Gestor));
+      else if (String(r.Tipo) === 'PEDIDO' && String(_config().ID_BOTICAN || '').trim() && _hay('_btQuitarRecoleccion')) nota = _btQuitarRecoleccion(String(r.Codigo), r.FechaHora, String(r.Gestor));
+    } catch (e) { nota = 'ERROR: ' + e.message; }
+    t.sh.getRange(r._fila, t.col('Enviado')).setValue(/^ERROR/.test(nota) ? 'SI' : 'DESHECHO');
+    t.sh.getRange(r._fila, t.col('EstadoFuente')).setValue(nota);
+    if (/^ERROR/.test(nota)) _problema('ROB-08', String(r.Gestor), 'No se pudo deshacer el escaneo quitado de ' + r.Codigo + ': ' + nota);
+    n++;
+  });
+  return n;
+}
+function _tnQuitarRecoleccion(codigo, gestor) {
+  var tn = _tnBuscar(codigo);
+  if (!tn) return 'DESHECHO (no está en Traspasos)';
+  if (tn.estatus !== 'RECOLECTADO') return 'DESHECHO (Traspasos ya dice ' + tn.estatus + ': no se toca)';
+  var sh = _tnLibro().getSheetByName(APPG_TN.H.MOV), antes = '';
+  if (sh && sh.getLastRow() > APPG_TN.FILA_ENC) {
+    var enc = sh.getRange(APPG_TN.FILA_ENC, 1, 1, sh.getLastColumn()).getValues()[0].map(function (h) { return String(h).trim(); });
+    var cF = enc.indexOf('Folio'), cA = enc.indexOf('Acción'), cE = enc.indexOf('Estatus anterior');
+    var d = sh.getRange(APPG_TN.FILA_ENC + 1, 1, sh.getLastRow() - APPG_TN.FILA_ENC, sh.getLastColumn()).getValues();
+    for (var i = d.length - 1; i >= 0; i--) if (_tnClave(d[i][cF]) === _tnClave(codigo) && /RECOLECTADO POR GESTOR/i.test(String(d[i][cA]))) { antes = String(d[i][cE]).trim(); break; }
+  }
+  if (!antes || antes === 'RECOLECTADO') return 'ERROR: no encontré el estatus anterior en RES_Movimientos';
+  _tnSet(tn.fila, { 'Estatus': antes, 'Gestor': '', 'Fecha recolección': '' });
+  _tnMov(tn.folio, 'RECOLECCIÓN QUITADA (ESCANEO POR ERROR)', 'RECOLECTADO', antes, gestor, 'Lo quitó el gestor desde la app');
+  _tnAviso(tn.destinoPrefijo, tn.folio, 'Ya no va en camino: ' + gestor + ' lo escaneó por error');
+  return 'DESHECHO (Traspasos vuelve a ' + antes + ')';
+}
