@@ -155,6 +155,19 @@ ok(filasDe('APP_Cierres').find(c => c.IdCierre === 'suc00016151').EnviadoEn, 'Qu
 post({ accion: 'cerrar', token: tJL, idLocal: 'suc00016152', tipo: 'RECOLECCION', id: '#16152', resultado: 'ENTREGADO', sucursal: 'Oficinas', foto: E.FOTO }); robot();
 ok(!fila('#16152')[31] && filasDe('APP_Cierres').find(c => c.IdCierre === 'suc00016152').EnviadoEn === 'NO APLICA', 'Un pedido a domicilio dejado en Oficinas NO cambia a "entregó a sucursal"');
 
+titulo('Pedido de sucursal que se asignó en la ruta: al entregarlo también queda "Gestor entregó a sucursal"');
+{
+  const g = o => { const f = new Array(35).fill(''); Object.keys(o).forEach(k => { f[Number(k) - 1] = o[k]; }); return f; };
+  hOps.datos.push(g({ 1: '#16154', 2: 'BOTICAN', 4: 'Cliente Vértiz', 5: 'Sucursal Vértiz', 8: 'Logística Interna', 9: 'Jose Luis', 16: 'ENVIADO POR LOGÍSTICA INTERNA', 19: false, 21: false, 23: false }));
+  E.OPS.correr('opsw_cacheBorrar_'); robot();
+  ok(post({ accion: 'cerrar', token: tJL, idLocal: 'rut00016154', tipo: 'PEDIDO', id: '#16154', resultado: 'ENTREGADO', foto: E.FOTO, recibio: 'Mostrador' }).ok, 'Jose Luis entrega #16154 (va a Sucursal Vértiz) desde su ruta');
+  robot(); robot();
+  const f54 = fila('#16154');
+  ok(/\d{2}\/\d{2}\/2026/.test(f54[31]) && f54[32] === 'Vértiz · recibió Mostrador' && f54[33] === 'Jose Luis' && /drive/.test(f54[34]), 'Envios: AF–AI llenas (fecha, sucursal, gestor y foto)');
+  f54[31] = ''; robot();
+  ok(f54[31] === '', 'Se anota una sola vez (si alguien la borra, no la vuelve a escribir)');
+}
+
 /* ---------- Sincronización rápida ---------- */
 titulo('Lo que asignas en Operaciones llega más rápido');
 const f35 = o => { const f = new Array(35).fill(''); Object.keys(o).forEach(k => { f[Number(k) - 1] = o[k]; }); return f; };

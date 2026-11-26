@@ -123,6 +123,30 @@ ok(filasDe('APP_Cierres').find(c => c.IdCierre === 'libre0016150').Estado === 'A
   ok(opsFila('#16179')[22] === false && filasDe('APP_Cierres').find(c => c.IdCierre === 'libre0000777').Estado === 'LOCAL', 'Una dirección que no se parece ("Deje en casa del cliente") no se liga a nada');
 }
 
+titulo('Lo que llevo se actualiza solo con el estatus de Operaciones');
+{
+  hOps.datos.push(fila35({ 1: '#16280', 2: 'BOTICAN', 4: 'Cliente prueba', 5: 'Av. Siempre Viva 1', 16: 'RECOLECTADO POR GESTOR', 19: false, 21: false, 23: false }));
+  E.OPS.correr('opsw_cacheBorrar_');
+  post({ accion: 'recolectar', token: tJL, codigos: ['#16280'] }); robot();
+  const tiene = () => post({ accion: 'inicio', token: tJL }).lleva.some(l => l.codigo === '#16280');
+  ok(tiene(), 'Recién escaneado (RECOLECTADO POR GESTOR): está en "Lo que llevo"');
+  const f = hOps.datos.findIndex(r => r[0] === '#16280'); hOps.datos[f][15] = 'ENVIADO POR PAQUETERÍA EXTERNA';
+  E.OPS.correr('opsw_cacheBorrar_'); robot();
+  ok(!tiene() && /YA SALIÓ/.test(filasDe('APP_Recolecciones').filter(r => r.Codigo === '#16280').slice(-1)[0].Estado), 'Ya salió por paquetería (#16280): se quita solo de "Lo que llevo"');
+  hOps.datos.push(fila35({ 1: '#16288', 2: 'BOTICAN', 4: 'Cliente 2', 5: 'Calle 2', 8: 'Logística Interna', 9: 'JoseLuis', 16: 'ENVIADO POR LOGÍSTICA INTERNA', 19: false, 21: false, 23: false }));
+  E.OPS.correr('opsw_cacheBorrar_');
+  post({ accion: 'recolectar', token: tJL, codigos: [{ codigo: '#16288', forzar: true }] }); robot(); robot();
+  ok(!post({ accion: 'inicio', token: tJL }).lleva.some(l => l.codigo === '#16288'), 'Ya está asignado a él en ruta: sale de "Lo que llevo" (lo ve en Pedidos a domicilio)');
+  hOps.datos.push(fila35({ 1: '#16289', 2: 'BOTICAN', 4: 'Cliente 3', 5: 'Calle 3', 8: 'Paquetería Externa', 16: 'ENVIADO POR PAQUETERÍA EXTERNA', 19: false, 21: false, 23: false }));
+  E.OPS.correr('opsw_cacheBorrar_');
+  post({ accion: 'recolectar', token: tJL, codigos: [{ codigo: '#16289', forzar: true }] }); robot();
+  const llv = () => post({ accion: 'inicio', token: tJL }).lleva.some(l => l.codigo === '#16289');
+  ok(llv(), 'Escaneado hoy cuando ya decía "Enviado por paquetería": se queda hoy (lo trae él hasta dejarlo)');
+  APP.reloj.ahora += 86400000; robot();
+  ok(!llv(), 'Al día siguiente se quita solo');
+  APP.reloj.ahora -= 86400000;
+}
+
 titulo('Vehículo: motivo al cambiar y en taller');
 post({ accion: 'vehiculo', token: tJL, vehiculo: 'Saviero LKC-752-D', tablero: { foto: FOTO }, destino: 'Ruta Centro' });
 post({ accion: 'vehiculo', token: tJL, vehiculo: 'FED 2 14KGC4', motivo: 'Llanta ponchada', tablero: { foto: FOTO }, destino: 'Ruta Centro' });

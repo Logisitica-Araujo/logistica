@@ -10,7 +10,12 @@ Aquí viven varios proyectos distintos. Esta página dice cuál es cuál y dónd
 | **El script de OPERACIONES** (04_Backend_App y los demás) | Repositorio **OPERACIONES** (privado) → carpeta `apps-script/` |
 | **Manuales** (gestor, administradora, errores, puesta en marcha) | [`app-gestores-2/2-MANUALES/`](app-gestores-2/2-MANUALES/) |
 | **La app del celular nueva** (página que abren los gestores) | [`v2/`](v2/) → https://logisitica-araujo.github.io/logistica/v2/ |
-| **Qué cambió en cada versión** | [`app-gestores-2/CAMBIOS.md`](app-gestores-2/CAMBIOS.md) |
+| **Qué cambió en cada versión** (y qué archivos pegar en cada una) | [`app-gestores-2/CAMBIOS.md`](app-gestores-2/CAMBIOS.md) |
+| **Los códigos listos para copiar y pegar** (con lo último que falta pegar arriba) | Página "scripts" en claude.ai (la liga la tiene Logística) · misma copia en `app-gestores-2/1-SCRIPTS-PARA-PEGAR/` |
+| **Errores de la app y cómo se arreglan** (códigos CAP-, VEH-, SOS-, ROB-…) | [`app-gestores-2/2-MANUALES/ERRORES_Y_SOLUCIONES.md`](app-gestores-2/2-MANUALES/ERRORES_Y_SOLUCIONES.md) |
+| **Fórmula de estatus de BOTICAN** (la nueva y la anterior, columnas AD–AI) | [`app-gestores-2/2-MANUALES/BOTICAN_formula_estatus.md`](app-gestores-2/2-MANUALES/BOTICAN_formula_estatus.md) |
+| **Prompts para otros proyectos** (portal BOTICAN) | [`app-gestores-2/2-MANUALES/`](app-gestores-2/2-MANUALES/) archivos `PROMPT_…` |
+| **Pruebas automáticas** (se corren antes de publicar cada cambio) | [`app-gestores-2/3-PRUEBAS/`](app-gestores-2/3-PRUEBAS/) |
 | La app vieja (la de antes; sigue funcionando hasta que todos cambien) | Archivos sueltos de la raíz (`index.html`, `app.js`…) y sus scripts en [`APP GESTORES 1 (la vieja)/`](APP%20GESTORES%201%20(la%20vieja)/) |
 | Pólizas y protocolo en PDF | Raíz (`poliza-…pdf`, `protocolo-entrega.pdf`) |
 
