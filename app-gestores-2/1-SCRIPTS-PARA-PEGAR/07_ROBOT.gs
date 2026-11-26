@@ -217,7 +217,8 @@ function _robotLimpieza() {
     var e = _ops('estadoPedidos', { ids: idsPedido });
     if (e.ok) estados = e.estados;
   }
-  var n = 0;
+  var n = 0, usuarios = {};
+  _tabla(APPG.H.USUARIOS).filas.forEach(function (x) { usuarios[String(x.Numero)] = x; });
   abiertos.forEach(function (r) {
     var cerrar = '', fuente = '';
     if (String(r.Tipo) === 'TRASPASO') {
@@ -230,6 +231,18 @@ function _robotLimpieza() {
     } else if (String(r.Tipo) === 'PEDIDO' && Object.prototype.hasOwnProperty.call(estados, String(r.Codigo))) {
       fuente = estados[String(r.Codigo)] || 'NO EXISTE EN OPERACIONES';
       if (/ENTREGADO|CANCELADO|RETORNADO/i.test(fuente)) cerrar = 'CERRADO';
+      else if (/^ENVIADO POR/i.test(fuente)) {
+        // Ya salió con paquetería o en la ruta de un gestor: el que lo recolectó ya no lo trae.
+        //  · cambió a "ENVIADO POR…" después de escanearlo, o
+        //  · ya es suyo en Operaciones (lo ve en "Pedidos a domicilio"), o
+        //  · lo escaneó otro día (ya lo dejó).
+        // Si el mismo día lo escaneó ya asignado a otro, se queda (lo trae él: "Lo dejé en sucursal" o SOS).
+        var antes = String(r.EstadoFuente || '').replace(/ · ALERTA$/, '');
+        if (/^(ANOTADO|NO EXISTE|\[)/i.test(antes)) antes = '';   // eso no es un estatus de Operaciones
+        var inf = _llevaInfo()[_tnClave(r.Codigo)] || {}, u = usuarios[String(r.NumeroGestor)];
+        var mio = !!(inf.gestor && u && _esMiNombreOps(inf.gestor, u));
+        if ((antes && !/^ENVIADO POR/i.test(antes)) || mio || _fechaTxt(r.FechaHora) < _hoyTxt()) cerrar = mio ? 'YA ESTÁ EN SUS PEDIDOS' : 'YA SALIÓ (' + fuente + ')';
+      }
     }
     if (cerrar) {
       t.sh.getRange(r._fila, t.col('Estado')).setValue(cerrar);

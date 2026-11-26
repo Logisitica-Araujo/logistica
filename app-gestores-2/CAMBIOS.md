@@ -1,5 +1,11 @@
 # Registro de cambios · App Gestores 2
 
+## 0.5.8 · 26-nov-2026 · "Lo que llevo" se limpia solo · entregas de sucursal desde la ruta
+- **"Lo que llevo" se actualiza con el estatus de Operaciones** (`07_ROBOT` paso limpieza). Antes solo se quitaba al quedar ENTREGADO, CANCELADO o RETORNADO; por eso #16280 seguía ahí aunque ya decía "ENVIADO POR PAQUETERÍA EXTERNA". Ahora también se quita cuando dice "ENVIADO POR…" y: cambió después de escanearlo, o ya está asignado al mismo gestor (lo ve en Pedidos a domicilio), o lo escaneó otro día. Si lo escaneó hoy ya asignado a otro gestor, se queda (lo trae él: "Lo dejé en sucursal" o SOS).
+- **Pedido BOTICAN que va a sucursal y se asignó en la ruta:** al marcarlo **Entregado** también se llenan AF–AI en Envios (**🏪 Gestor entregó a sucursal**): fecha y hora, sucursal (de la dirección "Sucursal …") y quién recibió, gestor y foto. Una sola vez por cierre (`10_BOTICAN` `_botSucursalRuta`, propiedad `BOT_SUC_PED`).
+- Manuales: `MANUAL_GESTOR` (cuándo se quita algo de "Lo que llevo", sucursales, sección 9 Vehículo) y `README` (dónde está cada cosa).
+- Archivos: `00_CONFIG` (versión), `07_ROBOT`, `10_BOTICAN`. Los usa el robot: **no** necesita versión nueva de la implementación.
+
 ## 0.5.7 · 23-nov-2026 · Camioneta normal: foto del tablero + "¿A dónde vas?" + WhatsApp
 - Al tomar la **camioneta** (vehículo tipo AUTO) **sin** "Salida especial": la lista de siempre + **foto del tablero** (que se vean km y gasolina; no se teclea el km) + **"¿A dónde vas?"** (destino o ruta). Los dos son obligatorios (CAP-04 / CAP-01). Si ya es suya hoy, no vuelve a pedirlos. Al regresar no pide nada.
 - Al guardar: WhatsApp **"SALE CAMIONETA"** con la foto, destino, hora, lo que falta de la lista, lugar (Maps) y gestor.

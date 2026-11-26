@@ -147,6 +147,25 @@ En **Lo que llevo** cada traspaso dice **a qué sucursal va, su dirección, bot�
 
 **No pude entregar el traspaso:** toca el traspaso → **No entregué** → motivo, comentario y foto (todo opcional) → **Registrar**.
 
+**Pedidos que recolectaste (Lo que llevo):** se quitan solos de tu lista cuando:
+- Operaciones dice que ya se **entregó**, **canceló** o **retornó**;
+- ya **salió por paquetería** o en la **ruta de un gestor** después de que lo escaneaste;
+- te lo **asignaron a ti** en la ruta (ahora lo ves en **Pedidos a domicilio**);
+- lo escaneaste **otro día** y ya dice "Enviado por…".
+
+Si lo escaneaste hoy y ya estaba asignado a otro gestor, se queda en tu lista hasta que lo dejes (**Lo dejé en sucursal** o **🆘 Entrega a domicilio**).
+
+**Pedido BOTICAN que va a sucursal:** si lo dejas con **Lo dejé en sucursal**, o si te lo asignaron en tu ruta y lo marcas **Entregado**, en la hoja de BOTICAN queda **🏪 Gestor entregó a sucursal**, con la fecha, tu nombre y la foto.
+
+## 9. Vehículo: camioneta y moto
+
+Al empezar el día eliges con qué sales (**¿Con qué sales hoy?**).
+- **Moto o "Sin vehículo":** marcas la lista de siempre y sales.
+- **Camioneta (salida normal):** la lista de siempre, más **foto del tablero** (que se vean el km y la gasolina; no tecleas el km) y **¿A dónde vas?** (destino o ruta). Los dos son obligatorios. Al guardar te ofrece mandar al grupo el WhatsApp **"SALE CAMIONETA"**. Si ya es tuya ese día, no vuelve a pedir la foto.
+- **🚐 Salida especial** (Foráneo · Carga · Todo el día · Otro): revisión completa con fotos, qué lleva, cómo está, km y gasolina. Al regresar toca **Entregar** en tu inicio y haz la revisión de entrega.
+
+Todo queda en la bitácora de la camioneta (pestaña `APP_Bitacora_Vehiculo`) y las fotos en Drive.
+
 ## 10. Sin señal
 
 - Arriba dice **"Sin señal · todo se guarda en tu celular"**. Sigue trabajando normal.

@@ -326,7 +326,6 @@ function _robotBotSucursal() {
     return String(c.Tipo) === 'RECOLECCION' && String(c.Resultado) === 'ENTREGADO' && String(c.Estado) === 'LOCAL' && String(c.DondeEntrego || '').trim() &&
            !String(c.EnviadoEn || '').trim() && _fechaMs(c.FechaHora) > hace;
   });
-  if (!pend.length) return 0;
   var sh = _btLibro().getSheetByName('Envios'), col = _btColumnas(sh), n = 0;
   if (!col.SUC_FECHA) return 'faltan las columnas App · … en Envios';
   pend.forEach(function (c) {
@@ -342,6 +341,34 @@ function _robotBotSucursal() {
     }
     t.sh.getRange(c._fila, t.col('EnviadoEn')).setValue(marca);
   });
+  return n + _botSucursalRuta(t, sh, col, hace);
+}
+/** Pedido BOTICAN que va a sucursal y se lo asignaste en su ruta: al marcarlo "Entregado" también queda
+    "Gestor entregó a sucursal" (AF–AI). Se anota cada cierre una sola vez (propiedad BOT_SUC_PED). */
+function _botSucursalRuta(t, sh, col, hace) {
+  var dirs = ((_hay('_btDatos') ? _btDatos() : null) || {}).dirs || {};
+  var props = PropertiesService.getScriptProperties(), hechos = [];
+  try { hechos = JSON.parse(props.getProperty('BOT_SUC_PED') || '[]'); } catch (e) { hechos = []; }
+  var peds = t.filas.filter(function (c) {
+    var d = dirs[_tnClave(c.ID)];
+    return String(c.Tipo) === 'PEDIDO' && String(c.Resultado) === 'ENTREGADO' && !/ANULADO|CORREGIDO/.test(String(c.Estado)) &&
+           _fechaMs(c.FechaHora) > hace && hechos.indexOf(String(c.IdCierre)) < 0 && d && /^\s*sucursal/i.test(d[1]);
+  });
+  var n = 0;
+  peds.forEach(function (c) {
+    var fila = _btFila(sh, c.ID);
+    if (fila && /^\s*sucursal/i.test(String(sh.getRange(fila, 5).getValue()))) {
+      var suc = String(c.DondeEntrego || '').trim() || String(sh.getRange(fila, 5).getValue()).replace(/^\s*sucursal\s*/i, '').split(/[,\n]/)[0].trim();
+      _btPoner(sh, fila, col.SUC_FECHA, _btFechaTxt(_horaReal(c).replace('T', ' ')));
+      _btPoner(sh, fila, col.SUC_DONDE, suc + (String(c.Recibio || '').trim() ? ' · recibió ' + String(c.Recibio).trim() : ''));
+      _btPoner(sh, fila, col.SUC_GESTOR, String(c.Gestor));
+      if (String(c.URLFoto || '')) _btPoner(sh, fila, col.SUC_FOTO, String(c.URLFoto));
+      _log('robot', 'BOT_SUCURSAL_RUTA', c.ID + ' · ' + suc + ' · ' + c.Gestor);
+      n++;
+    }
+    hechos.push(String(c.IdCierre));
+  });
+  if (peds.length) props.setProperty('BOT_SUC_PED', JSON.stringify(hechos.slice(-400)));
   return n;
 }
 
