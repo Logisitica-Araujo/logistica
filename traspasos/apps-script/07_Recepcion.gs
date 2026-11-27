@@ -124,12 +124,13 @@ function _imprimibleEnRec(t, A) {
 
 /** Cuántas veces se ha impreso cada folio en Recepción: { 'CONT-0006': 1, ... } */
 function _impresosEnRec() {
-  const out = {};
-  _tb(TR.H.ETIQUETAS).filas().forEach(function (f) {
-    if (String(f['Impresión']).trim().toUpperCase() !== 'RECEPCIÓN') return;
-    const k = R.limpio(f['Folio']);
+  const out = {}, t = _tb(TR.H.ETIQUETAS);
+  const fol = t.columna('Folio'), imp = t.columna('Impresión');      // solo 2 columnas, no toda la hoja
+  for (let i = 0; i < fol.length; i++) {
+    if (String(imp[i]).trim().toUpperCase() !== 'RECEPCIÓN') continue;
+    const k = R.limpio(fol[i]);
     out[k] = (out[k] || 0) + 1;
-  });
+  }
   return out;
 }
 

@@ -1383,9 +1383,12 @@ function vHoja() {
 function abrir(folio) {
   S.bell = false;
   S.modal = { folio: folio, det: null, form: null, err: null };
+  // Se abre AL INSTANTE con lo que la página ya tiene; la línea de tiempo llega después.
+  var local = MAPA[R.limpio(folio)] || ((S.data && S.data.traspasos) || []).filter(function (t) { return R.limpio(t.folio) === R.limpio(folio); })[0];
+  if (local) S.modal.det = { traspaso: local, movimientos: null };
   render();
   srv('apiDetalle', S.token, folio).then(function (d) { if (S.modal && S.modal.folio === folio) { if (d.caja) S.modal = { caja: d.caja }; else S.modal.det = d; render(); } })
-    .catch(function (e) { if (S.modal) { S.modal.err = e.message; render(); } });
+    .catch(function (e) { if (!S.modal) return; if (S.modal.det && S.modal.det.movimientos == null) { S.modal.det.movimientos = []; toast(e.message); } else S.modal.err = e.message; render(); });
 }
 function renderModal() {
   var m = S.modal;
@@ -1534,7 +1537,7 @@ function detalleHTML(t, movs) {
   return '<div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="num" style="font-size:28px">' + esc(t.folio) + '</div><div class="muted">' + esc(t.desc) + '</div></div><div class="row">' + badge(t) + areaTag(t.destino) + '<button class="btn ghost" type="button" data-a="cerrar" aria-label="Cerrar">✕</button></div></div>' +
     (m.err ? '<div class="feedback err" style="margin-top:10px">' + esc(m.err) + '</div>' : '') +
     '<dl class="dl">' + dl.map(function (x) { return '<div><dt>' + x[0] + '</dt><dd>' + esc(x[1]) + '</dd></div>'; }).join('') + '</dl>' +
-    '<h2>Línea de tiempo</h2><ol class="timeline">' + (movs.length ? movs.map(function (e) {
+    '<h2>Línea de tiempo</h2><ol class="timeline">' + (movs == null ? '<li><div class="cargando" style="padding:6px 0">Cargando historia…</div></li>' : movs.length ? movs.map(function (e) {
       var c = (S.EC[e.nuevo] && S.EC[e.nuevo].color) || '#9AA7B3';
       return '<li style="--tl:' + c + '"><div class="when">' + esc(fh(e.fecha, e.hora)) + '</div><div class="what">' + esc(e.accion) + '</div><div class="detail">' + esc([quien(e.persona, ''), e.donde, e.medio, e.detalle].filter(function (x, i, arr) { return x && arr.indexOf(x) === i; }).join(' · ')) + '</div></li>';
     }).join('') : '<li>Sin movimientos.</li>') + '</ol>' +

@@ -330,7 +330,7 @@ function _rellenarFprod() {
 /** Historia de un pedido de Botican (para el Buscador): sus movimientos en Traspasos. */
 function _detalleBotican(id, c) {
   const k = _pedidoDe(id);
-  const mov = _tb(TR.H.MOV).filas().filter(function (m) { return String(m['Folio']).trim().toUpperCase() === k; });
+  const mov = _tb(TR.H.MOV).donde('Folio', k).filter(function (m) { return String(m['Folio']).trim().toUpperCase() === k; });
   if (!mov.length) return null;
   const reg = _acuseBot(k);
   return {

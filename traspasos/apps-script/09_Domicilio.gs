@@ -174,7 +174,7 @@ function apiDomicilioRecolectar(token, d) {
 /** Historia de un pedido a domicilio (para el Buscador). */
 function _detalleDomicilio(id) {
   const k = _pedidoDom(id);
-  const mov = _tb(TR.H.MOV).filas().filter(function (m) { return String(m['Folio']).trim().toUpperCase() === k && /DOMICILIO/.test(String(m['Medio'] || '')); });
+  const mov = _tb(TR.H.MOV).donde('Folio', k).filter(function (m) { return String(m['Folio']).trim().toUpperCase() === k && /DOMICILIO/.test(String(m['Medio'] || '')); });
   if (!mov.length) return null;
   return {
     pedido: { folio: k, domicilio: true },

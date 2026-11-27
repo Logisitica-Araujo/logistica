@@ -151,12 +151,32 @@ function _conCandado(fn, espera) {
  * ======================================================= */
 
 var __TB = {};
+/* ---------- Caché de catálogos ----------
+ * Los catálogos (áreas, sucursales, administradores, ajustes, personas…) casi no cambian, pero se
+ * consultan en CADA clic. Se guardan 10 min en la memoria del servidor. Se renuevan solos cuando:
+ * la página escribe en ellos, alguien edita una hoja CAT_ / CFG_ (onEdit) o se corre Instalar / reparar. */
+const TB_CACHE = ['CAT_Areas', 'CAT_Sucursales', 'CAT_Administradores', 'CFG_Ajustes', 'CAT_Estatus', 'CAT_Paqueterias',
+  'CAT_Motivos', 'CAT_Impresoras', 'CAT_Personas', 'CAT_Gestores', 'CAT_EnviosOf', 'CAT_RutasRecoleccion'];
+var __TBVER = null;
+function _tbVer() {
+  if (__TBVER) return __TBVER;
+  const c = CacheService.getScriptCache();
+  __TBVER = c.get('tbver');
+  if (!__TBVER) { __TBVER = String(Date.now()); c.put('tbver', __TBVER, 21600); }
+  return __TBVER;
+}
+/** Invalida la caché de catálogos (todas las hojas a la vez). */
+function _tbRenovar() { __TBVER = String(Date.now()); try { CacheService.getScriptCache().put('tbver', __TBVER, 21600); } catch (e) { } }
+
 function _tb(nombre) {
   if (__TB[nombre]) return __TB[nombre];
   const sh = _libro().getSheetByName(nombre);
   if (!sh) throw new Error('Falta la hoja "' + nombre + '". Abre el menú 🔄 Traspasos → Instalar / reparar.');
-  const lc = Math.max(1, sh.getLastColumn());
-  const enc = sh.getRange(TR.FILA_ENC, 1, 1, lc).getValues()[0].map(function (h) { return String(h).trim(); });
+  const enCache = TB_CACHE.indexOf(nombre) >= 0, kc = enCache ? 'tb|' + _tbVer() + '|' + nombre : '';
+  let guardado = null;
+  if (enCache) { try { const j = CacheService.getScriptCache().get(kc); if (j) guardado = JSON.parse(j); } catch (e) { } }
+  const lc = guardado ? guardado.lc : Math.max(1, sh.getLastColumn());
+  const enc = guardado ? guardado.enc : sh.getRange(TR.FILA_ENC, 1, 1, lc).getValues()[0].map(function (h) { return String(h).trim(); });
   const idx = {};
   enc.forEach(function (h, i) { if (h) idx[_norm(h)] = i; });
 
@@ -171,12 +191,40 @@ function _tb(nombre) {
     },
     filas: function () {
       if (this._f) return this._f;
+      let v;
+      if (guardado && guardado.v) v = guardado.v;
+      else {
+        const n = sh.getLastRow() - TR.FILA_ENC;
+        v = n > 0 ? sh.getRange(TR.FILA_ENC + 1, 1, n, lc).getValues() : [];
+        if (enCache) {
+          try { const j = JSON.stringify({ lc: lc, enc: enc, v: v }); if (j.length < 95000) CacheService.getScriptCache().put(kc, j, 600); } catch (e) { }
+        }
+      }
+      return (this._f = this._objetos(v, TR.FILA_ENC + 1));
+    },
+    /** Solo los últimos n renglones (hojas que crecen mucho, ej. avisos). */
+    ultimas: function (n) {
+      const fin = sh.getLastRow(), ini = Math.max(TR.FILA_ENC + 1, fin - n + 1);
+      return fin >= ini ? this._objetos(sh.getRange(ini, 1, fin - ini + 1, lc).getValues(), ini) : [];
+    },
+    /** Renglones cuya columna h es EXACTAMENTE valor (busca con TextFinder; no lee toda la hoja). */
+    donde: function (h, valor) {
+      const n = sh.getLastRow() - TR.FILA_ENC, c = this.col(h) + 1, self = this;
+      if (n <= 0 || !String(valor || '').trim()) return [];
+      const hall = sh.getRange(TR.FILA_ENC + 1, c, n, 1).createTextFinder(String(valor).trim()).matchEntireCell(true).matchCase(false).findAll();
+      return hall.map(function (r) { return self._objetos(sh.getRange(r.getRow(), 1, 1, lc).getValues(), r.getRow())[0]; }).filter(Boolean)
+        .sort(function (a, b) { return a._fila - b._fila; });
+    },
+    /** Valores de UNA columna (rápido: no trae las demás). */
+    columna: function (h) {
       const n = sh.getLastRow() - TR.FILA_ENC;
-      const v = n > 0 ? sh.getRange(TR.FILA_ENC + 1, 1, n, lc).getValues() : [];
+      return n > 0 ? sh.getRange(TR.FILA_ENC + 1, this.col(h) + 1, n, 1).getValues().map(function (r) { return r[0]; }) : [];
+    },
+    _objetos: function (v, primera) {
       const out = [];
       for (let r = 0; r < v.length; r++) {
         let vacia = true;
-        const o = { _fila: TR.FILA_ENC + 1 + r };
+        const o = { _fila: primera + r };
         for (let j = 0; j < enc.length; j++) {
           if (!enc[j]) continue;
           o[enc[j]] = v[r][j];
@@ -184,7 +232,6 @@ function _tb(nombre) {
         }
         if (!vacia) out.push(o);
       }
-      this._f = out;
       return out;
     },
     _fila: function (obj) {
@@ -198,7 +245,8 @@ function _tb(nombre) {
       const self = this;
       const rows = objs.map(function (o) { return self._fila(o); });
       sh.getRange(sh.getLastRow() + 1, 1, rows.length, lc).setValues(rows);
-      this._f = null;
+      this._f = null; guardado = null;
+      if (enCache) _tbRenovar();
     },
     actualizar: function (fila, obj) {
       const self = this;
@@ -206,7 +254,8 @@ function _tb(nombre) {
         if (opcional(h)) return;
         sh.getRange(fila, self.col(h) + 1).setValue(obj[h]);
       });
-      this._f = null;
+      this._f = null; guardado = null;
+      if (enCache) _tbRenovar();
     }
   };
   __TB[nombre] = t;

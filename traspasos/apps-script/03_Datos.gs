@@ -518,6 +518,11 @@ function _identificar(d, tipo) {
   const r = tipo === 'PERSONA'
     ? (buscar(TR.H.PERSONAS, 'PERSONA') || buscar(TR.H.GESTORES, 'GESTOR'))
     : (buscar(TR.H.GESTORES, 'GESTOR') || buscar(TR.H.PERSONAS, 'PERSONA'));
+  // Respaldo de la caché: si no la encontró, vuelve a leer las hojas (por si la dieron de alta hace un momento).
+  if (!r && !d.__fresco) {
+    _tbRenovar(); delete __TB[TR.H.PERSONAS]; delete __TB[TR.H.GESTORES];
+    return _identificar(Object.assign({}, d, { __fresco: true }), tipo);
+  }
   if (bloqueo) {
     const k = 'nip_' + _norm(usr);
     if (r) bloqueo.remove(k); else bloqueo.put(k, String(Number(bloqueo.get(k) || 0) + 1), 900);

@@ -166,7 +166,7 @@ function apiDatos(token) {
       Object.keys(A).forEach(function (id) { if (A[id].suc === A[c.area].suc) para[id] = true; });
     }
     if (c.admin) para[TR.AREA_ADMIN] = true;
-    const avisos = _tb(TR.H.AVISOS).filas()
+    const avisos = _tb(TR.H.AVISOS).ultimas(500)
       .filter(function (f) { return para[String(f['Para (área)']).trim().toUpperCase()]; })
       .slice(-40).reverse()
       .map(function (f) {
@@ -248,7 +248,7 @@ function apiDetalle(token, folio) {
     const t = _buscarT(folio);
     if (!t || (t.estatus === 'ELIMINADO' && !c.admin)) throw new Error('No encontré el folio ' + folio + '.');
     const f = R.limpio(t.folio);
-    const mov = _tb(TR.H.MOV).filas()
+    const mov = _tb(TR.H.MOV).donde('Folio', t.folio)
       .filter(function (m) { return R.limpio(m['Folio']) === f; })
       .map(function (m) {
         return { fecha: _txt(m['Fecha']), hora: _txt(m['Hora']), accion: String(m['Acción']),

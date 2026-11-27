@@ -6,6 +6,11 @@
  * lo que falta, nunca borra nada.
  ***********************************************************************/
 
+/** Si alguien edita a mano un catálogo (CAT_…) o los ajustes (CFG_…), la página lo ve al momento. */
+function onEdit(e) {
+  try { const n = e && e.range ? e.range.getSheet().getName() : ''; if (/^(CAT_|CFG_)/.test(n)) _tbRenovar(); } catch (err) { }
+}
+
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('🔄 Traspasos')
@@ -18,6 +23,7 @@ function onOpen() {
 
 function instalar() {
   const hechos = [];
+  _tbRenovar();
   _secreto();
   hechos.push('Llave de seguridad de sesiones lista.');
 
@@ -361,6 +367,6 @@ function _agregarColumna(hoja, nombre) {
     const prev = sh.getRange(TR.FILA_ENC, lc);
     cel.setBackground(prev.getBackground()).setFontColor(prev.getFontColor()).setFontWeight('bold');
   } catch (e) { }
-  __TB = {};
+  __TB = {}; _tbRenovar();
   return true;
 }
