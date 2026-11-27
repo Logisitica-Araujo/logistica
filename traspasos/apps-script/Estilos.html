@@ -300,6 +300,17 @@ details.sincred summary{cursor:pointer;font-weight:700;color:var(--muted);font-s
 .modo button.on{border-color:var(--accent);background:var(--accent-soft)}
 .bell.actualizar{width:auto;padding:0 14px;gap:6px;font-weight:800;font-size:15px;display:inline-flex;align-items:center;white-space:nowrap}
 .gira{display:inline-block}.gira.on{animation:gira .8s linear infinite}@keyframes gira{to{transform:rotate(360deg)}}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;font:inherit;font-weight:800;font-size:14px;color:inherit;cursor:pointer}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}.chip .n{opacity:.75;margin-left:4px}
+.barra{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;gap:10px 12px;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.grp{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.grp .gh{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.it{display:grid;grid-template-columns:30px 110px minmax(0,1fr) 160px 60px auto;gap:10px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--line);font-size:14.5px}
+.it:last-child{border-bottom:0}.it.ok{background:#F2FAF4;color:var(--muted)}.it .d{color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.it .cb{width:22px;height:22px;border:2px solid #9AA6B2;border-radius:5px;display:grid;place-items:center;font-size:13px;font-weight:900;color:#fff;background:var(--surface);cursor:pointer;padding:0}
+.it .cb.on{background:#1B7F38;border-color:#1B7F38}
+@media (max-width:820px){.it{grid-template-columns:30px minmax(0,1fr) auto}.it>span:nth-of-type(2),.it>span:nth-of-type(3){display:none}.it>b.num{grid-column:2}}
 .paso{font-size:12px;font-weight:900;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin-bottom:-6px}
 .ped{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;text-align:left;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface);cursor:pointer}
 .ped:hover:not(:disabled){border-color:var(--bot)}

@@ -667,7 +667,7 @@ function etiquetaHTML(t, b, rp, pantalla) {
  */
 var PUNTO = 0.125;
 /** Versión de la página (sale en ❓ Ayuda). Sirve para saber si ya se publicó lo último. */
-var VERSION_PAGINA = '2026-11-25 · ver como (administradores)';
+var VERSION_PAGINA = '2026-11-27 · centro de impresión nuevo';
 function bcHTML(code, anchoMm, altoMm) {
   return '<div class="bcw"><svg class="bc" data-code="' + esc(code) + '" data-w="' + anchoMm + '" data-h="' + altoMm + '"></svg></div>';
 }
@@ -1076,61 +1076,41 @@ function vRecoger(r, q, fb) {
  * Solo salen los traspasos en "Nuevo traspaso" (pedido creado, todavía sin moverse).
  */
 function abrirCentroImpresion() {
-  S.imp = { areas: null, area: (S.imp && S.imp.area) || '', lista: null, err: null, ocupado: false };
-  srv('apiCentroImpresion', S.token).then(function (areas) {
-    S.imp.areas = areas;
-    if (S.imp.area) return cargarPendientes(S.imp.area);
-    render();
-  }).catch(function (e) { S.imp.err = e.message; render(); });
-}
-function cargarPendientes(area) {
-  S.imp.area = area; S.imp.lista = null; S.imp.err = null;
-  if (!area) return render();
+  var antes = S.imp || {};
+  S.imp = { lista: antes.lista || null, areas: antes.areas || [], filtro: antes.filtro || '', sel: {}, err: null, ocupado: false, verImpresas: !!antes.verImpresas, fb: null };
   render();
-  srv('apiPendientesImpresion', S.token, area).then(function (lista) {
-    if (S.imp.area !== area) return;          // cambió de área mientras cargaba
-    S.imp.lista = lista;
-    var a = (S.imp.areas || []).filter(function (x) { return x.id === area; })[0];
-    if (a) a.pendientes = lista.length;
-    render();
+  srv('apiCentroTodo', S.token).then(function (d) {
+    var hechas = {};
+    (antes.lista || []).forEach(function (t) { if (t.impHora) hechas[t.folio] = t.impHora; });   // conserva la hora que se vio en pantalla
+    d.lista.forEach(function (t) { if (hechas[t.folio]) t.impHora = hechas[t.folio]; });
+    S.imp.lista = d.lista; S.imp.areas = d.areas; render();
   }).catch(function (e) { S.imp.err = e.message; render(); });
 }
+function impItem(folio) { var k = R.limpio(folio); return ((S.imp && S.imp.lista) || []).filter(function (t) { return R.limpio(t.folio) === k; })[0] || null; }
+function impPendientes() { return ((S.imp && S.imp.lista) || []).filter(function (t) { return !t.impreso && (!S.imp.filtro || t.origen === S.imp.filtro); }); }
+/** Imprime varios en UN solo trabajo de impresión. La lista NO se recarga: se marcan como impresos al momento. */
 function imprimirEnRecepcion(folios) {
-  if (S.imp.ocupado) return;
-  S.imp.ocupado = true; S.ocupado = true; render();
+  var im = S.imp;
+  if (im.ocupado || !folios.length) return;
+  im.ocupado = true; im.fb = null; render();
   srv('apiImprimirEnRecepcion', S.token, folios).then(function (listos) {
-    // Un solo trabajo de impresión con todas las etiquetas
     mandarImprimir(listos.map(function (x) { return x.bultos.map(function (b) { return etiquetaHTML(x.traspaso, b, 0, false); }).join(''); }).join(''));
-    var n = listos.reduce(function (s, x) { return s + x.bultos.length; }, 0);
-    toast('🖨 ' + n + ' etiqueta(s) enviadas a la impresora');
-    S.imp.ocupado = false; S.ocupado = false;
-    cargarPendientes(S.imp.area);
-  }).catch(function (e) { S.imp.ocupado = false; S.ocupado = false; S.imp.err = e.message; render(); });
+    var n = listos.reduce(function (s, x) { return s + x.bultos.length; }, 0), ahora = new Date();
+    var hora = ('0' + ahora.getHours()).slice(-2) + ':' + ('0' + ahora.getMinutes()).slice(-2);
+    listos.forEach(function (x) { var t = impItem(x.traspaso.folio); if (t) { t.impreso = (t.impreso || 0) + 1; t.impHora = hora; t.enRecepcion = x.traspaso.estatus === 'EN_RECEPCION'; } delete im.sel[x.traspaso.folio]; });
+    im.ocupado = false; im.fb = { k: 'ok', m: '🖨 ' + n + ' etiqueta(s) enviadas a la impresora · ' + listos.map(function (x) { return x.traspaso.folio; }).join(', ') };
+    beep('listo'); render();
+  }).catch(function (e) { im.ocupado = false; im.fb = { k: 'err', m: e.message }; beep('err'); render(); });
+}
+/** Escanear o teclear un folio: se imprime de inmediato. */
+function impEscanear(v) {
+  var t = impItem(R.folioDe(v) || v);
+  if (!t) { S.imp.fb = { k: 'err', m: String(v).toUpperCase() + ' no está en la lista: no es de Oficinas, ya se lo llevaron o no existe. Prueba ↻ Actualizar.' }; beep('err'); render(); return; }
+  imprimirEnRecepcion([t.folio]);
 }
 function vCentroImpresion() {
   var im = S.imp || {};
-  var head = '<h1>🖨 Centro de Impresión</h1><p class="sub">Etiquetas de los traspasos que las áreas de Oficinas crearon en su computadora. Solo aparecen los que siguen en <b>Nuevo traspaso</b>; en cuanto un gestor los recoge, salen de aquí.</p>';
-  if (!im.areas) return head + (im.err ? '<div class="feedback err">' + esc(im.err) + '</div>' : '<div class="cargando">Cargando áreas…</div>');
-  var opts = '<option value="">Elige el área…</option>' + im.areas.map(function (a) {
-    return '<option value="' + esc(a.id) + '"' + (im.area === a.id ? ' selected' : '') + '>' + esc(a.nombre) + (a.pendientes ? ' (' + a.pendientes + ')' : '') + '</option>';
-  }).join('');
-  var cuerpo = '';
-  if (im.err) cuerpo = '<div class="feedback err">' + esc(im.err) + '</div>';
-  else if (!im.area) cuerpo = '<div class="empty">Elige un área para ver sus etiquetas por imprimir.</div>';
-  else if (!im.lista) cuerpo = '<div class="cargando">Buscando traspasos…</div>';
-  else if (!im.lista.length) cuerpo = '<div class="empty">Esta área no tiene traspasos en "Nuevo traspaso".</div>';
-  else {
-    var total = im.lista.reduce(function (s, t) { return s + t.bultos; }, 0);
-    cuerpo = '<div class="row" style="justify-content:space-between;margin-bottom:10px"><b>' + im.lista.length + ' traspaso(s) · ' + total + ' etiqueta(s)</b>' +
-      '<button class="btn primary" type="button" data-a="impTodas"' + (im.ocupado ? ' disabled' : '') + '>🖨 Imprimir todas</button></div>' +
-      '<div class="tablewrap"><table><thead><tr><th>Folio</th><th>Destino</th><th>Fecha</th><th>Bultos</th><th>Creó</th><th></th></tr></thead><tbody>' +
-      im.lista.map(function (t) {
-        return '<tr><td class="num">' + esc(t.folio) + (t.impresoEnRec ? '<div class="muted" style="font-size:12px;font-weight:700">ya impreso aquí' + (t.enRecepcion ? ' · en el stand' : '') + '</div>' : '') + '</td>' +
-          '<td>' + areaTag(t.destino) + ' ' + esc(t.destinoNombre) + '<div class="muted" style="font-size:12.5px;white-space:normal">' + esc(t.desc) + '</div></td>' +
-          '<td>' + esc(fh(t.fecha, t.hora)) + '</td><td class="num">' + t.bultos + '</td><td>' + esc(quien(t.por, S.A[S.imp.area] ? S.A[S.imp.area].corto : '')) + '</td>' +
-          '<td><button class="btn' + (t.impresoEnRec ? '' : ' primary') + '" type="button" data-a="impUno" data-v="' + esc(t.folio) + '"' + (im.ocupado ? ' disabled' : '') + '>🖨 ' + (t.impresoEnRec ? 'Imprimir otra vez' : 'Imprimir etiqueta') + '</button></td></tr>';
-      }).join('') + '</tbody></table></div>';
-  }
+  var head = '<h1>🖨 Centro de Impresión</h1><p class="sub">Todas las etiquetas por imprimir de Oficinas, en una sola lista. Marca las que quieras e imprímelas juntas; la lista no se recarga.</p>';
   // Cajas para Morelia que armó Logística y siguen esperando guía: su etiqueta se imprime aquí.
   // En cuanto tienen guía (en ruta) ya no salen. Si una en ruta necesita etiqueta: 🔎 Buscar folio → CJ-0001.
   var cajas = (S.data.cajas || []).filter(function (c) { return c.estatus === 'ARMADA'; });
@@ -1142,8 +1122,39 @@ function vCentroImpresion() {
         '<div class="muted" style="font-size:12.5px">' + esc(c.traspasos.join(', ')) + '</div></div>' +
         '<button class="btn primary" type="button" data-a="cajaprint" data-v="' + esc(c.folio) + '">🖨 Imprimir etiqueta de caja</button></div>';
     }).join('') + '</div>' : '';
-  return head + cajasH + '<div class="panel stack" style="margin-bottom:16px;max-width:520px"><label class="f">Área de Oficinas<select class="t" id="impArea">' + opts + '</select></label>' +
-    '<div class="row"><button class="btn ghost" type="button" data-a="impRecargar">↻ Actualizar</button></div></div>' + cuerpo;
+  if (im.err) return head + cajasH + '<div class="feedback err">' + esc(im.err) + '</div>';
+  if (!im.lista) return head + cajasH + '<div class="cargando">Cargando etiquetas…</div>';
+  var todos = im.lista, pend = todos.filter(function (t) { return !t.impreso; });
+  var cuenta = {}; pend.forEach(function (t) { cuenta[t.origen] = (cuenta[t.origen] || 0) + 1; });
+  var chips = '<div class="chips"><button type="button" class="chip' + (im.filtro ? '' : ' on') + '" data-a="impfiltro" data-v="">Todas <span class="n">' + pend.length + '</span></button>' +
+    im.areas.filter(function (a) { return cuenta[a.id]; }).map(function (a) { return '<button type="button" class="chip' + (im.filtro === a.id ? ' on' : '') + '" data-a="impfiltro" data-v="' + esc(a.id) + '">' + esc(a.nombre) + ' <span class="n">' + cuenta[a.id] + '</span></button>'; }).join('') + '</div>';
+  var busca = '<div class="panel stack" style="margin-bottom:14px"><label class="f">Escanea o teclea un folio para imprimirlo de inmediato<input class="scaninput" id="impin" autocomplete="off" placeholder="COM-0047"></label>' + chips +
+    (im.fb ? '<div class="feedback ' + im.fb.k + '" style="margin:0">' + esc(im.fb.m) + '</div>' : '') + '</div>';
+  var vis = impPendientes(), sel = Object.keys(im.sel || {}).filter(function (k) { return impItem(k) && !impItem(k).impreso; });
+  var etSel = sel.reduce(function (s, k) { return s + (impItem(k).bultos || 1); }, 0);
+  var barra = '<div class="barra" style="margin-bottom:12px"><span>' + (sel.length ? '<b>' + sel.length + ' seleccionada(s)</b> · ' + etSel + ' etiqueta(s)' : '<span class="muted">Marca las que quieras imprimir juntas</span>') + '</span><span class="row">' +
+    (vis.length ? '<button class="btn ghost" type="button" data-a="impselall">' + (sel.length === vis.length ? 'Quitar selección' : 'Seleccionar todas (' + vis.length + ')') + '</button>' : '') +
+    '<button class="btn primary" type="button" data-a="impsel"' + (sel.length && !im.ocupado ? '' : ' disabled') + '>' + (im.ocupado ? 'Imprimiendo…' : '🖨 Imprimir seleccionadas' + (sel.length ? ' (' + etSel + ' etiquetas)' : '')) + '</button>' +
+    '<button class="btn ghost" type="button" data-a="impRecargar" title="Traer los traspasos nuevos">↻</button></span></div>';
+  var fila = function (t) {
+    var on = !!im.sel[t.folio], ok = !!t.impreso;
+    return '<div class="it' + (ok ? ' ok' : '') + '">' +
+      (ok ? '<span></span>' : '<button type="button" class="cb' + (on ? ' on' : '') + '" data-a="impcheck" data-v="' + esc(t.folio) + '" aria-pressed="' + on + '" aria-label="Seleccionar ' + esc(t.folio) + '">' + (on ? '✓' : '') + '</button>') +
+      '<b class="num">' + esc(t.folio) + '</b><div style="min-width:0"><b>→ ' + esc(t.destinoNombre) + '</b><div class="d">' + esc([t.desc, quien(t.por, S.A[t.origen] ? S.A[t.origen].corto : '')].filter(Boolean).join(' · ')) + '</div></div>' +
+      '<span>' + esc(fh(t.fecha, t.hora)) + '</span><span class="num">' + t.bultos + ' et.</span>' +
+      (ok ? '<span class="row" style="gap:6px;justify-content:flex-end"><span style="color:#1B7F38;font-weight:800">✓ Impresa' + (t.impHora ? ' ' + esc(t.impHora) : '') + '</span><button class="btn ghost" type="button" data-a="impUno" data-v="' + esc(t.folio) + '" style="padding:4px 8px"' + (im.ocupado ? ' disabled' : '') + '>Otra vez</button></span>'
+          : '<button class="btn" type="button" data-a="impUno" data-v="' + esc(t.folio) + '" style="padding:6px 10px"' + (im.ocupado ? ' disabled' : '') + '>🖨 Imprimir</button>') + '</div>';
+  };
+  var grupos = im.areas.filter(function (a) { return !im.filtro || a.id === im.filtro; }).map(function (a) {
+    var p = vis.filter(function (t) { return t.origen === a.id; });
+    if (!p.length) return '';
+    return '<div class="grp" style="margin-bottom:12px"><div class="gh"><b style="font-size:16px">' + esc(a.nombre) + ' · ' + p.length + ' por imprimir</b>' +
+      '<button class="btn" type="button" data-a="impgrupo" data-v="' + esc(a.id) + '"' + (im.ocupado ? ' disabled' : '') + '>🖨 Imprimir ' + (p.length > 1 ? 'las ' + p.length : 'la') + ' de ' + esc(a.nombre) + '</button></div>' + p.map(fila).join('') + '</div>';
+  }).join('');
+  var hechas = todos.filter(function (t) { return t.impreso && (!im.filtro || t.origen === im.filtro); });
+  var hechasH = hechas.length ? '<div style="margin-top:6px"><button class="btn ghost" type="button" data-a="impverimp">' + (im.verImpresas ? '▾' : '▸') + ' Ya impresas (' + hechas.length + ') — se pueden volver a imprimir</button>' +
+    (im.verImpresas ? '<div class="grp" style="margin-top:8px">' + hechas.map(fila).join('') + '</div>' : '') + '</div>' : '';
+  return head + cajasH + busca + barra + (grupos || '<div class="empty">No hay etiquetas por imprimir' + (im.filtro ? ' de esta área' : '') + '. 🎉</div>') + hechasH;
 }
 
 /* ---------- Recolección pedidos BOTICAN (sustituye la bitácora en papel) ---------- */
@@ -1569,7 +1580,12 @@ document.addEventListener('click', function (e) {
       if (v === 'domicilio') { abrirBotican('DOM'); return; }
       break;
     case 'impUno': return imprimirEnRecepcion([v]);
-    case 'impTodas': return imprimirEnRecepcion(S.imp.lista.map(function (t) { return t.folio; }));
+    case 'impsel': return imprimirEnRecepcion(Object.keys(S.imp.sel).filter(function (k) { return impItem(k) && !impItem(k).impreso; }));
+    case 'impgrupo': return imprimirEnRecepcion(impPendientes().filter(function (t) { return t.origen === v; }).map(function (t) { return t.folio; }));
+    case 'impcheck': if (S.imp.sel[v]) delete S.imp.sel[v]; else S.imp.sel[v] = true; break;
+    case 'impselall': { var vs = impPendientes(); if (Object.keys(S.imp.sel).length === vs.length) S.imp.sel = {}; else { S.imp.sel = {}; vs.forEach(function (t) { S.imp.sel[t.folio] = true; }); } break; }
+    case 'impfiltro': S.imp.filtro = v; S.imp.sel = {}; break;
+    case 'impverimp': S.imp.verImpresas = !S.imp.verImpresas; break;
     case 'impRecargar': return abrirCentroImpresion();
     case 'entsug': case 'recsug': return alEscanear(v);
     case 'tclear': S.scan.trae = null; break;
@@ -1735,7 +1751,6 @@ document.addEventListener('click', function (e) {
 });
 document.addEventListener('change', function (e) {
   if (e.target.id === 'destin') { $('#rutanote').innerHTML = rutaNota(me(), e.target.value); if ($('#sugpanel')) $('#sugpanel').innerHTML = guiaEnvios(e.target.value); }
-  if (e.target.id === 'impArea') cargarPendientes(e.target.value);
   if (e.target.id === 'vercomo') verComo(e.target.value);
   if (e.target.getAttribute('data-a') === 'faltan') {
     var f = e.target.getAttribute('data-v');
@@ -1756,6 +1771,7 @@ function procesarCampo(el) {
   else if (id === 'cajain') agregarACaja(v);
   else if (id === 'recin') recEscanear(v);
   else if (id === 'botin') botEscanear(v);
+  else if (id === 'impin') impEscanear(v);
   else if (id === 'hbusq') { var fm = el.closest('form'); if (fm) fm.requestSubmit ? fm.requestSubmit() : fm.dispatchEvent(new Event('submit', { cancelable: true })); }
   else if (id === 'pinin') entrar(S.pinPara || el.closest('.pinbox').querySelector('[data-a=entrarpin]').getAttribute('data-v'), v);
   else if (/-(cod|nip|usr)$/.test(id)) {
@@ -1773,7 +1789,7 @@ function procesarCampo(el) {
  * Si la pistola además manda Enter, no se duplica.
  */
 var AUTO = { el: null, t: null, ult: 0, rapidas: 0, lentas: 0 };
-var CAMPOS_AUTO = /^(scanin|cajain|recin|botin|hbusq|[a-z]+-cod)$/;
+var CAMPOS_AUTO = /^(scanin|cajain|recin|botin|impin|hbusq|[a-z]+-cod)$/;
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape' && S.modal) { S.modal = null; render(); return; }
   var el = e.target;
@@ -1799,7 +1815,7 @@ document.addEventListener('input', function (e) {
   if (!v) return;
   var pistola = AUTO.el === el && AUTO.rapidas >= 3 && AUTO.rapidas > AUTO.lentas;
   var f = R.folioDe(v);
-  var completo = el.id === 'botin' ? !!botPedido(v) : !/-cod$/.test(el.id) && (MAPA[f] || CAJAS[f]) && R.valido(v);
+  var completo = el.id === 'botin' ? !!botPedido(v) : el.id === 'impin' ? !!impItem(R.folioDe(v) || v) : !/-cod$/.test(el.id) && (MAPA[f] || CAJAS[f]) && R.valido(v);
   if (!pistola && !completo) return;
   AUTO.t = setTimeout(function () {
     if (!document.body.contains(el) || String(el.value || '').trim() !== v) return;

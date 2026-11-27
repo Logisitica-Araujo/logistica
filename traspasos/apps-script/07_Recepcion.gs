@@ -148,6 +148,24 @@ function apiCentroImpresion(token) {
   });
 }
 
+/** Centro de Impresión en UNA consulta: lo de TODAS las áreas de Oficinas (por imprimir y ya impresas aquí). */
+function apiCentroTodo(token) {
+  return _api(function () {
+    const c = _ctx(token);
+    if (c.area !== AREA_REC) throw new Error('El Centro de Impresión solo está en la computadora de Recepción Oficinas.');
+    const A = _areas(), impresos = _impresosEnRec();
+    const lista = _traspasos()
+      .filter(function (t) { return _imprimibleEnRec(t, A); })
+      .sort(function (a, b) { return String(b.fecha + ' ' + b.hora).localeCompare(String(a.fecha + ' ' + a.hora)); })
+      .map(function (t) {
+        return { folio: t.folio, origen: t.origen, destino: t.destino, destinoNombre: R.nom(A, t.destino), fecha: t.fecha, hora: t.hora,
+                 bultos: t.bultos, desc: t.desc, por: String(t.por || '').split(' · ')[0],
+                 impreso: impresos[R.limpio(t.folio)] || 0, enRecepcion: t.estatus === 'EN_RECEPCION' };
+      });
+    return { lista: lista, areas: _areasOficinas(A).map(function (id) { return { id: id, nombre: A[id].corto }; }) };
+  });
+}
+
 /** Traspasos del área elegida que siguen en "Nuevo traspaso" (los más recientes primero). */
 function apiPendientesImpresion(token, area) {
   return _api(function () {
